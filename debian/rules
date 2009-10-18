@@ -170,5 +170,8 @@ binary-arch: install
 	dh_md5sums -a
 	dh_builddeb -a
 
+get-orig-source:
+	sh debian/get-orig-source
+
 binary: binary-indep binary-arch
 .PHONY: binary binary-arch binary-indep install clean build prepare uncompress patch
