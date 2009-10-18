@@ -1,0 +1,137 @@
+! The master
+feature@org.eclipse.cdt.master=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/releng/org.eclipse.cdt.master
+
+! Cross platform
+plugin@org.eclipse.cdt.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core
+plugin@org.eclipse.cdt.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.ui
+
+plugin@org.eclipse.cdt.make.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.make.core
+plugin@org.eclipse.cdt.make.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.make.ui
+
+plugin@org.eclipse.cdt.managedbuilder.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.core
+plugin@org.eclipse.cdt.managedbuilder.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.ui
+plugin@org.eclipse.cdt.managedbuilder.gnu.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.gnu.ui
+
+plugin@org.eclipse.cdt.debug.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.debug.core
+plugin@org.eclipse.cdt.debug.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.debug.ui
+
+plugin@org.eclipse.cdt.debug.mi.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.debug.mi.core
+plugin@org.eclipse.cdt.debug.mi.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.debug.mi.ui
+
+plugin@org.eclipse.cdt.launch=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.launch
+
+plugin@org.eclipse.cdt.doc.user=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.doc.user
+plugin@org.eclipse.cdt.doc.isv=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.doc.isv
+
+plugin@org.eclipse.cdt=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt
+
+! CDT Features
+feature@org.eclipse.cdt.platform=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.platform-feature
+feature@org.eclipse.cdt.gnu.build=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.gnu.build-feature
+feature@org.eclipse.cdt.gnu.debug=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.gnu.debug-feature
+feature@org.eclipse.cdt=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt-feature
+
+! Platform specific
+fragment@org.eclipse.cdt.core.aix=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.aix
+fragment@org.eclipse.cdt.core.linux=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.linux
+fragment@org.eclipse.cdt.core.linux.ia64=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.linux.ia64
+fragment@org.eclipse.cdt.core.linux.ppc=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.linux.ppc
+fragment@org.eclipse.cdt.core.linux.x86=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.linux.x86
+fragment@org.eclipse.cdt.core.linux.x86_64=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.linux.x86_64
+fragment@org.eclipse.cdt.core.macosx=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.macosx
+fragment@org.eclipse.cdt.core.qnx=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.qnx
+fragment@org.eclipse.cdt.core.solaris=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.solaris
+fragment@org.eclipse.cdt.core.win32=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.win32
+
+! Testing feature
+plugin@org.eclipse.cdt.core.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.core.tests
+plugin@org.eclipse.cdt.ui.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.ui.tests
+plugin@org.eclipse.cdt.debug.ui.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.debug.ui.tests
+plugin@org.eclipse.cdt.managedbuilder.core.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.core.tests
+plugin@org.eclipse.cdt.managedbuilder.ui.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.ui.tests
+plugin@org.eclipse.cdt.testing=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.testing
+plugin@org.eclipse.test=HEAD,:pserver:anonymous@dev.eclipse.org:/cvsroot/eclipse,
+fragment@org.eclipse.ant.optional.junit=HEAD,:pserver:anonymous@dev.eclipse.org:/cvsroot/eclipse,
+feature@org.eclipse.cdt.testing=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.testing-feature
+
+! SDK Feature
+plugin@org.eclipse.cdt.sdk=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.sdk
+feature@org.eclipse.cdt.sdk=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/all/org.eclipse.cdt.sdk-feature
+
+! Windows Feature
+plugin@org.eclipse.cdt.windows.build=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/windows/org.eclipse.cdt.windows.build
+plugin@org.eclipse.cdt.windows=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/windows/org.eclipse.cdt.windows
+feature@org.eclipse.cdt.windows=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/windows/org.eclipse.cdt.windows-feature
+
+! GDB Hardware Debugging Feature
+plugin@org.eclipse.cdt.debug.gdbjtag=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag
+plugin@org.eclipse.cdt.debug.gdbjtag.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag.core
+plugin@org.eclipse.cdt.debug.gdbjtag.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag.ui
+feature@org.eclipse.cdt.debug.gdbjtag=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag-feature
+
+! XL compiler integration
+plugin@org.eclipse.cdt.errorparsers.xlc=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.errorparsers.xlc
+plugin@org.eclipse.cdt.make.xlc.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.make.xlc.core
+plugin@org.eclipse.cdt.managedbuilder.xlc.core=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlc.core
+plugin@org.eclipse.cdt.managedbuilder.xlc.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlc.ui
+feature@org.eclipse.cdt.xlc.feature=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.xlc.feature
+feature@org.eclipse.cdt.xlc.sdk=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.xlc.sdk-feature
+plugin@org.eclipse.cdt.core.lrparser.xlc=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.core.lrparser.xlc
+plugin@org.eclipse.cdt.managedbuilder.xlupc.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlupc.ui
+
+! LR parser
+plugin@org.eclipse.cdt.core.lrparser=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser
+plugin@org.eclipse.cdt.core.lrparser.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.tests
+! newly signed LPG runtime
+plugin@net.sourceforge.lpg.lpgjavaruntime,1.1.0=GET,http://download.eclipse.org/tools/orbit/downloads/drops/R20090825191606/bundles/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar
+feature@org.eclipse.cdt.core.lrparser.feature=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.feature
+feature@org.eclipse.cdt.core.lrparser.sdk=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.sdk.feature
+
+! UPC parser - also uses LPG but since we already download it above no need to download again
+plugin@org.eclipse.cdt.core.parser.upc=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc
+plugin@org.eclipse.cdt.core.parser.upc.tests=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.tests
+feature@org.eclipse.cdt.core.parser.upc.feature=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.feature
+feature@org.eclipse.cdt.core.parser.upc.sdk=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.sdk.feature
+
+! CDT Utilities
+plugin@org.eclipse.cdt.util=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/util/org.eclipse.cdt.util
+feature@org.eclipse.cdt.util=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/util/org.eclipse.cdt.util-feature
+
+! CDT Mylyn Bridge
+plugin@org.eclipse.cdt.mylyn=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn
+plugin@org.eclipse.cdt.mylyn.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn.ui
+feature@org.eclipse.cdt.mylyn=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature
+
+! DSF 
+plugin@org.eclipse.cdt.dsf=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.dsf
+plugin@org.eclipse.cdt.dsf.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.dsf.ui
+plugin@org.eclipse.cdt.examples.dsf=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf
+plugin@org.eclipse.cdt.examples.dsf.pda=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf.pda
+plugin@org.eclipse.cdt.examples.dsf.pda.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf.pda.ui
+plugin@org.eclipse.cdt.tests.dsf=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.tests.dsf
+feature@org.eclipse.cdt.examples.dsf=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf-feature
+
+! DSF-GDB Integration
+plugin@org.eclipse.cdt.dsf.gdb=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.dsf.gdb
+plugin@org.eclipse.cdt.dsf.gdb.ui=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
+plugin@org.eclipse.cdt.tests.dsf.gdb=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.tests.dsf.gdb
+feature@org.eclipse.cdt.gnu.dsf=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.gnu.dsf-feature
+
+! CDT Memory
+plugin@org.eclipse.cdt.debug.ui.memory.traditional=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.traditional
+plugin@org.eclipse.cdt.debug.ui.memory.transport=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.transport
+plugin@org.eclipse.cdt.debug.ui.memory.search=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.search
+plugin@org.eclipse.cdt.debug.ui.memory.memorybrowser=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
+feature@org.eclipse.cdt.debug.ui.memory=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory-feature
+
+! CDT RSE Remote Launch
+plugin@org.eclipse.cdt.launch.remote=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/cross/org.eclipse.cdt.launch.remote
+feature@org.eclipse.cdt.launch.remote=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/cross/org.eclipse.cdt.launch.remote-feature
+
+! CDT Cross GCC 
+plugin@org.eclipse.cdt.build.crossgcc=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/cross/org.eclipse.cdt.build.crossgcc
+feature@org.eclipse.cdt.build.crossgcc=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/cross/org.eclipse.cdt.build.crossgcc-feature
+
+! CDT P2 Additions
+plugin@org.eclipse.cdt.p2=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/p2/org.eclipse.cdt.p2
+feature@org.eclipse.cdt.p2=CDT_6_0_1,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/p2/org.eclipse.cdt.p2-feature
