@@ -1,0 +1,227 @@
+--- ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/internal/ui/buildconsole/BuildConsoleManager.java.fix	2007-02-21 15:11:53.000000000 -0500
++++ ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/internal/ui/buildconsole/BuildConsoleManager.java	2007-02-21 15:16:17.000000000 -0500
+@@ -7,6 +7,7 @@
+  *
+  * Contributors:
+  *     QNX Software Systems - initial API and implementation
++ *     Red Hat Inc. - multiple build console support
+  *******************************************************************************/
+ package org.eclipse.cdt.internal.ui.buildconsole;
+ 
+@@ -52,11 +53,14 @@ public class BuildConsoleManager impleme
+ 	private Map fConsoleMap = new HashMap();
+ 	Color infoColor, outputColor, errorColor;
+ 	BuildConsoleStream infoStream, outputStream, errorStream;
++	String fName, fSubMenuId, fContextMenuId;
+ 
+ 	static public final int BUILD_STREAM_TYPE_INFO = 0;
+ 	static public final int BUILD_STREAM_TYPE_OUTPUT = 1;
+ 	static public final int BUILD_STREAM_TYPE_ERROR = 2;
+ 	private IProject fLastProject;
++	
++	static public final String DEFAULT_CONTEXT_MENU_ID = CUIPlugin.PLUGIN_ID + ".CBuildConole"; //$NON-NLS-1$
+ 
+ 	public BuildConsoleManager() {
+ 	}
+@@ -168,10 +172,12 @@ public class BuildConsoleManager impleme
+ 		}
+ 	}
+ 
+-	public void startup() {
++	public void startup(String name, String id) {
+ 		infoStream = new BuildConsoleStream();
+ 		outputStream = new BuildConsoleStream();
+ 		errorStream = new BuildConsoleStream();
++		fName = name;
++		fContextMenuId = id;
+ 
+ 		runUI(new Runnable() {
+ 
+@@ -182,7 +188,7 @@ public class BuildConsoleManager impleme
+ 			 */
+ 			public void run() {
+ 				// install colors
+-				fConsole = new BuildConsole(BuildConsoleManager.this);
++				fConsole = new BuildConsole(BuildConsoleManager.this, fName, fContextMenuId);
+ 				ConsolePlugin.getDefault().getConsoleManager().addConsoles(new org.eclipse.ui.console.IConsole[]{fConsole});
+ 				infoStream.setConsole(fConsole);
+ 				infoColor = createColor(CUIPlugin.getStandardDisplay(), BuildConsolePreferencePage.PREF_BUILDCONSOLE_INFO_COLOR);
+@@ -199,6 +205,7 @@ public class BuildConsoleManager impleme
+ 		CUIPlugin.getDefault().getPreferenceStore().addPropertyChangeListener(this);
+ 	}
+ 
++
+ 	/*
+ 	 * (non-Javadoc)
+ 	 * 
+--- ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/internal/ui/buildconsole/BuildConsole.java.fix	2007-02-21 15:12:09.000000000 -0500
++++ ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/internal/ui/buildconsole/BuildConsole.java	2007-02-21 15:16:17.000000000 -0500
+@@ -7,6 +7,7 @@
+  *
+  * Contributors:
+  * QNX Software Systems - Initial API and implementation
++ * Red Hat Inc. - Multiple build console support
+  *******************************************************************************/
+ package org.eclipse.cdt.internal.ui.buildconsole;
+ 
+@@ -26,18 +27,22 @@ public class BuildConsole extends Abstra
+ 	public static final String P_STREAM_COLOR = CUIPlugin.PLUGIN_ID  + ".CONSOLE_P_STREAM_COLOR";	 //$NON-NLS-1$
+ 
+ 	private IBuildConsoleManager fConsoleManager;
++	private String fConsoleName;
++	private String fConsoleId;
+ 
+-	public BuildConsole(IBuildConsoleManager manager) {
+-		super(ConsoleMessages.getString("BuildConsole.buildConsole"), CPluginImages.DESC_BUILD_CONSOLE); //$NON-NLS-1$
++	public BuildConsole(IBuildConsoleManager manager, String name, String id) {
++		super(name, CPluginImages.DESC_BUILD_CONSOLE);
+ 		fConsoleManager = manager;
++		fConsoleName = name;
++		fConsoleId = id;
+ 	}
+ 
+ 	public IPageBookViewPage createPage(IConsoleView view) {
+-		return new BuildConsolePage(view, this);
++		return new BuildConsolePage(view, this, fConsoleId);
+ 	}
+ 
+ 	public void setTitle(IProject project) {
+-		String title = ConsoleMessages.getString("BuildConsole.buildConsole"); //$NON-NLS-1$
++		String title = fConsoleName;
+ 		if (project != null) {
+ 			title += " [" + project.getName() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+ 		}
+--- ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/internal/ui/buildconsole/BuildConsolePage.java.fix	2007-02-21 15:12:28.000000000 -0500
++++ ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/internal/ui/buildconsole/BuildConsolePage.java	2007-02-21 15:16:17.000000000 -0500
+@@ -7,6 +7,7 @@
+  *
+  * Contributors:
+  *     QNX Software Systems - initial API and implementation
++ *     Red Hat Inc. - multiple build console support
+  *******************************************************************************/
+ package org.eclipse.cdt.internal.ui.buildconsole;
+ 
+@@ -85,6 +86,7 @@ public class BuildConsolePage extends Pa
+ 
+ 	private BuildConsole fConsole;
+ 	private IConsoleView fConsoleView;
++	private String fContextMenuId;
+ 	private BuildConsoleViewer fViewer;
+ 	private IProject fProject;
+ 
+@@ -109,10 +111,13 @@ public class BuildConsolePage extends Pa
+ 	/**
+ 	 * @param view
+ 	 * @param console
++	 * @param contextId
+ 	 */
+-	public BuildConsolePage(IConsoleView view, BuildConsole console) {
++	public BuildConsolePage(IConsoleView view, BuildConsole console, 
++			String contextId) {
+ 		fConsole = console;
+ 		fConsoleView = view;
++		fContextMenuId = contextId;
+ 	}
+ 
+ 	protected void setProject(IProject project) {
+@@ -187,7 +192,7 @@ public class BuildConsolePage extends Pa
+ 		fMenu = manager.createContextMenu(getControl());
+ 		getControl().setMenu(fMenu);
+ 		IPageSite site = getSite();
+-		site.registerContextMenu(CUIPlugin.PLUGIN_ID + ".CBuildConole", manager, getViewer()); //$NON-NLS-1$
++		site.registerContextMenu(CUIPlugin.PLUGIN_ID + "." + fContextMenuId, manager, getViewer()); //$NON-NLS-1$
+ 		site.setSelectionProvider(getViewer());
+ 		createActions();
+ 		configureToolBar(site.getActionBars().getToolBarManager());
+--- ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/ui/CUIPlugin.java.fix	2007-02-21 15:15:37.000000000 -0500
++++ ./results/plugins/org.eclipse.cdt.ui/src/org/eclipse/cdt/ui/CUIPlugin.java	2007-02-21 15:16:17.000000000 -0500
+@@ -14,8 +14,10 @@ package org.eclipse.cdt.ui;
+ import java.io.IOException;
+ import java.text.MessageFormat;
+ import java.util.ArrayList;
++import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.List;
++import java.util.Map;
+ import java.util.MissingResourceException;
+ import java.util.ResourceBundle;
+ import java.util.Set;
+@@ -32,6 +34,7 @@ import org.eclipse.cdt.internal.ui.ICSta
+ import org.eclipse.cdt.internal.ui.IContextMenuConstants;
+ import org.eclipse.cdt.internal.ui.ResourceAdapterFactory;
+ import org.eclipse.cdt.internal.ui.buildconsole.BuildConsoleManager;
++import org.eclipse.cdt.internal.ui.buildconsole.ConsoleMessages;
+ import org.eclipse.cdt.internal.ui.editor.CDocumentProvider;
+ import org.eclipse.cdt.internal.ui.editor.CustomBufferFactory;
+ import org.eclipse.cdt.internal.ui.editor.ExternalSearchDocumentProvider;
+@@ -336,7 +339,7 @@ public class CUIPlugin extends AbstractU
+ 	private CTextTools fTextTools;
+ 	private AsmTextTools fAsmTextTools;
+ 	private ProblemMarkerManager fProblemMarkerManager;
+-	private BuildConsoleManager fBuildConsoleManager;
++	private Map fBuildConsoleManagers;
+ 	private ResourceAdapterFactory fResourceAdapterFactory;
+ 	private CElementAdapterFactory fCElementAdapterFactory;
+ 
+@@ -356,7 +359,8 @@ public class CUIPlugin extends AbstractU
+ 	public CUIPlugin() {
+ 		fgCPlugin = this;
+ 		fDocumentProvider = null;
+-		fTextTools = null;		
++		fTextTools = null;
++		fBuildConsoleManagers = new HashMap();
+ 	}
+ 		
+ 	/**
+@@ -408,12 +412,28 @@ public class CUIPlugin extends AbstractU
+ 		return fAsmTextTools;
+ 	}
+ 
++	/**
++	 * Return the default console manager.
++	 * @return IBuildConsoleManager
++	 */
+ 	public IBuildConsoleManager getConsoleManager() {
+-		if ( fBuildConsoleManager == null ) {
+-			fBuildConsoleManager = new BuildConsoleManager();
+-			fBuildConsoleManager.startup();
++		return getConsoleManager(ConsoleMessages.getString("BuildConsole.buildConsole"), BuildConsoleManager.DEFAULT_CONTEXT_MENU_ID); //$NON-NLS-1$
++	}
++
++	/**
++	 * Return a console manager specified by id.
++	 * @param name console name
++	 * @param id console id
++	 * @return IBuildConsoleManager
++	 */	
++	public IBuildConsoleManager getConsoleManager(String name, String id) {
++		BuildConsoleManager manager = (BuildConsoleManager)fBuildConsoleManagers.get(id);
++		if (manager == null ) {
++			manager = new BuildConsoleManager();
++			fBuildConsoleManagers.put(id, manager);
++			manager.startup(name, id);
+ 		}
+-		return fBuildConsoleManager;
++		return manager;
+ 	}
+ 
+ 	/* (non-Javadoc)
+@@ -443,9 +463,15 @@ public class CUIPlugin extends AbstractU
+ 		}
+ 		if (fImageDescriptorRegistry != null)
+ 			fImageDescriptorRegistry.dispose();
+-		if ( fBuildConsoleManager != null ) {
+-			fBuildConsoleManager.shutdown();
+-			fBuildConsoleManager = null;
++		
++		if (fBuildConsoleManagers != null ) {
++			Object[] bcm = fBuildConsoleManagers.values().toArray();
++			for (int i = 0; i < bcm.length; ++i) {
++				BuildConsoleManager m = (BuildConsoleManager)bcm[i];
++				if (m != null)
++					m.shutdown();
++			}
++			fBuildConsoleManagers.clear();
+ 		}
+ 
+ 		unregisterAdapters();

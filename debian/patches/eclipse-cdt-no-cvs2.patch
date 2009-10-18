@@ -1,0 +1,123 @@
+--- /home/tromey/OS/rpms/eclipse-cdt/eclipse-cdt-2.0/org.eclipse.cdt.releng/platform/customTargets.xml	2004-07-23 12:53:33.000000000 -0600
++++ platform/customTargets.xml	2004-07-23 12:10:27.000000000 -0600
+@@ -9,13 +9,39 @@
+ <!-- Run a given ${target} on all elements being built -->
+ <!-- Add on <ant> task for each top level element being built. -->
+ <!-- ===================================================================== -->
++
+ <target name="allElements">
++	<antcall target="${target}ForAllElements"/>
++</target>
++
++<target name="fetchElementForAllElements" unless="dontFetchAnything">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="generateScriptForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="processElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="assembleElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="cleanElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="genericAllElements">
+ 	<ant antfile="${genericTargets}" target="${target}" >
+ 		<property name="type" value="feature" />
+ 		<property name="id" value="org.eclipse.cdt" />
+ 	</ant>
+ </target>
+ 
++
+ <!-- ===================================================================== -->
+ <!-- Targets to assemble the built elements for particular configurations  -->
+ <!-- These generally call the generated assemble scripts (named in -->
+--- /home/tromey/OS/rpms/eclipse-cdt/eclipse-cdt-2.0/org.eclipse.cdt.releng/sdk/customTargets.xml	2004-07-23 12:53:33.000000000 -0600
++++ sdk/customTargets.xml	2004-07-23 12:10:27.000000000 -0600
+@@ -10,12 +10,38 @@
+ <!-- Add on <ant> task for each top level element being built. -->
+ <!-- ===================================================================== -->
+ <target name="allElements">
++	<antcall target="${target}ForAllElements"/>
++</target>
++
++<target name="fetchElementForAllElements" unless="dontFetchAnything">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="generateScriptForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="processElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="assembleElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="cleanElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="genericAllElements">
+ 	<ant antfile="${genericTargets}" target="${target}" >
+ 		<property name="type" value="feature" />
+ 		<property name="id" value="org.eclipse.cdt.sdk" />
+ 	</ant>
+ </target>
+ 
++
++
+ <!-- ===================================================================== -->
+ <!-- Targets to assemble the built elements for particular configurations  -->
+ <!-- These generally call the generated assemble scripts (named in -->
+--- /home/tromey/OS/rpms/eclipse-cdt/eclipse-cdt-2.0/org.eclipse.cdt.releng/testing/customTargets.xml	2004-03-08 11:41:52.000000000 -0700
++++ testing/customTargets.xml	2004-07-23 12:10:27.000000000 -0600
+@@ -10,12 +10,37 @@
+ <!-- Add on <ant> task for each top level element being built. -->
+ <!-- ===================================================================== -->
+ <target name="allElements">
++	<antcall target="${target}ForAllElements"/>
++</target>
++
++<target name="fetchElementForAllElements" unless="dontFetchAnything">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="generateScriptForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="processElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="assembleElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="cleanElementForAllElements">
++	<antcall target="genericAllElements"/>
++</target>
++
++<target name="genericAllElements">
+ 	<ant antfile="${genericTargets}" target="${target}" >
+ 		<property name="type" value="feature" />
+ 		<property name="id" value="org.eclipse.cdt.testing" />
+ 	</ant>
+ </target>
+ 
++
+ <!-- ===================================================================== -->
+ <!-- Targets to assemble the built elements for particular configurations  -->
+ <!-- These generally call the generated assemble scripts (named in -->

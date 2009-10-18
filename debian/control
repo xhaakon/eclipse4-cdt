@@ -1,0 +1,29 @@
+Source: eclipse-cdt
+Section: java
+Priority: optional
+Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
+Uploaders: Niels Thykier <niels@thykier.net>,
+           Benjamin Drung <bdrung@ubuntu.com>,
+           Adrian Perez <adrianperez.deb@gmail.com>
+Build-Depends: debhelper (>> 5), eclipse (>= 3.5.1), default-jdk, bzip2, sharutils
+Build-Conflicts: eclipse-cdt
+Standards-Version: 3.7.3
+
+Package: eclipse-cdt
+Architecture: any
+Depends: ${shlibs:Depends}, eclipse-platform (>= 3.5.1), gcc, make, exuberant-ctags | ctags
+Suggests: g++
+Description: C/C++ Development Tools for Eclipse
+ The eclipse-cdt package contains Eclipse features and plugins that are
+ useful for C and C++ development.
+ .
+ The current release function includes:
+  * C/C++ Editor (basic functionality, syntax highlighting, code completion,
+    etc.)
+  * C/C++ Debugger (APIs & Default implementation, using GDB)
+  * C/C++ Launcher (APIs & Default implementation, launches and external
+    application)
+  * Parser
+  * Search Engine
+  * Content Assist Provider
+  * Makefile generator

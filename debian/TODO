@@ -1,0 +1,8 @@
+= Packaging =
+ * switch to cdbs
+ * split the package into a -sdk package
+ * eclipse-cdt cannot be built if installed
+
+= Related =
+ * Package autotools plugin?
+ * Package cppunit plugin?

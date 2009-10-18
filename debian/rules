@@ -1,0 +1,174 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode. 
+#export DH_VERBOSE=1
+
+export LC_ALL=C
+CURDIR=$(shell pwd)
+
+SOURCE=$(shell echo upstream/*.tar.bz2)
+SOURCE_TREE=source-tree
+JAVA_HOME=/usr/lib/jvm/default-java
+export JAVA_HOME
+JAVA_RUN=$(JAVA_HOME)/bin/java
+ANT_RUN=ant
+homedir=$(CURDIR)/home
+ECLIPSE_BASE=/usr/lib/eclipse
+ECLIPSE_PLATFORM=$(shell dpkg-architecture -qDEB_HOST_ARCH)
+DEB_HOST_ARCH=$(shell dpkg-architecture -qDEB_HOST_ARCH)
+
+ifeq ($(DEB_HOST_ARCH),i386)
+    ECLIPSE_PLATFORM=x86
+endif
+ifeq ($(DEB_HOST_ARCH),ia64)
+    ECLIPSE_PLATFORM=ia64
+endif
+ifeq ($(DEB_HOST_ARCH),amd64)
+    ECLIPSE_PLATFORM=x86_64
+endif
+ifeq ($(DEB_HOST_ARCH),powerpc)
+    ECLIPSE_PLATFORM=ppc
+endif
+ifeq ($(DEB_HOST_ARCH),s390)
+    ECLIPSE_PLATFORM=s390
+endif
+
+RELENG  := org.eclipse.cdt.releng
+PLUGINS := $(SOURCE_TREE)/$(RELENG)/results/plugins
+CDT_LNX := $(PLUGINS)/org.eclipse.cdt.core.linux
+
+PATCHES = \
+	eclipse-cdt-build-linux \
+	eclipse-cdt-build-on-sparc-s390 \
+	eclipse-cdt-no-cvs2 \
+	eclipse-cdt-no-tests \
+	eclipse-cdt-buildconsole \
+	eclipse-cdt-scannerinfoplus \
+	eclipse-cdt-definedsymbolhover \
+	eclipse-cdt-managedbuild-failcheck
+
+clean:
+	dh_testdir
+	rm -rf $(SOURCE_TREE) $(homedir) debian/tmp debian/eclipse-cdt
+	rm -f *-stamp
+	dh_clean
+
+uncompress: uncompress-stamp
+uncompress-stamp: debian/control
+	dh_testdir
+	# The building happens inside the source-tree directory. This makes
+	# cleanup much easier.
+	mkdir -p "$(SOURCE_TREE)"
+	(cd "$(SOURCE_TREE)" && tar xjf ../"$(SOURCE)" > /dev/null)
+
+	touch uncompress-stamp
+
+patch: patch-stamp
+patch-stamp: uncompress-stamp
+	dh_testdir
+	# This patch system was orginally copied off of the one found in cdbs.
+	@cd $(SOURCE_TREE)/$(RELENG); \
+	test $$(find $(CURDIR)/debian/patches/ -maxdepth 1 -name '*.patch' | wc -l) -eq 0 && exit 0; \
+	for patchname in $(PATCHES); do \
+		patch=$(CURDIR)/debian/patches/$$patchname.patch; \
+		success=""; \
+		echo -n "trying patch $$patchname at level "; \
+		for level in 0 1 2 3; do \
+			if test -z "$$success"; then \
+				echo -n "$$level..."; \
+				if patch -f -p$$level -E --dry-run < $$patch > /dev/null 2>&1; then \
+					if patch -f -p$$level -E -V never < $$patch > /dev/null 2>&1; then \
+						success=yes; \
+						echo "success."; \
+					fi; \
+				fi; \
+			fi; \
+		done; \
+		if test -z "$$success"; then \
+			echo "failure."; \
+			exit 1; \
+		fi; \
+	done
+
+	sed -e "s/@ARCH@/$(ECLIPSE_PLATFORM)/" -i  $(CURDIR)/$(SOURCE_TREE)/$(RELENG)/platform/build.properties 
+	sed -e "s/@ARCH@/$(ECLIPSE_PLATFORM)/" -i  $(CURDIR)/$(SOURCE_TREE)/$(RELENG)/sdk/build.properties 
+	touch patch-stamp
+
+prepare: prepare-stamp
+prepare-stamp: patch-stamp
+	dh_testdir
+	# Copy ia64 configuration for unsupported arches. Based on eclipse trick.
+	for arch in ppc64 s390 s390x sparc sparc64 ; do \
+	  cp -a $(CDT_LNX).ia64 $(CDT_LNX).$$arch ; \
+	  rm -Rf $(CDT_LNX).$$arch/os/linux/ia64 ; \
+	  mkdir $(CDT_LNX).$$arch/os/linux/$$arch ; \
+	  find $(CDT_LNX).$$arch -type f -exec sed --in-place "s,ia64,$$arch,g" "{}" \; ; \
+	done
+
+	touch $@
+
+build: build-stamp
+build-stamp: prepare-stamp
+	dh_testdir
+	# Create home.
+	mkdir -p home
+	# build native code.
+	cd $(PLUGINS)/org.eclipse.cdt.core.linux/library && make ARCH=$(ECLIPSE_PLATFORM) CC='gcc -D_GNU_SOURCE'
+	# add a missing icon before launching the build
+	uudecode -o /dev/stdout debian/eclipse-cdt-target_filter.gif.gz.uu | \
+	    gzip -dc - >  $(SOURCE_TREE)/$(RELENG)/results/plugins/org.eclipse.cdt.make.ui/icons/dtool16/eclipse-cdt-target_filter.gif
+	# Call eclipse headless to process CDT releng build scripts
+	cd $(SOURCE_TREE)/$(RELENG) && \
+	$(JAVA_RUN) -cp $(ECLIPSE_BASE)/startup.jar \
+		-Dosgi.sharedConfiguration.area=/usr/lib/eclipse/configuration \
+		-Duser.home=$(homedir) \
+		org.eclipse.core.launcher.Main \
+		-application org.eclipse.ant.core.antRunner \
+		-DjavacFailOnError=true \
+		-DdontUnzip=true \
+		-DbaseLocation=$(ECLIPSE_BASE) \
+		-Dpde.build.scripts=$(ECLIPSE_BASE)/plugins/org.eclipse.pde.build_3.2.1.r321_v20060823/scripts \
+		-DdontFetchAnything=true \
+		-Dconfigs="linux,gtk,$(ECLIPSE_PLATFORM)" \
+		-Dbaseos=linux \
+		-Dbasews=gtk \
+		-Dbasearch=$(ECLIPSE_PLATFORM)
+	touch build-stamp
+
+
+install: install-stamp
+install-stamp: build
+	dh_testdir
+	dh_testroot
+	# Install the tar file into our destination directory.
+	install -d debian/tmp/$(ECLIPSE_BASE)
+	tar xzf $(SOURCE_TREE)/$(RELENG)/results/I.*/org.eclipse.cdt.sdk*.$(ECLIPSE_PLATFORM).tar.gz -C debian/tmp/$(ECLIPSE_BASE)/..
+	dh_installdirs
+	dh_install
+	touch install-stamp
+
+binary-indep: install
+	# Nothing to do here.
+
+binary-arch: install
+	dh_testdir -a
+	dh_testroot -a
+	dh_installdocs -a
+	dh_installexamples -a
+	dh_installmenu -a
+	dh_installman -a
+	dh_installinfo -a
+	dh_installchangelogs  -a
+	dh_link -a
+	dh_fixperms -a
+	dh_strip -a
+	dh_compress -a
+	dh_shlibdeps -a
+	dh_makeshlibs -a
+	dh_installdeb -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+
+binary: binary-indep binary-arch
+.PHONY: binary binary-arch binary-indep install clean build prepare uncompress patch

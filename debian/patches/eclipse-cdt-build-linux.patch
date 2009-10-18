@@ -1,0 +1,40 @@
+diff -r -u source-tree.orig/org.eclipse.cdt.releng/platform/build.properties source-tree/org.eclipse.cdt.releng/platform/build.properties
+--- source-tree.orig/org.eclipse.cdt.releng/platform/build.properties	2005-11-18 02:41:32.000000000 +0100
++++ source-tree/org.eclipse.cdt.releng/platform/build.properties	2005-11-18 02:45:38.000000000 +0100
+@@ -71,15 +71,7 @@
+ #     configs=win32,win32,x86 & linux,motif,x86
+ # By default the value is *,*,*
+ configs=\
+-      aix,motif,ppc \
+-    & linux,gtk,x86 \
+-    & linux,gtk,x86_64 \
+-    & linux,gtk,ppc \
+-    & linux,gtk,ia64 \
+-    & macosx,carbon,ppc \
+-    & qnx,photon,x86 \
+-    & solaris,motif,sparc \
+-    & win32,win32,x86
++      linux,gtk,@ARCH@
+ 
+ archivesFormat=\
+       aix,motif,ppc-tar \
+diff -r -u source-tree.orig/org.eclipse.cdt.releng/sdk/build.properties source-tree/org.eclipse.cdt.releng/sdk/build.properties
+--- source-tree.orig/org.eclipse.cdt.releng/sdk/build.properties	2005-11-18 02:41:29.000000000 +0100
++++ source-tree/org.eclipse.cdt.releng/sdk/build.properties	2005-11-18 02:44:59.000000000 +0100
+@@ -71,15 +71,7 @@
+ #     configs=win32,win32,x86 & linux,motif,x86
+ # By default the value is *,*,*
+ configs=\
+-      aix,motif,ppc\
+-    & linux,gtk,x86 \
+-    & linux,gtk,x86_64 \
+-    & linux,gtk,ppc \
+-    & linux,gtk,ia64 \
+-    & macosx,carbon,ppc \
+-    & qnx,photon,x86 \
+-    & solaris,motif,sparc \
+-    & win32,win32,x86
++      linux,gtk,@ARCH@
+ 
+ archivesFormat=\
+       aix,motif,ppc-tar \
