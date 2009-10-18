@@ -9,7 +9,7 @@ Build-Depends: debhelper (>> 5), eclipse (>= 3.5.1), default-jdk, bzip2, sharuti
 Build-Conflicts: eclipse-cdt
 Standards-Version: 3.7.3
 
-Package: eclipse-cdt
+Package: eclipse-plugin-cdt
 Architecture: any
 Depends: ${shlibs:Depends}, eclipse-platform (>= 3.5.1), gcc, make, exuberant-ctags | ctags
 Suggests: g++
