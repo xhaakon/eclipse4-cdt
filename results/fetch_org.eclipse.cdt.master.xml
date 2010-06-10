@@ -18,7 +18,7 @@
 			<param name="elementName" value="org.eclipse.cdt.master"/>
 			<param name="module" value="org.eclipse.cdt/releng/org.eclipse.cdt.master"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/features"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>

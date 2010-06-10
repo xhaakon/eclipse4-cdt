@@ -41,6 +41,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
@@ -7280,15 +7281,35 @@ public class AST2CPPTests extends AST2BaseTest {
 		IASTTranslationUnit tu= parseAndCheckBindings(getAboveComment(), ParserLanguage.CPP);
 		checkDeclDef(declNames, defNames, tu.getDeclarations());
 
-		declNames= new String[] {"v7"};
-		defNames=  new String[] {"v6", "v8"};
+		declNames= new String[] {"v7", "v8"};
+		defNames=  new String[] {"v6"};
 		IASTCompositeTypeSpecifier cls= getCompositeType(tu, 5);
+		checkDeclDef(declNames, defNames, cls.getMembers());
+	}
+	
+	//	extern "C" int v1;
+	//	class X {
+	//		static const int v2= 1;
+	//	};
+	//	const int X::v2;
+	public void testVariableDefVsDecl_292635() throws Exception {
+		String[] declNames= {"v1"};
+		String[] defNames=  {"X::v2"};
+		IASTTranslationUnit tu= parseAndCheckBindings(getAboveComment(), ParserLanguage.CPP);
+		checkDeclDef(declNames, defNames, tu.getDeclarations());
+
+		declNames= new String[] {"v2"};
+		defNames=  new String[] {};
+		IASTCompositeTypeSpecifier cls= getCompositeType(tu, 1);
 		checkDeclDef(declNames, defNames, cls.getMembers());
 	}
 
 	private void checkDeclDef(String[] declNames, String[] defNames, IASTDeclaration[] decls) {
 		int i=0, j=0; 
 		for (IASTDeclaration decl : decls) {
+			if (decl instanceof ICPPASTLinkageSpecification) {
+				decl= ((ICPPASTLinkageSpecification) decl).getDeclarations()[0];
+			}
 			final IASTDeclarator[] dtors = ((IASTSimpleDeclaration) decl).getDeclarators();
 			for (IASTDeclarator dtor : dtors) {
 				final String name = dtor.getName().toString();
@@ -7298,7 +7319,7 @@ public class AST2CPPTests extends AST2BaseTest {
 					assertEquals(declNames[i++], name);
 					break;
 				case IASTNameOwner.r_definition:
-					assertTrue("Unexpected decl " + name, i < defNames.length);
+					assertTrue("Unexpected decl " + name, j < defNames.length);
 					assertEquals(defNames[j++], name);
 					break;
 				default:
@@ -7309,4 +7330,78 @@ public class AST2CPPTests extends AST2BaseTest {
 		assertEquals(declNames.length, i);
 		assertEquals(defNames.length, j);
 	}
+	
+	//	class X {
+	//	    struct S* m1;  
+	//	    struct T;
+	//	    struct T* m2;  
+	//	};
+	public void testStructOwner_290693() throws Exception {
+		final String code = getAboveComment();
+		parseAndCheckBindings(code, ParserLanguage.CPP);
+
+		BindingAssertionHelper bh= new BindingAssertionHelper(code, true);
+		ICPPClassType S= bh.assertNonProblem("S*", 1);
+		assertNull(S.getOwner());
+
+		ICPPClassType X= bh.assertNonProblem("X {", 1);
+		ICPPClassType T= bh.assertNonProblem("T;", 1);
+		assertSame(X, T.getOwner());
+
+		T= bh.assertNonProblem("T* m2", 1);
+		assertSame(X, T.getOwner());
+	}
+
+	//	class ULONGLONG { 
+	//	public : 
+	//	   ULONGLONG (unsigned long long val) {}
+  	//	   friend ULONGLONG operator ~ ( const ULONGLONG & ) { return 0; }
+	//	};
+	//
+	//	int main() {
+	//	    return ~0;
+	//	}
+	public void testNonUserdefinedOperator_Bug291409_2() throws Exception {
+		final String code = getAboveComment();
+		IASTTranslationUnit tu= parseAndCheckBindings(code, ParserLanguage.CPP);
+		IASTFunctionDefinition def= getDeclaration(tu, 1);
+		IASTReturnStatement rstmt= getStatement(def, 0);
+		IASTImplicitNameOwner expr= (IASTImplicitNameOwner) rstmt.getReturnValue();
+		assertEquals(0, expr.getImplicitNames().length);
+	}
+	
+	//	class Test {
+	//	   template <int T> void t() {}
+	//	   inline void t();
+	//	};
+	//
+	//	inline void Test::t() {
+	//	   t<1>();
+	//	}
+	public void testMethodTemplateWithSameName_292051() throws Exception {
+		final String code = getAboveComment();
+		parseAndCheckBindings(code, ParserLanguage.CPP);
+		BindingAssertionHelper bh= new BindingAssertionHelper(code, true);
+		ICPPMethod m= bh.assertNonProblem("t<1>", 1);
+		assertTrue(m.isInline());
+	}
+	
+	//	class ULONGLONG {
+	//  public :
+	//	   ULONGLONG ( unsigned long long val ) {}
+	//	   friend bool operator == ( const ULONGLONG & , const int ) { return true; }
+	//	};
+	//	enum E {A, B, C};
+	//	int main() {
+	//		return B == 23;
+	//	}
+	public void testInvalidOverload_291409() throws Exception {
+		final String code = getAboveComment();
+		IASTTranslationUnit tu= parseAndCheckBindings(code, ParserLanguage.CPP);
+		IASTFunctionDefinition fdef= getDeclaration(tu, 2);
+		IASTReturnStatement stmt= getStatement(fdef, 0);
+		IASTImplicitNameOwner no= (IASTImplicitNameOwner) stmt.getReturnValue();
+		assertEquals(0, no.getImplicitNames().length);
+	}
 }
+

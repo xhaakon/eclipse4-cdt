@@ -50,8 +50,10 @@ import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionTemplate;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDirective;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
 import org.eclipse.cdt.core.index.IIndex;
@@ -1526,11 +1528,14 @@ public class IndexBugsTests extends BaseTestCase {
 	//    void method();
 	// };
 	// #include "MyClass_inline.h"
+	
+	// #include "MyClass.h"
 	public void testAddingMemberBeforeContainer_Bug203170() throws Exception {
-		String[] contents= getContentsForTest(2);
+		String[] contents= getContentsForTest(3);
 		final IIndexManager indexManager = CCorePlugin.getIndexManager();
 		TestSourceReader.createFile(fCProject.getProject(), "MyClass_inline.h", contents[0]);
-		TestSourceReader.createFile(fCProject.getProject(), "source.cpp", contents[1]);
+		TestSourceReader.createFile(fCProject.getProject(), "MyClass.h", contents[1]);
+		TestSourceReader.createFile(fCProject.getProject(), "MyClass.cpp", contents[2]);
 		indexManager.reindex(fCProject);
 		waitForIndexer();
 		fIndex.acquireReadLock();
@@ -2152,4 +2157,70 @@ public class IndexBugsTests extends BaseTestCase {
 			index.releaseReadLock();
 		}
 	}
+	
+	//	template<typename T> void f(T t) throw (T) {}
+	public void testFunctionTemplateWithThrowsException_293021() throws Exception {
+		waitForIndexer();
+		String testData = getContentsForTest(1)[0].toString();
+		IFile f= TestSourceReader.createFile(fCProject.getProject(), "testFunctionTemplateWithThrowsException_293021.cpp", testData);
+		final IIndexManager indexManager = CCorePlugin.getIndexManager();
+		waitUntilFileIsIndexed(f, 4000);
+		IIndex index= indexManager.getIndex(fCProject);
+		index.acquireReadLock();
+		try {
+			IIndexFile file= index.getFile(ILinkage.CPP_LINKAGE_ID, IndexLocationFactory.getWorkspaceIFL(f));
+			int idx= testData.indexOf("f(");
+			IIndexName[] names = file.findNames(idx, idx+1);
+			assertEquals(1, names.length);
+			ICPPFunctionTemplate ft= (ICPPFunctionTemplate) index.findBinding(names[0]);
+			final IType[] espec = ft.getExceptionSpecification();
+			ICPPTemplateParameter par= (ICPPTemplateParameter) espec[0];
+			assertEquals(ft, par.getOwner());
+		} finally {
+			index.releaseReadLock();
+		}
+	}
+	
+	//  // a.h
+	//	class P {};
+	
+	//  // b.h
+	//	namespace P {class C {};}
+
+	//  // source1.cpp
+	// #include "a.h" 
+	// P p;
+
+	//  // source2.cpp
+	// #include "b.h" 
+	// P::C c;
+	public void testDisambiguateClassVsNamespace_297686() throws Exception {
+		waitForIndexer();
+		String[] testData = getContentsForTest(4);
+		TestSourceReader.createFile(fCProject.getProject(), "a.h", testData[0]);
+		TestSourceReader.createFile(fCProject.getProject(), "b.h", testData[1]);
+		IFile s1= TestSourceReader.createFile(fCProject.getProject(), "s1.cpp", testData[2]);
+		IFile s2= TestSourceReader.createFile(fCProject.getProject(), "s2.cpp", testData[3]);
+		final IIndexManager indexManager = CCorePlugin.getIndexManager();
+		indexManager.reindex(fCProject);
+		waitForIndexer();
+		IIndex index= indexManager.getIndex(fCProject);
+		index.acquireReadLock();
+		try {
+			IASTTranslationUnit tu = TestSourceReader.createIndexBasedAST(index, fCProject, s1);
+			IASTSimpleDeclaration sdecl= (IASTSimpleDeclaration) tu.getDeclarations()[0];
+			IVariable var= (IVariable) sdecl.getDeclarators()[0].getName().resolveBinding();
+			assertFalse(var.getType() instanceof IProblemBinding);
+			assertTrue(var.getType() instanceof ICPPClassType);
+
+			tu = TestSourceReader.createIndexBasedAST(index, fCProject, s2);
+			sdecl= (IASTSimpleDeclaration) tu.getDeclarations()[0];
+			var= (IVariable) sdecl.getDeclarators()[0].getName().resolveBinding();
+			assertFalse(var.getType() instanceof IProblemBinding);
+			assertTrue(var.getType() instanceof ICPPClassType);
+		} finally {
+			index.releaseReadLock();
+		}
+	}
+
 }

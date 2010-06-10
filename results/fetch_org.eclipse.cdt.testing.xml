@@ -18,7 +18,7 @@
 			<param name="elementName" value="org.eclipse.cdt.testing"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.testing-feature"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/features"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -32,7 +32,7 @@
 			<param name="elementName" value="org.eclipse.cdt.debug.ui.tests"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.debug.ui.tests"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -44,7 +44,7 @@
 			<param name="elementName" value="org.eclipse.cdt.ui.tests"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.ui.tests"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -56,7 +56,7 @@
 			<param name="elementName" value="org.eclipse.cdt.testing"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.testing"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -68,7 +68,7 @@
 			<param name="elementName" value="org.eclipse.cdt.core.tests"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.core.tests"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -104,7 +104,7 @@
 			<param name="elementName" value="org.eclipse.cdt.managedbuilder.core.tests"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.core.tests"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -116,7 +116,7 @@
 			<param name="elementName" value="org.eclipse.cdt.managedbuilder.ui.tests"/>
 			<param name="module" value="org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.ui.tests"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>

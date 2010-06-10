@@ -18,13 +18,13 @@
 			<param name="elementName" value="org.eclipse.cdt.core.lrparser.feature"/>
 			<param name="module" value="org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.feature"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/features"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
 	</target>
 	<target name="fetch.plugins" if="featureAndPlugins">
-		<get src="http://download.eclipse.org/tools/orbit/downloads/drops/R20090825191606/bundles/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar" dest="${buildDirectory}/plugins/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar"/>
+		<get src="http://download.eclipse.org/tools/orbit/downloads/drops/R20100114021427/bundles/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar" dest="${buildDirectory}/plugins/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar"/>
 		<available property="${buildDirectory}/plugins/org.eclipse.cdt.core.lrparser/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.core.lrparser/plugin.xml"		/>
 		<available property="${buildDirectory}/plugins/org.eclipse.cdt.core.lrparser/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.core.lrparser/META-INF/MANIFEST.MF"		/>
 		<antcall target="FetchFromCVS">
@@ -33,7 +33,7 @@
 			<param name="elementName" value="org.eclipse.cdt.core.lrparser"/>
 			<param name="module" value="org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
