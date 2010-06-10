@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project name="RetrieveFeature" default="main" basedir=".">
-	<target name="main">
-		<cvs command="export -r v201002161416 org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature/feature.xml" cvsRoot=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools" dest="/tmp/temp/org.eclipse.cdt-releng/org.eclipse.cdt.releng/results/tempFeature/" quiet="true" reallyquiet="${reallyquiet}" failonerror="${fetch.failonerror}"		/>
-		<move file="/tmp/temp/org.eclipse.cdt-releng/org.eclipse.cdt.releng/results/tempFeature//org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature/feature.xml" tofile="/tmp/temp/org.eclipse.cdt-releng/org.eclipse.cdt.releng/results/tempFeature/feature.xml" failonerror="false" />
-		<cvs command="export -r v201002161416 org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature/build.properties" cvsRoot=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools" dest="/tmp/temp/org.eclipse.cdt-releng/org.eclipse.cdt.releng/results/tempFeature/" quiet="true" reallyquiet="${reallyquiet}" failonerror="${fetch.failonerror}"		/>
-		<move file="/tmp/temp/org.eclipse.cdt-releng/org.eclipse.cdt.releng/results/tempFeature//org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature/build.properties" tofile="/tmp/temp/org.eclipse.cdt-releng/org.eclipse.cdt.releng/results/tempFeature/build.properties" failonerror="false" />
-	</target>
-</project>
