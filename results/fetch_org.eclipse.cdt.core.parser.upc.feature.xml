@@ -18,7 +18,7 @@
 			<param name="elementName" value="org.eclipse.cdt.core.parser.upc.feature"/>
 			<param name="module" value="org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.feature"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/features"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>
@@ -32,7 +32,7 @@
 			<param name="elementName" value="org.eclipse.cdt.core.parser.upc"/>
 			<param name="module" value="org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc"/>
 			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
-			<param name="tag" value="CDT_6_0_1"/>
+			<param name="tag" value="v201002161416"/>
 			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
 			<param name="quiet" value="${cvs.quiet}"/>
 		</antcall>

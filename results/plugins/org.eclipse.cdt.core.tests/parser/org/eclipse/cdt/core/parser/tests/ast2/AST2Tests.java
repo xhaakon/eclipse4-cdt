@@ -33,6 +33,7 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclarationStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTExpressionStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
@@ -111,6 +112,7 @@ import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.c.CFunction;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
+import org.eclipse.cdt.internal.core.dom.parser.c.ICInternalBinding;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 /**
@@ -5991,6 +5993,17 @@ public class AST2Tests extends AST2BaseTest {
 		parseAndCheckBindings(code, ParserLanguage.C);
 		parseAndCheckBindings(code, ParserLanguage.CPP);
 	}
+	
+	// void f1(const int* p);
+	// void f2(const int* p) {}
+	public void testDroppingOfStorageDecl_293322() throws Exception {
+		final String code = getAboveComment();
+		BindingAssertionHelper bh= new BindingAssertionHelper(code, false);
+		IFunction f= bh.assertNonProblem("f1", 2);
+		assertEquals("const int *", ASTTypeUtil.getType(f.getParameters()[0].getType()));
+		f= bh.assertNonProblem("f2", 2);
+		assertEquals("const int *", ASTTypeUtil.getType(f.getParameters()[0].getType()));
+	}
 
 	// __thread int i;
 	// static __thread int j;
@@ -6334,6 +6347,12 @@ public class AST2Tests extends AST2BaseTest {
 		assertTrue(e instanceof IASTLiteralExpression);
 	}
 
+	// void f () __attribute__ ((int));
+	public void testAttributeSyntax_298841() throws Exception {
+        final String code = getAboveComment();
+		parseAndCheckBindings(code, ParserLanguage.C, true);
+		parseAndCheckBindings(code, ParserLanguage.CPP, true);
+	}
 	//	enum myenum { value1, value2, value3 };
 	//
 	//	void test() {
@@ -6406,5 +6425,121 @@ public class AST2Tests extends AST2BaseTest {
             IASTName n = ((IASTSimpleDeclaration)tu.getDeclarations()[1]).getDeclarators()[0].getName();
             assertTrue(((IFunction)n.resolveBinding()).getType().getParameterTypes()[0] instanceof IPointerType);
 	    }
+	}
+	//
+	// extern void goo();
+	// struct MyStruct {
+	//      int a;
+	//      void (*ptr)();
+	// };
+	// void foo() {
+	//     struct MyStruct structure;
+	//     structure.a = 1;
+	//     structure.ptr = goo;
+	// }
+	//
+	public void testBindingsOnFields() throws Exception {
+	    IASTTranslationUnit tu = parse(getAboveComment(), ParserLanguage.C, false);
+	    IASTCompoundStatement bodyStmt  = (IASTCompoundStatement)((IASTFunctionDefinition)tu.getDeclarations()[2]).getBody();
+
+	    // Get the IFields bindings from the type used in the declaration of structure
+	    IASTName n = ((IASTSimpleDeclaration)((IASTDeclarationStatement)bodyStmt.getStatements()[0]).getDeclaration()).getDeclarators()[0].getName();
+	    ICompositeType t = (ICompositeType)((IVariable)n.resolveBinding()).getType();
+	    IField[] fields = t.getFields();
+	    assertTrue( fields.length ==2 );
+
+	    // Get the IField for the first assignment
+	    IASTFieldReference ref1 = (IASTFieldReference)((IASTBinaryExpression)((IASTExpressionStatement)bodyStmt.getStatements()[1]).getExpression()).getOperand1();
+	    IBinding field1 = ref1.getFieldName().resolveBinding();
+	    
+	    // Get the IField for the second assignment
+	    IASTFieldReference ref2 = (IASTFieldReference)((IASTBinaryExpression)((IASTExpressionStatement)bodyStmt.getStatements()[2]).getExpression()).getOperand1();
+	    IBinding field2 = ref2.getFieldName().resolveBinding();
+
+	    // Compare the IField from the type and the assignments
+	    assertEquals( fields[0], field1);
+	    assertEquals( fields[1], field2); // fails
+	    
+	    assertEquals(1, ((ICInternalBinding) field1).getDeclarations().length);
+	    assertEquals(1, ((ICInternalBinding) field2).getDeclarations().length);
+	}
+	
+	
+	
+    //	/*
+    //	 * Check that the type returned by CASTArraySubscriptExpression
+    //	 * handles typedefs correctly.
+    //	 *
+    //	 */
+    //	struct s {
+    //	    int a;
+    //	};
+    //	typedef struct s* ptr;
+    //	typedef struct s array[10];
+	//  typedef array newArray;
+    //	ptr var1;
+    //	struct s* var2;
+    //	array var3;
+    //	struct s var4[10];
+    //  newArray var5;
+    //
+    //	void foo() {
+	//      /* The type of the arraysubscript expression should be struct s 
+	//       * each of the following statements
+	//       */
+    //	    var1[1].a  = 1;
+    //	    var2[1].a  = 1;
+    //	    var3[1].a  = 1;
+    //	    var4[1].a  = 1;
+	//	    var5[1].a  = 1;
+    //	}
+	public void testArraySubscriptExpressionGetExpressionType() throws Exception {
+	    for(ParserLanguage lang : ParserLanguage.values()) {
+	        IASTTranslationUnit tu = parseAndCheckBindings(getAboveComment(), lang);
+	        assertTrue(tu.isFrozen());
+	        for (IASTDeclaration d : tu.getDeclarations()) {
+	            if (d instanceof IASTFunctionDefinition) {
+	                for (IASTStatement s : ((IASTCompoundStatement)((IASTFunctionDefinition)d).getBody()).getStatements()) {
+	                    IASTExpression op1 = ((IASTBinaryExpression)((IASTExpressionStatement)s).getExpression()).getOperand1();
+	                    IASTExpression owner = ((IASTFieldReference)op1).getFieldOwner();
+	                    IType t = owner.getExpressionType();
+	                    assertTrue( t instanceof ICompositeType );
+	                    assertEquals( "s",((ICompositeType)t).getName());
+	                }
+	            }
+	        }
+	    }
+	}
+	
+	
+	
+	
+	//
+	// /* check that enumerator values are evaluated correctly for
+	//  * conditional expressions */
+	//
+	//enum
+	//{
+	//    _ISalnum = 11 < 8 ? 1 : 2,
+	//    _ISalnum2 = 11 > 8 ? 1 : 2
+	//};
+	//
+	public void testBug295851() throws Exception {
+	    for(ParserLanguage lang : ParserLanguage.values()) {
+            IASTTranslationUnit tu = parseAndCheckBindings(getAboveComment(), lang);
+            IASTEnumerationSpecifier enumSpec = (IASTEnumerationSpecifier)((IASTSimpleDeclaration)tu.getDeclarations()[0]).getDeclSpecifier();
+            IEnumerator enumeratorBinding = (IEnumerator)enumSpec.getEnumerators()[0].getName().resolveBinding();
+            IValue value = enumeratorBinding.getValue();
+            assertEquals( 2, value.numericalValue().longValue());
+            IEnumerator enumeratorBinding2 = (IEnumerator)enumSpec.getEnumerators()[1].getName().resolveBinding();
+            IValue value2 = enumeratorBinding2.getValue();
+            assertEquals( 1, value2.numericalValue().longValue());
+	    }
+	}
+	
+	//	static a[2]= {0,0};
+	public void testSkipAggregateInitializer_297550() throws Exception {
+        final String code = getAboveComment();
+		parseAndCheckBindings(code, ParserLanguage.C, false, true);
 	}
 }

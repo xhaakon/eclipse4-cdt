@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -1228,4 +1228,50 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+
+	//#define new new(__FILE__, __LINE__)
+	//void func() {char* a = new    char[10];}
+	
+	//#define new new(__FILE__, __LINE__)
+	//void func() {
+	//	char* a = new char[10];
+	//}
+	public void testPlacementNewAsMacro_Bug298593() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define MACRO(a) class b : public a
+	//MACRO(aClass){ int a;};
+	
+	//#define MACRO(a) class b : public a
+	//MACRO(aClass) {
+	//	int a;
+	//};
+	public void testCompositeTypeSpecAsMacro_Bug298592() throws Exception {
+		assertFormatterResult();
+	}
+	
+	//void f() {
+	//w_char* p   =  L"wide string literal";
+	//int x = 0;
+	//if (x == 0) x = 5;}
+	
+	//void f() {
+	//	w_char* p = L"wide string literal";
+	//	int x = 0;
+	//	if (x == 0)
+	//		x = 5;
+	//}
+	public void testWideStringLiteral_Bug292626() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define INT (int)
+	//int i = INT 1;
+	
+	//#define INT (int)
+	//int i = INT 1;
+	public void testCastAsMacro_Bug285901() throws Exception {
+		assertFormatterResult();
+	}
 }
