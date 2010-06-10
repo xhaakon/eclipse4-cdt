@@ -47,5 +47,6 @@ java -cp /usr/lib/eclipse/startup.jar \
 #eclipse -nosplash -console
 
 find . -name net.*.jar -exec rm {} \;
+find . -name '*.so' -delete
 
 cd .. && tar jcf eclipse-cdt-fetched-src-$CDTTAG.tar.bz2 org.eclipse.cdt.releng
