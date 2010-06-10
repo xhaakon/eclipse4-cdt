@@ -22,10 +22,10 @@ cvs -d:pserver:anonymous@dev.eclipse.org:/cvsroot/tools export -r $CDTTAG org.ec
 cd org.eclipse.cdt-releng/org.eclipse.cdt.releng/
 
 # The build.xml doesn't fetch master or testing features so we must add this ourselves.
-sed --in-place -e'91,91i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">\n\t\t\t<property name="builder" value="${basedir}/master"/>\n\t\t</ant>' build.xml
-sed --in-place -e'91,91i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">\n\t\t\t<property name="builder" value="${basedir}/testing"/>\n\t\t</ant>' build.xml
-sed --in-place -e'71,71i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">\n\t\t\t<property name="builder" value="${basedir}/master"/>\n\t\t</ant>' build.xml
-sed --in-place -e'71,71i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">\n\t\t\t<property name="builder" value="${basedir}/testing"/>\n\t\t</ant>' build.xml
+#sed --in-place -e'91,91i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">\n\t\t\t<property name="builder" value="${basedir}/master"/>\n\t\t</ant>' build.xml
+#sed --in-place -e'91,91i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">\n\t\t\t<property name="builder" value="${basedir}/testing"/>\n\t\t</ant>' build.xml
+#sed --in-place -e'71,71i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">\n\t\t\t<property name="builder" value="${basedir}/master"/>\n\t\t</ant>' build.xml
+#sed --in-place -e'71,71i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">\n\t\t\t<property name="builder" value="${basedir}/testing"/>\n\t\t</ant>' build.xml
 
 # Remove copying of binary jar in build.xml.  We remove this jar so this operation will fail.
 sed --in-place -e "/copy file=\"\${buildDirectory}.*net\.sourceforge\.lpg/,/\/>/"d build.xml 
