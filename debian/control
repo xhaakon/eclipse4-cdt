@@ -5,7 +5,7 @@ Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.or
 Uploaders: Niels Thykier <niels@thykier.net>,
            Benjamin Drung <bdrung@ubuntu.com>,
            Adrian Perez <adrianperez.deb@gmail.com>
-Build-Depends: debhelper (>> 5), eclipse (>= 3.5.1), default-jdk, bzip2, sharutils
+Build-Depends: debhelper (>= 7.0.50~), eclipse-pde (>= 3.5.2), default-jdk, javahelper, eclipse-rse, libcommons-codec-java, libcommons-httpclient-java, libcommons-lang-java, zip, unzip
 Build-Conflicts: eclipse-cdt
 Standards-Version: 3.7.3
 Vcs-Git: git://git.debian.org/git/pkg-java/eclipse-cdt.git

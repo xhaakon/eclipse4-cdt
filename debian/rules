@@ -1,5 +1,60 @@
 #!/usr/bin/make -f
 
-%:
-	dh --with eclipse-helper $@
+export JAVA_HOME:=/usr/lib/jvm/default-java
 
+DEB_HOST_ARCH_CPU ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_CPU)
+ifneq (,$(filter $(DEB_HOST_ARCH_CPU),i386 i486 i586 i686))
+	ECLIPSE_BUILD_ARCH=x86
+endif
+ifneq (,$(findstring $(DEB_HOST_ARCH_CPU),arm))
+	ECLIPSE_BUILD_ARCH=arm
+endif
+ifeq ($(DEB_HOST_ARCH_CPU),amd64)
+	ECLIPSE_BUILD_ARCH=x86_64
+endif
+ifneq (,$(findstring $(DEB_HOST_ARCH_CPU),mips))
+	ECLIPSE_BUILD_ARCH=$(DEB_HOST_ARCH)
+endif
+ifneq (,$(filter $(DEB_HOST_ARCH_CPU),parisc parisc64))
+	ECLIPSE_BUILD_ARCH=PA_RISC
+endif
+ifeq ($(DEB_HOST_ARCH_CPU),powerpc)
+	ECLIPSE_BUILD_ARCH=ppc
+endif
+ifeq ($(ECLIPSE_BUILD_ARCH),)
+	ECLIPSE_BUILD_ARCH=$(DEB_HOST_ARCH_CPU)
+endif
+
+ECLIPSE_HOME:=/usr/lib/eclipse
+ORBIT_ECLIPSE:=$(CURDIR)/debian/.eclipse-build/SDK
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Do not use the auto-build with ant.
+	jh_setupenvironment
+	rm -fr debian/.eclipse-build/mylyn/
+	mkdir -p debian/.eclipse-build/home
+	# Copy-platform is not a "sane" script; we cannot rely on the return code from it.
+	cd debian/.eclipse-build && $(ECLIPSE_HOME)/buildscripts/copy-platform SDK $(ECLIPSE_HOME) rse || true
+	jh_generateorbitdir --orbit-dir debian/orb
+	mv debian/orb/* debian/.eclipse-build/SDK/plugins/
+	cd debian/.eclipse-build/results/plugins/org.eclipse.cdt.core.linux/library && \
+		make JAVA_HOME="$(JAVA_HOME)" ARCH=$(ECLIPSE_BUILD_ARCH) CC='gcc -D_GNU_SOURCE' CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+	cd debian/.eclipse-build/ && \
+		java -cp $(ORBIT_ECLIPSE)/startup.jar \
+			-Duser.home=home \
+			-Dosgi.install.area=$(ECLIPSE_HOME) \
+			-Dorg.eclipse.core.runtime.ignoreLockFile=true \
+			org.eclipse.core.launcher.Main \
+			-application org.eclipse.ant.core.antRunner \
+			-DjavacFailOnError=true \
+			-DdontUnzip=true \
+			-DbaseLocation=$(ORBIT_ECLIPSE) \
+			-Dpde.build.scripts=`ls -d $(ORBIT_ECLIPSE)/plugins/org.eclipse.pde.build_*/scripts` \
+			-DdontFetchAnything=true
+
+override_dh_auto_clean:
+	jh_clean
+	rm -fr debian/orb/
