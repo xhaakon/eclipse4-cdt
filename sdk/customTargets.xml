@@ -10,11 +10,37 @@
 <!-- Add on <ant> task for each top level element being built. -->
 <!-- ===================================================================== -->
 <target name="allElements">
+	<antcall target="${target}ForAllElements"/>
+</target>
+
+<target name="fetchElementForAllElements" unless="dontFetchAnything">
+	<antcall target="genericAllElements"/>
+</target>
+
+<target name="generateScriptForAllElements">
+	<antcall target="genericAllElements"/>
+</target>
+
+<target name="processElementForAllElements">
+	<antcall target="genericAllElements"/>
+</target>
+
+<target name="assembleElementForAllElements">
+	<antcall target="genericAllElements"/>
+</target>
+
+<target name="cleanElementForAllElements">
+	<antcall target="genericAllElements"/>
+</target>
+
+<target name="genericAllElements">
 	<ant antfile="${genericTargets}" target="${target}" >
 		<property name="type" value="feature" />
 		<property name="id" value="org.eclipse.cdt.sdk" />
 	</ant>
 </target>
+
+
 
 <!-- ===================================================================== -->
 <!-- Targets to assemble the built elements for particular configurations  -->
