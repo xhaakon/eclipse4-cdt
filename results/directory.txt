@@ -98,9 +98,9 @@ plugin@org.eclipse.cdt.util=v201002161416,:pserver:anonymous@dev.eclipse.org:/cv
 feature@org.eclipse.cdt.util=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/util/org.eclipse.cdt.util-feature
 
 ! CDT Mylyn Bridge
-plugin@org.eclipse.cdt.mylyn=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn
-plugin@org.eclipse.cdt.mylyn.ui=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn.ui
-feature@org.eclipse.cdt.mylyn=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature
+plugin@org.eclipse.cdt.mylyn=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt-old/mylyn/org.eclipse.cdt.mylyn
+plugin@org.eclipse.cdt.mylyn.ui=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt-old/mylyn/org.eclipse.cdt.mylyn.ui
+feature@org.eclipse.cdt.mylyn=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt-old/mylyn/org.eclipse.cdt.mylyn-feature
 
 ! DSF 
 plugin@org.eclipse.cdt.dsf=v201002161416,:pserver:anonymous@dev.eclipse.org:/cvsroot/tools,,org.eclipse.cdt/dsf/org.eclipse.cdt.dsf

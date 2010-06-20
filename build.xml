@@ -69,6 +69,12 @@
 			<property name="builder" value="${basedir}/lrparser.sdk"/>
 		</ant>
 		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/testing"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/master"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
 			<property name="builder" value="${basedir}/upc"/>
 		</ant>
 		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
@@ -88,6 +94,12 @@
 			<property name="builder" value="${basedir}/dsfgdb"/>
 		</ant>
 		-->
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/testing"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/master"/>
+		</ant>
 		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
 			<property name="builder" value="${basedir}/memory"/>
 		</ant>

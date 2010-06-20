@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Fetch script for feature@org.eclipse.cdt.examples.dsf -->
+
+<project name="FetchScript" default="fetch">
+	<property name="quiet" value="true"/>
+
+	<target name="fetch">
+		<antcall target="fetch.element"/>
+		<antcall target="fetch.plugins"/>
+		<antcall target="fetch.recursively"/>
+	</target>
+	<target name="fetch.element" if="featureOnly">
+		<available property="${buildDirectory}/features/org.eclipse.cdt.examples.dsf/feature.xml" file="${buildDirectory}/features/org.eclipse.cdt.examples.dsf/feature.xml"		/>
+		<antcall target="FetchFromCVS">
+			<param name="cvsRoot" value=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools"/>
+			<param name="fileToCheck" value="${buildDirectory}/features/org.eclipse.cdt.examples.dsf/feature.xml"/>
+			<param name="elementName" value="org.eclipse.cdt.examples.dsf"/>
+			<param name="module" value="org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf-feature"/>
+			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
+			<param name="tag" value="v201002161416"/>
+			<param name="destinationFolder" value="${buildDirectory}/features"/>
+			<param name="quiet" value="${cvs.quiet}"/>
+		</antcall>
+	</target>
+	<target name="fetch.plugins" if="featureAndPlugins">
+		<available property="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf/plugin.xml"		/>
+		<available property="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf/META-INF/MANIFEST.MF"		/>
+		<antcall target="FetchFromCVS">
+			<param name="cvsRoot" value=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools"/>
+			<param name="fileToCheck" value="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf/plugin.xml"/>
+			<param name="elementName" value="org.eclipse.cdt.examples.dsf"/>
+			<param name="module" value="org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf"/>
+			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
+			<param name="tag" value="v201002161416"/>
+			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
+			<param name="quiet" value="${cvs.quiet}"/>
+		</antcall>
+		<available property="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda/plugin.xml"		/>
+		<available property="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda/META-INF/MANIFEST.MF"		/>
+		<antcall target="FetchFromCVS">
+			<param name="cvsRoot" value=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools"/>
+			<param name="fileToCheck" value="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda/plugin.xml"/>
+			<param name="elementName" value="org.eclipse.cdt.examples.dsf.pda"/>
+			<param name="module" value="org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf.pda"/>
+			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
+			<param name="tag" value="v201002161416"/>
+			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
+			<param name="quiet" value="${cvs.quiet}"/>
+		</antcall>
+		<available property="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda.ui/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda.ui/plugin.xml"		/>
+		<available property="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda.ui/plugin.xml" file="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda.ui/META-INF/MANIFEST.MF"		/>
+		<antcall target="FetchFromCVS">
+			<param name="cvsRoot" value=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools"/>
+			<param name="fileToCheck" value="${buildDirectory}/plugins/org.eclipse.cdt.examples.dsf.pda.ui/plugin.xml"/>
+			<param name="elementName" value="org.eclipse.cdt.examples.dsf.pda.ui"/>
+			<param name="module" value="org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf.pda.ui"/>
+			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
+			<param name="tag" value="v201002161416"/>
+			<param name="destinationFolder" value="${buildDirectory}/plugins"/>
+			<param name="quiet" value="${cvs.quiet}"/>
+		</antcall>
+	</target>
+	<target name="fetch.recursively" if="featuresRecursively">
+	</target>
+	<target name="FetchFromCVS" unless="${fileToCheck}">
+		<cvs command="export -d ${elementName}" cvsRoot="${cvsRoot}" dest="${destinationFolder}" package="${module}" tag="${tag}" quiet="${quiet}" reallyquiet="${reallyquiet}" taskname="CVS - ${module}"		/>
+	</target>
+
+</project>
