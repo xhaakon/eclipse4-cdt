@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Fetch script for feature@org.eclipse.cdt.master -->
+
+<project name="FetchScript" default="fetch">
+	<property name="quiet" value="true"/>
+
+	<target name="fetch">
+		<antcall target="fetch.element"/>
+		<antcall target="fetch.plugins"/>
+		<antcall target="fetch.recursively"/>
+	</target>
+	<target name="fetch.element" if="featureOnly">
+		<available property="${buildDirectory}/features/org.eclipse.cdt.master/feature.xml" file="${buildDirectory}/features/org.eclipse.cdt.master/feature.xml"		/>
+		<antcall target="FetchFromCVS">
+			<param name="cvsRoot" value=":pserver:anonymous@dev.eclipse.org:/cvsroot/tools"/>
+			<param name="fileToCheck" value="${buildDirectory}/features/org.eclipse.cdt.master/feature.xml"/>
+			<param name="elementName" value="org.eclipse.cdt.master"/>
+			<param name="module" value="org.eclipse.cdt/releng/org.eclipse.cdt.master"/>
+			<param name="reallyquiet" value="${cvs.reallyquiet}"/>
+			<param name="tag" value="v201002161416"/>
+			<param name="destinationFolder" value="${buildDirectory}/features"/>
+			<param name="quiet" value="${cvs.quiet}"/>
+		</antcall>
+	</target>
+	<target name="fetch.plugins" if="featureAndPlugins">
+	</target>
+	<target name="fetch.recursively" if="featuresRecursively">
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.platform.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.gnu.build.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.gnu.debug.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.core.lrparser.feature.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.core.lrparser.sdk.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.core.parser.upc.feature.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.core.parser.upc.sdk.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.debug.gdbjtag.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.sdk.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.testing.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.xlc.feature.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.xlc.sdk.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.util.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.mylyn.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.gnu.dsf.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.examples.dsf.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.debug.ui.memory.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.launch.remote.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.build.crossgcc.xml" target="fetch"/>
+		<ant antfile="${buildDirectory}/fetch_org.eclipse.cdt.p2.xml" target="fetch"/>
+	</target>
+	<target name="FetchFromCVS" unless="${fileToCheck}">
+		<cvs command="export -d ${elementName}" cvsRoot="${cvsRoot}" dest="${destinationFolder}" package="${module}" tag="${tag}" quiet="${quiet}" reallyquiet="${reallyquiet}" taskname="CVS - ${module}"		/>
+	</target>
+
+</project>
