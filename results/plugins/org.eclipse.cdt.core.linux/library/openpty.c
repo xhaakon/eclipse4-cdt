@@ -20,7 +20,6 @@
 #include <grp.h>
 
 #include <stdlib.h>
-#include <stropts.h>
 
 /**
  * This is taken from R. W. Stevens book.

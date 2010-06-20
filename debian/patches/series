@@ -1,2 +1,3 @@
 Fedora-no-cvs2.patch
 Fedora-disable-mylyn.patch
+no-stropts.h.patch
