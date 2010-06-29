@@ -1,0 +1,27 @@
+#org.eclipse.cdt.core.parser.upc.feature rse
+#org.eclipse.cdt.core.parser.upc.sdk rse
+#org.eclipse.cdt.debug.gdbjtag rse 
+#org.eclipse.cdt.debug.ui.memory rse
+org.eclipse.cdt.platform rse
+org.eclipse.cdt rse
+org.eclipse.cdt.sdk rse
+org.eclipse.cdt.util rse
+org.eclipse.cdt.gnu.build rse org.eclipse.cdt.util org.eclipse.cdt
+org.eclipse.cdt.gnu.debug rse
+org.eclipse.cdt.gnu.dsf rse
+
+# Needs new package
+#org.eclipse.cdt.core.lrparser.feature rse
+#org.eclipse.cdt.core.lrparser.sdk rse
+
+
+#./results/features/org.eclipse.cdt.xlc.feature/feature.xml
+#./results/features/org.eclipse.cdt.xlc.sdk/feature.xml
+#./results/features/org.eclipse.cdt.build.crossgcc/feature.xml
+#./results/features/org.eclipse.cdt.build.crossgcc/sourceTemplateFeature/feature.xml
+#./results/features/org.eclipse.cdt.examples.dsf/feature.xml
+#./results/features/org.eclipse.cdt.examples.dsf/sourceTemplateFeature/feature.xml
+#./results/features/org.eclipse.cdt.launch.remote/feature.xml
+#./results/features/org.eclipse.cdt.master/feature.xml
+#./results/features/org.eclipse.cdt.p2/feature.xml
+#./results/features/org.eclipse.cdt.testing/feature.xml
