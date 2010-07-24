@@ -26,7 +26,7 @@ ifeq ($(ECLIPSE_BUILD_ARCH),)
 	ECLIPSE_BUILD_ARCH=$(DEB_HOST_ARCH_CPU)
 endif
 
-BUILD_DIR:=$(CURDIR)/debian/.eclipse-build
+BUILD_DIR:=debian/.eclipse-build
 
 %:
 	dh $@ --with eclipse-helper
@@ -35,10 +35,10 @@ override_dh_auto_clean:
 	# Do not use the auto-clean with ant.
 override_dh_auto_build:
 	# Do not use the auto-build with ant.
-
-override_jh_compilefeatures:
 	cd $(BUILD_DIR)/results/plugins/org.eclipse.cdt.core.linux/library && \
 		make JAVA_HOME="$(JAVA_HOME)" ARCH=$(ECLIPSE_BUILD_ARCH) CC='gcc -D_GNU_SOURCE' CFLAGS="$(CFLAGS) -fPIC" LDFLAGS="$(LDFLAGS) -fPIC"
+
+override_jh_compilefeatures:
 	jh_compilefeatures --build-opts="-DjavacTarget=1.5 -DjavacSource=1.5 -DbuildId=$(BUILD_ID) -DforceContextQualifier=$(BUILD_ID)";
 
 override_dh_install:

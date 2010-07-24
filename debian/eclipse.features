@@ -6,7 +6,7 @@ org.eclipse.cdt.platform rse
 org.eclipse.cdt rse
 org.eclipse.cdt.sdk rse
 org.eclipse.cdt.util rse
-org.eclipse.cdt.gnu.build rse org.eclipse.cdt.util org.eclipse.cdt
+org.eclipse.cdt.gnu.build rse org.eclipse.cdt.platform
 org.eclipse.cdt.gnu.debug rse
 org.eclipse.cdt.gnu.dsf rse
 
