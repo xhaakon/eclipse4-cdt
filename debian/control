@@ -14,7 +14,6 @@ Build-Depends: debhelper (>= 7.0.50~),
                libcommons-lang-java,
                zip,
                unzip
-Build-Conflicts: eclipse-cdt
 Standards-Version: 3.7.3
 Vcs-Git: git://git.debian.org/git/pkg-java/eclipse-cdt.git
 Vcs-Browser: http://git.debian.org/?p=pkg-java/eclipse-cdt.git
