@@ -45,3 +45,8 @@ override_dh_install:
 	dh_install -peclipse-cdt $(BUILD_DIR)/results/plugins/org.eclipse.cdt.core.linux.$(ECLIPSE_BUILD_ARCH)/os/linux/$(ECLIPSE_BUILD_ARCH)/*.so usr/lib/jni/
 	dh_install --remaining-packages
 
+override_jh_installeclipse:
+	jh_installeclipse
+	rm -fr debian/eclipse-cdt/usr/lib/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.platform.source_*/src/org.eclipse.cdt.ui_*/about_files/
+	cd debian/eclipse-cdt/usr && \
+		find lib/ -type f \( -name '*.bmp' -o -name '*.gif' -o -name '*.jpg' -o -name '*.png' \) | perl ../../../debian/imagemv.pl

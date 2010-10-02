@@ -1,6 +1,18 @@
 eclipse-cdt (6.0.2-1) UNRELEASED; urgency=low
 
   * New upstream release.
+    - eclipse-cdt no longer quits when looking up a declaration.
+    (Closes: #348393)
+    - Works with current eclipse in Debian, provided that you are not
+    affected by #587657 (See the bug or the NEWS file in
+    eclipse-platform for more information on hold to deal with #597657).
+    (Closes: #574611)
+    - Upgraded to newest (possible) version with the current eclipse
+    in Debian. (Closes: #441313)
+  * Fixed the build system. (Closes: #542977, #596851)
+  * New maintainers (Closes: #555663)
+  * Bumped Standards-Version to 3.9.1.
+  * Converted to 3.0 (quilt) source format.
 
  -- Niels Thykier <niels@thykier.net>  Sun, 18 Oct 2009 17:15:23 +0200
 

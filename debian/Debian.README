@@ -1,0 +1,7 @@
+Not all of the Build-Dependencies have been packaged for eclipse-cdt,
+so some features/plugins of eclipse-cdt are not enabled/built.
+
+If you miss such a feature, please feel free to file a bug against
+eclipse-cdt requesting us to enable it.
+
+ -- Niels Thykier <niels@thykier.net>  Sun, 02 Oct 2010 23:38:00 +0200
