@@ -47,12 +47,9 @@ java -cp /usr/lib/eclipse/startup.jar \
   -DcdtTag=$CDTTAG \
   -DdontUnzip=true fetch
 
-find . -name 'net.*.jar' -o -name '*.dll' -o \
-       -name '*.so' -o -name '*.exe' -o -name '*.o' \
-       -o -name '*_g' -delete
-
 cd ..
 mv org.eclipse.cdt.releng eclipse-cdt-${UPSTREAM_VERSION}
+find eclipse-cdt-${UPSTREAM_VERSION} \( -name '*.so' -o -name '*.o' -o -name 'net.*.jar' -o -name '*.dll' -o -name '*.exe' -o -name '*_g' \) -a -delete
 tar jcf ../../eclipse-cdt_${UPSTREAM_VERSION}.orig.tar.bz2 eclipse-cdt-${UPSTREAM_VERSION}
 cd ../../
 rm -fr temp/
