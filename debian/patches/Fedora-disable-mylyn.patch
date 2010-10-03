@@ -1,3 +1,11 @@
+Description: Remove the cdt mylyn feature to avoid circular dependency
+ between eclipse-cdt and eclipse-mylyn.
+ .
+ Note originally this patch was taken from the Fedora CVS; but they have
+ migrated to git and the link has been updated to point to its new
+ location.
+Origin: Fedora, http://pkgs.fedoraproject.org/gitweb/?p=eclipse-cdt.git;a=blob;f=eclipse-cdt-disable-mylyn.patch
+
 --- a/results/features/org.eclipse.cdt.master/feature.xml	2009-06-23 23:07:50.000000000 +0300
 +++ b/results/features/org.eclipse.cdt.master/feature.xml	2009-10-28 12:46:20.635310276 +0200
 @@ -74,10 +74,6 @@
