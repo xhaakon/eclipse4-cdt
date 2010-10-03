@@ -48,7 +48,8 @@ java -cp /usr/lib/eclipse/startup.jar \
   -DdontUnzip=true fetch
 
 find . -name 'net.*.jar' -o -name '*.dll' -o \
-       -name '*.so' -o -name '*.exe' -delete
+       -name '*.so' -o -name '*.exe' -o -name '*.o' \
+       -o -name '*_g' -delete
 
 cd ..
 mv org.eclipse.cdt.releng eclipse-cdt-${UPSTREAM_VERSION}
