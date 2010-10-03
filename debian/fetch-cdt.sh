@@ -1,4 +1,13 @@
 #!/bin/sh
+# This file has been obtained from:
+#   http://cvs.fedoraproject.org/viewvc/rpms/eclipse-cdt/devel/
+#
+# The author list below is not from the original file, but has been
+# written based on the CVS commit log (in case the CVS should some day
+# be unavailable).
+#
+# Written by: 2008, Andrew Overholt
+# Modified by: 2008-2010, Jeff Johnston 
 
 CDTTAG=v201002161416
 UPSTREAM_VERSION=6.0.2
@@ -38,7 +47,8 @@ java -cp /usr/lib/eclipse/startup.jar \
   -DcdtTag=$CDTTAG \
   -DdontUnzip=true fetch
 
-find . -name net.*.jar -exec rm {} \;
+find . -name 'net.*.jar' -o -name '*.dll' -o \
+       -name '*.so' -o -name '*.exe' -delete
 
 cd ..
 mv org.eclipse.cdt.releng eclipse-cdt-${UPSTREAM_VERSION}
