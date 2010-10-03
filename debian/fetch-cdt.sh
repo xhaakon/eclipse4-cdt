@@ -49,7 +49,7 @@ java -cp /usr/lib/eclipse/startup.jar \
 
 cd ..
 mv org.eclipse.cdt.releng eclipse-cdt-${UPSTREAM_VERSION}
-find eclipse-cdt-${UPSTREAM_VERSION} \
+find eclipse-cdt-${UPSTREAM_VERSION} -type f -a \
     \( -name '*.so' -o -name '*.o' -o -name 'net.*.jar' -o -name '*.dll' -o -name '*.exe' -o -name 'exe' -o -name '*_g' \) \
     -a -delete
 find eclipse-cdt-${UPSTREAM_VERSION} -depth -type d -empty -delete
