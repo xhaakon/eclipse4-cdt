@@ -53,6 +53,9 @@ find eclipse-cdt-${UPSTREAM_VERSION} -type f -a \
     \( -name '*.so' -o -name '*.o' -o -name 'net.*.jar' -o -name '*.dll' -o -name '*.exe' -o -name 'exe' -o -name '*_g' \) \
     -a -delete
 find eclipse-cdt-${UPSTREAM_VERSION} -depth -type d -empty -delete
+sed -i s/^#.*//g eclipse-cdt-${UPSTREAM_VERSION}/results/pluginVersions.properties \
+               eclipse-cdt-${UPSTREAM_VERSION}/results/featureVersions.properties
+
 tar jcf ../../eclipse-cdt_${UPSTREAM_VERSION}.orig.tar.bz2 eclipse-cdt-${UPSTREAM_VERSION}
 cd ../../
 rm -fr temp/
