@@ -6,14 +6,14 @@ Uploaders: Niels Thykier <niels@thykier.net>,
            Benjamin Drung <bdrung@ubuntu.com>
 Build-Depends: debhelper (>= 7.0.50~),
                default-jdk,
-               eclipse-pde (>= 3.5.2~),
+               eclipse-pde (>= 3.5.2),
                eclipse-rse,
                javahelper (>= 0.32~),
                libcommons-codec-java (>= 1.4-2),
                libcommons-httpclient-java (>= 3.1-9),
                libcommons-lang-java,
-               zip,
-               unzip
+               unzip,
+               zip
 Standards-Version: 3.9.1
 Vcs-Git: git://git.debian.org/git/pkg-java/eclipse-cdt.git
 Vcs-Browser: http://git.debian.org/?p=pkg-java/eclipse-cdt.git
@@ -21,9 +21,13 @@ Homepage: http://www.eclipse.org/cdt/
 
 Package: eclipse-cdt
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${orbit:Depends},
-         eclipse-platform (>= 3.5.2~),
-         gcc, make, exuberant-ctags | ctags
+Depends: eclipse-platform (>= 3.5.2),
+         exuberant-ctags | ctags,
+         gcc,
+         make,
+         ${misc:Depends},
+         ${orbit:Depends},
+         ${shlibs:Depends}
 Suggests: g++
 Description: C/C++ Development Tools for Eclipse
  The eclipse-cdt package contains Eclipse features and plugins that are
