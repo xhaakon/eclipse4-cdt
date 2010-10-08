@@ -1,4 +1,4 @@
-eclipse-cdt (6.0.2-1) UNRELEASED; urgency=low
+eclipse-cdt (6.0.2-1) unstable; urgency=low
 
   * New upstream release.
     - eclipse-cdt no longer quits when looking up a declaration.
@@ -14,7 +14,7 @@ eclipse-cdt (6.0.2-1) UNRELEASED; urgency=low
   * Bumped Standards-Version to 3.9.1.
   * Converted to 3.0 (quilt) source format.
 
- -- Niels Thykier <niels@thykier.net>  Sun, 18 Oct 2009 17:15:23 +0200
+ -- Niels Thykier <niels@thykier.net>  Fri, 08 Oct 2010 10:39:04 +0200
 
 eclipse-cdt (3.1.2-3) unstable; urgency=low
 
