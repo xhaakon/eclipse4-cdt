@@ -1,4 +1,4 @@
 version=3
 # http://www.eclipse.org/cdt/downloads.php
-ftp://ftp-stud.fht-esslingen.de/pub/Mirrors/eclipse/tools/cdt/releases/galileo/dist/cdt-master-([\d\.]*)\.zip \
+ftp://ftp-stud.fht-esslingen.de/pub/Mirrors/eclipse/tools/cdt/releases/indigo/dist/cdt-master-([\d\.]*)\.zip \
   debian debian/fetch-cdt.sh
