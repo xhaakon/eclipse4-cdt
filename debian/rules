@@ -28,7 +28,9 @@ endif
 
 BUILD_DIR:=debian/.eclipse-build
 
-%:
+.PHONY: build
+
+build %:
 	dh $@ --with eclipse-helper
 
 override_dh_auto_clean:
