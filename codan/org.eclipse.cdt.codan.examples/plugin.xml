@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.cdt.codan.core.checkers"
+         id="org.eclipse.cdt.codan.core.internal.checkers">
+
+       <checker
+            class="org.eclipse.cdt.codan.examples.checkers.NamingConventionFunctionIIndexChecker"
+            id="org.eclipse.cdt.codan.examples.checkers.NamingConventionFunctionChecker"
+            name="NamingConventionFunctionChecker">
+      <problem
+            category="org.eclipse.cdt.codan.core.categories.CodeStyle"
+            defaultEnabled="false"
+            defaultSeverity="Info"
+            id="org.eclipse.cdt.codan.examples.checkers.NamingConventionFunctionProblem"
+            messagePattern="Bad function name (example) &quot;{0}&quot; (pattern /{1}/)"
+            name="Name convention for function (example)"
+            markerType="org.eclipse.cdt.codan.core.codanProblem">
+      </problem>
+      </checker>
+       <checker
+             class="org.eclipse.cdt.codan.examples.checkers.GrepChecker"
+             id="org.eclipse.cdt.codan.examples.checkers.GrepChecker"
+             name="Search string">
+          <problem
+                category="org.eclipse.cdt.codan.core.categories.CodeStyle"
+                defaultEnabled="false"
+                defaultSeverity="Warning"
+                description="Finds a strings in the code defined by user"
+                id="org.eclipse.cdt.codan.examples.checkers.GrepCheckerProblemWarning"
+                messagePattern="Found string {0}"
+                name="Search string warning">
+          </problem>
+                   <problem
+                category="org.eclipse.cdt.codan.core.categories.CodeStyle"
+                defaultEnabled="false"
+                defaultSeverity="Error"
+                description="Finds a strings in the code defined by user"
+                id="org.eclipse.cdt.codan.examples.checkers.GrepCheckerProblemError"
+                messagePattern="Found string {0}"
+                name="Search string error">
+          </problem>
+       </checker>
+   </extension>
+       <extension
+          point="org.eclipse.cdt.codan.ui.codanProblemDetails">
+       <problemDetails
+             class="org.eclipse.cdt.codan.examples.uicontrib.FlexlintHelpLink"
+             >
+       </problemDetails>
+              <problemDetails
+             class="org.eclipse.cdt.codan.examples.uicontrib.GrepCheckerHelpLink"
+             >
+       </problemDetails>
+    </extension>
+</plugin>

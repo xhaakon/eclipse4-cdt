@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="org.eclipse.cdt.core.lrparser.sdk"
+      label="%featureName"
+      version="5.2.0.qualifier"
+      provider-name="%providerName"
+      plugin="org.eclipse.cdt.core.lrparser.source">
+
+   <description>
+      %description
+   </description>
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license>
+      %license
+   </license>
+
+   <url>
+      <update label="%updateSiteName" url="http://download.eclipse.org/tools/cdt/releases/indigo"/>
+   </url>
+
+   <includes
+         id="org.eclipse.cdt.core.lrparser.source"
+         version="0.0.0"/>
+
+   <includes
+         id="org.eclipse.cdt.core.lrparser.feature"
+         version="0.0.0"/>
+
+</feature>

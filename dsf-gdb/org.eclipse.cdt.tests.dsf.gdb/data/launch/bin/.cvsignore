@@ -1,0 +1,10 @@
+BreakpointTestApp.exe
+CatchpointTestApp.exe
+ExpressionTestApp.exe
+GDBMIGenericTestApp.exe
+LaunchConfigurationAndRestartTestApp.exe
+MemoryTestApp.exe
+MultiThread.exe
+SpecialTestApp.exe
+TracepointTestApp.exe
+core
