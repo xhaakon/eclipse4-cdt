@@ -2,74 +2,83 @@ Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&
 Name: Eclipse-CDT
 
 Files: *
-Copyright: 2006, 2008 Wind River Systems and others
-           2007, 2008 Intel Corporation and others
-           2007, 2008 Symbian Software Limited and others
-           2007, 2008 Wind River Systems, Inc. and others
-           2007-2009, ARM Limited and others
-           2007, ARM and others
-           2008-2009, Andrew Gvozdev
-           2009, Andrew Gvozdev and others
-           2004-2009, BitMethods Inc and others
-           2008-2009, Broadcom Corporation and others
-           2008, Broadcom Corporation. and others
-           2008, Broadcom and others
-           2007-2010, ENEA Software AB and others
-           2008, Ericsson
-           2006-2009, Ericsson and others
-           2008, Freescale Secmiconductor and others
-           2007-2008, Freescale Semiconductor and others
-           2008, Freescale and others
-           2005-2007, Freescale, Inc
-           2008, Google and others
-           2007-2009, Google, Inc and others
-           2005-2009, IBM Corporation
-           2000-2009, IBM Corporation, QNX Software Systems, and others
-           2002-2007, IBM Software Corporation and others
-           2008-2009, IBM Wind River Systems, Inc. and others
-           2000-2010, IBM and others.
-           2005-2007, Innoopract Informationssysteme GmbH and others
-           2006-2009, Institute for Software, HSR Hochschule fuer Technik
+Copyright: 2007-2011, ARM Limited and others
+           2009-2011, Alena Laskavaia
+           2009-2011, Alena Laskavaia and others
+           2009, 2011, Alena Laskavaia, Tomasz Wesolowski
+           2008-2011, Andrew Gvozdev (Quoin Inc.)
+           2005, 2009-2011, Andrew Gvozdev (Quoin Inc.) and others
+           2008-2011, Andrew Gvozdev and others
+           2011, Anton Gorenkov
+           2011, Anton Gorenkov and others
+           2010, Atmel Corporation and others
+           2010-2011, Axel Mueller and others
+           2003, 2010, Berthold Daum
+           2004, 2009-2010, BitMethods Inc and others
+           2008-2011, Broadcom Corporation and others
+           2010-2011, CodeSourcery and others
+           2007, 2010, Dakshinamurthy Karra, IBM Corporation and others
+           2007, 2010, ENEA Software AB and others
+           2010, Eclipse CDT Project and others
+           2008-2011, Ericsson
+           2009-2011, Ericsson, Inc. and others
+           2003, Fabrizio Giustina
+           2005, 2007, 2010, Freescale Semiconductor, Inc
+           2007-2011, Freescale Semiconductor, Inc. and others
+           2010-2011, Gil Barash
+           2011, Google Inc
+           2007-2011, Google, Inc and others
+           2005-2010, IBM Corporation
+           2000-2011, IBM Corporation and others
+           2000, 2010, IBM Corporation, Freescale Semiconductor and others
+           2000, 2009, IBM Corporation, QNX Software Systems, and others
+           2005, 2007, Innoopract Informationssysteme GmbH and others
+           2006-2011, Institute for Software, HSR Hochschule fuer Technik
            2005-2007, Intel Corporation
-           2004-2010, Intel Corporation and others
-           2007-2009, Intel Corporation, QNX Software Systems, and others
-           2008, Monta Vista and others
-           2009, MontaVista Software, Inc
-           2004-2008, Mylyn project committers and others
-           2005-2007, Newco
-           2008-2009, Nokia Corporation
-           2006, Nokia Corporation and others
-           2006-2010, Nokia and others
+           2004-2011, Intel Corporation and others
+           2007-2010, Intel Corporation, QNX Software Systems, and others
+           2011, Jeff Johnston (Red Hat Inc.) and others
+           2011, Jens Elmenthaler and others
+           2010-2011, Marc-Andre Laperle and others
+           2010, Meisam Fathi and others
+           2010-2011, Mentor Graphics Corporation and others
+           2008-2010, MontaVista Software, Inc. and others
+           2005, 2007, Newco
+           2008-2010, Nokia Corporation
+           2006-2011, Nokia Corporation and others
            2006-2008, Norbert Ploett and others
-           2006, PalmSource, Inc
-           2006-2009, PalmSource, Inc. and others
-           2005-2009, QNX Software Systems
-           2004-2008, QNX Software Systems Ltd and others
-           2005-2010, QNX Software Systems and others
-           2005-2009, QnX Software Systems and others
-           2002-2008, Rational Software Corporation and others
-           2002-2009, RedHat Inc and others
-           2006, STMicroelectronics
-           2006-2008, STMicroelectronics and others
-           2005-2008, Siemens AG
-           2006-2007, Siemens AG and others
-           2006-2009, Symbian Corporation and others
-           2005-2008, Symbian Ltd and others
-           2005-2007, Symbian Software Limited
-           2005-2009, Symbian Software Limited and others
-           2006-2009, Symbian Software Ltd. and others
-           2006-2009, Symbian Software Systems and others
-           2006-2007, Symbian Software and others
-           2005-2008, Texas Instruments Inc. and others
-           2005-2008, Texas Instruments Incorporated and others
-           2004-2006, TimeSys Corporation and others
-           2004-2009, Wind River Systems, Inc
-           2004-2010, Wind River Systems, Inc. and others
-           2006-2008, Wind River Systems, Nokia and others
-           2007-2008, Wind River and others
+           2006, 2009-2011, PalmSource, Inc. and others
+           2011, Patrick Hofer and others
+           2000, 2002-2011, QNX Software Systems and others
+           2005-2011, QNX Software Systems
+           2010, QNX Software Systems, Freescale Semiconductor and others
+           2002-2004, 2008-2011, Rational Software Corporation and others
+           2002, 2007, 2009, Red Hat Inc. and others
+           2006, 2010, STMicroelectronics
+           2006, 2008, 2010, STMicroelectronics and others
+           2010, Sage Electronic Engineering and others
+           2010, Severin Gehwolf
+           2005-2007, 2009-2011, Siemens AG
+           2006-2008, Siemens AG and others
+           2011, Stefan Ghiaus
+           2005-2011, Symbian Corporation and others
+           2010-2011, TUBITAK BILGEM-ITI and others
+           2011, Tensilica and others
+           2009, Texas Instruments
+           2005-2007, 2009-2011, Texas Instruments Incorporated and others
+           2010, Texas Instruments, Freescale Semiconductor and others
+           2004-2006, 2008, 2010-2011, TimeSys Corporation and others
+           2010, Tomasz Wesolowski
+           2010-2011, Tomasz Wesolowski and others
+           2010, University of Applied Sciences Rapperswil (HSR)
+           2010, University of Florida and others
+           2010, Verigy and others
+           2004-2011, Wind River Systems and others
+           2004-2005, 2008-2010, Wind River Systems, Inc
+           2006, 2010, Wind River Systems, Nokia and others
 License: EPL-1.0
 
-Files: results/plugins/org.eclipse.cdt.ui/dictionaries/*
+Files: core/org.eclipse.cdt.ui/dictionaries/*
 Copyright: 1993, Geoff Kuenning, Granada Hills, CA
 License: BSD-like
 
