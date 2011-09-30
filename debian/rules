@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 export JAVA_HOME:=/usr/lib/jvm/default-java
-BUILD_ID:=201002161416
+BUILD_ID:=dist
 
 DEB_HOST_ARCH_CPU ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_CPU)
 ifneq (,$(filter $(DEB_HOST_ARCH_CPU),i386 i486 i586 i686))
