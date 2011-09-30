@@ -39,12 +39,12 @@ override_dh_auto_build:
 	# Do not use the auto-build with ant.
 
 override_jh_compilefeatures:
-	cd $(BUILD_DIR)/results/plugins/org.eclipse.cdt.core.linux/library && \
+	cd $(BUILD_DIR)/org.eclipse.cdt.core.linux/library && \
 		make JAVA_HOME="$(JAVA_HOME)" ARCH=$(ECLIPSE_BUILD_ARCH) CC='gcc -D_GNU_SOURCE' CFLAGS="$(CFLAGS) -fPIC" LDFLAGS="$(LDFLAGS) -fPIC"
 	jh_compilefeatures --build-opts="-DjavacTarget=1.5 -DjavacSource=1.5 -DbuildId=$(BUILD_ID) -DforceContextQualifier=$(BUILD_ID)";
 
 override_dh_install:
-	dh_install -peclipse-cdt $(BUILD_DIR)/results/plugins/org.eclipse.cdt.core.linux.$(ECLIPSE_BUILD_ARCH)/os/linux/$(ECLIPSE_BUILD_ARCH)/*.so usr/lib/jni/
+	dh_install -peclipse-cdt $(BUILD_DIR)/org.eclipse.cdt.core.linux.$(ECLIPSE_BUILD_ARCH)/os/linux/$(ECLIPSE_BUILD_ARCH)/*.so usr/lib/jni/
 	dh_install --remaining-packages
 
 override_jh_installeclipse:
