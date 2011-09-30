@@ -6,12 +6,9 @@ Uploaders: Niels Thykier <niels@thykier.net>,
            Benjamin Drung <bdrung@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
                default-jdk,
-               eclipse-pde (>= 3.5.2),
+               eclipse-pde (>= 3.7~exp),
                eclipse-rse,
                javahelper (>= 0.32~),
-               libcommons-codec-java (>= 1.4-2),
-               libcommons-httpclient-java (>= 3.1-9),
-               libcommons-lang-java,
                unzip,
                zip
 Standards-Version: 3.9.1
@@ -21,8 +18,8 @@ Homepage: http://www.eclipse.org/cdt/
 
 Package: eclipse-cdt
 Architecture: any
-Depends: eclipse-platform (>= 3.5.2),
-         exuberant-ctags | ctags,
+Depends: eclipse-platform (>= 3.7~exp),
+		 eclipse-rse,
          gcc,
          make,
          ${misc:Depends},
