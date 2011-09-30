@@ -1,7 +1,8 @@
 org.eclipse.cdt.platform
-org.eclipse.cdt
-org.eclipse.cdt.sdk
-org.eclipse.cdt.util
+org.eclipse.cdt.gdb
 org.eclipse.cdt.gnu.build
 org.eclipse.cdt.gnu.debug
 org.eclipse.cdt.gnu.dsf
+org.eclipse.cdt.debug.ui.memory
+org.eclipse.cdt.build.crossgcc
+org.eclipse.cdt.launch.remote

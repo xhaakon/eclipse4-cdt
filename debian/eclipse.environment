@@ -1,14 +1,72 @@
-b*
-c*
-ds*
-g*
-J*
-l*
-m*
-p*
-r*
-s*
-t*
-u*
-w*
-x*
+# Needed for feature org.eclipse.cdt.platform
+
+build/org.eclipse.cdt.make.core
+build/org.eclipse.cdt.make.ui
+build/org.eclipse.cdt.managedbuilder.core
+build/org.eclipse.cdt.managedbuilder.ui
+
+codan/org.eclipse.cdt.codan.checkers
+codan/org.eclipse.cdt.codan.checkers.ui
+codan/org.eclipse.cdt.codan.core
+codan/org.eclipse.cdt.codan.core.cxx
+codan/org.eclipse.cdt.codan.ui
+codan/org.eclipse.cdt.codan.ui.cxx
+
+core/org.eclipse.cdt.core
+core/org.eclipse.cdt.core.linux
+core/org.eclipse.cdt.ui
+
+debug/org.eclipse.cdt.debug.core
+debug/org.eclipse.cdt.debug.ui
+
+doc/org.eclipse.cdt.doc.user
+
+dsf/org.eclipse.cdt.dsf
+dsf/org.eclipse.cdt.dsf.ui
+
+releng/org.eclipse.cdt
+releng/org.eclipse.cdt.platform-feature
+
+# Needed for feature org.eclipse.cdt.gnu.build
+
+build/org.eclipse.cdt.gnu.build-feature
+build/org.eclipse.cdt.managedbuilder.gnu.ui
+
+# Needed for feature org.eclipse.cdt.gdb
+
+debug/org.eclipse.cdt.gdb
+debug/org.eclipse.cdt.gdb.ui
+debug/org.eclipse.cdt.gdb-feature
+
+# Needed for feature org.eclipse.cdt.gnu.debug
+
+debug/org.eclipse.cdt.gnu.debug-feature
+debug/org.eclipse.cdt.debug.mi.core
+debug/org.eclipse.cdt.debug.mi.ui
+
+launch/org.eclipse.cdt.launch
+
+# Needed for feature org.eclipse.cdt.gnu.dsf
+
+dsf-gdb/org.eclipse.cdt.dsf.gdb
+dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
+dsf-gdb/org.eclipse.cdt.gnu.dsf-feature
+
+# Needed for feature org.eclipse.cdt.debug.ui.memory
+
+memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
+memory/org.eclipse.cdt.debug.ui.memory.search
+memory/org.eclipse.cdt.debug.ui.memory.traditional
+memory/org.eclipse.cdt.debug.ui.memory.transport
+memory/org.eclipse.cdt.debug.ui.memory-feature
+
+# Needed for feature org.eclipse.cdt.build.crossgcc
+
+cross/org.eclipse.cdt.build.crossgcc
+cross/org.eclipse.cdt.build.crossgcc-feature
+
+# Needed for feature org.eclipse.cdt.launch.remote
+
+cross/org.eclipse.cdt.launch.remote
+cross/org.eclipse.cdt.launch.remote-feature
+
