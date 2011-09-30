@@ -49,9 +49,10 @@ override_dh_install:
 
 override_jh_installeclipse:
 	jh_installeclipse
-	rm -fr debian/eclipse-cdt/usr/lib/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.platform.source_*/src/org.eclipse.cdt.ui_*/about_files/
-	cd debian/eclipse-cdt/usr && \
-		find lib/ -type f \( -name '*.bmp' -o -name '*.gif' -o -name '*.jpg' -o -name '*.png' \) | perl ../../../debian/imagemv.pl
+	mkdir -p debian/eclipse-cdt/usr/share/eclipse/dropins
+	mv debian/eclipse-cdt/usr/lib/eclipse/dropins/cdt debian/eclipse-cdt/usr/share/eclipse/dropins
+	rm -rf debian/eclipse-cdt/usr/lib/eclipse
+	rm -f debian/eclipse-cdt/usr/share/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.launch.remote.source*.jar
 
 get-orig-source:
 	debian/fetch-cdt.sh
