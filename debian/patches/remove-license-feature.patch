@@ -1,0 +1,40 @@
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Sat, 17 Sep 2011 17:45:48 +0200
+Subject: remove-license-feature
+
+---
+ .../feature.xml                                    |    4 +---
+ .../feature.xml                                    |    4 +---
+ 2 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/cross/org.eclipse.cdt.build.crossgcc-feature/feature.xml b/cross/org.eclipse.cdt.build.crossgcc-feature/feature.xml
+index 6430559..f067034 100644
+--- a/cross/org.eclipse.cdt.build.crossgcc-feature/feature.xml
++++ b/cross/org.eclipse.cdt.build.crossgcc-feature/feature.xml
+@@ -4,9 +4,7 @@
+       label="%featureName"
+       version="1.0.0.qualifier"
+       provider-name="%providerName"
+-      plugin="org.eclipse.cdt.build.crossgcc"
+-      license-feature="org.eclipse.cdt.license"
+-      license-feature-version="1.0.0.qualifier">
++      plugin="org.eclipse.cdt.build.crossgcc">
+ 
+    <description>
+       %description
+diff --git a/cross/org.eclipse.cdt.launch.remote-feature/feature.xml b/cross/org.eclipse.cdt.launch.remote-feature/feature.xml
+index e350efe..2f54b2e 100644
+--- a/cross/org.eclipse.cdt.launch.remote-feature/feature.xml
++++ b/cross/org.eclipse.cdt.launch.remote-feature/feature.xml
+@@ -3,9 +3,7 @@
+       id="org.eclipse.cdt.launch.remote"
+       label="%featureName"
+       version="6.0.0.qualifier"
+-      provider-name="%providerName"
+-      license-feature="org.eclipse.cdt.license"
+-      license-feature-version="1.0.0.qualifier">
++      provider-name="%providerName">
+ 
+    <description>
+       %description
+-- 
