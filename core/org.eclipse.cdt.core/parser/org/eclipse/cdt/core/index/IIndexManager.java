@@ -90,7 +90,9 @@ public interface IIndexManager extends IPDOMManager {
 	public final static int UPDATE_CHECK_CONTENTS_HASH= 0x10;
 
 	/**
-	 * Include files that are otherwise would be excluded from the index. 
+	 * Include files that are otherwise would be excluded from the index. This flag is sticky
+	 * for the duration of the Eclipse session. If the files are later updated without this flag,
+	 * they remain in the index.  
 	 * @since 5.3
 	 */
 	public final static int FORCE_INDEX_INCLUSION= 0x20;

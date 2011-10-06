@@ -2369,6 +2369,37 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//struct Stream {
+	//Stream& operator <<(const char*);
+	//};
+	//Stream GetStream();
+	//
+	//#define MY_MACRO switch (0) case 0: default: GetStream()
+	//
+	//void test() {
+	//MY_MACRO << "Loooooooooooooooooooong string literal" << " another literal.";
+	//MY_MACRO << "Looooooooooooooooooooong string literal" << " another literal.";
+	//}
+
+	//struct Stream {
+	//    Stream& operator <<(const char*);
+	//};
+	//Stream GetStream();
+	//
+	//#define MY_MACRO switch (0) case 0: default: GetStream()
+	//
+	//void test() {
+	//    MY_MACRO << "Loooooooooooooooooooong string literal" << " another literal.";
+	//    MY_MACRO << "Looooooooooooooooooooong string literal"
+	//             << " another literal.";
+	//}
+	public void testOverloadedLeftShiftChain_5() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_OVERLOADED_LEFT_SHIFT_CHAIN,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
 	//int main() {
 	//	std::vector<std::vector<int>> test;
 	//	// some comment
@@ -2381,6 +2412,200 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//	return 0;
 	//}
 	public void testDoubleClosingAngleBrackets_Bug333816() throws Exception {
+		assertFormatterResult();
+	}
+
+	//void foo() {
+	//	int i;
+	//	for (iiiiiiiiiiiiiiiiii = 0; iiiiiiiiiiiiiiiiii < 10; iiiiiiiiiiiiiiiiii++) {
+	//	}
+	//	foo();
+	//}
+
+	//void foo() {
+	//	int i;
+	//	for (iiiiiiiiiiiiiiiiii = 0; iiiiiiiiiiiiiiiiii < 10;
+	//			iiiiiiiiiiiiiiiiii++) {
+	//	}
+	//	foo();
+	//}
+	public void testForLoopWrappingAtOpeningBrace() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_LINE_SPLIT, "80");
+		assertFormatterResult();
+	}
+	
+	//void foo() {
+	//	int i;
+	//	for (i = 0; i < 10; i++) {
+	//	}
+	//	foo();
+	//}
+
+	//void foo() {
+	//	int i;
+	//	for (i = 0; i < 10; i++) {
+	//	}
+	//	foo();
+	//}
+	public void testForLoopKnR_Bug351399() throws Exception {
+		assertFormatterResult();
+	}
+	
+	//void foo() {
+	//	int i;
+	//	for (i = 0; i < 10; i++) {
+	//	}
+	//	foo();
+	//}
+
+	//void foo()
+	//    {
+	//    int i;
+	//    for (i = 0; i < 10; i++)
+	//	{
+	//	}
+	//    foo();
+	//    }
+	public void testForLoopWhitesmiths_Bug351399() throws Exception {
+		fOptions.putAll(DefaultCodeFormatterOptions.getWhitesmithsSettings().getMap());
+		assertFormatterResult();
+	}
+
+	//void foo() {
+	//	int i;
+	//	for (i = 0; i < 10; i++) {
+	//	}
+	//	foo();
+	//}
+
+	//void
+	//foo()
+	//{
+	//  int i;
+	//  for (i = 0; i < 10; i++)
+	//    {
+	//    }
+	//  foo();
+	//}
+	public void testForLoopGNU_Bug351399() throws Exception {
+		fOptions.putAll(DefaultCodeFormatterOptions.getGNUSettings().getMap());
+		assertFormatterResult();
+	}
+
+	//void foo() {
+	//	int i;
+	//	for (i = 0; i < 10; i++) {
+	//	}
+	//	foo();
+	//}
+
+	//void foo()
+	//{
+	//	int i;
+	//	for (i = 0; i < 10; i++)
+	//	{
+	//	}
+	//	foo();
+	//}
+	public void testForLoopAllman_Bug351399() throws Exception {
+		fOptions.putAll(DefaultCodeFormatterOptions.getAllmanSettings().getMap());
+		assertFormatterResult();
+	}
+
+	//void f() {
+	//	int i = static_cast<int>(5+1);
+	//	int j;
+	//}
+
+	//void f() {
+	//	int i = static_cast<int>(5 + 1);
+	//	int j;
+	//}
+	public void testStaticCastInInitializer_Bug353974() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define A 1
+	//#define B 2
+	//#define C 4
+	//void f(int x, int y) {
+	//	f(A|B|C,5);
+	//	return;
+	//}
+
+	//#define A 1
+	//#define B 2
+	//#define C 4
+	//void f(int x, int y) {
+	//	f(A | B | C, 5);
+	//	return;
+	//}
+	public void testMacroInBinaryExpression_Bug344379() throws Exception {
+		assertFormatterResult();
+	}
+
+	public void testBackslashUInPreprocessorDirective_Bug350433() throws Exception {
+		String before= "#include \"test\\udp.h\"\n";
+		String expected= before;
+		assertFormatterResult(before, expected);
+	}
+
+	//#define SIZE 5
+	//char s0[5];
+	//char s1[1+1];
+	//char s2[SIZE];
+	//char s3[SIZE+1];
+	//char s4[SIZE+SIZE];
+	//char s5[1+SIZE];
+
+	//#define SIZE 5
+	//char s0[5];
+	//char s1[1 + 1];
+	//char s2[SIZE];
+	//char s3[SIZE + 1];
+	//char s4[SIZE + SIZE];
+	//char s5[1 + SIZE];
+	public void testExpressionInArrayDeclarator_Bug350816() throws Exception {
+		assertFormatterResult();
+	}
+
+	//void f(int p0 ,... ){}
+	
+	//void f(int p0, ...) {
+	//}
+	public void testEllipsisInFunctionDefinition_Bug350689() throws Exception {
+		assertFormatterResult();
+	}
+
+	//struct{int n;}* l;
+	//void f(int p0, int p1) { f((p0 + 2), l->n); }
+
+	//struct {
+	//	int n;
+	//}* l;
+	//void f(int p0, int p1) {
+	//	f((p0 + 2), l->n);
+	//}
+	public void testParenthesizedExpressionInArgumentList_Bug350689() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define m(x) { x=1; }
+	//void f() {
+	//	int i;
+	//	if (1) i=1;
+	//	else m(i);
+	//}
+
+	//#define m(x) { x=1; }
+	//void f() {
+	//	int i;
+	//	if (1)
+	//		i = 1;
+	//	else
+	//		m(i);
+	//}
+	public void testMacroInElseBranch_Bug350689() throws Exception {
 		assertFormatterResult();
 	}
 }
