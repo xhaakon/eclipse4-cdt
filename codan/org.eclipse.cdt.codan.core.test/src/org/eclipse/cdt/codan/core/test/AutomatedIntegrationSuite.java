@@ -29,6 +29,8 @@ import org.eclipse.cdt.codan.core.internal.checkers.StatementHasNoEffectCheckerT
 import org.eclipse.cdt.codan.core.internal.checkers.SuggestedParenthesisCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.SuspiciousSemicolonCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.UnusedSymbolInFileScopeCheckerTest;
+import org.eclipse.cdt.codan.internal.checkers.ui.quickfix.CaseBreakQuickFixTest;
+import org.eclipse.cdt.codan.internal.checkers.ui.quickfix.CatchByReferenceQuickFixTest;
 import org.eclipse.cdt.codan.internal.checkers.ui.quickfix.CreateLocalVariableQuickFixTest;
 import org.eclipse.cdt.codan.internal.checkers.ui.quickfix.SuggestedParenthesisQuickFixTest;
 
@@ -70,6 +72,8 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		// quick fixes
 		suite.addTestSuite(CreateLocalVariableQuickFixTest.class);
 		suite.addTestSuite(SuggestedParenthesisQuickFixTest.class);
+		suite.addTestSuite(CatchByReferenceQuickFixTest.class);
+		suite.addTestSuite(CaseBreakQuickFixTest.class);
 		return suite;
 	}
 }
