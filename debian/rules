@@ -45,14 +45,11 @@ override_jh_compilefeatures:
 
 jnidir := /usr/lib/$(DEB_HOST_MULTIARCH)/jni
 override_dh_install:
-	dh_install -peclipse-cdt $(BUILD_DIR)/org.eclipse.cdt.core.linux.$(ECLIPSE_BUILD_ARCH)/os/linux/$(ECLIPSE_BUILD_ARCH)/*.so $(jnidir)
+	dh_install -peclipse-cdt-jni $(BUILD_DIR)/org.eclipse.cdt.core.linux.$(ECLIPSE_BUILD_ARCH)/os/linux/$(ECLIPSE_BUILD_ARCH)/*.so $(jnidir)
 	dh_install --remaining-packages
 
 override_jh_installeclipse:
 	jh_installeclipse
-	mkdir -p debian/eclipse-cdt/usr/share/eclipse/dropins
-	mv debian/eclipse-cdt/usr/lib/eclipse/dropins/cdt debian/eclipse-cdt/usr/share/eclipse/dropins
-	rm -rf debian/eclipse-cdt/usr/lib/eclipse
 	rm -f debian/eclipse-cdt/usr/share/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.launch.remote.source*.jar
 
 get-orig-source:
