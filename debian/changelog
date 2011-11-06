@@ -1,16 +1,12 @@
-eclipse-cdt (8.0.1-1) UNRELEASED; urgency=low
+eclipse-cdt (8.0.1-1) unstable; urgency=low
 
   * New upstream release.
-  * Install jni libraries into multiarch aware location
-
- -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 06 Oct 2011 21:15:04 +0200
-
-eclipse-cdt (8.0.0-1) UNRELEASED; urgency=low
-
-  * New upstream release.
+  * Split the JNI packages into a separate architecture dependent
+    package and made eclipse-cdt architecture independent.
+  * Install JNI libraries into multiarch aware location
   * Bumped Standards-Version to 3.9.2.
 
- -- Jakub Adam <jakub.adam@ktknet.cz>  Sat, 17 Sep 2011 13:21:18 +0200
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 06 Oct 2011 21:15:04 +0200
 
 eclipse-cdt (6.0.2-1) unstable; urgency=low
 

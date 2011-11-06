@@ -47,7 +47,7 @@ Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
 Pre-Depends: ${misc:Pre-Depends}
-Description: C/C++ Development Tools for Eclipse
+Description: C/C++ Development Tools for Eclipse (JNI)
  The eclipse-cdt package contains Eclipse features and plugins that are
  useful for C and C++ development.
  .
