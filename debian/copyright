@@ -83,11 +83,10 @@ Copyright: 1993, Geoff Kuenning, Granada Hills, CA
 License: BSD-like
 
 Files: debian/*
-Copyright: 2010, Debian Orbital Alignment Team <pkg-java-maintainers@lists.alioth.debian.org>
+Copyright: 2010-2012, Debian Orbital Alignment Team <pkg-java-maintainers@lists.alioth.debian.org>
 License: EPL-1.0
 
 Files: debian/fetch-cdt.sh
-       debian/patches/Fedora-*.patch
 Copyright: 2008, Andrew Overholt
            2008-2010, Jeff Johnston
 License: Fedora-contribution
