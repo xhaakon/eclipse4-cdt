@@ -34,6 +34,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CCorePreferenceConstants;
 import org.eclipse.cdt.core.language.ProjectLanguageConfiguration;
 import org.eclipse.cdt.core.language.WorkspaceLanguageConfiguration;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICStorageElement;
 import org.eclipse.cdt.internal.core.Util;
@@ -71,6 +72,13 @@ public class LanguageMappingStore {
 		ICProjectDescription descriptor = getProjectDescription(project, false);
 		if (descriptor != null) {
 			ICStorageElement rootElement = descriptor.getStorage(LANGUAGE_MAPPING_ID, false);
+			if (rootElement == null) {
+				// bug 367061 - backwards compatibility: fallback to default configuration settings
+				ICConfigurationDescription cfgDesc = descriptor.getDefaultSettingConfiguration();
+				if (cfgDesc != null) {
+					rootElement = cfgDesc.getStorage(LANGUAGE_MAPPING_ID, false);
+				}
+			}
 			if (rootElement != null) {
 				ICStorageElement[] mappingElements = rootElement.getChildrenByName(PROJECT_MAPPINGS);
 				if (mappingElements.length > 0) {
@@ -143,6 +151,11 @@ public class LanguageMappingStore {
 
 	public void storeMappings(IProject project, ProjectLanguageConfiguration config) throws CoreException {
 		ICProjectDescription descriptor = getProjectDescription(project, true);
+		ICConfigurationDescription cfgDesc = descriptor.getDefaultSettingConfiguration();
+		// remove old storage location if any
+		if (cfgDesc != null && cfgDesc.getStorage(LANGUAGE_MAPPING_ID, false) != null) {
+			cfgDesc.removeStorage(LANGUAGE_MAPPING_ID);
+		}
 		ICStorageElement rootElement = descriptor.getStorage(LANGUAGE_MAPPING_ID, true);
 		// clear all children and settings
 		rootElement.clear();
@@ -203,9 +216,9 @@ public class LanguageMappingStore {
 	public WorkspaceLanguageConfiguration decodeWorkspaceMappings() throws CoreException {
 		IEclipsePreferences node = InstanceScope.INSTANCE.getNode(CCorePlugin.PLUGIN_ID);
 		IEclipsePreferences defaultNode = DefaultScope.INSTANCE.getNode(CCorePlugin.PLUGIN_ID);
-		String encodedMappings = defaultNode.get(CCorePreferenceConstants.WORKSPACE_LANGUAGE_MAPPINGS, null);
+		String encodedMappings = node.get(CCorePreferenceConstants.WORKSPACE_LANGUAGE_MAPPINGS, null);
 		if (encodedMappings == null) {
-			encodedMappings = node.get(CCorePreferenceConstants.WORKSPACE_LANGUAGE_MAPPINGS, null);
+			encodedMappings = defaultNode.get(CCorePreferenceConstants.WORKSPACE_LANGUAGE_MAPPINGS, null);
 		}
 		WorkspaceLanguageConfiguration config = new WorkspaceLanguageConfiguration();
 

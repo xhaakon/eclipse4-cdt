@@ -87,6 +87,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConversionName;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
@@ -265,8 +266,7 @@ public class AST2CPPTests extends AST2BaseTest {
 		assertNoProblemBindings(col);
 	}
 	
-	protected IASTTranslationUnit parseAndCheckBindings(String code) throws Exception
-	{
+	protected IASTTranslationUnit parseAndCheckBindings(String code) throws Exception {
 		IASTTranslationUnit tu = parse(code, ParserLanguage.CPP); 
 		CPPNameCollector col = new CPPNameCollector();
 		tu.accept(col);
@@ -284,8 +284,7 @@ public class AST2CPPTests extends AST2BaseTest {
 		return new BindingAssertionHelper(code, true);
 	}
 
-	public void testBug40422() throws Exception
-	{
+	public void testBug40422() throws Exception {
 		IASTTranslationUnit tu = parse("class A { int y; }; int A::* x = 0;", ParserLanguage.CPP); //$NON-NLS-1$
 		CPPNameCollector col = new CPPNameCollector();
 		tu.accept(col);
@@ -2551,9 +2550,12 @@ public class AST2CPPTests extends AST2BaseTest {
 		ICPPConstructor T1_ctor = (ICPPConstructor) col.getName(6)
 		.resolveBinding();
 		ICPPClassType T1 = (ICPPClassType) col.getName(0).resolveBinding();
-		
-		assertInstances(col, T1_ctor, 2);
-		assertInstances(col, T1, 2);
+		assertInstances(col, T1_ctor, 1);
+		assertInstances(col, T1, 3);
+
+		ICPPASTFunctionCallExpression fc= (ICPPASTFunctionCallExpression) col.getName(4).getParent().getParent();
+		IBinding ctor2 = fc.getImplicitNames()[0].resolveBinding();
+		assertSame(T1_ctor, ctor2);
 	}
 	
 	// struct S { int i; };    
@@ -9347,6 +9349,49 @@ public class AST2CPPTests extends AST2BaseTest {
 		parseAndCheckBindings();
 	}
 	
+	//	namespace std {
+	//	    template <class T1, class T2> struct pair {
+	//	        T1 first;
+	//	        T2 second;
+	//	    };
+	//
+	//	    template <typename T, typename U> T begin(const pair<T, U>& p) {
+	//	        return p.first;
+	//	    }
+	//	    template <typename T, typename U> U end(const pair<T, U>& p) {
+	//	        return p.second;
+	//	    }
+	//	}
+	//	struct S {
+	//	    int x;
+	//	};
+	//
+	//	int main() {
+	//	    S arr[5];
+	//	    std::pair<S*, S*> p{arr, arr + 5};
+	//	    for (const auto& r : p)
+	//	        r.x;  
+	//	}
+	public void testAutoTypeInRangeBasedFor_332883c() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	struct S {
+	//	    void f();
+	//	};
+	//	struct Vector {
+	//		S* begin();
+	//	};
+	//	void test() {
+	//		Vector v;
+	//	    for (auto e : v) {
+	//			e.f();
+	//	    }
+	//	}
+	public void testAutoTypeInRangeBasedFor_359653() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	typedef int T;
 	//	struct B {
 	//	    int a, b;
@@ -9488,6 +9533,27 @@ public class AST2CPPTests extends AST2BaseTest {
 	//	  c.method(b);
 	//	}
 	public void testAmbiguityResolution_Bug356268() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+
+	//	class A : A {
+	//	};
+	public void testRecursiveClassInheritance_Bug357256() throws Exception {
+		BindingAssertionHelper bh= getAssertionHelper();
+		ICPPClassType c= bh.assertNonProblem("A", 1);
+		assertEquals(0, ClassTypeHelper.getPureVirtualMethods(c).length);
+	}
+	
+	//	template <typename T> struct CT1 {};
+	//	template <typename T> struct CT2 {};
+	//	typedef char Tdef;
+	//	template<> struct CT1< CT2<int> > {
+	//		CT1<Tdef> x;			   // Ambiguity causes lookup in CT1< CT2<int> >
+	//	};
+	//	template<> struct CT2<Tdef> {  // Accessed before ambiguity is resolved
+	//	};
+	public void testAmbiguityResolution_Bug359364() throws Exception {
 		parseAndCheckBindings();
 	}
 }

@@ -15,11 +15,15 @@
 package org.eclipse.cdt.internal.ui.wizards.classwizard;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -42,6 +46,7 @@ import org.eclipse.cdt.core.browser.IQualifiedTypeName;
 import org.eclipse.cdt.core.browser.ITypeReference;
 import org.eclipse.cdt.core.browser.QualifiedTypeName;
 import org.eclipse.cdt.core.formatter.CodeFormatter;
+import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICContainer;
@@ -203,6 +208,9 @@ public class NewClassCodeGenerator {
 	            		new SubProgressMonitor(monitor, 50));
 	            if (headerFile != null) {
 	                headerTU = (ITranslationUnit) CoreModel.getDefault().create(headerFile);
+	                if (headerTU == null) {
+	                    throw new CodeGeneratorException("Failed to create " + headerFile); //$NON-NLS-1$
+	                }
 	
 	                // Create a working copy with a new owner
 	                headerWorkingCopy = headerTU.getWorkingCopy();
@@ -246,6 +254,9 @@ public class NewClassCodeGenerator {
 		            		new SubProgressMonitor(monitor, 50));
 		            if (sourceFile != null) {
 		                sourceTU = (ITranslationUnit) CoreModel.getDefault().create(sourceFile);
+		                if (sourceTU == null) {
+		                    throw new CodeGeneratorException("Failed to create " + sourceFile); //$NON-NLS-1$
+		                }
 		                monitor.worked(50);
 
 		                // Create a working copy with a new owner
@@ -279,6 +290,9 @@ public class NewClassCodeGenerator {
 	            		new SubProgressMonitor(monitor, 50));
 	            if (testFile != null) {
 	                testTU = (ITranslationUnit) CoreModel.getDefault().create(testFile);
+	                if (testTU == null) {
+	                    throw new CodeGeneratorException("Failed to create " + testFile); //$NON-NLS-1$
+	                }
 	                monitor.worked(50);
 
 	                // Create a working copy with a new owner
@@ -300,6 +314,8 @@ public class NewClassCodeGenerator {
 	
 	            fCreatedTestTU = testTU;
             }
+        } catch (CodeGeneratorException e) {
+        	deleteAllCreatedFiles();
         } finally {
             if (headerWorkingCopy != null) {
                 headerWorkingCopy.destroy();
@@ -316,6 +332,19 @@ public class NewClassCodeGenerator {
         return fCreatedClass;
     }
 
+	private void deleteAllCreatedFiles() {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		for (IPath path : new IPath[] { fHeaderPath, fSourcePath, fSourcePath }) {
+			if (path != null) {
+				try {
+					IFile file = root.getFile(path);
+					file.delete(true, null);
+				} catch (CoreException e) {
+				}
+			}
+		}
+	}
+
     /**
      * Format given source content according to the project's code style options.
      * 
@@ -326,17 +355,19 @@ public class NewClassCodeGenerator {
 	 */
 	private String formatSource(String content, ITranslationUnit tu) throws CModelException {
         String lineDelimiter= StubUtility.getLineDelimiterUsed(tu);
-        TextEdit edit= CodeFormatterUtil.format(CodeFormatter.K_TRANSLATION_UNIT, content, 0, lineDelimiter,
-        		tu.getCProject().getOptions(true));
+        Map<String, Object> options = new HashMap<String, Object>(tu.getCProject().getOptions(true));
+        options.put(DefaultCodeFormatterConstants.FORMATTER_TRANSLATION_UNIT, tu);
+		TextEdit edit= CodeFormatterUtil.format(CodeFormatter.K_TRANSLATION_UNIT, content, 0,
+				lineDelimiter, options);
         if (edit != null) {
         	IDocument doc= new Document(content);
         	try {
 				edit.apply(doc);
             	content= doc.get();
-			} catch (MalformedTreeException exc) {
-				CUIPlugin.log(exc);
-			} catch (BadLocationException exc) {
-				CUIPlugin.log(exc);
+			} catch (MalformedTreeException e) {
+				CUIPlugin.log(e);
+			} catch (BadLocationException e) {
+				CUIPlugin.log(e);
 			}
         }
         return content;
