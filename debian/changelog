@@ -2,6 +2,7 @@ eclipse-cdt (8.0.2-1) UNRELEASED; urgency=low
 
   * New upstream release.
   * Bumped Standards-Version to 3.9.3.
+  * Increased debhelper compatibility to level 9.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Tue, 28 Feb 2012 17:34:25 +0100
 
