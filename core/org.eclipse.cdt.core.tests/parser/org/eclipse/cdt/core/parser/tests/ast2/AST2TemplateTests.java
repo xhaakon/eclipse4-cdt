@@ -49,6 +49,7 @@ import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTExplicitTemplateInstantiation;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
@@ -1725,8 +1726,13 @@ public class AST2TemplateTests extends AST2BaseTest {
 		ICPPConstructor ctor = (ICPPConstructor) col.getName(2).resolveBinding();
 		ICPPFunction f = (ICPPFunction) col.getName(5).resolveBinding();
 		
-		ICPPSpecialization spec = (ICPPSpecialization) col.getName(11).resolveBinding();
-		assertSame(spec.getSpecializedBinding(), ctor);
+		final IASTName typeConversion = col.getName(11);
+		ICPPSpecialization spec = (ICPPSpecialization) typeConversion.resolveBinding();
+		assertSame(ctor.getOwner(), spec.getSpecializedBinding());
+		
+		final ICPPASTFunctionCallExpression fcall = (ICPPASTFunctionCallExpression) typeConversion.getParent().getParent();
+		final IBinding ctorSpec = fcall.getImplicitNames()[0].resolveBinding();
+		assertSame(ctor, (((ICPPSpecialization) ctorSpec).getSpecializedBinding()));
 		
 		assertSame(f, col.getName(10).resolveBinding());
 	}
@@ -1750,9 +1756,14 @@ public class AST2TemplateTests extends AST2BaseTest {
 		ICPPConstructor ctor = (ICPPConstructor) col.getName(3).resolveBinding();
 		ICPPMethod add = (ICPPMethod) col.getName(9).resolveBinding();
 		
-		ICPPSpecialization spec = (ICPPSpecialization) col.getName(20).resolveBinding();
-		assertSame(spec.getSpecializedBinding(), ctor);
+		final IASTName typeConversion = col.getName(20);
+		ICPPSpecialization spec = (ICPPSpecialization) typeConversion.resolveBinding();
+		assertSame(ctor.getOwner(), spec.getSpecializedBinding());
 		
+		final ICPPASTFunctionCallExpression fcall = (ICPPASTFunctionCallExpression) typeConversion.getParent().getParent();
+		final IBinding ctorSpec = fcall.getImplicitNames()[0].resolveBinding();
+		assertSame(ctor, (((ICPPSpecialization) ctorSpec).getSpecializedBinding()));
+
 		assertSame(add, col.getName(19).resolveBinding());
 	}
 	
@@ -1772,9 +1783,14 @@ public class AST2TemplateTests extends AST2BaseTest {
 		ICPPConstructor ctor = (ICPPConstructor) col.getName(2).resolveBinding();
 		ICPPMethod add = (ICPPMethod) col.getName(7).resolveBinding();
 		
-		ICPPSpecialization spec = (ICPPSpecialization) col.getName(17).resolveBinding();
-		assertSame(spec.getSpecializedBinding(), ctor);
+		final IASTName typeConversion = col.getName(17);
+		ICPPSpecialization spec = (ICPPSpecialization) typeConversion.resolveBinding();
+		assertSame(ctor.getOwner(), spec.getSpecializedBinding());
 		
+		final ICPPASTFunctionCallExpression fcall = (ICPPASTFunctionCallExpression) typeConversion.getParent().getParent();
+		final IBinding ctorSpec = fcall.getImplicitNames()[0].resolveBinding();
+		assertSame(ctor, (((ICPPSpecialization) ctorSpec).getSpecializedBinding()));
+
 		assertSame(add, col.getName(16).resolveBinding());
 	}
 	
@@ -5452,6 +5468,70 @@ public class AST2TemplateTests extends AST2BaseTest {
 	//	typedef CTTP<CT3> c;
 	//	typedef CTTP<CT4> d;
 	public void testTemplateTemplateParameterMatching_352859() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<bool V, typename T>
+	//	struct C {
+	//	  typedef int s;
+	//	};
+	//
+	//	template<typename T>
+	//	struct C<false, T> {
+	//	  typedef T s;
+	//	};
+	//
+	//	struct B {
+	//	  typedef B u;
+	//	};
+	//
+	//  struct C8 { char c[8]; }; 
+	//
+	//	typedef C<sizeof(char) == sizeof(C8), B> r;
+	//	typedef r::s t;
+	//	t::u x;
+	public void testBoolExpressionAsTemplateArgument_361604() throws Exception {
+		final String code= getAboveComment();
+		parseAndCheckBindings(code);
+	}
+	
+	//	template<class T> struct A {
+	//		bool b;
+	//	};
+	//	class B {
+	//	};
+	//	template<class T> T * func();
+	//	void test1() {
+	//		delete func<A<B>>(); // This line causes the NPE
+	//	}
+	//
+	//	template<bool> struct C {
+	//		int* ptr;
+	//	};
+	//	void test2() {
+	//		int a = 0, b = 1;
+	//		delete C< a<b >::ptr;
+	//		delete C< A<B>::b >::ptr;
+	//	}
+	public void testTemplateAmbiguityInDeleteExpression_364225() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename T> void foo(T);
+	//	template <typename T> void foo(T, typename T::type* = 0);
+	//	int main() {
+	//		foo(0);
+	//	}
+	public void testSyntaxFailureInstantiatingFunctionTemplate_365981a() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename T> bool bar(T);
+	//	template <typename T> bool bar(T, void(T::*)() = 0);
+	//	void test() {
+	//	    bar(0);  
+	//	}
+	public void testSyntaxFailureInstantiatingFunctionTemplate_365981b() throws Exception {
 		parseAndCheckBindings();
 	}
 }
