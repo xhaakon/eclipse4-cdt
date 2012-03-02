@@ -1,4 +1,4 @@
-eclipse-cdt (8.0.2-1) UNRELEASED; urgency=low
+eclipse-cdt (8.0.2-1) unstable; urgency=low
 
   * New upstream release.
   * Bumped Standards-Version to 3.9.3.
