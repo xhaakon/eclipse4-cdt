@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2012 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -76,13 +76,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		public ProjectWithDepProj() {setStrategy(new ReferencedProject(true));}
 		public static TestSuite suite() {return suite(ProjectWithDepProj.class);}
 		
-		// template <typename T= int> class XT;
-		
-	    // #include "header.h"
-		// template <typename T> class XT {};
-		// void test() {
-		//    XT<> x;
-		// };		
 		@Override
 		public void testDefaultTemplateArgInHeader_264988() throws Exception {
 			// Not supported across projects (the composite index does not merge
@@ -247,6 +240,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	  void m2(const StrT<T> s) {}
 	//	};
 
+    // #include "header.h"
 	//  void main() {
 	//     C1<char> c1;
 	//	   c1.m1("aaa");  // OK
@@ -281,6 +275,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//   public: void assign(const T* s) {}
 	// };
 	
+    // #include "header.h"
 	// void main() {
 	//   StrT<char> x;
 	//   x.assign("aaa");
@@ -290,9 +285,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		assertInstance(b0, ICPPMethod.class);
     	assertEquals(1, getIndex().findNames(b0, IIndex.FIND_REFERENCES).length);
 		IParameter[] parameters = ((ICPPMethod) b0).getParameters();
-		System.out.println(String.valueOf(parameters));
 		IFunctionType type = ((ICPPMethod) b0).getType();
-		System.out.println(String.valueOf(type));
 	}
 
 	// template<typename T>
@@ -364,6 +357,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	  void m3();
 	//	};
 
+    // #include "header.h"
 	//  void C1::m3() {
 	//	   m1("aaa");  // OK
 	//	   m2("aaa");  // problem
@@ -574,11 +568,10 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	// template<typename T3>
 	// class D<A, T3> {};
 	
+    // #include "header.h"
 	// template<typename T3> class D<A, T3>; // harmless declaration for test purposes
-	// template<typename T3>
-	// class D<B, T3> {};
-	// template<typename T3>
-	// class D<C, T3> {};
+	// template<typename T3> class D<B, T3> {};
+	// template<typename T3> class D<C, T3> {};
 	public void testClassPartialSpecializations() throws Exception {
 		IBinding b0= getBindingFromASTName("D<A, T3>", 8);
 		IBinding b1= getBindingFromASTName("D<B, T3>", 8);
@@ -1179,6 +1172,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
     //   class B {};
     // };
     
+    // #include "header.h"
     // void refs() {
     //    A<C>::B acb;
     //    A<D>::B adb;
@@ -1558,11 +1552,11 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		
 		ICPPTemplateInstance inst= (ICPPTemplateInstance) t1;
 		final ICPPClassTemplate tmplDef = (ICPPClassTemplate) inst.getTemplateDefinition();
-		IBinding inst2= CPPTemplates.instantiate(tmplDef, inst.getTemplateArguments(), false);
+		IBinding inst2= CPPTemplates.instantiate(tmplDef, inst.getTemplateArguments());
 		assertSame(inst, inst2);
 		
-		IBinding charInst1= CPPTemplates.instantiate(tmplDef, new ICPPTemplateArgument[] {new CPPTemplateArgument(new CPPBasicType(Kind.eChar, 0))}, false);
-		IBinding charInst2= CPPTemplates.instantiate(tmplDef, new ICPPTemplateArgument[] {new CPPTemplateArgument(new CPPBasicType(Kind.eChar, 0))}, false);
+		IBinding charInst1= CPPTemplates.instantiate(tmplDef, new ICPPTemplateArgument[] {new CPPTemplateArgument(new CPPBasicType(Kind.eChar, 0))});
+		IBinding charInst2= CPPTemplates.instantiate(tmplDef, new ICPPTemplateArgument[] {new CPPTemplateArgument(new CPPBasicType(Kind.eChar, 0))});
 		assertSame(charInst1, charInst2);
 	}
 	
@@ -1866,6 +1860,36 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		IBinding[] friends = ct.getFriends();
 		assertEquals(0, friends.length); // not yet supported
 	}
+	
+	//	struct A {
+	//		void f() { }
+	//	};
+	//	template <typename T> struct B : A {
+	//		using A::f;
+	//		void f(int) { }
+	//	};
+	//	template <typename T> struct C : B<T> {
+	//		using B<T>::f;
+	//		void f(int, int);
+	//	};
+	//	B<float> b;
+	//	C<float> c;
+	
+	// #include "header.h"
+	//	void test() {
+	//		b.f();
+	//		b.f(1);
+	//		c.f( );
+	//		c.f(2);
+	//		c.f(2,1);
+	//	}
+	public void testSpecializationOfUsingDeclaration_357293() throws Exception {
+		getBindingFromASTName("f()", 1, ICPPMethod.class);
+		getBindingFromASTName("f(1)", 1, ICPPMethod.class);
+		getBindingFromASTName("f( )", 1, ICPPMethod.class);
+		getBindingFromASTName("f(2)", 1, ICPPMethod.class);
+		getBindingFromASTName("f(2,1)", 1, ICPPMethod.class);
+	}
 
 	//	template<class T> struct C1 {
 	//	    typedef int iterator;
@@ -1877,5 +1901,54 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	}
 	public void testUsageOfClassTemplateOutsideOfClassBody_357320() throws Exception {
 		getBindingFromASTName("m1", 0, ICPPMethod.class);
+	}
+	
+	//	template <typename> struct foo;
+	//	template <> struct foo<int> {
+	//	    typedef int type;
+	//	};
+
+	// #include "header.h"
+	//	template <typename>	struct foo {};
+	//	int main() {
+	//	    typedef foo<int>::type type;  // ERROR HERE: 'foo<int>::type' could not be
+	//	}
+	public void testSpecializationInIndex_367563a() throws Exception {
+		getBindingFromASTName("type type", 4, ITypedef.class);
+	}
+
+	//	template <typename> struct foo;
+	//	template <typename T> struct foo<T*> {
+	//	    typedef int type;
+	//	};
+
+	// #include "header.h"
+	//	template <typename>	struct foo {};
+	//	int main() {
+	//	    typedef foo<int*>::type type;  // ERROR HERE: 'foo<int>::type' could not be
+	//	}
+	public void testSpecializationInIndex_367563b() throws Exception {
+		getBindingFromASTName("type type", 4, ITypedef.class);
+	}
+	
+	//	template <typename T> struct remove_const_impl {};
+	//	template <typename T> struct remove_const_impl<T*> {
+	//	    typedef T type;
+	//	};
+	//	template <typename T> struct remove_const_impl<const T*> {
+	//	    typedef T type;
+	//	};
+	//	template <typename T> struct remove_const {
+	//	    typedef typename remove_const_impl<T*>::type type;
+	//	};
+
+	//	template<typename Seq> struct foo;
+	//	template <> struct foo<int> {
+	//	    typedef int type;
+	//	};
+	//	typedef foo<remove_const<const int>::type>::type t;  // ERROR HERE
+	public void testCurrentInstanceOfClassTemplatePartialSpec_368404() throws Exception {
+		ITypedef tdef= getBindingFromASTName("type t;", 4, ITypedef.class);
+		assertEquals("int", ASTTypeUtil.getType(tdef, true));
 	}
 }

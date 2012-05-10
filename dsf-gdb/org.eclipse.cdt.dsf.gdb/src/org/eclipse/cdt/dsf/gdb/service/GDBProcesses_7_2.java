@@ -18,7 +18,9 @@ import java.util.Set;
 import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -29,8 +31,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
 import org.eclipse.cdt.dsf.gdb.IGDBLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
-import org.eclipse.cdt.dsf.gdb.internal.commands.MITargetDisconnect;
-import org.eclipse.cdt.dsf.gdb.internal.service.command.events.TraceRecordSelectedChangedEventListener;
+import org.eclipse.cdt.dsf.gdb.service.IGDBTraceControl.ITraceRecordSelectedChangedDMEvent;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
@@ -59,8 +60,9 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
     
     /**
      * The id of the single thread to be used during event visualization. 
+     * @since 4.1 
      */
-    private static final String TRACE_VISUALIZATION_THREAD_ID = "1"; //$NON-NLS-1$
+    protected static final String TRACE_VISUALIZATION_THREAD_ID = "1"; //$NON-NLS-1$
 
     private CommandFactory fCommandFactory;
     private IGDBControl fCommandControl;
@@ -82,10 +84,10 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
      */
 	private Set<IContainerDMContext> fProcRestarting = new HashSet<IContainerDMContext>();
 
-	/*
-	 * Temporary to avoid API changes
+	/** 
+	 * Indicates that we are currently visualizing trace data.
 	 */
-	private TraceRecordSelectedChangedEventListener fTraceVisualizationEventListener = new TraceRecordSelectedChangedEventListener();
+	private boolean fTraceVisualization;
 
 	public GDBProcesses_7_2(DsfSession session) {
 		super(session);
@@ -93,7 +95,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 
 	@Override
 	public void initialize(final RequestMonitor requestMonitor) {
-		super.initialize(new RequestMonitor(ImmediateExecutor.getInstance(), requestMonitor) {
+		super.initialize(new ImmediateRequestMonitor(requestMonitor) {
 			@Override
 			protected void handleSuccess() {
 				doInitialize(requestMonitor);
@@ -114,16 +116,22 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
         fCommandFactory = getServicesTracker().getService(IMICommandControl.class).getCommandFactory();
     	fBackend = getServicesTracker().getService(IGDBBackend.class);
     	
-        getSession().addServiceEventListener(fTraceVisualizationEventListener, null);
-
     	requestMonitor.done();
 	}
 
 	@Override
 	public void shutdown(RequestMonitor requestMonitor) {
-        getSession().removeServiceEventListener(fTraceVisualizationEventListener);
-
 		super.shutdown(requestMonitor);
+	}
+	
+	/** @since 4.1 */
+	protected boolean getTraceVisualization() {
+		return fTraceVisualization;
+	}
+
+	/** @since 4.1 */
+	protected void setTraceVisualization(boolean visualizing) {
+		fTraceVisualization = visualizing;
 	}
 	
 	@Override
@@ -198,7 +206,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 		            	    	ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(procCtx, ICommandControlDMContext.class);
 		            	        fCommandControl.queueCommand(
 		            	        		fCommandFactory.createMIAddInferior(controlDmc),
-		            	        		new DataRequestMonitor<MIAddInferiorInfo>(ImmediateExecutor.getInstance(), rm) {
+		            	        		new ImmediateDataRequestMonitor<MIAddInferiorInfo>(rm) {
 		            	        			@Override
 		            	        			protected void handleSuccess() {
 		            	        				final String groupId = getData().getGroupId();
@@ -230,9 +238,8 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 		                    			if (isInitialProcess()) {	
 		                    				ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(procCtx, ICommandControlDMContext.class);
 		                    				fCommandControl.queueCommand(
-		                    						// We don't use the command factory because we couldn't add the API to the maintenance branch
-		                    						new MITargetDisconnect(controlDmc),
-		                    						new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm) {
+		                    						fCommandFactory.createMITargetDisconnect(controlDmc),
+		                    						new ImmediateDataRequestMonitor<MIInfo>(rm) {
 		                    							@Override
 		                    							protected void handleSuccess() {
 		                    								fNeedToReconnect = true;
@@ -254,7 +261,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 	    						if (binaryPath != null) {
     				    			fCommandControl.queueCommand(
     				    					fCommandFactory.createMIFileExecAndSymbols(fContainerDmc, binaryPath), 
-			    							new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm) {
+			    							new ImmediateDataRequestMonitor<MIInfo>(rm) {
     				    						@Override
     				    						protected void handleCompleted() {
     						                    	// Because of a GDB 7.2 bug, for remote-attach sessions,
@@ -301,7 +308,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 
 	    						fCommandControl.queueCommand(
 	    								fCommandFactory.createMITargetAttach(fContainerDmc, ((IMIProcessDMContext)procCtx).getProcId(), shouldInterrupt),
-		    							new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm));
+		    							new ImmediateDataRequestMonitor<MIInfo>(rm));
 		                    }
 		                },
                     	// Start tracking this process' breakpoints.
@@ -384,7 +391,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 				fCommandControl.queueCommand(
 						fCommandFactory.createMITargetSelect(fCommandControl.getContext(), 
 								remoteTcpHost, remoteTcpPort, true), 
-								new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm));
+								new ImmediateDataRequestMonitor<MIInfo>(rm));
 			} else {
 				String serialDevice = CDebugUtils.getAttribute(
 						attributes,
@@ -393,7 +400,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 				fCommandControl.queueCommand(
 						fCommandFactory.createMITargetSelect(fCommandControl.getContext(), 
 								serialDevice, true), 
-								new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm));
+								new ImmediateDataRequestMonitor<MIInfo>(rm));
 			}
 		} else {
     		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Cannot reconnect to target.", null)); //$NON-NLS-1$
@@ -479,7 +486,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 	
 	@Override
 	public void getProcessesBeingDebugged(final IDMContext dmc, final DataRequestMonitor<IDMContext[]> rm) {
-		if (fTraceVisualizationEventListener.fTracepointVisualizationEnabled) {
+		if (getTraceVisualization()) {
 			// If we are visualizing data during a live session, we should not ask GDB for the list of threads,
 			// because we will get the list of active threads, while GDB only cares about thread 1 for visualization.
 			final IMIContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IMIContainerDMContext.class);
@@ -517,7 +524,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 	public void restart(final IContainerDMContext containerDmc, Map<String, Object> attributes,
             			DataRequestMonitor<IContainerDMContext> rm) {
 		fProcRestarting.add(containerDmc);
-		super.restart(containerDmc, attributes, new DataRequestMonitor<IContainerDMContext>(ImmediateExecutor.getInstance(), rm) {
+		super.restart(containerDmc, attributes, new ImmediateDataRequestMonitor<IContainerDMContext>(rm) {
 			@Override
 			protected void handleCompleted() {
 				if (!isSuccess()) {
@@ -541,7 +548,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
     				IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(dmc, IBreakpointsTargetDMContext.class);
     				MIBreakpointsManager bpmService = getServicesTracker().getService(MIBreakpointsManager.class);
     				if (bpmService != null) {
-    					bpmService.stopTrackingBreakpoints(bpTargetDmc, new RequestMonitor(ImmediateExecutor.getInstance(), null) {
+    					bpmService.stopTrackingBreakpoints(bpTargetDmc, new ImmediateRequestMonitor() {
     						@Override
     						protected void handleCompleted() {
     							// Ok, no need to report any error because we may have already shutdown.
@@ -561,11 +568,24 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
      * have connected to the target.  Because GDB 7.2.1 was not released when CDT 8.0
      * was released, we need to workaround the bug in Eclipse.
      * 
+     * This method can be overridden to easily disable the workaround, for versions
+     * of GDB that no longer have the bug.
+     * 
      * See http://sourceware.org/ml/gdb-patches/2011-03/msg00531.html
      * and Bug 352998
+     * 
+     * @since 4.1 
      */
-    private boolean needFixForGDB72Bug352998() {
+    protected boolean needFixForGDB72Bug352998() {
     	return true;
+    }
+    
+    /**
+	 * @since 4.1
+	 */
+    @DsfServiceEventHandler
+    public void eventDispatched(ITraceRecordSelectedChangedDMEvent e) {
+    	setTraceVisualization(e.isVisualizationModeEnabled());
     }
 }
 

@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTNode.CopyStyle;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTPointer;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
@@ -105,13 +106,13 @@ public class DeclarationGeneratorImpl extends DeclarationGenerator {
 			returnedDeclSpec = declSpec;
 		} else if (type instanceof ICPPTemplateInstance) {
 			returnedDeclSpec = getDeclSpecForTemplate((ICPPTemplateInstance) type);
-
 		} else if (type instanceof IBinding) { /* ITypedef, ICompositeType... */
 			// BTW - we need to distinguish (and fail explicitly) on literal composites like:
 			// struct { } aSingleInstance;
 			returnedDeclSpec = getDeclSpecForBinding((IBinding) type);
 		}
 
+		// TODO(sprigogin): Be honest and return null instead of void.
 		// Fallback...
 		if (returnedDeclSpec == null) {
 			IASTSimpleDeclSpecifier specifier = factory.newSimpleDeclSpecifier();
@@ -129,7 +130,7 @@ public class DeclarationGeneratorImpl extends DeclarationGenerator {
 			// Addition of pointer operators has to be in reverse order, so it's deferred until the end
 			Map<IASTDeclarator, LinkedList<IASTPointerOperator>> pointerOperatorMap = new HashMap<IASTDeclarator, LinkedList<IASTPointerOperator>>();
 
-			IASTName newName = (name != null) ? factory.newName(name) : factory.newName();
+			IASTName newName = name != null ? factory.newName(name) : factory.newName();
 
 			// If the type is an array of something, create a declaration of a pointer to something instead
 			// (to allow assignment, etc)
@@ -164,7 +165,7 @@ public class DeclarationGeneratorImpl extends DeclarationGenerator {
 						arrayType = (IArrayType) type;
 						IASTExpression arraySizeExpression = arrayType.getArraySizeExpression();
 						arrayDeclarator.addArrayModifier(factory.newArrayModifier(arraySizeExpression == null
-								? null : arraySizeExpression.copy()));
+								? null : arraySizeExpression.copy(CopyStyle.withLocations)));
 						type = arrayType.getType();
 					}
 					returnedDeclarator = arrayDeclarator;
@@ -291,7 +292,7 @@ public class DeclarationGeneratorImpl extends DeclarationGenerator {
 				int nbQualifiedNames = fullQualifiedName.getNames().length;
 				if (nbQualifiedNames > 1) {
 					for (int i = 0; i < nbQualifiedNames - 1; i++) {
-						newQualifiedName.addName(fullQualifiedName.getNames()[i].copy());
+						newQualifiedName.addName(fullQualifiedName.getNames()[i].copy(CopyStyle.withLocations));
 					}
 				}
 				newQualifiedName.addName(tempId);
@@ -309,10 +310,10 @@ public class DeclarationGeneratorImpl extends DeclarationGenerator {
 
 	private ICPPASTTemplateId getTemplateId(ICPPTemplateInstance type, IASTName templateName) {
 		ICPPNodeFactory cppFactory = (ICPPNodeFactory) factory;
-		ICPPASTTemplateId tempId = cppFactory.newTemplateId(templateName.copy());
+		ICPPASTTemplateId tempId = cppFactory.newTemplateId(templateName.copy(CopyStyle.withLocations));
 		for (ICPPTemplateArgument arg : type.getTemplateArguments()) {
-			IASTDeclSpecifier argDeclSpec = createDeclSpecFromType(arg.isTypeValue() ? arg
-					.getTypeValue() : arg.getTypeOfNonTypeValue());
+			IASTDeclSpecifier argDeclSpec = createDeclSpecFromType(arg.isTypeValue() ?
+					arg.getTypeValue() : arg.getTypeOfNonTypeValue());
 			IASTTypeId typeId = cppFactory.newTypeId(argDeclSpec, null);
 			tempId.addTemplateArgument(typeId);
 		}

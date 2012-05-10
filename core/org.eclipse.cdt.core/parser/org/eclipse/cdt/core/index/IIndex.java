@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
+import org.eclipse.cdt.core.parser.ISignificantMacros;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 
@@ -81,8 +82,7 @@ public interface IIndex {
 	 * index.acquireReadLock();
 	 * try {
 	 *    ....
-	 * }
-	 * finally {
+	 * } finally {
 	 *    index.releaseReadLock();
 	 * }
 	 * </pre>
@@ -112,8 +112,7 @@ public interface IIndex {
 	 * try {
 	 *    timestamp= index.getLastWriteAccess();
 	 *    binding= index.findBinding(...);
-	 * }
-	 * finally {
+	 * } finally {
 	 *    index.releaseReadLock();
 	 * }
 	 * ...
@@ -125,24 +124,60 @@ public interface IIndex {
 	 *    }
 	 *    String name= binding.getName();
 	 *    ...
-	 * }
-	 * finally {
+	 * } finally {
 	 *    index.releaseReadLock();
 	 * }
 	 */
 	public long getLastWriteAccess();
 
 	/**
-	 * Returns the file-object for the given location and linkage or returns
-	 * <code>null</code> if the file was not indexed in this linkage.
+	 * Returns the file object for the given location and linkage or <code>null</code> if the file
+	 * was not indexed in this linkage.
+	 * <p>
+	 * When a header file is stored in the index in multiple variants for different sets of macro
+	 * definitions, this method will return an arbitrary one of these variants.
 	 * @param location an IIndexFileLocation representing the location of the file
 	 * @return the file in the index or <code>null</code>
 	 * @throws CoreException
+	 * @deprecated Use {@link #getFile(int, IIndexFileLocation, ISignificantMacros)} or
+	 *     {@link #getFiles(int, IIndexFileLocation)}.
 	 */
+	@Deprecated
 	public IIndexFile getFile(int linkageID, IIndexFileLocation location) throws CoreException;
 
 	/**
-	 * Returns the file-objects for the given location in any linkage.
+	 * Returns the file for the given location, linkage, and significant macros
+	 * May return <code>null</code>, if no such file exists.
+	 *  
+	 * @param linkageID the id of the linkage in which the file has been parsed.
+	 * @param location the IIndexFileLocation representing the location of the file
+	 * @param macroDictionary The names and definitions of the macros used to disambiguate between
+	 *     variants of the file contents corresponding to different inclusion points.
+	 * @return the file for the location, or <code>null</code> if the file is not present in
+	 *     the index
+	 * @throws CoreException
+	 * @since 5.4
+	 */
+	IIndexFile getFile(int linkageID, IIndexFileLocation location, ISignificantMacros significantMacros)
+			throws CoreException;
+
+	/**
+	 * Returns the file objects for the given location and linkage.
+	 * Multiple files are returned when a header file is stored in the index in multiple variants
+	 * for different sets of macro definitions.
+	 * This method may only return files that are actually managed by this fragment.
+	 * This method returns files without content, also.
+	 *  
+	 * @param linkageID the id of the linkage in which the file has been parsed.
+	 * @param location the IIndexFileLocation representing the location of the file
+	 * @return the files for the location and the linkage.
+	 * @throws CoreException
+	 * @since 5.4
+	 */
+	IIndexFile[] getFiles(int linkageID, IIndexFileLocation location) throws CoreException;
+
+	/**
+	 * Returns the file objects for the given location in any linkage.
 	 * @param location an IIndexFileLocation representing the location of the file
 	 * @return an array of file-objects.
 	 * @throws CoreException
@@ -402,9 +437,30 @@ public interface IIndex {
 	public IIndexFile[] getAllFiles() throws CoreException;
 
 	/**
+	 * Returns an array of files that were indexed with I/O errors.
+	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.4
+	 */
+	public IIndexFile[] getDefectiveFiles() throws CoreException;
+
+	/**
+	 * Returns an array of files containg unresolved includes.
+	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.4
+	 */
+	public IIndexFile[] getFilesWithUnresolvedIncludes() throws CoreException;
+
+	/**
 	 * Returns the global inline c++ namespaces.
 	 * @throws CoreException
 	 * @since 5.3
 	 */
 	public IScope[] getInlineNamespaces() throws CoreException;
+
+	/**
+	 * Returns {@code true} if the index is fully initialized. An index may not be fully initialized
+	 * during Eclipse startup, or soon after adding a new project to the workspace.
+	 * @since 5.4
+	 */
+	public boolean isFullyInitialized();
 }

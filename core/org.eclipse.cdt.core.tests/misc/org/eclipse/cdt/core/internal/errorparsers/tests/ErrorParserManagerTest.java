@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010 QNX Software Systems and others.
+ * Copyright (c) 2008, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,6 +30,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.core.testplugin.CTestPlugin;
 import org.eclipse.core.internal.registry.ExtensionRegistry;
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceDescription;
@@ -97,10 +98,12 @@ public class ErrorParserManagerTest extends TestCase {
 		cProject = createProject("errorparsersanity");
 		markerGenerator = new IMarkerGenerator() {
 
+			@Override
 			public void addMarker(IResource file, int lineNumber, String errorDesc, int severity, String errorVar) {
 				// Obsolete
 			}
 
+			@Override
 			public void addMarker(ProblemMarkerInfo problemMarkerInfo) {
 				errorList.add(problemMarkerInfo);
 
@@ -209,10 +212,12 @@ public class ErrorParserManagerTest extends TestCase {
 
 	public static class TestParser1 implements IErrorParser2 {
 		String last = null;
+		@Override
 		public int getProcessLineBehaviour() {
 			return KEEP_UNTRIMMED;
 		}
 
+		@Override
 		public boolean processLine(String line, ErrorParserManager eoParser) {
 			if (line.startsWith(" ") && last!=null) {
 				eoParser.generateExternalMarker(null, 1, last+line, 1, "", null);
@@ -241,10 +246,12 @@ public class ErrorParserManagerTest extends TestCase {
 	}
 	
 	public static class TestParser2 implements IErrorParser2 {
+		@Override
 		public int getProcessLineBehaviour() {
 			return KEEP_LONGLINES;
 		}
 
+		@Override
 		public boolean processLine(String line, ErrorParserManager eoParser) {
 			if (line.startsWith("errorT: ")) {
 				eoParser.generateExternalMarker(null, 1, line, 1, "", null);
@@ -273,10 +280,12 @@ public class ErrorParserManagerTest extends TestCase {
 		assertEquals("a la la 99",end);
 	}
 	public static class TestParser3 implements IErrorParser2 {
+		@Override
 		public int getProcessLineBehaviour() {
 			return KEEP_LONGLINES | KEEP_UNTRIMMED;
 		}
 
+		@Override
 		public boolean processLine(String line, ErrorParserManager eoParser) {
 			if (line.startsWith("errorT: ")) {
 				eoParser.generateExternalMarker(null, 1, line, 1, "", null);
@@ -305,4 +314,25 @@ public class ErrorParserManagerTest extends TestCase {
 		assertEquals(" la la 99 ",end);
 	}
 
+	public static class TestParser4 implements IErrorParser {
+		@Override
+		public boolean processLine(String line, ErrorParserManager eoParser) {
+			ProblemMarkerInfo problemMarkerInfo = new ProblemMarkerInfo(null, 0, "Workspace level marker", IMarker.SEVERITY_INFO, null);
+			eoParser.addProblemMarker(problemMarkerInfo);
+			return true;
+		}
+	}
+	public void testWorkspaceLevelError() throws IOException {
+		String id = addErrorParserExtension("test4", TestParser4.class);
+		epManager = new ErrorParserManager(null, markerGenerator, new String[] { id });
+		
+		StringBuffer buf = new StringBuffer("errorT: ");
+		output(buf.toString()+"\n");
+		end();
+		assertEquals(1, errorList.size());
+		ProblemMarkerInfo problemMarkerInfo = errorList.get(0);
+		assertEquals("Workspace level marker", problemMarkerInfo.description);
+		assertTrue(problemMarkerInfo.file instanceof IWorkspaceRoot);
+	}
+	
 }

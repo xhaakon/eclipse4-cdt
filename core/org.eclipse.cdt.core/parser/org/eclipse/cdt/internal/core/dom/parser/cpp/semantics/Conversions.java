@@ -684,10 +684,11 @@ public class Conversions {
 		
 		final IType uqSource= getNestedType(source, TDEF | REF | CVTYPE);
 		if (uqSource instanceof ICPPClassType) {
-			ICPPMethod[] ops = SemanticUtil.getConversionOperators((ICPPClassType) uqSource); 
-			CPPTemplates.instantiateConversionTemplates(ops, t);
-			for (final ICPPMethod op : ops) {
-				if (op != null && !(op instanceof IProblemBinding)) {
+			ICPPFunction[] ops = SemanticUtil.getConversionOperators((ICPPClassType) uqSource); 
+			ops= CPPTemplates.instantiateConversionTemplates(ops, t);
+			for (final ICPPFunction f : ops) {
+				if (f instanceof ICPPMethod && !(f instanceof IProblemBinding)) {
+					ICPPMethod op= (ICPPMethod) f;
 					if (op.isExplicit())
 						continue;
 					final IType returnType = op.getType().getReturnType();
@@ -733,12 +734,13 @@ public class Conversions {
 			c.setDeferredUDC(DeferredUDC.INIT_BY_CONVERSION);
 			return c;
 		}
-		ICPPMethod[] ops = SemanticUtil.getConversionOperators(uqSource); 
-		CPPTemplates.instantiateConversionTemplates(ops, target);
+		ICPPFunction[] ops = SemanticUtil.getConversionOperators(uqSource); 
+		ops= CPPTemplates.instantiateConversionTemplates(ops, target);
 		FunctionCost cost1= null;
 		Cost cost2= null;
-		for (final ICPPMethod op : ops) {
-			if (op != null && !(op instanceof IProblemBinding)) {
+		for (final ICPPFunction f : ops) {
+			if (f instanceof ICPPMethod && !(f instanceof IProblemBinding)) {
+				ICPPMethod op= (ICPPMethod) f;
 				final boolean isExplicitConversion= op.isExplicit();
 				if (isExplicitConversion /** && !direct **/)
 					continue;
@@ -1019,12 +1021,22 @@ public class Conversions {
 			// 4.7 integral conversion
 			// 4.8 floating point conversion
 			// 4.9 floating-integral conversion
+			final Kind tgtKind = ((IBasicType) t).getKind();
 			if (s instanceof IBasicType) {
-				if (((IBasicType) s).getKind() == Kind.eVoid) 
+				final Kind srcKind = ((IBasicType) s).getKind();
+				if (srcKind == Kind.eVoid) 
+					return false;
+				// 4.12 std::nullptr_t can be converted to bool
+				if (srcKind == Kind.eNullPtr && tgtKind != Kind.eBoolean)
+					return false;
+				// 4.10-1 a null pointer constant can be converted to std::nullptr_t
+				if (tgtKind == Kind.eNullPtr && !isNullPointerConstant(s))
 					return false;
 				
 				cost.setRank(Rank.CONVERSION);
-				cost.setCouldNarrow();
+				if (srcKind != Kind.eNullPtr && tgtKind != Kind.eNullPtr) {
+					cost.setCouldNarrow();
+				}
 				return true;
 			} 
 			if (s instanceof ICPPEnumeration && !((ICPPEnumeration) s).isScoped()) {
@@ -1034,7 +1046,6 @@ public class Conversions {
 				return true;
 			} 
 			// 4.12 pointer or pointer to member type can be converted to an rvalue of type bool
-			final Kind tgtKind = ((IBasicType) t).getKind();
 			if (tgtKind == Kind.eBoolean && s instanceof IPointerType) {
 				cost.setRank(Rank.CONVERSION_PTR_BOOL);
 				return true;
@@ -1117,7 +1128,11 @@ public class Conversions {
 
 	private static boolean isNullPointerConstant(IType s) {
 		if (s instanceof CPPBasicType) {
-			IASTExpression exp = ((CPPBasicType) s).getCreatedFromExpression();
+			final CPPBasicType basicType = (CPPBasicType) s;
+			if (basicType.getKind() == Kind.eNullPtr)
+				return true;
+			
+			IASTExpression exp = basicType.getCreatedFromExpression();
 			if (exp != null) {
 				Long val= Value.create(exp, Value.MAX_RECURSION_DEPTH).numericalValue();
 				if (val != null && val == 0) {
@@ -1250,7 +1265,6 @@ public class Conversions {
 	}
 
 	private static boolean isNullPtr(IType t1) {
-		// mstodo null-ptr type
-		return false;
+		return t1 instanceof IBasicType && ((IBasicType) t1).getKind() == Kind.eNullPtr;
 	}
 }

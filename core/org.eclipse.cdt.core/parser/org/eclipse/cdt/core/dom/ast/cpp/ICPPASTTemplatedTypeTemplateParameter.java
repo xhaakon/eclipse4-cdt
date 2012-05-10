@@ -63,11 +63,13 @@ public interface ICPPASTTemplatedTypeTemplateParameter extends ICPPASTTemplatePa
 	/**
 	 * @since 5.1
 	 */
+	@Override
 	public ICPPASTTemplatedTypeTemplateParameter copy();
 
 	/**
 	 * @since 5.3
 	 */
+	@Override
 	public ICPPASTTemplatedTypeTemplateParameter copy(CopyStyle style);
 
 	/**
@@ -91,6 +93,12 @@ public interface ICPPASTTemplatedTypeTemplateParameter extends ICPPASTTemplatePa
 	 * Set default value for the template template parameter.
 	 */
 	public void setDefaultValue(IASTExpression expression);
+
+	/**
+	 * Returns the scope that contains the template parameters of this template-template parameter.
+	 * @since 5.4
+	 */
+	public ICPPScope asScope();
 
 	/**
 	 * @deprecated Use {@link #addTemplateParameter(ICPPASTTemplateParameter)};

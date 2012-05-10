@@ -15,6 +15,7 @@ package org.eclipse.cdt.core.resources;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CCorePreferenceConstants;
@@ -49,6 +50,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 		super();
 	}
 
+	@Override
 	public void addMarker(IResource file, int lineNumber, String errorDesc, int severity, String errorVar) {
 		ProblemMarkerInfo problemMarkerInfo = new ProblemMarkerInfo(file, lineNumber, errorDesc, severity, errorVar, null);
 		addMarker(problemMarkerInfo);
@@ -57,6 +59,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 		/*
 		 * callback from Output Parser
 		 */
+	@Override
 	public void addMarker(ProblemMarkerInfo problemMarkerInfo) {
 		try {
 			IResource markerResource = problemMarkerInfo.file ;
@@ -84,8 +87,12 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 					}
 				}
 			}
-			
-			IMarker marker = markerResource.createMarker(ICModelMarker.C_MODEL_PROBLEM_MARKER);
+
+			String type = problemMarkerInfo.getType();
+			if (type == null)
+				type = ICModelMarker.C_MODEL_PROBLEM_MARKER;
+
+			IMarker marker = markerResource.createMarker(type);
 			marker.setAttribute(IMarker.MESSAGE, problemMarkerInfo.description);
 			marker.setAttribute(IMarker.SEVERITY, mapMarkerSeverity(problemMarkerInfo.severity));
 			marker.setAttribute(IMarker.LINE_NUMBER, problemMarkerInfo.lineNumber);
@@ -104,6 +111,14 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 				}
 			} else if (problemMarkerInfo.lineNumber==0){
 				marker.setAttribute(IMarker.LOCATION, " "); //$NON-NLS-1$
+			}
+
+			// Add all other client defined attributes.
+			Map<String, String> attributes = problemMarkerInfo.getAttributes();
+			if (attributes != null){
+				for (Entry<String, String> entry : attributes.entrySet()) {
+					marker.setAttribute(entry.getKey(), entry.getValue());
+				}
 			}
 		}
 		catch (CoreException e) {
@@ -124,19 +139,19 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 		}
 		return IMarker.SEVERITY_ERROR;
 	}
-	
+
 	public static boolean needAllConfigBuild() {
 		return prefs.getBoolean(CCorePreferenceConstants.PREF_BUILD_ALL_CONFIGS);
 	}
-	
+
 	public static void setAllConfigBuild(boolean enable) {
-		prefs.setValue(CCorePreferenceConstants.PREF_BUILD_ALL_CONFIGS, enable);		
+		prefs.setValue(CCorePreferenceConstants.PREF_BUILD_ALL_CONFIGS, enable);
 	}
-	
+
 	/**
 	 * Preference for building configurations only when there are resource changes within Eclipse or
 	 * when there are changes in its references.
-	 * @return true if configurations will be build when project resource changes within Eclipse 
+	 * @return true if configurations will be build when project resource changes within Eclipse
 	 *         false otherwise
 	 * @since 5.1
 	 */
@@ -144,7 +159,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 		//bug 219337
 		return prefs.getBoolean(CCorePreferenceConstants.PREF_BUILD_CONFIGS_RESOURCE_CHANGES);
 	}
-	
+
 	/**
 	 * Preference for building configurations only when there are resource changes within Eclipse or
 	 * when there are changes in its references.
@@ -152,9 +167,9 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 	 * @since 5.1
 	 */
 	public static void setBuildConfigResourceChanges(boolean enable) {
-		prefs.setValue(CCorePreferenceConstants.PREF_BUILD_CONFIGS_RESOURCE_CHANGES, enable);		
+		prefs.setValue(CCorePreferenceConstants.PREF_BUILD_CONFIGS_RESOURCE_CHANGES, enable);
 	}
-	
+
 	@SuppressWarnings("nls")
 	private static String kindToString(int kind) {
 		return (kind==IncrementalProjectBuilder.AUTO_BUILD ? "AUTO_BUILD"
@@ -163,17 +178,17 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 				: kind==IncrementalProjectBuilder.INCREMENTAL_BUILD ? "INCREMENTAL_BUILD"
 				: "[unknown kind]")+"="+kind;
 	}
-	
+
 	@SuppressWarnings("nls")
 	private String cfgIdToNames(String strIds) {
 		IProject project = getProject();
 		ICProjectDescription prjDesc = CoreModel.getDefault().getProjectDescription(project, false);
 		if (prjDesc==null)
 			return strIds;
-		
+
 		if (strIds==null)
 			return "Active=" + prjDesc.getActiveConfiguration().getName();
-		
+
 		String[] ids = strIds.split("\\|");
 		String names="";
 		for (String id : ids) {
@@ -183,7 +198,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 				name = cfgDesc.getName();
 			else
 				name = id;
-			
+
 			if (names.length()>0)
 				names=names+",";
 			names = names + name;
@@ -195,7 +210,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 
 	/**
 	 * For debugging purpose only. Prints events on the debug console.
-	 * 
+	 *
 	 * @since 5.2
 	 */
 	@SuppressWarnings("nls")
@@ -210,7 +225,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 				);
 		}
 	}
-	
+
 	@Override
 	// This method is overridden with no purpose but to track events in debug mode
 	protected void clean(IProgressMonitor monitor) throws CoreException {

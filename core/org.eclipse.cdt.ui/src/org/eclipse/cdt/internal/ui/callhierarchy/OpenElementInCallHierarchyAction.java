@@ -6,9 +6,8 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.ui.callhierarchy;
 
 import org.eclipse.jface.action.IAction;
@@ -31,7 +30,6 @@ import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.internal.ui.browser.opentype.ElementSelectionDialog;
 
 public class OpenElementInCallHierarchyAction implements IWorkbenchWindowActionDelegate {
-
 	private static final int[] VISIBLE_TYPES = { 
 		ICElement.C_FUNCTION, ICElement.C_METHOD, ICElement.C_VARIABLE, ICElement.C_ENUMERATOR,
 		ICElement.C_FUNCTION_DECLARATION, ICElement.C_METHOD_DECLARATION, ICElement.C_VARIABLE_DECLARATION };
@@ -41,6 +39,7 @@ public class OpenElementInCallHierarchyAction implements IWorkbenchWindowActionD
 	public OpenElementInCallHierarchyAction() {
 	}
 
+	@Override
 	public void run(IAction action) {
 		ElementSelectionDialog dialog = new ElementSelectionDialog(getShell());
 		configureDialog(dialog);
@@ -59,10 +58,10 @@ public class OpenElementInCallHierarchyAction implements IWorkbenchWindowActionD
 		}
 		if (elements == null || elements.length == 0) {
 			String title = CHMessages.OpenElementInCallHierarchyAction_errorDlgTitle;
-			String message = NLS.bind(CHMessages.OpenElementInCallHierarchyAction_errorNoDefinition, info.getQualifiedTypeName().toString());
+			String message = NLS.bind(CHMessages.OpenElementInCallHierarchyAction_errorNoDefinition,
+					info.getQualifiedTypeName().toString());
 			MessageDialog.openError(getShell(), title, message);
-		} 
-		else {
+		}  else {
 			CallHierarchyUI.open(fWorkbenchWindow, elements[0]);
 		}
 	}
@@ -95,14 +94,17 @@ public class OpenElementInCallHierarchyAction implements IWorkbenchWindowActionD
 		return fWorkbenchWindow.getShell();
 	}
 
+	@Override
 	public void dispose() {
 		fWorkbenchWindow= null;
 	}
 	
+	@Override
 	public void init(IWorkbenchWindow window) {
 		fWorkbenchWindow= window;
 	}
 	
+	@Override
 	public void selectionChanged(IAction action, ISelection selection) {
 	}
 }

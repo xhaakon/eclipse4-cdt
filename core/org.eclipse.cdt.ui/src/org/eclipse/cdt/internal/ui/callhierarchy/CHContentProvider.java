@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2009 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.ui.callhierarchy;
 
@@ -23,6 +24,7 @@ import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexFile;
+import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.index.IIndexName;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICElement;
@@ -42,7 +44,6 @@ import org.eclipse.cdt.internal.ui.viewsupport.WorkingSetFilterUI;
  * This is the content provider for the call hierarchy.
  */
 public class CHContentProvider extends AsyncTreeContentProvider {
-
 	private static final IProgressMonitor NPM = new NullProgressMonitor();
 	private boolean fComputeReferencedBy = true;
 	private WorkingSetFilterUI fFilter;
@@ -79,13 +80,12 @@ public class CHContentProvider extends AsyncTreeContentProvider {
 				if (node.isInitializer()) {
 					return NO_CHILDREN;
 				}
-			}
-			else if (node.isVariableOrEnumerator() || node.isMacro()) { 
+			} else if (node.isVariableOrEnumerator() || node.isMacro()) { 
 				return NO_CHILDREN;
 			}
 			
 		}
-		// allow for async computation
+		// Allow for async computation
 		return null;
 	}
 
@@ -112,21 +112,22 @@ public class CHContentProvider extends AsyncTreeContentProvider {
 	}
 	
 	private Object[] asyncComputeRoot(final ICElement input) throws CoreException, InterruptedException {
-		IIndex index= CCorePlugin.getIndexManager().getIndex(input.getCProject());
+		IIndex index= CCorePlugin.getIndexManager().getIndex(input.getCProject(), CallHierarchyUI.INDEX_SEARCH_OPTION);
 		index.acquireReadLock();
 		try {
 			ICElement element= input;
 			if (!IndexUI.isIndexed(index, input)) {
 				getDisplay().asyncExec(new Runnable() {
+					@Override
 					public void run() {
 						fView.reportNotIndexed(input);
 					}
 				});
-			} 
-			else {
+			} else {
 				element= IndexUI.attemptConvertionToHandle(index, input);
 				final ICElement finalElement= element;
 				getDisplay().asyncExec(new Runnable() {
+					@Override
 					public void run() {
 						fView.reportInputReplacement(input, finalElement);
 					}
@@ -146,32 +147,29 @@ public class CHContentProvider extends AsyncTreeContentProvider {
 				}
 			}
 			return new Object[] { new CHNode(null, tu, 0, element, -1) };
-		}
-		finally {
+		} finally {
 			index.releaseReadLock();
 		}
 	}
 
 	private Object[] asyncronouslyComputeReferencedBy(CHNode parent) throws CoreException, InterruptedException {
 		ICProject[] scope= CoreModel.getDefault().getCModel().getCProjects();
-		IIndex index= CCorePlugin.getIndexManager().getIndex(scope);
+		IIndex index= CCorePlugin.getIndexManager().getIndex(scope, IIndexManager.ADD_EXTENSION_FRAGMENTS_CALL_HIERARCHY);
 		index.acquireReadLock();
 		try {
 			return CHQueries.findCalledBy(this, parent, index, NPM);
-		}
-		finally {
+		} finally {
 			index.releaseReadLock();
 		}
 	}
 
 	private Object[] asyncronouslyComputeRefersTo(CHNode parent) throws CoreException, InterruptedException {
 		ICProject[] scope= CoreModel.getDefault().getCModel().getCProjects();
-		IIndex index= CCorePlugin.getIndexManager().getIndex(scope);
+		IIndex index= CCorePlugin.getIndexManager().getIndex(scope, IIndexManager.ADD_EXTENSION_FRAGMENTS_CALL_HIERARCHY);
 		index.acquireReadLock();
 		try {
 			return CHQueries.findCalls(this, parent, index, NPM);
-		}
-		finally {
+		} finally {
 			index.releaseReadLock();
 		}
 	}

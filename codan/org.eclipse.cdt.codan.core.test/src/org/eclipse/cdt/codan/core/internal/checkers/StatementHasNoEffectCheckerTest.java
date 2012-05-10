@@ -94,20 +94,19 @@ public class StatementHasNoEffectCheckerTest extends CheckerTestCase {
 		checkNoErrors();
 	}
 
-	/* first file */
 	// main() {
 	// int a;
 	// +a; // error here on line 3
 	// }
-	/* second file */
+
 	// foo() {
 	// int a;
 	//
 	// +a; // error here on line 4
 	// }
-	/* this test is using two files */
 	public void test2FilesUnaryExpression() throws IOException {
-		StringBuffer[] code = getContents(2);
+		/* This test is using two files */
+		CharSequence[] code = getContents(2);
 		File f1 = loadcode(code[0].toString());
 		File f2 = loadcode(code[1].toString());
 		runOnProject();

@@ -46,11 +46,10 @@ import org.eclipse.cdt.core.model.ICProject;
 
 import org.eclipse.cdt.internal.core.dom.rewrite.astwriter.ContainerNode;
 
-import org.eclipse.cdt.internal.ui.refactoring.CRefactoring2;
-import org.eclipse.cdt.internal.ui.refactoring.AddDeclarationNodeToClassChange;
+import org.eclipse.cdt.internal.ui.refactoring.CRefactoring;
+import org.eclipse.cdt.internal.ui.refactoring.ClassMemberInserter;
 import org.eclipse.cdt.internal.ui.refactoring.Container;
 import org.eclipse.cdt.internal.ui.refactoring.ModificationCollector;
-import org.eclipse.cdt.internal.ui.refactoring.RefactoringASTCache;
 import org.eclipse.cdt.internal.ui.refactoring.implementmethod.InsertLocation;
 import org.eclipse.cdt.internal.ui.refactoring.implementmethod.MethodDefinitionInsertLocationFinder;
 import org.eclipse.cdt.internal.ui.refactoring.utils.Checks;
@@ -60,7 +59,7 @@ import org.eclipse.cdt.internal.ui.refactoring.utils.VisibilityEnum;
 /**
  * @author Thomas Corbat
  */
-public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
+public class GenerateGettersAndSettersRefactoring extends CRefactoring {
 
 	private final class CompositeTypeSpecFinder extends ASTVisitor {
 		private final int start;
@@ -93,8 +92,8 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 	private InsertLocation definitionInsertLocation;	
 	
 	public GenerateGettersAndSettersRefactoring(ICElement element, ISelection selection,
-			ICProject project, RefactoringASTCache astCache) {
-		super(element, selection, project, astCache);
+			ICProject project) {
+		super(element, selection, project);
 		context = new GetterSetterContext();
 	}
 	
@@ -120,16 +119,16 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor pm,
 			CheckConditionsContext checkContext) throws CoreException, OperationCanceledException {
-		RefactoringStatus result = new RefactoringStatus();
+		RefactoringStatus status = new RefactoringStatus();
 		if (context.isDefinitionSeparate()) {
 			findDefinitionInsertLocation(pm);
 			if (definitionInsertLocation == null ||
 					definitionInsertLocation.getTranslationUnit() == null) {
-				result.addInfo(Messages.GenerateGettersAndSettersRefactoring_NoImplFile);
+				status.addInfo(Messages.GenerateGettersAndSettersRefactoring_NoImplFile);
 			}
 		}
 		Checks.addModifiedFilesToChecker(getAllFilesToModify(), checkContext);
-		return result;
+		return status;
 	}
 
 	private IFile[] getAllFilesToModify() {
@@ -148,7 +147,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 	}
 
 	private void initRefactoring(IProgressMonitor pm) throws OperationCanceledException, CoreException {
-		IASTTranslationUnit ast = astCache.getAST(tu, null);
+		IASTTranslationUnit ast = getAST(tu, null);
 		context.selectedName = getSelectedName(ast);
 		IASTCompositeTypeSpecifier compositeTypeSpecifier = null;
 		if (context.selectedName != null) {
@@ -173,7 +172,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 
 	private IASTCompositeTypeSpecifier getCompositeTypeSpecifier(IASTName selectedName) {
 		IASTNode node = selectedName;
-		while(node != null && !(node instanceof IASTCompositeTypeSpecifier)) {
+		while (node != null && !(node instanceof IASTCompositeTypeSpecifier)) {
 			node = node.getParent();
 		}
 		return (IASTCompositeTypeSpecifier) node;
@@ -181,7 +180,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 
 	private IASTName getSelectedName(IASTTranslationUnit ast) {
 		List<IASTName> names = findAllMarkedNames(ast);
-		if (names.size() < 1) {
+		if (names.isEmpty()) {
 			return null;
 		}
 		return names.get(names.size() - 1);
@@ -226,7 +225,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 	}
 
 	@Override
-	protected void collectModifications(IProgressMonitor pm,ModificationCollector collector)
+	protected void collectModifications(IProgressMonitor pm, ModificationCollector collector)
 			throws CoreException, OperationCanceledException {
 		List<IASTNode> getterAndSetters = new ArrayList<IASTNode>();
 		List<IASTFunctionDefinition> definitions = new ArrayList<IASTFunctionDefinition>();
@@ -249,7 +248,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 		ICPPASTCompositeTypeSpecifier classDefinition =
 				(ICPPASTCompositeTypeSpecifier) context.existingFields.get(context.existingFields.size() - 1).getParent();
 
-		AddDeclarationNodeToClassChange.createChange(classDefinition, VisibilityEnum.v_public,
+		ClassMemberInserter.createChange(classDefinition, VisibilityEnum.v_public,
 				getterAndSetters, false, collector);
 	}
 
@@ -279,7 +278,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 		IASTSimpleDeclaration decl = context.existingFields.get(0);
 		MethodDefinitionInsertLocationFinder locationFinder = new MethodDefinitionInsertLocationFinder();
 		InsertLocation location = locationFinder.find(tu, decl.getFileLocation(), decl.getParent(),
-				astCache, pm);
+				refactoringContext, pm);
 
 		if (location.getFile() == null || NodeHelper.isContainedInTemplateDeclaration(decl)) {
 			location.setNodeToInsertAfter(NodeHelper.findTopLevelParent(decl), tu);
@@ -290,7 +289,7 @@ public class GenerateGettersAndSettersRefactoring extends CRefactoring2 {
 
 	@Override
 	protected RefactoringDescriptor getRefactoringDescriptor() {
-		// TODO egraf add Descriptor
+		// TODO egraf Add descriptor
 		return null;
 	}	
 }

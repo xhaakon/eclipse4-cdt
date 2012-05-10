@@ -27,7 +27,8 @@ public interface IIndexFragmentBinding extends IIndexBinding {
 	/**
 	 * Returns the linkage the binding belongs to.
 	 */
-	ILinkage getLinkage() throws CoreException;
+	@Override
+	ILinkage getLinkage();
 	
 	/**
      * Returns whether this binding has any definitions associated with it
@@ -49,12 +50,14 @@ public interface IIndexFragmentBinding extends IIndexBinding {
 	/**
 	 * Returns the scope that contains this binding, or <code>null</code> for bindings in global scope.
 	 */
+	@Override
 	IIndexScope getScope();
 	
 	/**
 	 * {@inheritDoc}
 	 * @since 5.1
 	 */
+	@Override
 	IIndexFragmentBinding getOwner();
 
 	/**

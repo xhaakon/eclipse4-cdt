@@ -6,11 +6,11 @@
 	<parent>
 		<groupId>org.eclipse.cdt</groupId>
 		<artifactId>cdt-parent</artifactId>
-		<version>8.0.2-SNAPSHOT</version>
+		<version>8.1.0-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
-	<version>5.1.1-SNAPSHOT</version>
+	<version>5.2.0-SNAPSHOT</version>
 	<artifactId>org.eclipse.cdt.doc.user</artifactId>
 	<packaging>eclipse-plugin</packaging>
 
@@ -32,10 +32,9 @@
 				</executions>
 			</plugin>
 			<plugin>
-				<!-- Change to groupId org.eclipse.tycho.extra after upgrade to Tycho 0.14 -->
-				<groupId>com.google.code.tycho-eclipserun-plugin</groupId>
+				<groupId>org.eclipse.tycho.extras</groupId>
 				<artifactId>tycho-eclipserun-plugin</artifactId>
-				<version>${tycho-version}</version>
+				<version>${tycho-extras-version}</version>
 				<configuration>
 					<appArgLine>-application org.eclipse.ant.core.antRunner -buildfile customBuildCallbacks.xml build.index</appArgLine>
 					<dependencies>
@@ -45,6 +44,10 @@
 						</dependency>
 						<dependency>
 							<artifactId>org.eclipse.help.base</artifactId>
+							<type>eclipse-plugin</type>
+						</dependency>
+						<dependency>
+							<artifactId>org.eclipse.ant.core</artifactId>
 							<type>eclipse-plugin</type>
 						</dependency>
 					</dependencies>

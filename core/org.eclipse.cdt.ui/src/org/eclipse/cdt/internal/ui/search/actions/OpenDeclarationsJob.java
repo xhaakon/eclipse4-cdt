@@ -1,13 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2009, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
- *	  Sergey Prigogin (Google)
+ *     Markus Schorn - initial API and implementation
+ *	   Sergey Prigogin (Google)
 ******************************************************************************/
 package org.eclipse.cdt.internal.ui.search.actions;
 
@@ -98,7 +98,6 @@ import org.eclipse.cdt.internal.ui.viewsupport.CElementLabels;
 import org.eclipse.cdt.internal.ui.viewsupport.IndexUI;
 
 class OpenDeclarationsJob extends Job implements ASTRunnable {
-
 	private enum NameKind { REFERENCE, DECLARATION, USING_DECL, DEFINITION }
 
 	private final SelectionParseAction fAction;
@@ -134,7 +133,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 
 		fMonitor= monitor;
 		fIndex= CCorePlugin.getIndexManager().getIndex(fTranslationUnit.getCProject(),
-				IIndexManager.ADD_DEPENDENCIES | IIndexManager.ADD_DEPENDENT);
+				IIndexManager.ADD_DEPENDENCIES | IIndexManager.ADD_DEPENDENT | IIndexManager.ADD_EXTENSION_FRAGMENTS_NAVIGATION);
 
 		try {
 			fIndex.acquireReadLock();
@@ -149,6 +148,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 		}
 	}
 
+	@Override
 	public IStatus runOnAST(ILanguage lang, IASTTranslationUnit ast) throws CoreException {
 		if (ast == null) {
 			return Status.OK_STATUS;
@@ -327,7 +327,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 			if (name.isDefinition())
 				declNames[i]= null;
 		}
-		declNames= (IName[]) ArrayUtil.removeNulls(IName.class, declNames);
+		declNames= ArrayUtil.removeNulls(IName.class, declNames);
 		if (declNames.length == 0) {
 			declNames= index.findNames(binding, IIndex.FIND_DECLARATIONS | IIndex.SEARCH_ACROSS_LANGUAGE_BOUNDARIES);
 		}
@@ -484,6 +484,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 		}
 		
 		runInUIThread(new Runnable() {
+			@Override
 			public void run() {
 				ISourceReference target= null;
 				if (uniqueElements.size() == 1) {
@@ -561,6 +562,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 		final int length = fileloc.getNodeLength();
 
 		runInUIThread(new Runnable() {
+			@Override
 			public void run() {
 				try {
 					fAction.open(path, offset, length);
@@ -588,6 +590,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 		if (name != null) {
 			final IPath path = new Path(name);
 			runInUIThread(new Runnable() {
+				@Override
 				public void run() {
 					try {
 						fAction.open(path, 0, 0);
@@ -659,7 +662,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 								names[i] = null;
 							}
 						}
-						names = (IName[]) ArrayUtil.removeNulls(IName.class, names);
+						names = ArrayUtil.removeNulls(IName.class, names);
 						convertToCElements(project, fIndex, names, elems);
 					}
 					// In case we did not find anything, consider the secondary bindings.

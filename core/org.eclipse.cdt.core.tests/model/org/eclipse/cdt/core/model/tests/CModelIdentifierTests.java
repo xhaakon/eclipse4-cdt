@@ -36,8 +36,8 @@ import org.eclipse.core.runtime.Path;
 /**
  * Tests for CModel identifier API.
  * 
- * @see ICElement#getHandleIdentier()
- * @see CoreModel.create(String)
+ * @see ICElement#getHandleIdentifier()
+ * @see CoreModel#create(String)
  *
  * @since 5.0
  */
@@ -50,6 +50,7 @@ public class CModelIdentifierTests extends BaseTestCase {
 	private ICProject fCProject;
 	private IFile fHeaderFile;
 
+	@Override
 	protected void setUp() throws Exception {
 		// reusing project setup from CModelElementsTests
 		NullProgressMonitor monitor= new NullProgressMonitor();
@@ -69,6 +70,7 @@ public class CModelIdentifierTests extends BaseTestCase {
 		CCorePlugin.getIndexManager().joinIndexer(10000, new NullProgressMonitor());
 	}
 
+	@Override
 	protected void tearDown() {
 		CProjectHelper.delete(fCProject);
 	}	
@@ -91,6 +93,7 @@ public class CModelIdentifierTests extends BaseTestCase {
 		final List elements= new ArrayList();
 		final List identifiers= new ArrayList();
 		ICElementVisitor visitor= new ICElementVisitor() {
+			@Override
 			public boolean visit(ICElement element) throws CoreException {
 				elements.add(element);
 				identifiers.add(element.getHandleIdentifier());
@@ -105,7 +108,7 @@ public class CModelIdentifierTests extends BaseTestCase {
 			String identifier= (String) identifiers.get(i);
 			assertNotNull("Could not create identifier for element: "+ expected, identifier);
 			ICElement actual= CoreModel.create(identifier);
-			assertNotNull("Cannot create element '" + expected + "' from identifier: "+identifier, actual);
+			assertNotNull("Cannot create element '" + expected + "' from identifier: " + identifier, actual);
 			assertEquals(expected.getElementName(), actual.getElementName());
 			assertEquals(expected.getElementType(), actual.getElementType());
 			assertEquals(expected, actual);

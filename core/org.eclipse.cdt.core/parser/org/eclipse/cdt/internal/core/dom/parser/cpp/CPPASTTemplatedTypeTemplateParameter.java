@@ -17,6 +17,7 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplatedTypeTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPScope;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
@@ -31,6 +32,7 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
     private boolean fIsParameterPack;
     private IASTName fName;
     private IASTExpression fDefaultValue;
+	private CPPTemplateTemplateParameterScope fScope;
 
     public CPPASTTemplatedTypeTemplateParameter() {
 	}
@@ -40,10 +42,12 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
 		setDefaultValue(defaultValue);
 	}
 	
+	@Override
 	public CPPASTTemplatedTypeTemplateParameter copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 
+	@Override
 	public CPPASTTemplatedTypeTemplateParameter copy(CopyStyle style) {
 		CPPASTTemplatedTypeTemplateParameter copy = new CPPASTTemplatedTypeTemplateParameter();
 		copy.setName(fName == null ? null : fName.copy(style));
@@ -58,22 +62,25 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
 		return copy;
 	}
 
+	@Override
 	public ICPPASTTemplateParameter[] getTemplateParameters() {
 		if (fNestedParameters == null)
 			return ICPPASTTemplateParameter.EMPTY_TEMPLATEPARAMETER_ARRAY;
-		fNestedParameters = (ICPPASTTemplateParameter[]) ArrayUtil.trim(ICPPASTTemplateParameter.class, fNestedParameters);
+		fNestedParameters = ArrayUtil.trim(ICPPASTTemplateParameter.class, fNestedParameters);
 		return fNestedParameters;
 	}
 
+	@Override
 	@Deprecated
 	public void addTemplateParamter(ICPPASTTemplateParameter param) {
 		addTemplateParameter(param);
 	}
 
+	@Override
 	public void addTemplateParameter(ICPPASTTemplateParameter param) {
 		assertNotFrozen();
 		if (param != null) {
-			fNestedParameters = (ICPPASTTemplateParameter[]) ArrayUtil.append(ICPPASTTemplateParameter.class,
+			fNestedParameters = ArrayUtil.append(ICPPASTTemplateParameter.class,
 					fNestedParameters, param);
 			param.setParent(this);
 			param.setPropertyInParent(PARAMETER);
@@ -81,20 +88,24 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
 	}
 
 	
-    public void setIsParameterPack(boolean val) {
+    @Override
+	public void setIsParameterPack(boolean val) {
     	assertNotFrozen();
     	fIsParameterPack= val;
 	}
 
+	@Override
 	public boolean isParameterPack() {
 		return fIsParameterPack;
 	}
 
+	@Override
 	public IASTName getName() {
         return fName;
     }
 
-    public void setName(IASTName name) {
+    @Override
+	public void setName(IASTName name) {
         assertNotFrozen();
         this.fName =name;
         if (name != null) {
@@ -103,11 +114,13 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
 		}
     }
 
-    public IASTExpression getDefaultValue() {
+    @Override
+	public IASTExpression getDefaultValue() {
         return fDefaultValue;
     }
 
-    public void setDefaultValue(IASTExpression expression) {
+    @Override
+	public void setDefaultValue(IASTExpression expression) {
         assertNotFrozen();
         this.fDefaultValue = expression;
         if (expression != null) {
@@ -142,13 +155,15 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
 		return true;
     }
 
+	@Override
 	public int getRoleForName(IASTName n) {
 		if( n == fName )
 			return r_declaration;
 		return r_unclear;
 	}
 
-    public void replace(IASTNode child, IASTNode other) {
+    @Override
+	public void replace(IASTNode child, IASTNode other) {
         if( child == fDefaultValue )
         {
             other.setPropertyInParent( child.getPropertyInParent() );
@@ -156,4 +171,12 @@ public class CPPASTTemplatedTypeTemplateParameter extends ASTNode implements
             fDefaultValue  = (IASTExpression) other;
         }
     }
+
+	@Override
+	public ICPPScope asScope() {
+		if (fScope == null) {
+			fScope= new CPPTemplateTemplateParameterScope(this);
+		}
+		return fScope;
+	}
 }

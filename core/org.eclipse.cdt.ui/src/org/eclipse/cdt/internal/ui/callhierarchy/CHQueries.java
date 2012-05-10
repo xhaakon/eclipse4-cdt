@@ -6,7 +6,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.ui.callhierarchy;
 
@@ -34,7 +34,6 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.model.ext.ICElementHandle;
 
 import org.eclipse.cdt.internal.ui.viewsupport.IndexUI;
-
 
 /**
  * Access to high level queries in the index.
@@ -94,15 +93,14 @@ public class CHQueries {
 	private static void findCalledBy1(IIndex index, IBinding callee, boolean includeOrdinaryCalls,
 			ICProject project, CalledByResult result) throws CoreException {
 		findCalledBy2(index, callee, includeOrdinaryCalls, project, result);
-		List<? extends IBinding> specializations = IndexUI.findSpecializations(callee);
+		List<? extends IBinding> specializations = IndexUI.findSpecializations(index, callee);
 		for (IBinding spec : specializations) {
 			findCalledBy2(index, spec, includeOrdinaryCalls, project, result);
 		}
 	}
 
-
-	private static void findCalledBy2(IIndex index, IBinding callee, boolean includeOrdinaryCalls, ICProject project, CalledByResult result) 
-			throws CoreException {
+	private static void findCalledBy2(IIndex index, IBinding callee, boolean includeOrdinaryCalls,
+			ICProject project, CalledByResult result) throws CoreException {
 		IIndexName[] names= index.findNames(callee, IIndex.FIND_REFERENCES | IIndex.SEARCH_ACROSS_LANGUAGE_BOUNDARIES);
 		for (IIndexName rname : names) {
 			if (includeOrdinaryCalls || rname.couldBePolymorphicMethodCall()) {
@@ -130,9 +128,9 @@ public class CHQueries {
 			for (IIndexName name : refs) {
 				IBinding binding= index.findBinding(name);
 				if (CallHierarchyUI.isRelevantForCallHierarchy(binding)) {
-					for(;;) {
+					while (true) {
 						ICElement[] defs= null;
-						if (binding instanceof ICPPMethod) {
+						if (binding instanceof ICPPMethod && name.couldBePolymorphicMethodCall()) {
 							defs = findOverriders(index, (ICPPMethod) binding);
 						}
 						if (defs == null) {
@@ -154,7 +152,8 @@ public class CHQueries {
 	}
 
 	/**
-	 * Searches for overriders of method and converts them to ICElement, returns null, if there are none.
+	 * Searches for overriders of method and converts them to ICElement, returns null,
+	 * if there are none.
 	 */
 	static ICElement[] findOverriders(IIndex index, ICPPMethod binding)	throws CoreException {
 		IBinding[] virtualOverriders= ClassTypeHelper.findOverriders(index, binding);

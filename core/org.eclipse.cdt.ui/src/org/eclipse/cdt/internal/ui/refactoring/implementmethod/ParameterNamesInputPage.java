@@ -52,14 +52,15 @@ public class ParameterNamesInputPage extends UserInputWizardPage {
 	private MethodToImplementConfig config;
 	private TranslationUnitPreview translationUnitPreview;
 	private Job delayedPreviewUpdater;
-	private ImplementMethodRefactoringWizard wizard;
+	private ImplementMethodWizard wizard;
 
-	public ParameterNamesInputPage(MethodToImplementConfig config, ImplementMethodRefactoringWizard wizard) {
+	public ParameterNamesInputPage(MethodToImplementConfig config, ImplementMethodWizard wizard) {
 		super(Messages.ParameterNamesInputPage_Title);
 		this.config = config;
 		this.wizard = wizard;
 	}
 
+	@Override
 	public void createControl(Composite parent) {
 		
 		Composite superComposite = new Composite(parent, SWT.NONE);
@@ -128,7 +129,7 @@ public class ParameterNamesInputPage extends UserInputWizardPage {
 	public String createFunctionDefinitionSignature(IProgressMonitor monitor) {
 		try {
 			ModificationCollector collector = new ModificationCollector();
-			ImplementMethodRefactoring implementMethodRefactoring = (ImplementMethodRefactoring)wizard.getRefactoring();
+			ImplementMethodRefactoring implementMethodRefactoring = (ImplementMethodRefactoring) wizard.getRefactoring();
 			CCompositeChange finalChange = null;
 			// We can have multiple preview jobs. We don't
 			// want multiple jobs concurrently using the same ASTs
@@ -167,6 +168,7 @@ public class ParameterNamesInputPage extends UserInputWizardPage {
 			private void setPreviewText(final String text) {
 				if (getShell() != null && getShell().getDisplay() != null) {
 					getShell().getDisplay().asyncExec(new Runnable() {
+						@Override
 						public void run() {
 							if (translationUnitPreview.getControl() != null && !translationUnitPreview.getControl().isDisposed()) {
 								translationUnitPreview.setPreviewText(text);

@@ -528,7 +528,7 @@ public final class CIndenter {
 		StringBuilder reference= getLeadingWhitespace(offset);
 		IRegion line= fDocument.getLineInformationOfOffset(offset);
 		String string= fDocument.get(line.getOffset(), offset - line.getOffset());
-		if (string.trim().length() == 0)
+		if (string.trim().isEmpty())
 			return reference;
 		// Add additional indent
 		return createReusingIndent(reference, fPrefs.prefContinuationIndent, 0);
@@ -887,7 +887,8 @@ public final class CIndenter {
 	 */
 	public int findReferencePosition(int offset, boolean danglingElse, boolean matchBrace, boolean matchParen,
 			boolean matchCase, boolean matchAccessSpecifier) {
-		fIndent= 0; // the indentation modification
+		fIndent= 0; // The indentation modification
+		fExtraSpaces= 0;
 		fAlign= CHeuristicScanner.NOT_FOUND;
 		fPosition= offset;
 

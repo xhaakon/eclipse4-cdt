@@ -65,7 +65,7 @@ public class CodanTestCase extends BaseTestCase {
 
 	/**
 	 * Override for c++ (i.e. at least one c++ test)
-	 * 
+	 *
 	 * @return is c++ tests
 	 */
 	public boolean isCpp() {
@@ -171,9 +171,10 @@ public class CodanTestCase extends BaseTestCase {
 		return getContents(1)[0].toString();
 	}
 
-	protected StringBuffer[] getContents(int sections) {
+	protected StringBuilder[] getContents(int sections) {
 		try {
-			return TestSourceReader.getContentsForTest(getPlugin().getBundle(), getSourcePrefix(), getClass(), getName(), sections);
+			return TestSourceReader.getContentsForTest(getPlugin().getBundle(), getSourcePrefix(),
+					getClass(), getName(), sections);
 		} catch (IOException e) {
 			fail(e.getMessage());
 			return null;

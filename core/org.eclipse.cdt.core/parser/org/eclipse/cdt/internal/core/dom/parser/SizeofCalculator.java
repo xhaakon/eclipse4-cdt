@@ -34,7 +34,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPReferenceType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 
 /**
- * Calculator of in-memory size and of types.
+ * Calculator of in-memory size and alignment of types.
  */
 public class SizeofCalculator {
 	/** Size and alignment pair */
@@ -50,22 +50,22 @@ public class SizeofCalculator {
 
 	private static final SizeAndAlignment SIZE_1 = new SizeAndAlignment(1, 1);
 
-	private final SizeAndAlignment size_2;
-	private final SizeAndAlignment size_4;
-	private final SizeAndAlignment size_8;
-	private final SizeAndAlignment sizeof_pointer;
-	private final SizeAndAlignment sizeof_int;
-	private final SizeAndAlignment sizeof_long;
-	private final SizeAndAlignment sizeof_long_long;
-	private final SizeAndAlignment sizeof_short;
-	private final SizeAndAlignment sizeof_bool;
-	private final SizeAndAlignment sizeof_wchar_t;
-	private final SizeAndAlignment sizeof_float;
-	private final SizeAndAlignment sizeof_complex_float;
-	private final SizeAndAlignment sizeof_double;
-	private final SizeAndAlignment sizeof_complex_double;
-	private final SizeAndAlignment sizeof_long_double;
-	private final SizeAndAlignment sizeof_complex_long_double;
+	public final SizeAndAlignment size_2;
+	public final SizeAndAlignment size_4;
+	public final SizeAndAlignment size_8;
+	public final SizeAndAlignment sizeof_pointer;
+	public final SizeAndAlignment sizeof_int;
+	public final SizeAndAlignment sizeof_long;
+	public final SizeAndAlignment sizeof_long_long;
+	public final SizeAndAlignment sizeof_short;
+	public final SizeAndAlignment sizeof_bool;
+	public final SizeAndAlignment sizeof_wchar_t;
+	public final SizeAndAlignment sizeof_float;
+	public final SizeAndAlignment sizeof_complex_float;
+	public final SizeAndAlignment sizeof_double;
+	public final SizeAndAlignment sizeof_complex_double;
+	public final SizeAndAlignment sizeof_long_double;
+	public final SizeAndAlignment sizeof_complex_long_double;
 
 	public SizeofCalculator(IASTTranslationUnit ast) {
 		int maxAlignment = 32;
@@ -95,16 +95,16 @@ public class SizeofCalculator {
 		sizeof_bool = getSize(sizeofMacros, "__SIZEOF_BOOL__", maxAlignment); //$NON-NLS-1$
 		sizeof_wchar_t = getSize(sizeofMacros, "__SIZEOF_WCHAR_T__", maxAlignment); //$NON-NLS-1$
 		sizeof_float = getSize(sizeofMacros, "__SIZEOF_FLOAT__", maxAlignment); //$NON-NLS-1$
-		sizeof_complex_float = getDoubleSize(sizeof_float);
+		sizeof_complex_float = getSizeOfPair(sizeof_float);
 		sizeof_double = getSize(sizeofMacros, "__SIZEOF_DOUBLE__", maxAlignment); //$NON-NLS-1$
-		sizeof_complex_double = getDoubleSize(sizeof_double);
+		sizeof_complex_double = getSizeOfPair(sizeof_double);
 		sizeof_long_double = getSize(sizeofMacros, "__SIZEOF_LONG_DOUBLE__", maxAlignment); //$NON-NLS-1$
-		sizeof_complex_long_double = getDoubleSize(sizeof_long_double);
+		sizeof_complex_long_double = getSizeOfPair(sizeof_long_double);
 	}
 
 	/**
 	 * Calculates size and alignment for the given type.
-	 * @param type
+	 * @param type the type to get size and alignment for.
 	 * @return size and alignment, or <code>null</code> if could not be calculated.
 	 */
 	public SizeAndAlignment sizeAndAlignment(IType type) {
@@ -130,6 +130,14 @@ public class SizeofCalculator {
 		return null;
 	}
 
+	/**
+	 * Returns size and alignment of pointer types.
+	 * @return size and alignment of pointer types, or <code>null</code> if unknown.
+	 */
+	public SizeAndAlignment sizeAndAlignmentOfPointer() {
+		return sizeof_pointer;
+	}
+
 	private SizeAndAlignment sizeAndAlignment(IBasicType type) {
 		Kind kind = type.getKind();
 		switch (kind) {
@@ -153,6 +161,8 @@ public class SizeofCalculator {
 			return size_2;
 		case eChar32:
 			return size_4;
+		case eNullPtr:
+			return sizeAndAlignmentOfPointer();
 		default:
 			return null;
 		}
@@ -262,7 +272,7 @@ public class SizeofCalculator {
 		}
 	}
 
-	private SizeAndAlignment getDoubleSize(SizeAndAlignment sizeAndAlignment) {
+	private SizeAndAlignment getSizeOfPair(SizeAndAlignment sizeAndAlignment) {
 		return sizeAndAlignment == null ?
 				null : new SizeAndAlignment(sizeAndAlignment.size * 2, sizeAndAlignment.alignment);
 	}

@@ -87,6 +87,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		return (ICPPClassType) super.getSpecializedBinding();
 	}
 	
+	@Override
 	public IBinding specializeMember(IBinding original) {	
 		if (specializationMap == null) {
 			final Long key= record+PDOMCPPLinkage.CACHE_INSTANCE_SCOPE;
@@ -126,10 +127,11 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		return newSpec;
 	}
 
+	@Override
 	public ICPPClassScope getCompositeScope() {
 		if (fScope == null) {
 			try {
-				if (hasDefinition()) {
+				if (hasOwnScope()) {
 					fScope= new PDOMCPPClassScope(this);
 					return fScope;
 				} 
@@ -138,6 +140,10 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 			fScope= new PDOMCPPClassSpecializationScope(this);
 		}
 		return fScope;
+	}
+
+	protected boolean hasOwnScope() throws CoreException {
+		return hasDefinition();
 	}
 
 	public PDOMCPPBase getFirstBase() throws CoreException {
@@ -181,6 +187,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 	}
 	
 	// implementation of class type
+	@Override
 	public ICPPBase[] getBases() {
 		IScope scope= getCompositeScope();
 		if (scope instanceof ICPPClassSpecializationScope) {
@@ -207,6 +214,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		return ICPPBase.EMPTY_BASE_ARRAY;
 	}
 	
+	@Override
 	public ICPPConstructor[] getConstructors() {
 		IScope scope= getCompositeScope();
 		if (scope instanceof ICPPClassSpecializationScope) {
@@ -222,6 +230,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		}
 	}
 
+	@Override
 	public ICPPMethod[] getDeclaredMethods() {
 		IScope scope= getCompositeScope();
 		if (scope instanceof ICPPClassSpecializationScope) {
@@ -237,6 +246,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		}
 	}
 
+	@Override
 	public ICPPField[] getDeclaredFields() {
 		IScope scope= getCompositeScope();
 		if (scope instanceof ICPPClassSpecializationScope) {
@@ -252,6 +262,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		}
 	}
 	
+	@Override
 	public ICPPClassType[] getNestedClasses() {
 		IScope scope= getCompositeScope();
 		if (scope instanceof ICPPClassSpecializationScope) {
@@ -267,31 +278,38 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		}
 	}
 
+	@Override
 	public IBinding[] getFriends() {
 		// not yet supported.
 		return IBinding.EMPTY_BINDING_ARRAY;
 	}
 
+	@Override
 	public ICPPMethod[] getMethods() { 
 		return ClassTypeHelper.getMethods(this);
 	}
 
+	@Override
 	public ICPPMethod[] getAllDeclaredMethods() {
 		return ClassTypeHelper.getAllDeclaredMethods(this);
 	}
 	
+	@Override
 	public IField[] getFields() {
 		return ClassTypeHelper.getFields(this);
 	}
 	
+	@Override
 	public IField findField(String name) {
 		return ClassTypeHelper.findField(this, name);
 	}
 
+	@Override
 	public int getKey() {
 		return getSpecializedBinding().getKey();
 	}
 
+	@Override
 	public boolean isSameType(IType type) {
 		if (type == this)
 			return true;
@@ -328,6 +346,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		list.addMember(member);
 	}
 
+	@Override
 	public void acceptUncached(IPDOMVisitor visitor) throws CoreException {
 		PDOMNodeLinkedList list = new PDOMNodeLinkedList(getLinkage(), record + MEMBERLIST);
 		list.accept(visitor);
@@ -338,6 +357,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		PDOMCPPClassScope.acceptViaCache(this, visitor, false);
 	}
 	
+	@Override
 	public boolean isAnonymous() {
 		return false;
 	}

@@ -33,6 +33,7 @@ import org.eclipse.cdt.internal.ui.CPluginImages;
  * renders the label using the qualifier (gray) color.
  */
 public class ExcludedFileDecorator implements ILightweightLabelDecorator {
+	@Override
 	public void decorate(Object element, IDecoration decoration) {
 		if (element instanceof IFile || element instanceof IFolder) {
 			IResource resource = (IResource) element;
@@ -57,17 +58,21 @@ public class ExcludedFileDecorator implements ILightweightLabelDecorator {
 		}
 	}
 
+	@Override
 	public void addListener(ILabelProviderListener listener) {
 		// We don't track state changes
 	}
 
+	@Override
 	public void dispose() {
 	}
 
+	@Override
 	public boolean isLabelProperty(Object element, String property) {
 		return false;
 	}
 
+	@Override
 	public void removeListener(ILabelProviderListener listener) {
 		// We don't track state changes
 	}

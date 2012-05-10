@@ -21,6 +21,7 @@ import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.commands.ActionHandler;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.util.LocalSelectionTransfer;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -46,6 +47,8 @@ import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionContext;
 import org.eclipse.ui.actions.ActionGroup;
+import org.eclipse.ui.handlers.CollapseAllHandler;
+import org.eclipse.ui.handlers.IHandlerService;
 import org.eclipse.ui.navigator.resources.ProjectExplorer;
 import org.eclipse.ui.part.IPageSite;
 import org.eclipse.ui.part.IShowInSource;
@@ -71,6 +74,7 @@ import org.eclipse.cdt.internal.ui.ICHelpContextIds;
 import org.eclipse.cdt.internal.ui.IContextMenuConstants;
 import org.eclipse.cdt.internal.ui.actions.AbstractToggleLinkingAction;
 import org.eclipse.cdt.internal.ui.actions.ActionMessages;
+import org.eclipse.cdt.internal.ui.actions.CollapseAllAction;
 import org.eclipse.cdt.internal.ui.cview.SelectionTransferDragAdapter;
 import org.eclipse.cdt.internal.ui.cview.SelectionTransferDropAdapter;
 import org.eclipse.cdt.internal.ui.dnd.CDTViewerDragAdapter;
@@ -294,6 +298,10 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 	 * @since 3.0
 	 */
 	private ActionGroup fCustomFiltersActionGroup;
+	/**
+	 * @since 5.4
+	 */
+	private CollapseAllAction fCollapseAllAction;
 
 	/**
 	 * Create a new outline page for the given editor.
@@ -315,6 +323,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 	/*
 	 * @see org.eclipse.core.runtime.IAdaptable#getAdapter(java.lang.Class)
 	 */
+	@Override
 	@SuppressWarnings("rawtypes")
 	public Object getAdapter(Class key) {
 		if (key == IShowInSource.class) {
@@ -322,6 +331,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		}
 		if (key == IShowInTargetList.class) {
 			return new IShowInTargetList() {
+				@Override
 				public String[] getShowInTargetIds() {
 					return new String[] { ProjectExplorer.VIEW_ID };
 				}
@@ -340,6 +350,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 	 */
 	protected IShowInSource getShowInSource() {
 		return new IShowInSource() {
+			@Override
 			public ShowInContext getShowInContext() {
 				return new ShowInContext(
 					null,
@@ -355,6 +366,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 	 */
 	protected IShowInTarget getShowInTarget() {
 		return new IShowInTarget() {
+			@Override
 			public boolean show(ShowInContext context) {
 				ISelection sel= context.getSelection();
 				if (sel instanceof ITextSelection) {
@@ -478,6 +490,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		MenuManager manager= new MenuManager(fContextMenuId);
 		manager.setRemoveAllWhenShown(true);
 		manager.addMenuListener(new IMenuListener() {
+			@Override
 			public void menuAboutToShow(IMenuManager manager) {
 				contextMenuAboutToShow(manager);
 			}
@@ -487,6 +500,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		control.setMenu(fMenu);
 	
 		fTreeViewer.addDoubleClickListener(new IDoubleClickListener() {
+			@Override
 			public void doubleClick(DoubleClickEvent event) {
 				if (fOpenIncludeAction != null) {
 					fOpenIncludeAction.run();
@@ -510,9 +524,13 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 	
 		// Do this before setting input but after the initializations of the fields filtering
 		registerActionBars(bars);
-	
+		bars.updateActionBars();
+		
 		fTreeViewer.setInput(fInput);
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(control, ICHelpContextIds.COUTLINE_VIEW);
+		
+		IHandlerService handlerService= (IHandlerService)site.getService(IHandlerService.class);
+		handlerService.activateHandler(CollapseAllHandler.COMMAND_ID, new ActionHandler(fCollapseAllAction));
 	}
 
 	@Override
@@ -575,6 +593,8 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 	protected void registerActionBars(IActionBars actionBars) {
 		IToolBarManager toolBarManager= actionBars.getToolBarManager();
 		
+		fCollapseAllAction = new CollapseAllAction(fTreeViewer);
+		toolBarManager.add(fCollapseAllAction);
 		LexicalSortingAction action= new LexicalSortingAction(getTreeViewer());
 		toolBarManager.add(action);
 	
@@ -591,7 +611,9 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		if (fRefactoringActionGroup != null) {
 			fRefactoringActionGroup.fillActionBars(actionBars);
 		}
-	
+		if (fSelectionSearchGroup != null) {
+			fSelectionSearchGroup.fillActionBars(actionBars);
+		}
 		IMenuManager menu= actionBars.getMenuManager();
 		menu.add(new Separator("EndFilterGroup")); //$NON-NLS-1$
 		
@@ -657,6 +679,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		return null;
 	}
 
+	@Override
 	public void addSelectionChangedListener(ISelectionChangedListener listener) {
 		fSelectionChangedListeners.add(listener);
 	}
@@ -693,6 +716,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		return fTreeViewer.getControl();
 	}
 
+	@Override
 	public ISelection getSelection() {
 		if (fTreeViewer == null)
 			return StructuredSelection.EMPTY;
@@ -709,10 +733,12 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		return fTreeViewer;
 	}
 
+	@Override
 	public void removeSelectionChangedListener(ISelectionChangedListener listener) {
 		fSelectionChangedListeners.remove(listener);
 	}
 
+	@Override
 	public void selectionChanged(SelectionChangedEvent event) {
 		fireSelectionChanged(event.getSelection());
 	}
@@ -725,6 +751,7 @@ public abstract class AbstractCModelOutlinePage extends Page implements IContent
 		fTreeViewer.getControl().setFocus();
 	}
 
+	@Override
 	public void setSelection(ISelection selection) {
 		if (fTreeViewer != null) 
 			fTreeViewer.setSelection(selection);

@@ -15,7 +15,6 @@ import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IMacroBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
-import org.eclipse.core.runtime.CoreException;
 
 final class TestMacro implements IMacroBinding {
 	private String fName;
@@ -28,34 +27,42 @@ final class TestMacro implements IMacroBinding {
 		fParams= params;
 	}
 
+	@Override
 	public char[] getExpansion() {
 		return fExpansion.toCharArray();
 	}
 
+	@Override
 	public boolean isFunctionStyle() {
 		return fParams != null;
 	}
 
-	public ILinkage getLinkage() throws CoreException {
+	@Override
+	public ILinkage getLinkage() {
 		return null;
 	}
 
+	@Override
 	public String getName() {
 		return fName;
 	}
 
+	@Override
 	public char[] getNameCharArray() {
 		return fName.toCharArray();
 	}
 
+	@Override
 	public IScope getScope() throws DOMException {
 		return null;
 	}
 
+	@Override
 	public Object getAdapter(Class adapter) {
 		return null;
 	}
 
+	@Override
 	public char[][] getParameterList() {
 		if (fParams == null) {
 			return null;
@@ -67,18 +74,22 @@ final class TestMacro implements IMacroBinding {
 		return result;
 	}
 
+	@Override
 	public char[] getExpansionImage() {
 		return getExpansion();
 	}
 
+	@Override
 	public char[][] getParameterPlaceholderList() {
 		return getParameterList();
 	}
 
+	@Override
 	public boolean isDynamic() {
 		return false;
 	}
 
+	@Override
 	public IBinding getOwner() {
 		return null;
 	}

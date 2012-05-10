@@ -336,6 +336,10 @@ public class ASTTypeUtil {
 				if (needSpace) result.append(SPACE);
 				result.append(Keywords.CHAR32_T);
 				break;
+			case eNullPtr:
+				if (needSpace) result.append(SPACE);
+				result.append("std::nullptr_t"); //$NON-NLS-1$
+				break;
 			case eUnspecified:
 				break;
 			}
@@ -476,14 +480,14 @@ public class ASTTypeUtil {
 				} else {
 					// Output reference, qualifier and typedef, then stop.
 					if (ref != null) {
-						types = (IType[]) ArrayUtil.append(IType.class, types, ref);
+						types = ArrayUtil.append(IType.class, types, ref);
 						ref= null;
 					}
 					if (cvq != null) {
-						types = (IType[]) ArrayUtil.append(IType.class, types, cvq);
+						types = ArrayUtil.append(IType.class, types, cvq);
 						cvq= null;
 					}
-					types = (IType[]) ArrayUtil.append(IType.class, types, type);
+					types = ArrayUtil.append(IType.class, types, type);
 					type= null; 
 				}
 			} else {
@@ -509,14 +513,14 @@ public class ASTTypeUtil {
 					} else {
 						// no reference, no cv qualifier: output reference and cv-qualifier
 						if (ref != null) {
-							types = (IType[]) ArrayUtil.append(IType.class, types, ref);
+							types = ArrayUtil.append(IType.class, types, ref);
 							ref= null;
 						}
 						if (cvq != null) {
-							types = (IType[]) ArrayUtil.append(IType.class, types, cvq);
+							types = ArrayUtil.append(IType.class, types, cvq);
 							cvq= null;
 						}
-						types = (IType[]) ArrayUtil.append(IType.class, types, type);
+						types = ArrayUtil.append(IType.class, types, type);
 					} 
 				}
 			}

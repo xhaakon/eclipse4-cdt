@@ -63,10 +63,12 @@ class PDOMCPPClassInstance extends PDOMCPPClassSpecialization implements ICPPTem
 		return IIndexCPPBindingConstants.CPP_CLASS_INSTANCE;
 	}
 
+	@Override
 	public ICPPTemplateDefinition getTemplateDefinition() {
 		return (ICPPTemplateDefinition) getSpecializedBinding();
 	}
 		
+	@Override
 	public ICPPTemplateArgument[] getTemplateArguments() {
 		try {
 			final long rec= getPDOM().getDB().getRecPtr(record + ARGUMENTS);
@@ -77,6 +79,13 @@ class PDOMCPPClassInstance extends PDOMCPPClassSpecialization implements ICPPTem
 		}
 	}
 	
+	@Override
+	protected boolean hasOwnScope() throws CoreException {
+		// An instance with a declaration does not use the original template.
+		return hasDeclaration();
+	}
+	
+	@Override
 	public boolean isExplicitSpecialization() {
 		return !(getCompositeScope() instanceof ICPPClassSpecializationScope);
 	}
@@ -97,6 +106,7 @@ class PDOMCPPClassInstance extends PDOMCPPClassSpecialization implements ICPPTem
 		return CPPClassInstance.isSameClassInstance(this, type);
 	}
 	
+	@Override
 	@Deprecated
 	public IType[] getArguments() {
 		return CPPTemplates.getArguments(getTemplateArguments());

@@ -131,6 +131,21 @@ import org.eclipse.cdt.dsf.concurrent.Immutable;
  * -list-thread-groups --available
  * ^done,groups=[{id="19418",type="process",description="gdb.7.1 -i mi testing/a.out",user="lmckhou"},{id="19424",type="process",description="/local/lmckhou/testing/a.out",user="lmckhou"},{id="19438",type="process",description="sleep 5",user="lmckhou"}]
  * 
+ * -list-thread-groups --recurse 1
+ * ^done,groups=[{id="i2",type="process",pid="11805",executable="/home/lmckhou/Consumer",cores=["0","1"],
+ *                threads=[{id="6",target-id="Thread 0xb6516b70 (LWP 11811)",state="running",core="1"},
+ *                         {id="5",target-id="Thread 0xb6d17b70 (LWP 11810)",state="running",core="1"},
+ *                         {id="4",target-id="Thread 0xb7518b70 (LWP 11809)",
+ *                          frame={level="0",addr="0x0804850d",func="main",args=[],file="Consumer.cc",fullname="/home/lmckhou/Consumer.cc",line="5"},
+ *                          state="stopped",core="0"},
+ *                         {id="3",target-id="Thread 0xb7d19b70 (LWP 11808)",state="running",core="1"},
+ *                         {id="2",target-id="Thread 0xb7d1bb30 (LWP 11805)",state="running",core="0"}]},
+ *               {id="i1",type="process",pid="11793",executable="/home/lmckhProducer",cores=["0","1"],
+ *                threads=[{id="10",target-id="Thread 0xb6516b70 (LWP 11815)",state="running",core="0"},
+ *                         {id="8",target-id="Thread 0xb7518b70 (LWP 11813)",state="running",core="0"},
+ *                         {id="7",target-id="Thread 0xb7d19b70 (LWP 11812)",state="running",core="1"},
+ *                         {id="1",target-id="Thread 0xb7d1bb30 (LWP 11793)",state="running",core="1"}]}]
+ *
  * GDB 7.2
  * 
  * (when no inferior is running)
@@ -171,8 +186,15 @@ public class MIListThreadGroupsInfo extends MIInfo {
 		String getExecutable();
 	}
 	
+	/**
+	 * @since 4.1
+	 */
+	public interface IThreadGroupInfo2 extends IThreadGroupInfo {
+		MIThread[] getThreads();
+	}
+	
 	@Immutable
-	private static class ThreadGroupInfo implements IThreadGroupInfo {
+	private static class ThreadGroupInfo implements IThreadGroupInfo2 {
 		final String fGroupId;
 		final String fDescription;
 		final String fName;
@@ -181,9 +203,10 @@ public class MIListThreadGroupsInfo extends MIInfo {
 		final String fPid;
 		final String[] fCores;
 		final String fExecutable;
+		final MIThread[] fThreadList;
 		
 		public ThreadGroupInfo(String id, String description, String type, String pid, 
-				               String user, String[] cores, String exec) {
+				               String user, String[] cores, String exec, MIThread[] threads) {
 			fGroupId = id;
 			fDescription = description;
 			fType = type;
@@ -194,6 +217,8 @@ public class MIListThreadGroupsInfo extends MIInfo {
 			fExecutable = exec;
 			
 			fName = parseName(fDescription);
+			
+			fThreadList = threads;
 		}
 		
 		private static String parseName(String desc) {
@@ -207,24 +232,58 @@ public class MIListThreadGroupsInfo extends MIInfo {
         		name = matcher.group(1);
         	} else {
         		// If we didn't get the form "name: " then we expect to have the form
-        		// "/usr/sbin/dhcdbd --system"
-        		name = desc.split("\\s", 2)[0]; //$NON-NLS-1$
+        		//   "/usr/sbin/dhcdbd --system"
+        		// or (starting with GDB 7.4)
+        		//   "[migration/0]"  where the integer represents the core, if the process 
+        		//                    has an instance of many cores
+        		//   "[kacpid]"       when the process only runs on one core
+        		//   "[async/mgr]"          
+        	    //   "[jbd2/dm-1-8]"
+        		//   The brackets indicate that the startup parameters are not available
+        		//   We handle this case by removing the brackets and the core indicator
+        		//   since GDB already tells us the core separately.
+        		if (desc.length() > 0 && desc.charAt(0) == '[') {
+        			// Remove brackets
+        			name = desc.substring(1, desc.length()-1);
+        			
+        			// Look for [name/coreNum] pattern to remove /coreNum
+        			pattern = Pattern.compile("(.+?)(/\\d+)", Pattern.MULTILINE); //$NON-NLS-1$
+                	matcher = pattern.matcher(name);
+                	if (matcher.find()) {
+                		// Found a pattern /coreNum, so ignore it
+                		name = matcher.group(1);
+                	}
+                	// else, no /coreNum pattern, so the name is correct already
+        		} else {
+        			name = desc.split("\\s", 2)[0]; //$NON-NLS-1$
+        		}
         	}
 
 			return name;
 		}
 		
+		@Override
 		public String getGroupId() { return fGroupId; }
+		@Override
 		public String getPid() { return fPid; }
 
+		@Override
 		public String getName() { return fName;	}
 
+		@Override
 		public String getDesciption() { return fDescription; }
+		@Override
 		public String[] getCores() { return fCores; }
+		@Override
 		public String getUser() { return fUser;	}
 
+		@Override
 		public String getType() { return fType;	}
+		@Override
 		public String getExecutable() { return fExecutable; }
+
+		@Override
+		public MIThread[] getThreads() { return fThreadList; }
 	}
 	
 	
@@ -274,6 +333,7 @@ public class MIListThreadGroupsInfo extends MIInfo {
 			MIResult[] results = ((MITuple)values[i]).getMIResults();
 			String id, desc, type, pid, exec, user;
 			id = desc = type = pid = exec = user = "";//$NON-NLS-1$
+			MIThread[] threads = null;
 			
 			String[] cores = null;
 			
@@ -322,6 +382,13 @@ public class MIListThreadGroupsInfo extends MIInfo {
 						String str = ((MIConst)value).getCString();
 						exec = str.trim();
 					}
+				} else if (var.equals("threads")) { //$NON-NLS-1$
+					// Staring with GDB 7.1
+					// Re-use the MIThreadInfoInfo parsing
+					MIValue value = result.getMIValue();
+					if (value instanceof MIList) {
+						threads = MIThreadInfoInfo.parseThreads(((MIList)value));
+					}
 				}
 			}
 			// In the case of -list-thread-groups --available, the pid field is not present, but the
@@ -332,7 +399,7 @@ public class MIListThreadGroupsInfo extends MIInfo {
 			if (pid.equals("") && !desc.equals("")) { //$NON-NLS-1$ //$NON-NLS-2$
 				pid = id;
 			}
-			fGroupList[i] = new ThreadGroupInfo(id, desc, type, pid, user, cores, exec);
+			fGroupList[i] = new ThreadGroupInfo(id, desc, type, pid, user, cores, exec, threads);
 		}
 	}
 	

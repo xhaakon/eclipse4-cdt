@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.core.pdom.dom;
 
 import org.eclipse.cdt.core.dom.IPDOMNode;
 import org.eclipse.cdt.core.dom.IPDOMVisitor;
+import org.eclipse.cdt.internal.core.index.IIndexBindingConstants;
 import org.eclipse.cdt.internal.core.pdom.db.BTree;
 import org.eclipse.cdt.internal.core.pdom.db.Database;
 import org.eclipse.cdt.internal.core.pdom.db.IBTreeComparator;
@@ -34,6 +35,7 @@ public class FindBinding {
 			this.database= linkage.getDB();
 		}
 
+		@Override
 		public int compare(long record1, long record2) throws CoreException {
 			IString nm1 = PDOMNamedNode.getDBName(database, record1);
 			IString nm2 = PDOMNamedNode.getDBName(database, record2);
@@ -44,6 +46,11 @@ public class FindBinding {
 				if (t1 == t2) {
 					t1 = PDOMNode.getNodeType(database, record1);
 					t2 = PDOMNode.getNodeType(database, record2);
+					if (t1 == t2 && t1 == IIndexBindingConstants.ENUMERATOR) {
+						// Allow to insert multiple enumerators into the global index.
+						t1= record1;
+						t2= record2;
+					}
 				}
 				cmp= t1 < t2 ? -1 : (t1 > t2 ? 1 : 0);
 			}
@@ -66,6 +73,7 @@ public class FindBinding {
 		}
 		
 		// IBTreeVisitor
+		@Override
 		public int compare(long record) throws CoreException {
 			final Database db = fLinkage.getDB();
 			IString nm1 = PDOMNamedNode.getDBName(db, record);
@@ -79,6 +87,7 @@ public class FindBinding {
 		}
 	
 		// IBTreeVisitor
+		@Override
 		public boolean visit(long record) throws CoreException {
 			final PDOMNamedNode nnode = (PDOMNamedNode) fLinkage.getNode(record);
 			if (nnode instanceof PDOMBinding) {
@@ -107,6 +116,7 @@ public class FindBinding {
 			return fResult;
 		}
 		// IPDOMVisitor
+		@Override
 		public boolean visit(IPDOMNode node) throws CoreException {
 			if (node instanceof PDOMBinding) {
 				final PDOMBinding nnode = (PDOMBinding) node;
@@ -118,6 +128,7 @@ public class FindBinding {
 			return false; /* do not visit children of node */
 		}
 		// IPDOMVisitor
+		@Override
 		public void leave(IPDOMNode node) throws CoreException {
 		}
 	}
@@ -147,6 +158,7 @@ public class FindBinding {
 		public MacroBTreeComparator(Database database) {
 			db= database;
 		}
+		@Override
 		public int compare(long record1, long record2) throws CoreException {
 			return compare(PDOMNamedNode.getDBName(db, record1), PDOMNamedNode.getDBName(db, record2));	// compare names
 		}
@@ -164,7 +176,6 @@ public class FindBinding {
 
 	public static PDOMBinding findBinding(IPDOMNode node, final PDOMLinkage linkage, final char[] name, final int[] constants,
 			long localToFileRec) throws CoreException {
-		// mstodo faster searches
 		final DefaultFindBindingVisitor visitor = new DefaultFindBindingVisitor(linkage, name, constants, localToFileRec);
 		try {
 			node.accept(visitor);

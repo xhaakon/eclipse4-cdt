@@ -35,10 +35,8 @@ import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
  * ID Expression in C.
  */
 public class CASTIdExpression extends ASTNode implements IASTIdExpression, IASTCompletionContext {
-
     private IASTName name;
 
-    
     public CASTIdExpression() {
 	}
 
@@ -46,10 +44,12 @@ public class CASTIdExpression extends ASTNode implements IASTIdExpression, IASTC
 		setName(name);
 	}
 
+	@Override
 	public CASTIdExpression copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 	
+	@Override
 	public CASTIdExpression copy(CopyStyle style) {
 		CASTIdExpression copy = new CASTIdExpression(name == null ? null : name.copy(style));
 		copy.setOffsetAndLength(this);
@@ -59,11 +59,13 @@ public class CASTIdExpression extends ASTNode implements IASTIdExpression, IASTC
 		return copy;
 	}
 
+	@Override
 	public IASTName getName() {
         return name;
     }
 
-    public void setName(IASTName name) {
+    @Override
+	public void setName(IASTName name) {
         assertNotFrozen();
         this.name = name;
         if (name != null) {
@@ -73,32 +75,34 @@ public class CASTIdExpression extends ASTNode implements IASTIdExpression, IASTC
     }
 
     @Override
-	public boolean accept( ASTVisitor action ){
-        if( action.shouldVisitExpressions ){
-		    switch( action.visit( this ) ){
-	            case ASTVisitor.PROCESS_ABORT : return false;
-	            case ASTVisitor.PROCESS_SKIP  : return true;
-	            default : break;
+	public boolean accept(ASTVisitor action) {
+        if (action.shouldVisitExpressions) {
+		    switch (action.visit(this)) {
+	            case ASTVisitor.PROCESS_ABORT: return false;
+	            case ASTVisitor.PROCESS_SKIP: return true;
+	            default: break;
 	        }
 		}
       
-        if( name != null ) if( !name.accept( action ) ) return false;
+        if (name != null && !name.accept(action)) return false;
 
-        if( action.shouldVisitExpressions ){
-		    switch( action.leave( this ) ){
-	            case ASTVisitor.PROCESS_ABORT : return false;
-	            case ASTVisitor.PROCESS_SKIP  : return true;
-	            default : break;
+        if (action.shouldVisitExpressions) {
+		    switch (action.leave(this)) {
+	            case ASTVisitor.PROCESS_ABORT: return false;
+	            case ASTVisitor.PROCESS_SKIP: return true;
+	            default: break;
 	        }
 		}
         return true;
     }
 
+	@Override
 	public int getRoleForName(IASTName n) {
-		if( n == name )	return r_reference;
+		if (n == name) return r_reference;
 		return r_unclear;
 	}
 	
+	@Override
 	public IType getExpressionType() {
 		IBinding binding = getName().resolveBinding();
 		try {
@@ -120,15 +124,17 @@ public class CASTIdExpression extends ASTNode implements IASTIdExpression, IASTC
 		return new ProblemType(ISemanticProblem.TYPE_UNKNOWN_FOR_EXPRESSION);
 	}
 	
+	@Override
 	public boolean isLValue() {
 		return true;
 	}
 	
+	@Override
 	public final ValueCategory getValueCategory() {
 		return ValueCategory.LVALUE;
 	}
 
-
+	@Override
 	public IBinding[] findBindings(IASTName n, boolean isPrefix) {
 		IBinding[] bindings = CVisitor.findBindingsForContentAssist(n, isPrefix);
 
@@ -138,6 +144,6 @@ public class CASTIdExpression extends ASTNode implements IASTIdExpression, IASTC
 			}
 		}
 		
-		return (IBinding[]) ArrayUtil.removeNulls(IBinding.class, bindings);
+		return ArrayUtil.removeNulls(IBinding.class, bindings);
 	}
 }

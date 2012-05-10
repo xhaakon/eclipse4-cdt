@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010  Ericsson and others.
+ * Copyright (c) 2008, 2012  Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,8 @@
  * 
  * Contributors:
  *     Ericsson - initial API and implementation
+ *     Marc Khouzam (Ericsson) - Support for fast tracepoints (Bug 346320)
+ *     Anton Gorenkov - Need to use a process factory (Bug 210366)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb;
 
@@ -104,7 +106,13 @@ public class IGDBLaunchConfigurationConstants {
 	 * @since 4.0
 	 */
 	public static final String ATTR_DEBUGGER_DEBUG_ON_FORK = GdbPlugin.PLUGIN_ID + ".DEBUG_ON_FORK"; //$NON-NLS-1$
-
+	
+	/**
+	 * Launch configuration attribute key. The value is a String specifying the type of Tracepoint mode
+	 * that should be used for this launch.
+	 * @since 4.1
+	 */
+	public static final String ATTR_DEBUGGER_TRACEPOINT_MODE = GdbPlugin.PLUGIN_ID + ".TRACEPOINT_MODE"; //$NON-NLS-1$
 	
 	/**
 	 * Launch configuration attribute value. The key is ATTR_DEBUG_NAME.
@@ -174,6 +182,40 @@ public class IGDBLaunchConfigurationConstants {
 	 * @since 4.0
 	 */
 	public static final boolean DEBUGGER_DEBUG_ON_FORK_DEFAULT = false;
+	
+	/**  
+	 * Possible attribute value for the key is ATTR_DEBUGGER_TRACEPOINT_MODE.
+	 * Indicates that only normal tracepoints should be used.
+	 * @since 4.1
+	 */                                                 
+	public static final String DEBUGGER_TRACEPOINT_NORMAL_ONLY = "TP_NORMAL_ONLY"; //$NON-NLS-1$
 
+	/**  
+	 * Possible attribute value for the key is ATTR_DEBUGGER_TRACEPOINT_MODE.
+	 * Indicates that only fast tracepoints should be used.
+	 * @since 4.1
+	 */                                                 
+	public static final String DEBUGGER_TRACEPOINT_FAST_ONLY = "TP_FAST_ONLY"; //$NON-NLS-1$
 
+	/**  
+	 * Possible attribute value for the key is ATTR_DEBUGGER_TRACEPOINT_MODE.
+	 * Indicates that normal tracepoints should be used whenever a fast tracepoint
+	 * cannot be inserted.
+	 * @since 4.1
+	 */                                                 
+	public static final String DEBUGGER_TRACEPOINT_FAST_THEN_NORMAL = "TP_FAST_THEN_NORMAL"; //$NON-NLS-1$
+
+	/**  
+	 * Default attribute value for the key is ATTR_DEBUGGER_TRACEPOINT_MODE.
+	 * @since 4.1
+	 */
+	public static final String DEBUGGER_TRACEPOINT_MODE_DEFAULT = DEBUGGER_TRACEPOINT_NORMAL_ONLY;
+
+	/**  
+	 * The default value of DebugPlugin.ATTR_PROCESS_FACTORY_ID.
+	 * @since 4.1
+	 */
+	 // Bug 210366
+	public static final String DEBUGGER_ATTR_PROCESS_FACTORY_ID_DEFAULT = "org.eclipse.cdt.dsf.gdb.GdbProcessFactory"; //$NON-NLS-1$
+	
 }

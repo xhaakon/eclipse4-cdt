@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2010 Wind River Systems and others.
+ * Copyright (c) 2006, 2012 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,7 @@
  *     Ericsson 		  - Modified for handling of multiple stacks and threads
  *     Nokia - create and use backend service.
  *     Onur Akdemir (TUBITAK BILGEM-ITI) - Multi-process debugging (Bug 237306)
+ *     Marc Khouzam (Ericsson) - New method to properly created ErrorThread (Bug 350837)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.mi.service.command;
 
@@ -28,6 +29,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -40,7 +42,6 @@ import org.eclipse.cdt.dsf.debug.service.command.ICommandResult;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandToken;
 import org.eclipse.cdt.dsf.debug.service.command.IEventListener;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
-import org.eclipse.cdt.dsf.gdb.service.GDBBackend;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
@@ -199,6 +200,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
     /**
      * @since 3.0
      */
+	@Override
     public CommandFactory getCommandFactory() {
     	return fCommandFactory;
     }
@@ -207,18 +209,32 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * Starts the threads that process the debugger input/output channels.
      * To be invoked by the initialization routine of the extending class.
      * 
+     * This version of the method will not start a thread for the error stream.
+     * 
      * @param inStream
      * @param outStream
      */
-    
     protected void startCommandProcessing(InputStream inStream, OutputStream outStream) {
+    	startCommandProcessing(inStream, outStream, null);
+    }
+    
+    /**
+     * Starts the threads that process the debugger input/output/error channels.
+     * To be invoked by the initialization routine of the extending class.
+     * 
+     * 
+     * @param inStream
+     * @param outStream
+     * @param errorStream
+     * @since 4.1
+     */
+    protected void startCommandProcessing(InputStream inStream, OutputStream outStream, InputStream errorStream) {
     	
         fTxThread = new TxThread(outStream);
         fRxThread = new RxThread(inStream);
         
-        GDBBackend backend = getServicesTracker().getService(GDBBackend.class);
-        if (backend != null) {
-        	fErrorThread = new ErrorThread(backend.getProcess().getErrorStream());
+        if (errorStream != null) {
+        	fErrorThread = new ErrorThread(errorStream);
         }
         
         fTxThread.start();
@@ -295,6 +311,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * @see org.eclipse.cdt.dsf.debug.service.command.ICommandControl#addCommand(org.eclipse.cdt.dsf.debug.service.command.ICommand, org.eclipse.cdt.dsf.concurrent.RequestMonitor)
      */
     
+	@Override
     public <V extends ICommandResult> ICommandToken queueCommand(final ICommand<V> command, DataRequestMonitor<V> rm) {
 
         // Cast the command to MI Command type.  This will cause a cast exception to be 
@@ -327,6 +344,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
                 // In a separate dispatch cycle.  This allows command listeners 
             	// to respond to the command queued event.  
                 getExecutor().execute(new DsfRunnable() {
+                	@Override
                     public void run() {
                         processNextQueuedCommand();
                     }
@@ -400,6 +418,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * (non-Javadoc)
      * @see org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl#removeCommand(org.eclipse.cdt.dsf.mi.service.command.commands.ICommand)
      */
+	@Override
     public void removeCommand(ICommandToken token) {
     	
     	synchronized(fCommandQueue) {
@@ -410,6 +429,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
     				
     				final CommandHandle finalHandle = handle;
                     getExecutor().execute(new DsfRunnable() {
+                    	@Override
                         public void run() {
                         	processCommandRemoved(finalHandle);
                         }
@@ -427,6 +447,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * (non-Javadoc)
      * @see org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl#addCommandListener(org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl.ICommandListener)
      */
+	@Override
     public void addCommandListener(ICommandListener processor) { fCommandProcessors.add(processor); }
     
     /*
@@ -434,6 +455,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * (non-Javadoc)
      * @see org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl#removeCommandListener(org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl.ICommandListener)
      */
+	@Override
     public void removeCommandListener(ICommandListener processor) { fCommandProcessors.remove(processor); }
     
     /*
@@ -442,6 +464,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * (non-Javadoc)
      * @see org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl#addEventListener(org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl.IEventListener)
      */
+	@Override
     public void addEventListener(IEventListener processor) { fEventProcessors.add(processor); }
     
     /*
@@ -450,6 +473,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
      * (non-Javadoc)
      * @see org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl#removeEventListener(org.eclipse.cdt.dsf.mi.service.command.IDebuggerControl.IEventListener)
      */
+	@Override
     public void removeEventListener(IEventListener processor) { fEventProcessors.remove(processor); }
     
     abstract public MIControlDMContext getControlDMContext();
@@ -457,6 +481,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
     /**
      * @since 1.1
      */
+	@Override
     public boolean isActive() {
         return !fStoppedCommandProcessing;
     }
@@ -529,6 +554,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
             fTokenId = -1; // Only initialize to a real value when needed
         }
         
+    	@Override
         public MICommand<MIInfo> getCommand() { return fCommand; }
         public DataRequestMonitor<MIInfo> getRequestMonitor() { return fRequestMonitor; }
         // This method allows us to generate the token Id when we area actually going to use
@@ -849,6 +875,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
         }
 
         void processMIOutput(String line) {
+
             MIParser.RecordType recordType = fMiParser.getRecordType(line);
             
             if (recordType == MIParser.RecordType.ResultRecord) {
@@ -860,6 +887,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
             	 *  some form of asynchronous notification. Or perhaps general IO.
             	 */
                 int id = rr.getToken();
+                
                 final CommandHandle commandHandle = fRxCommands.remove(id);
 
                 if (commandHandle != null) {
@@ -895,6 +923,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
 						 */
 						final ICommandResult finalResult = result;
 						getExecutor().execute(new DsfRunnable() {
+							@Override
 	                        public void run() {
 	                        	/*
 	                        	 *  Complete the specific command.
@@ -922,6 +951,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
 						 */
 						final ICommandResult finalResult = result;
 						getExecutor().execute(new DsfRunnable() {
+							@Override
 	                        public void run() {
 	                            processCommandDone(commandHandle, finalResult);
 	                        }
@@ -941,6 +971,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
                     final MIOutput response = new MIOutput(rr, new MIOOBRecord[0]);
 
                     getExecutor().execute(new DsfRunnable() {
+                    	@Override
                         public void run() {
                             processEvent(response);
                         }
@@ -983,6 +1014,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
             	 *   be done on the DSF thread for integrity.
             	 */
                 getExecutor().execute(new DsfRunnable() {
+                	@Override
                     public void run() {
                         processEvent(response);
                     }
@@ -994,6 +1026,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
             }
             
             getExecutor().execute(new DsfRunnable() {
+            	@Override
             	public void run() {
         			processNextQueuedCommand();
             	}
@@ -1034,6 +1067,7 @@ public abstract class AbstractMIControl extends AbstractDsfService
             		final MIOOBRecord oob = fMiParser.parseMIOOBRecord("&"+line+"\n");  //$NON-NLS-1$//$NON-NLS-2$
                     final MIOutput response = new MIOutput(oob, new MIStreamRecord[0]);
                     getExecutor().execute(new DsfRunnable() {
+                    	@Override
                         public void run() {
                             processEvent(response);
                         }
@@ -1067,4 +1101,46 @@ public abstract class AbstractMIControl extends AbstractDsfService
     	fCurrentStackLevel = -1; 
     }
 
+    /**
+	 * @since 4.1
+	 */
+    @ConfinedToDsfExecutor("this.getExecutor()")
+    protected void commandFailed(ICommandToken token, int statusCode, String errorMessage) {
+    	if ( !(token instanceof CommandHandle && token.getCommand() instanceof MICommand<?>) )
+    		return;
+		final CommandHandle commandHandle = (CommandHandle)token;
+		Integer tokenId = commandHandle.getTokenId();
+
+		// If the timeout value is too small a command can be timed out but still processed by RxThread.
+		// To avoid processing it twice we need to remove it from the command list.
+		CommandHandle h = fRxCommands.remove(tokenId);
+		if (h == null)
+			// Command has already been processed by RxThread.
+			return;
+		
+		MIConst value = new MIConst();
+		value.setCString(errorMessage);
+		MIResult result = new MIResult();
+		result.setVariable("msg"); //$NON-NLS-1$
+		result.setMIValue(value);
+		MIResultRecord resultRecord = new MIResultRecord();
+		resultRecord.setToken(tokenId.intValue());
+		resultRecord.setResultClass(MIResultRecord.ERROR);
+		resultRecord.setMIResults(new MIResult[] { result });
+		MIOutput miOutput = new MIOutput(resultRecord, new MIOOBRecord[0]);
+
+		final MIInfo info = commandHandle.getCommand().getResult(miOutput);
+		DataRequestMonitor<MIInfo> rm = commandHandle.getRequestMonitor();
+		
+		if ( rm != null ) {
+			rm.setData(info);			
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, statusCode, errorMessage, null)); 
+			rm.done();
+            
+            /*
+             *  Now tell the generic listeners about it.
+             */
+            processCommandDone(commandHandle, info);
+		}
+    }
 }

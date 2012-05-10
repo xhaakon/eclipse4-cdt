@@ -9,6 +9,7 @@
  *     Intel Corporation - initial API and implementation
  *     IBM Corporation
  *     Markus Schorn (Wind River Systems)
+ *     Andrew Gvozdev
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
@@ -65,9 +66,10 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
-import org.eclipse.cdt.ui.CDTSharedImages;
 
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingsImages;
 import org.eclipse.cdt.internal.ui.newui.Messages;
+import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 
 public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected Table table;
@@ -77,6 +79,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected Button showBIButton;
 	protected boolean toAllCfgs = false;
 	protected boolean toAllLang = false;
+	private StatusMessageLine fStatusLine;
+
 	/** @deprecated as of CDT 8.0. {@code linkStringListMode} is used instead. */
 	@Deprecated
 	protected Label lb1, lb2;
@@ -120,12 +124,6 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	private static final Comparator<Object> comp = CDTListComparator.getInstance();
 	private static String selectedLanguage;
 
-	private final static Image IMG_FOLDER = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_FOLDER);
-	private final static Image IMG_INCLUDES_FOLDER = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER);
-	private final static Image IMG_BUILTIN_FOLDER = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM);
-	private final static Image IMG_WORKSPACE = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_WORKSPACE);
-	private final static Image IMG_INCLUDES_FOLDER_WORKSPACE = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
-	private final static Image IMG_MACRO = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_MACRO);
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
 
 	@Override
@@ -159,6 +157,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
 
 		sashForm.addListener(SWT.Selection, new Listener() {
+			@Override
 			public void handleEvent(Event event) {
 				if (event.detail == SWT.DRAG)
 					return;
@@ -175,18 +174,22 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		tv = new TableViewer(table);
 
 		tv.setContentProvider(new IStructuredContentProvider() {
+			@Override
 			public Object[] getElements(Object inputElement) {
 				return (Object[])inputElement;
 			}
+			@Override
 			public void dispose() {}
+			@Override
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
 
-		tv.setLabelProvider(new RichLabelProvider());
+		tv.setLabelProvider(new LanguageSettingsEntriesLabelProvider());
 
 		table.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
+				updateStatusLine();
 				updateButtons();
 			}
 
@@ -198,12 +201,16 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		});
 
 		table.addControlListener(new ControlListener() {
+			@Override
 			public void controlMoved(ControlEvent e) {
 				setColumnToFit();
 			}
+			@Override
 			public void controlResized(ControlEvent e) {
 				setColumnToFit();
 			}});
+
+		fStatusLine = new StatusMessageLine(usercomp, SWT.LEFT, 2);
 
 		showBIButton = setupCheck(usercomp, Messages.AbstractLangsListTab_ShowBuiltin, 1, GridData.GRAB_HORIZONTAL);
 		gd = (GridData) showBIButton.getLayoutData();
@@ -216,6 +223,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 
 		stringListModeControl = new StringListModeControl(page, usercomp, 1);
 		stringListModeControl.addListener(SWT.Selection, new Listener() {
+			@Override
 			public void handleEvent(Event event) {
 				update();
 			}
@@ -227,6 +235,17 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	}
 
 	/**
+	 * @return selected entry when only one is selected or {@code null}.
+	 */
+	private ICLanguageSettingEntry getSelectedEntry() {
+		int index = table.getSelectionIndex();
+		if (index<0 || table.getSelectionIndices().length!=1)
+			return null;
+
+		return (ICLanguageSettingEntry)(table.getItem(index).getData());
+	}
+
+	/**
 	 * Used to display UI control for multiple configurations string list mode
 	 * (see Multiple Configurations Edit Preference page).
 	 *
@@ -234,6 +253,14 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	 */
 	protected void updateStringListModeControl() {
 		stringListModeControl.updateStringListModeControl();
+	}
+
+	/**
+	 * Displays warning message - if any - for selected language settings entry.
+	 * Multiline selection is not supported.
+	 */
+	private void updateStatusLine() {
+		fStatusLine.setErrorStatus(LanguageSettingsImages.getStatus(getSelectedEntry(), getResDesc().getConfiguration()));
 	}
 
 	/**
@@ -298,6 +325,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		});
 		langTree.addPaintListener(new PaintListener() {
+			@Override
 			public void paintControl(PaintEvent e) {
 				int x = langTree.getBounds().width - 5;
 				if (langCol.getWidth() != x)
@@ -343,6 +371,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		}
 
 		updateStringListModeControl();
+		updateStatusLine();
 		updateButtons();
 	}
 
@@ -690,66 +719,61 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	}
 
 	// Extended label provider
-	private class RichLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider*/{
-		public RichLabelProvider(){}
+	private class LanguageSettingsEntriesLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider*/{
 		@Override
 		public Image getImage(Object element) {
 			return getColumnImage(element, 0);
 		}
+
+		@Override
 		public Image getColumnImage(Object element, int columnIndex) {
-			if (columnIndex > 0) return null;
-			if (! (element instanceof ICLanguageSettingEntry)) return null;
-
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (le.getKind() == ICSettingEntry.MACRO)
-				return IMG_MACRO;
-			if ((le.getFlags() & ICSettingEntry.BUILTIN) != 0)
-				return IMG_BUILTIN_FOLDER;
-
-			boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-			if (le.getKind() == ICSettingEntry.INCLUDE_PATH || le.getKind() == ICSettingEntry.INCLUDE_FILE) {
-				if (isWorkspacePath)
-					return IMG_INCLUDES_FOLDER_WORKSPACE;
-				else
-					return IMG_INCLUDES_FOLDER;
-			} else {
-				if (isWorkspacePath)
-					return IMG_WORKSPACE;
-				else
-					return IMG_FOLDER;
+			if (columnIndex==0 && (element instanceof ICLanguageSettingEntry)) {
+				ICConfigurationDescription cfg = getResDesc().getConfiguration();
+				return LanguageSettingsImages.getImage((ICLanguageSettingEntry) element, cfg);
 			}
+			return null;
 		}
+
 		@Override
 		public String getText(Object element) {
 			return getColumnText(element, 0);
 		}
+
+		@Override
 		public String getColumnText(Object element, int columnIndex) {
-			if (! (element instanceof ICLanguageSettingEntry)) {
-				return (columnIndex == 0) ? element.toString() : EMPTY_STR;
-			}
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (columnIndex == 0) {
-				String s = le.getName();
-				if (exported.contains(resolve(le)))
-					s = s + Messages.AbstractLangsListTab_ExportIndicator;
-				return s;
-			}
-			if (le.getKind() == ICSettingEntry.MACRO) {
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
 				switch (columnIndex) {
-					case 1: return le.getValue();
+				case 0:
+					String name = entry.getName();
+					if (exported.contains(resolve(entry)))
+						name = name + Messages.AbstractLangsListTab_ExportIndicator;
+					return name;
+				case 1:
+					if (entry.getKind() == ICSettingEntry.MACRO) {
+						return entry.getValue();
 				}
+					return null;
+				}
+			} else if (columnIndex == 0) {
+				return element.toString();
 			}
-			return EMPTY_STR;
+
+			return null;
 		}
 
+		@Override
 		public Font getFont(Object element) {
-			if (! (element instanceof ICLanguageSettingEntry)) return null;
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (le.isBuiltIn()) return null;    // built in
-			if (le.isReadOnly())                // read only
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				if (entry.isBuiltIn())
+					return null;
+				if (entry.isReadOnly())
 				return JFaceResources.getFontRegistry().getItalic(JFaceResources.DIALOG_FONT);
 			// normal
 			return JFaceResources.getFontRegistry().getBold(JFaceResources.DIALOG_FONT);
+		}
+			return null;
 		}
 	}
 

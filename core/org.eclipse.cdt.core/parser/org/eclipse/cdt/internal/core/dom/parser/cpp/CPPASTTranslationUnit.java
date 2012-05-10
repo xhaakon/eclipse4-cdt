@@ -46,10 +46,12 @@ public class CPPASTTranslationUnit extends ASTTranslationUnit implements ICPPAST
 	public CPPASTTranslationUnit() {
 	}
 	
+	@Override
 	public CPPASTTranslationUnit copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 	
+	@Override
 	public CPPASTTranslationUnit copy(CopyStyle style) {
 		CPPASTTranslationUnit copy = new CPPASTTranslationUnit();
 		copyAbstractTU(copy, style);
@@ -59,6 +61,7 @@ public class CPPASTTranslationUnit extends ASTTranslationUnit implements ICPPAST
 		return copy;
 	}
 
+    @Override
 	public CPPNamespaceScope getScope() {
         if (fScope == null) {
             fScope = new CPPNamespaceScope(this);
@@ -106,14 +109,16 @@ public class CPPASTTranslationUnit extends ASTTranslationUnit implements ICPPAST
         theScope.addBinding(temp);
 	}
 	
-    public IASTName[] getDeclarationsInAST(IBinding binding) {
+    @Override
+	public IASTName[] getDeclarationsInAST(IBinding binding) {
         if (binding instanceof IMacroBinding) {
         	return getMacroDefinitionsInAST((IMacroBinding) binding);
         }
         return CPPVisitor.getDeclarations(this, binding);
     }
 
-    public IASTName[] getDefinitionsInAST(IBinding binding) {
+    @Override
+	public IASTName[] getDefinitionsInAST(IBinding binding) {
         if (binding instanceof IMacroBinding) {
         	return getMacroDefinitionsInAST((IMacroBinding) binding);
         }
@@ -123,23 +128,26 @@ public class CPPASTTranslationUnit extends ASTTranslationUnit implements ICPPAST
                 names[i] = null;
         }
     	// nulls can be anywhere, don't use trim()
-        return (IASTName[]) ArrayUtil.removeNulls(IASTName.class, names);
+        return ArrayUtil.removeNulls(IASTName.class, names);
     }
 
-    public IASTName[] getReferences(IBinding binding) {
+    @Override
+	public IASTName[] getReferences(IBinding binding) {
         if (binding instanceof IMacroBinding) {
             return getMacroReferencesInAST((IMacroBinding) binding);
         }
         return CPPVisitor.getReferences(this, binding);
     }
     
-    public IBinding resolveBinding() {
+    @Override
+	public IBinding resolveBinding() {
         if (fBinding == null)
             fBinding = new CPPNamespace(this);
         return fBinding;
     }
 	
-    @Deprecated
+    @Override
+	@Deprecated
     public ParserLanguage getParserLanguage() {
         return ParserLanguage.CPP;
     }
@@ -147,6 +155,7 @@ public class CPPASTTranslationUnit extends ASTTranslationUnit implements ICPPAST
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTTranslationUnit#getLinkage()
 	 */
+	@Override
 	public ILinkage getLinkage() {
 		return Linkage.CPP_LINKAGE;
 	}

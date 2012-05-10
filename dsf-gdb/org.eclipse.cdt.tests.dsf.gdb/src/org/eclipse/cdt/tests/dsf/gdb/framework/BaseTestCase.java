@@ -21,7 +21,9 @@ import org.eclipse.cdt.dsf.datamodel.IDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.gdb.IGDBLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
+import org.eclipse.cdt.dsf.mi.service.command.events.IMIDMEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIStoppedEvent;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIFrame;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.DsfSession.SessionStartedListener;
@@ -56,7 +58,7 @@ public class BaseTestCase {
 	@Rule public TestName testName = new TestName();
 	
 	public static final String ATTR_DEBUG_SERVER_NAME = TestsPlugin.PLUGIN_ID + ".DEBUG_SERVER_NAME";
-	private static final String DEFAULT_TEST_APP = "data/launch/bin/GDBMIGenericTestApp";
+	private static final String DEFAULT_TEST_APP = "data/launch/bin/GDBMIGenericTestApp.exe";
 	
     private static GdbLaunch fLaunch;
 
@@ -89,6 +91,10 @@ public class BaseTestCase {
     	launchAttributes.put(key, value);
     }
 
+    public static void removeLaunchAttribute(String key) { 
+    	launchAttributes.remove(key);
+    }
+
     public static void setGlobalLaunchAttribute(String key, Object value) {
     	globalLaunchAttributes.put(key, value);
     }
@@ -99,7 +105,12 @@ public class BaseTestCase {
     
     public synchronized MIStoppedEvent getInitialStoppedEvent() { return fInitialStoppedEvent; }
 
-	/**
+    public static boolean isRemoteSession() {
+		return launchAttributes.get(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_START_MODE)
+	              .equals(IGDBLaunchConfigurationConstants.DEBUGGER_MODE_REMOTE);
+    }
+
+    /**
 	 * We listen for the target to stop at the main breakpoint. This listener is
 	 * installed when the session is created and we uninstall ourselves when we
 	 * get to the breakpoint state, as we have no further need to monitor events
@@ -115,24 +126,50 @@ public class BaseTestCase {
     	
 		@DsfServiceEventHandler 
     	public void eventDispatched(IDMEvent<?> event) {
-    		if (event instanceof MIStoppedEvent) {
-    			// We get this low-level event first. Record the MI event; various
-    			// tests use it for context
-    			synchronized(this) {
-    				fInitialStoppedEvent = (MIStoppedEvent)event;
-    			}
-    		}
-    		else if (event instanceof ISuspendedDMEvent) {
-    			// We get this higher level event shortly thereafter. We don't want
-    			// to consider the session suspended until we get it. Set the event
-    			// semaphore that will allow the test to proceed
-    			synchronized (fTargetSuspendedSem) {
-    				fTargetSuspended = true;
-    				fTargetSuspendedSem.notify();	
-    			}
+			// Wait for the program to have stopped on main.
+			//
+			// We have to jump through hoops to properly handle the remote
+			// case, because of differences between GDB <= 68 and GDB >= 7.0.
+			//
+			// With GDB >= 7.0, when connecting to the remote gdbserver, 
+			// we get a first *stopped event at connection time.  This is 
+			// not the ISuspendedDMEvent event we want.  We could instead
+			// listen for an IBreakpointHitDMEvent instead.
+			// However, with GDB <= 6.8, temporary breakpoints are not
+			// reported as breakpoint-hit, so we don't get an IBreakpointHitDMEvent
+			// for GDB <= 6.8.
+			//
+			// What I found to be able to know we have stopped at main, in all cases,
+			// is to look for an ISuspendedDMEvent and then confirming that it indicates
+			// in its frame that it stopped at "main".  This will allow us to skip
+			// the first *stopped event for GDB >= 7.0
+    		if (event instanceof ISuspendedDMEvent) {
+    			if (event instanceof IMIDMEvent) {
+    				IMIDMEvent iMIEvent = (IMIDMEvent)event;
 
-    			// no further need for this listener. Note fLaunch could be null if the test ran into a failure
-   				fSession.removeServiceEventListener(this);
+    				Object miEvent = iMIEvent.getMIEvent();
+    				if (miEvent instanceof MIStoppedEvent) {
+    					// Store the corresponding MI *stopped event
+    					fInitialStoppedEvent = (MIStoppedEvent)miEvent;
+
+    					// Check the content of the frame for the method we should stop at
+    					String stopAt = (String)launchAttributes.get(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL);
+    					if (stopAt == null) stopAt = "main";
+    					
+    					MIFrame frame = fInitialStoppedEvent.getFrame();
+    					if (frame != null && 
+    							frame.getFunction() != null && frame.getFunction().indexOf(stopAt) != -1) {
+    						// Set the event semaphore that will allow the test to proceed
+    						synchronized (fTargetSuspendedSem) {
+    							fTargetSuspended = true;
+    							fTargetSuspendedSem.notify();	
+    						}
+
+    						// We found our event, no further need for this listener
+    						fSession.removeServiceEventListener(this);
+    					}
+    				}
+    			}
     		}
     	}
     }
@@ -173,7 +210,8 @@ public class BaseTestCase {
 	                                               .equals(ICDTLaunchConfigurationConstants.DEBUGGER_MODE_CORE);
  		
  		// First check if we should launch gdbserver in the case of a remote session
-		launchGdbServer();
+ 		if (reallyLaunchGDBServer())
+ 			launchGdbServer();
 		
  		ILaunchManager launchMgr = DebugPlugin.getDefault().getLaunchManager();
  		ILaunchConfigurationType lcType = launchMgr.getLaunchConfigurationType("org.eclipse.cdt.tests.dsf.gdb.TestLaunch");
@@ -191,6 +229,7 @@ public class BaseTestCase {
 		// register ourselves with that particular session before any events
 		// occur. We want to find out when the break on main() occurs.
  		SessionStartedListener sessionStartedListener = new SessionStartedListener() {
+			@Override
 			public void sessionStarted(DsfSession session) {
 				session.addServiceEventListener(new SessionEventListener(session), null);
 			}
@@ -297,5 +336,15 @@ public class BaseTestCase {
  		boolean isWindows = Platform.getOS().equals(Platform.OS_WIN32);
  		BaseTestCase.setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUG_NAME, "gdb." + version + (isWindows ? ".exe" : ""));
  		BaseTestCase.setLaunchAttribute(ATTR_DEBUG_SERVER_NAME, "gdbserver." + version + (isWindows ? ".exe" : ""));
+ 	}
+
+ 	/**
+ 	 * In some tests we need to start a gdbserver session without starting gdbserver. 
+ 	 * This method allows super classes of this class control the launch of gdbserver.
+ 	 * 
+ 	 * @return whether gdbserver should be started
+ 	 */
+ 	protected boolean reallyLaunchGDBServer() {
+ 		return true;
  	}
 }

@@ -39,6 +39,7 @@ public class ExternalSettingsProviderTests extends BaseTestCase{
 		return suite(ExternalSettingsProviderTests.class, "_");
 	}
 
+	@Override
 	protected void setUp() throws Exception {
 		p1 = CProjectHelper.createNewStileCProject(PROJ_NAME_PREFIX + "a", IPDOMManager.ID_NO_INDEXER);
 		p2 = CProjectHelper.createNewStileCProject(PROJ_NAME_PREFIX + "b", IPDOMManager.ID_NO_INDEXER);
@@ -464,6 +465,7 @@ public class ExternalSettingsProviderTests extends BaseTestCase{
 		}
 	}
 
+	@Override
 	protected void tearDown() throws Exception {
 		try {
 			p1.getProject().delete(true, null);

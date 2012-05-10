@@ -11,8 +11,8 @@
 package org.eclipse.cdt.core.dom.ast;
 
 /**
- * This interface represents a parse problem where we tried to match against a
- * expression.
+ * This interface represents a parse problem where we tried to match against
+ * an expression.
  * 
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.
@@ -21,10 +21,12 @@ public interface IASTProblemExpression extends IASTExpression, IASTProblemHolder
 	/**
 	 * @since 5.1
 	 */
+	@Override
 	public IASTProblemExpression copy();
 
 	/**
 	 * @since 5.3
 	 */
+	@Override
 	public IASTProblemExpression copy(CopyStyle style);
 }

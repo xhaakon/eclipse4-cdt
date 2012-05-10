@@ -6,13 +6,14 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    John Camelon (IBM) - Initial API and implementation
- *    Mike Kucera (IBM)
+ *     John Camelon (IBM) - Initial API and implementation
+ *     Mike Kucera (IBM)
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.ast.cpp;
 
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
+import org.eclipse.cdt.core.dom.ast.IType;
 
 /**
  * Certain field references in C++ require the use the keyword template to
@@ -22,10 +23,8 @@ import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
  * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface ICPPASTFieldReference extends IASTFieldReference, IASTImplicitNameOwner {
-
 	/**
 	 * Was template keyword used?
-	 * 
 	 */
 	public boolean isTemplate();
 
@@ -39,10 +38,18 @@ public interface ICPPASTFieldReference extends IASTFieldReference, IASTImplicitN
 	/**
 	 * @since 5.1
 	 */
+	@Override
 	public ICPPASTFieldReference copy();
 
 	/**
 	 * @since 5.3
 	 */
+	@Override
 	public ICPPASTFieldReference copy(CopyStyle style);
+
+	/**
+	 * Returns the type of the field owner.
+	 * @since 5.4
+	 */
+	public IType getFieldOwnerType();
 }

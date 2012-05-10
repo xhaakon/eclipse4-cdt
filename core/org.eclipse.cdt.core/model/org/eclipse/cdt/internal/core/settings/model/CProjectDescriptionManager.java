@@ -50,6 +50,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvidersKeeper;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementDelta;
@@ -84,7 +86,6 @@ import org.eclipse.cdt.core.settings.model.extension.CResourceData;
 import org.eclipse.cdt.core.settings.model.extension.ICProjectConverter;
 import org.eclipse.cdt.core.settings.model.extension.impl.CDataFactory;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
-import org.eclipse.cdt.core.settings.model.util.CSettingEntryFactory;
 import org.eclipse.cdt.core.settings.model.util.KindBasedStore;
 import org.eclipse.cdt.core.settings.model.util.ListComparator;
 import org.eclipse.cdt.core.settings.model.util.PathSettingsContainer;
@@ -188,6 +189,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			fRunnables.add(runnable);
 		}
 
+		@Override
 		public void run(IProgressMonitor monitor) throws CoreException {
 			try {
 				monitor.beginTask(fName, fRunnables.size());
@@ -245,6 +247,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 
 	private ICDataProxyContainer fPrefUpdater = new ICDataProxyContainer(){
 
+		@Override
 		public void updateChild(CDataProxy child, boolean write) {
 			if(write){
 				try {
@@ -255,6 +258,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			}
 		}
 
+		@Override
 		public ICSettingObject[] getChildSettings() {
 			return fPreferenceMap.values().toArray(new CConfigurationDescriptionCache[fPreferenceMap.size()]);
 		}
@@ -278,6 +282,20 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 
 	public void projectClosedRemove(IProject project) {
 		CProjectDescriptionStorageManager.getInstance().projectClosedRemove(project);
+		disposeAssociatedListeners(project);
+	}
+
+	private void disposeAssociatedListeners(IProject project) {
+		List<ScannerInfoProviderProxy> proxyListeners = new ArrayList<ScannerInfoProviderProxy>();
+		for (ListenerDescriptor ldescriptor : fListeners) {
+			if (ldescriptor.fListener instanceof ScannerInfoProviderProxy)
+				proxyListeners.add((ScannerInfoProviderProxy) ldescriptor.fListener);
+		}
+		// avoid calling proxy.close() inside fListeners loop as it modifies the collection
+		for (ScannerInfoProviderProxy proxy : proxyListeners) {
+			if (project.equals(proxy.getProject()))
+				proxy.close();
+		}
 	}
 
 	/**
@@ -382,6 +400,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		CProjectDescriptionStorageManager.getInstance().shutdown();
 	}
 
+	@Override
 	public ICProjectDescription getProjectDescription(IProject project, boolean write) {
 		return getProjectDescription(project, true, write);
 	}
@@ -393,6 +412,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return getProjectDescription(project, flags);
 	}
 
+	@Override
 	public ICProjectDescription getProjectDescription(IProject project, int flags) {
 		try {
 			return getProjectDescriptionInternal(project, flags);
@@ -405,7 +425,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 
 	/**
-	 * Base method for getting a Project's Description 
+	 * Base method for getting a Project's Description
 	 * @param project
 	 * @param flags
 	 * @return ICProjectDescription
@@ -414,7 +434,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private ICProjectDescription getProjectDescriptionInternal(IProject project, int flags) throws CoreException {
 		AbstractCProjectDescriptionStorage storage = getProjectDescriptionStorage(project);
 		return storage.getProjectDescription(flags, new NullProgressMonitor());
-	}	
+	}
 
 	/**
 	 * Run the workspace modification in the current thread using the workspace scheduling rule
@@ -496,6 +516,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private static void runAtomic(final IWorkspaceRunnable r, ISchedulingRule rule, IProgressMonitor monitor) throws CoreException{
 		IWorkspace wsp = ResourcesPlugin.getWorkspace();
 		wsp.run(new IWorkspaceRunnable(){
+			@Override
 			public void run(IProgressMonitor monitor) throws CoreException {
 				try {
 					r.run(monitor);
@@ -507,6 +528,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}, rule, IWorkspace.AVOID_UPDATE, monitor);
 	}
 
+	@Override
 	public void updateProjectDescriptions(IProject[] projects, IProgressMonitor monitor) throws CoreException{
 		if(monitor == null)
 			monitor = new NullProgressMonitor();
@@ -528,6 +550,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				fi[0] = num;
 				runWspModification(new IWorkspaceRunnable(){
 
+					@Override
 					public void run(IProgressMonitor monitor) throws CoreException {
 						monitor.beginTask(SettingsModelMessages.getString("CProjectDescriptionManager.13"), fi[0]); //$NON-NLS-1$
 
@@ -591,10 +614,12 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		fConverters = dess;
 	}
 
+	@Override
 	public ICProjectDescription createProjectDescription(IProject project, boolean loadIfExists) throws CoreException{
 		return createProjectDescription(project, loadIfExists, false);
 	}
 
+	@Override
 	public ICProjectDescription createProjectDescription(IProject project, boolean loadIfExists, boolean creating) throws CoreException{
 		int flags = ICProjectDescriptionManager.GET_WRITABLE | ICProjectDescriptionManager.GET_CREATE_DESCRIPTION;
 		flags |= loadIfExists ? 0 : ICProjectDescriptionManager.GET_EMPTY_PROJECT_DESCRIPTION;
@@ -620,6 +645,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return provider;
 	}
 
+	@Override
 	public ICProjectDescription getProjectDescription(IProject project){
 		return getProjectDescription(project, true);
 	}
@@ -797,10 +823,12 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return false;
 	}
 
+	@Override
 	public void setProjectDescription(IProject project, ICProjectDescription des) throws CoreException {
 		setProjectDescription(project, des, false, null);
 	}
 
+	@Override
 	public void setProjectDescription(IProject project, ICProjectDescription des, boolean force, IProgressMonitor monitor) throws CoreException {
 		int flags = force ? SET_FORCE : 0;
 		setProjectDescription(project, des, flags, monitor);
@@ -812,6 +840,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 
 	/** ThreadLocal flag to let CDescriptor know whether already in a setProjectDescription */
 	ThreadLocal<Boolean> settingProjectDescription = new ThreadLocal<Boolean>(){@Override protected Boolean initialValue() {return false;}};
+	@Override
 	public void setProjectDescription(IProject project, ICProjectDescription des, int flags, IProgressMonitor monitor) throws CoreException {
 		try {
 			settingProjectDescription.set(true);
@@ -1542,6 +1571,14 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				CCorePlugin.log(e);
 			}
 
+			List<ILanguageSettingsProvider> newLSProviders = null;
+			if (newCfg instanceof ILanguageSettingsProvidersKeeper)
+				newLSProviders = ((ILanguageSettingsProvidersKeeper) newCfg).getLanguageSettingProviders();
+			List<ILanguageSettingsProvider> oldLSProviders = null;
+			if (oldCfg instanceof ILanguageSettingsProvidersKeeper)
+				oldLSProviders = ((ILanguageSettingsProvidersKeeper) oldCfg).getLanguageSettingProviders();
+			if(newLSProviders != oldLSProviders && (newLSProviders == null || !newLSProviders.equals(oldLSProviders)))
+				delta.addChangeFlags(ICDescriptionDelta.LANGUAGE_SETTINGS_PROVIDERS);
 
 			calculateCfgExtSettingsDelta(delta);
 
@@ -1817,7 +1854,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			String[] newExts = newLs.getSourceExtensions();
 			String[] oldExts = oldLs.getSourceExtensions();
 			if(!Arrays.equals(newExts, oldExts))
-				delta.addChangeFlags(ICDescriptionDelta.SOURCE_ENTENSIONS);
+				delta.addChangeFlags(ICDescriptionDelta.SOURCE_EXTENSIONS);
 
 
 //			newCt = newLs.getHeaderContentType();
@@ -2150,10 +2187,12 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	 * Methods for manipulating the set of project description listeners
 	 */
 
+	@Override
 	public void addCProjectDescriptionListener(ICProjectDescriptionListener listener, int eventTypes) {
 		fListeners.add(new ListenerDescriptor(listener, eventTypes));
 	}
 
+	@Override
 	public void removeCProjectDescriptionListener(ICProjectDescriptionListener listener) {
 		for (ListenerDescriptor listenerDescriptor : fListeners) {
 			if (listenerDescriptor.fListener.equals(listener)) {
@@ -2188,6 +2227,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 	}
 
+	@Override
 	public ICConfigurationDescription getPreferenceConfiguration(String buildSystemId) throws CoreException {
 		return getPreferenceConfiguration(buildSystemId, true);
 	}
@@ -2201,6 +2241,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 	}
 
+	@Override
 	public ICConfigurationDescription getPreferenceConfiguration(String buildSystemId, boolean write) throws CoreException {
 		ICConfigurationDescription des = getLoaddedPreference(buildSystemId);
 		if(des == null){
@@ -2230,6 +2271,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return des;
 	}
 
+	@Override
 	public void setPreferenceConfiguration(String buildSystemId, ICConfigurationDescription des) throws CoreException{
 		if(!needSavePreference(buildSystemId, des))
 			return;
@@ -2282,11 +2324,9 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		ICStorageElement baseRootEl = settings.getRootStorageElement();
 		rootEl = rootParent.importChild(baseRootEl);
 		CConfigurationDescriptionCache cache = new CConfigurationDescriptionCache(des, baseData, baseCache, cfgDes.getSpecSettings(), null, rootEl);
-		CSettingEntryFactory factory = new CSettingEntryFactory();
 		SettingsContext context = new SettingsContext(null);
-		cache.applyData(factory, context);
+		cache.applyData(context);
 		cache.doneInitialization();
-		factory.clear();
 		runContextOperations(context, null);
 		return cache;
 	}
@@ -2361,10 +2401,8 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 
 		}
 		CConfigurationDescriptionCache cache = new CConfigurationDescriptionCache(cfgEl, null);
-		CSettingEntryFactory factory = new CSettingEntryFactory();
-		cache.loadData(factory);
+		cache.loadData();
 		cache.doneInitialization();
-		factory.clear();
 		return cache;
 	}
 
@@ -2434,10 +2472,12 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return false;
 	}
 
+	@Override
 	public boolean isNewStyleProject(IProject project){
 		return isNewStyleProject(getProjectDescription(project, false));
 	}
 
+	@Override
 	public boolean isNewStyleProject(ICProjectDescription des){
 		if(des == null)
 			return false;
@@ -2580,7 +2620,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			if(!langDatasEqual(parentLData, childLData))
 				return true;
 		}
-		
+
 		return false;
 	}
 
@@ -2637,6 +2677,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 
 
+	@Override
 	public ICProjectDescriptionWorkspacePreferences getProjectDescriptionWorkspacePreferences(
 			boolean write) {
 		if(fPreferences == null){
@@ -2656,6 +2697,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return prefs;
 	}
 
+	@Override
 	public boolean setProjectDescriptionWorkspacePreferences(ICProjectDescriptionWorkspacePreferences prefs,
 						boolean updateProjects,
 						IProgressMonitor monitor) {
@@ -2727,6 +2769,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		throw ExceptionFactory.createCoreException(SettingsModelMessages.getString("CProjectDescriptionManager.14")); //$NON-NLS-1$
 	}
 
+	@Override
 	public void updateExternalSettingsProviders(String[] ids, IProgressMonitor monitor){
 		ExtensionContainerFactory.updateReferencedProviderIds(ids, monitor);
 	}

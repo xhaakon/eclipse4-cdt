@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010 Ericsson and others.
+ * Copyright (c) 2008, 2012 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,8 @@
  *     Ericsson - initial API and implementation
  *     Nokia - create and use backend service. 
  *     Onur Akdemir (TUBITAK BILGEM-ITI) - Multi-process debugging (Bug 237306)
+ *     Marc Khouzam (Ericsson) - Support for GDB 7.4 (Bug 367788)
+ *     Marc Khouzam (Ericsson) - Include IGDBHardware service for the multicore visualizer (Bug 335027)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.service;
 
@@ -29,6 +31,7 @@ import org.eclipse.cdt.dsf.gdb.service.command.CommandFactory_6_8;
 import org.eclipse.cdt.dsf.gdb.service.command.GDBControl;
 import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_0;
 import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_2;
+import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_4;
 import org.eclipse.cdt.dsf.mi.service.CSourceLookup;
 import org.eclipse.cdt.dsf.mi.service.IMIBackend;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpoints;
@@ -53,7 +56,13 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 	public static final String GDB_7_1_VERSION = "7.1"; //$NON-NLS-1$	
 	/** @since 4.0 */
 	public static final String GDB_7_2_VERSION = "7.2"; //$NON-NLS-1$
-	
+	/** @since 4.1 */
+	public static final String GDB_7_2_1_VERSION = "7.2.1"; //$NON-NLS-1$
+	/** @since 4.1 */
+	public static final String GDB_7_3_VERSION = "7.3"; //$NON-NLS-1$
+	/** @since 4.1 */
+	public static final String GDB_7_4_VERSION = "7.4"; //$NON-NLS-1$
+
 	private final String fVersion;
 	
 	public GdbDebugServicesFactory(String version) {
@@ -87,7 +96,13 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 					return (V)createTraceControlService(session, (ILaunchConfiguration)arg);
 				}
 			}
-		}
+		} else if (IGDBHardwareAndOS.class.isAssignableFrom(clazz)) {
+			for (Object arg : optionalArguments) {
+				if (arg instanceof ILaunchConfiguration) {
+					return (V)createHardwareAndOSService(session, (ILaunchConfiguration)arg);
+				}
+			}
+	}
 
         return super.createService(clazz, session);
 	}
@@ -98,6 +113,11 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 
 	@Override
 	protected IBreakpoints createBreakpointService(DsfSession session) {
+		// This service is available for GDB 7.2 but there is a pre-release of GDB that
+		// supports the same features and has version of 6.8.50.20090414
+		if (GDB_7_2_VERSION.compareTo(fVersion) <= 0 || "6.8.50.20090414".equals(fVersion)) { //$NON-NLS-1$
+			return new GDBBreakpoints_7_2(session);
+		}
 		if (GDB_7_0_VERSION.compareTo(fVersion) <= 0) {
 			return new GDBBreakpoints_7_0(session);
 		}
@@ -105,6 +125,9 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 	}
 	
 	protected ICommandControl createCommandControl(DsfSession session, ILaunchConfiguration config) {
+		if (GDB_7_4_VERSION.compareTo(fVersion) <= 0) {
+			return new GDBControl_7_4(session, config, new CommandFactory_6_8());
+		}
 		if (GDB_7_2_VERSION.compareTo(fVersion) <= 0) {
 			return new GDBControl_7_2(session, config, new CommandFactory_6_8());
 		}
@@ -147,6 +170,9 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 		
 	@Override
 	protected IProcesses createProcessesService(DsfSession session) {
+		if (GDB_7_2_1_VERSION.compareTo(fVersion) <= 0) {
+			return new GDBProcesses_7_2_1(session);
+		}
 		if (GDB_7_2_VERSION.compareTo(fVersion) <= 0) {
 			return new GDBProcesses_7_2(session);
 		}
@@ -184,8 +210,8 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 	
 	/** @since 3.0 */
 	protected IGDBTraceControl createTraceControlService(DsfSession session, ILaunchConfiguration config) {
-		// This service is available for GDB 7.2. But until that GDB is itself available
-		// there is a pre-release that has a version of 6.8.50.20090414
+		// This service is available for GDB 7.2 but there is a pre-release of GDB that
+		// supports the same features and has version of 6.8.50.20090414
 		if (GDB_7_2_VERSION.compareTo(fVersion) <= 0 || "6.8.50.20090414".equals(fVersion)) { //$NON-NLS-1$
 			return new GDBTraceControl_7_2(session, config);
 		}
@@ -194,5 +220,10 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 		// but the service would have to be properly coded, as some MI commands don't exists
 		// in those older GDB versions.  Also, gdbserver only supports tracing starting with 7.2
 		return null;		
+	}
+	
+	/** @since 4.1 */
+	protected IGDBHardwareAndOS createHardwareAndOSService(DsfSession session, ILaunchConfiguration config) {
+		return new GDBHardwareAndOS(session);
 	}
 }

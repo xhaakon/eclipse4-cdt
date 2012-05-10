@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2008, 2010 Institute for Software, HSR Hochschule fuer Technik
  * Rapperswil, University of applied sciences and others
- * All rights reserved. This program and the accompanying materials 
- * are made available under the terms of the Eclipse Public License v1.0 
- * which accompanies this distribution, and is available at 
- * http://www.eclipse.org/legal/epl-v10.html  
- *  
- * Contributors: 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
  *     Institute for Software - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.rewrite.astwriter;
@@ -41,14 +41,11 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTWhileStatement;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousStatement;
 import org.eclipse.cdt.internal.core.dom.rewrite.commenthandler.NodeCommentMap;
-import org.eclipse.cdt.internal.core.dom.rewrite.util.FileContentHelper;
-import org.eclipse.cdt.internal.core.dom.rewrite.util.FileHelper;
-import org.eclipse.core.resources.IFile;
 
 /**
  * Generates source code of statement nodes. The actual string operations are delegated
  * to the <code>Scribe</code> class.
- * 
+ *
  * @see Scribe
  * @see IASTStatement
  * @author Emanuel Graf IFS
@@ -78,10 +75,10 @@ public class StatementWriter extends NodeWriter {
 		super(scribe, visitor, commentMap);
 		declWriter = new DeclarationWriter(scribe, visitor, commentMap);
 	}
-	
+
 	/**
 	 * Prints a statement.
-	 * 
+	 *
 	 * @param statement the statement
 	 * @param newLine if true print a newline if statement usually have one.
 	 * @return {@link ASTVisitor#PROCESS_SKIP}
@@ -111,18 +108,18 @@ public class StatementWriter extends NodeWriter {
 			newLine = false;
 		} else if (statement instanceof IASTCaseStatement) {
 			writeCaseStatement((IASTCaseStatement) statement);
-//			usually newLine			
+//			usually newLine
 		} else if (statement instanceof IASTDefaultStatement) {
 			writeDefaultStatement((IASTDefaultStatement)statement);
 		} else if (statement instanceof IASTContinueStatement) {
 			writeContinueStatement((IASTContinueStatement)statement);
 //			usually newLine
 		} else if (statement instanceof IASTCompoundStatement) {
-			writeCompoundStatement((IASTCompoundStatement) statement);
 			if (compoundNoNewLine) {
 				newLine = false;
 				compoundNoNewLine = false;
 			}
+			writeCompoundStatement((IASTCompoundStatement) statement);
 		} else if (statement instanceof IASTBreakStatement) {
 			writeBreakStatement((IASTBreakStatement) statement);
 //			usually newLine
@@ -130,7 +127,7 @@ public class StatementWriter extends NodeWriter {
 			writeSwitchStatement((IASTSwitchStatement) statement);
 			newLine = false;
 		} else if (statement instanceof IASTIfStatement) {
-			writeIfStatement((IASTIfStatement) statement);			
+			writeIfStatement((IASTIfStatement) statement);
 			newLine = false;
 		} else if (statement instanceof IASTWhileStatement) {
 			writeWhileStatement((IASTWhileStatement) statement);
@@ -152,20 +149,16 @@ public class StatementWriter extends NodeWriter {
 			newLine = false;
 		} else if (statement instanceof IASTProblemStatement) {
 			throw new ProblemRuntimeException((IASTProblemStatement)statement);
-		} 
-		
-		if (hasTrailingComments(statement)) {
-			writeTrailingComments(statement, newLine);			
-		} else if (newLine) {
-			scribe.newLine();
 		}
-		
+
+		writeTrailingComments(statement, newLine);
+
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
 	private void writeDoStatement(IASTDoStatement doStatement) {
 		nextCompoundNoNewLine();
-		
+
 		scribe.print(DO);
 		writeBodyStatement(doStatement.getBody(), true);
 		scribe.print(DO_WHILE);
@@ -193,7 +186,7 @@ public class StatementWriter extends NodeWriter {
 				scribe.printSemicolon();
 			}
 		}
-		
+
 		visitNodeIfNotNull(forStatement.getIterationExpression());
 		scribe.print(')');
 		scribe.newLines();
@@ -227,13 +220,13 @@ public class StatementWriter extends NodeWriter {
 		} else {
 			ifStatement.getConditionExpression().accept(visitor);
 		}
-		
+
 		scribe.print(')');
 		scribe.newLines();
 		nextCompoundNoNewLine();
 		IASTStatement elseClause = ifStatement.getElseClause();
 		writeBodyStatement(ifStatement.getThenClause(), elseClause != null);
-		
+
 		if (elseClause != null) {
 			scribe.print(ELSE);
 			nextCompoundNoNewLine();
@@ -258,7 +251,7 @@ public class StatementWriter extends NodeWriter {
 	private void writeLabelStatement(IASTLabelStatement labelStatement) {
 		labelStatement.getName().accept(visitor);
 		scribe.print(':');
-		scribe.newLine();			
+		scribe.newLine();
 		labelStatement.getNestedStatement().accept(visitor);
 	}
 
@@ -283,7 +276,7 @@ public class StatementWriter extends NodeWriter {
 	private void writeNullStatement(IASTNullStatement nullStmt) {
 		scribe.printSemicolon();
 	}
-	
+
 	private void writeDeclarationStatement(IASTDeclarationStatement decStmt) {
 		decStmt.getDeclaration().accept(visitor);
 	}
@@ -324,7 +317,7 @@ public class StatementWriter extends NodeWriter {
 				cppWhileStatment.getCondition().accept(visitor);
 			} else {
 				writeDeclarationWithoutSemicolon(cppWhileStatment.getConditionDeclaration());
-			}		
+			}
 		} else {
 			whileStatment.getCondition().accept(visitor);
 		}
@@ -336,7 +329,7 @@ public class StatementWriter extends NodeWriter {
 
 	private void writeCaseStatement(IASTCaseStatement caseStatement) {
 		nextCompoundIndentationLevelOneMore();
-		
+
 		if (!switchIsNew) {
 			scribe.decrementIndentationLevel();
 		}
@@ -349,7 +342,7 @@ public class StatementWriter extends NodeWriter {
 
 	private void writeSwitchStatement(IASTSwitchStatement switchStatement) {
 		switchIsNew = true;
-		
+
 		scribe.print(SWITCH_BRACKET);
 		scribe.noNewLines();
 		if (switchStatement instanceof ICPPASTSwitchStatement) {
@@ -366,13 +359,13 @@ public class StatementWriter extends NodeWriter {
 		scribe.newLines();
 		nextCompoundNoNewLine();
 		writeBodyStatement(switchStatement.getBody(), false);
-		
+
 		switchIsNew = false;
 	}
 
 	private void writeDefaultStatement(IASTDefaultStatement defaultStatement) {
 		nextCompoundIndentationLevelOneMore();
-		
+
 		if (!switchIsNew) {
 			scribe.decrementIndentationLevel();
 		}
@@ -380,18 +373,18 @@ public class StatementWriter extends NodeWriter {
 		scribe.incrementIndentationLevel();
 		switchIsNew = false;
 	}
-	
+
 	private void writeCompoundStatement(IASTCompoundStatement compoundStatement) {
 		scribe.printLBrace();
 		scribe.newLine();
 		for (IASTStatement statements : getNestedStatements(compoundStatement)) {
 			statements.accept(visitor);
 		}
-		
+
 		if (hasFreestandingComments(compoundStatement)) {
-			writeFreeStandingComments(compoundStatement);			
+			writeFreestandingComments(compoundStatement);
 		}
-		
+
 		if (decrementIndentationLevelOneMore) {
 			scribe.decrementIndentationLevel();
 			decrementIndentationLevelOneMore = false;
@@ -401,8 +394,9 @@ public class StatementWriter extends NodeWriter {
 
 	protected IASTStatement[] getNestedStatements(IASTCompoundStatement compoundStatement) {
 		return compoundStatement.getStatements();
-	}	
-	
+	}
+
+	// TODO(sprigogin): Invert and rename second parameter
 	protected void writeBodyStatement(IASTStatement statement, boolean isDoStatement) {
 		if (statement instanceof IASTCompoundStatement) {
 			//TODO hsr existiert noch eine methode
@@ -415,34 +409,30 @@ public class StatementWriter extends NodeWriter {
 			statement.accept(visitor);
 			scribe.newLine();
 		} else {
-			scribe.incrementIndentationLevel();	
-			scribe.newLine();	
+			scribe.incrementIndentationLevel();
+			scribe.newLine();
 			statement.accept(visitor);
-			scribe.decrementIndentationLevel();	
+			scribe.decrementIndentationLevel();
 		}
 	}
 
 	/**
-	 * Write no new Line after the next Compound-Statement 
+	 * Write no new line after the next compound statement
 	 */
 	protected void nextCompoundNoNewLine() {
 		compoundNoNewLine = true;
 	}
-	
+
 	/**
-	 * Indent one time more at the end (before the closing Brackets) 
-	 * of a Compound-Statement 
+	 * Indent one time more at the end (before the closing brackets)
+	 * of a compound statement
 	 */
 	protected void nextCompoundIndentationLevelOneMore() {
 		decrementIndentationLevelOneMore = true;
 	}
 
 	protected int writeMixedStatement(IASTStatement statement) {
-		IFile file = FileHelper.getFileFromNode(statement);
-		int offset = statement.getFileLocation().getNodeOffset();
-		int length = statement.getFileLocation().getNodeLength();
-		String code = FileContentHelper.getContent(file, offset, length);
-		
+		String code = statement.getRawSignature();
 		scribe.println(code);
 		return ASTVisitor.PROCESS_SKIP;
 	}

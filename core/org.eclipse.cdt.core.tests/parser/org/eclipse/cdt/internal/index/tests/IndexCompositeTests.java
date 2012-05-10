@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2012 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -35,6 +35,7 @@ import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.core.testplugin.CTestPlugin;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
 import org.eclipse.cdt.core.testplugin.util.TestSourceReader;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.runtime.CoreException;
@@ -64,7 +65,7 @@ public class IndexCompositeTests  extends BaseTestCase {
 	
 	IIndex index;
 	
-	protected StringBuffer[] getContentsForTest(int blocks) throws IOException {
+	protected StringBuilder[] getContentsForTest(int blocks) throws IOException {
 		return TestSourceReader.getContentsForTest(
 				CTestPlugin.getDefault().getBundle(), "parser", getClass(), getName(), blocks);
 	}
@@ -107,6 +108,7 @@ public class IndexCompositeTests  extends BaseTestCase {
 	// enum E {E1,E2};
 	// void foo(C1 c) {}
 
+	// #include "h3.h"
 	// class B1 {};
 	// namespace X { class B2 {}; }
 	// C1 c1;
@@ -114,6 +116,7 @@ public class IndexCompositeTests  extends BaseTestCase {
 	// void foo(B1 c) {}
 	// void foo(X::C2 c) {}
 
+	// #include "h2.h"
 	// class A1 {};
 	// void foo(X::B2 c) {}
 	// namespace X { class A2 {}; B2 b; C2 c; }
@@ -139,68 +142,75 @@ public class IndexCompositeTests  extends BaseTestCase {
 
 			/* Defines Global, Defines Namespace, References Global, References Namespace
 			 * projC: 6, 2, 0, 0
-			 * projB: 6, 1, 1, 1
-			 * projA: 3, 3, 0, 2
+			 * projB: 6, 1, 1, 1 + projC
+			 * projA: 3, 3, 0, 2 + projB + projC
 			 */
 
+			final int gC= 6, aC= gC + 2;
+			final int gB= 6, aB= gB + 1;
+			final int gA= 3, aA= gA + 3;
+			
+			final int gBC= gB+gC-1, aBC= aB+aC-1;
+			final int gABC= gA+gBC-1, aABC= aA+aBC-1;
+			
 			setIndex(cprojC, NONE);
-			assertBCount(6, 6 +2); assertNamespaceXMemberCount(1);
+			assertBCount(gC, aC); assertNamespaceXMemberCount(1);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojC, REFS);
-			assertBCount(6, 6 +2);
+			assertBCount(gC, aC);
 			assertNamespaceXMemberCount(1);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojC, REFD);
-			assertBCount((6+(6-1)+(3-1)), (6+2)+(6+1-1)+(3+3-1));
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojC, BOTH);
-			assertBCount((6+(6-1)+(3-1)), (6+2)+(6+1-1)+(3+3-1));
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			assertFieldCount("C1", 1);
 
 			
 			setIndex(cprojB, NONE);
-			assertBCount(6+1, 6+1+1+1);
+			assertBCount(gBC, aBC);
 			assertNamespaceXMemberCount(2);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojB, REFS);
-			assertBCount(6+1+6-1-1, (6+1+1+1)-1-1 + (6+2) -1);
+			assertBCount(gBC, aBC);
 			assertNamespaceXMemberCount(2);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojB, REFD);
-			assertBCount(6+1+3-1, (6+1+1+1) + (3+3) -1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojB, BOTH);
-			assertBCount((6+1)-1+3+6 -2,  (6+1+1+1)-1-1 + (3+3+2)-2 + (6+2) -2);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			assertFieldCount("C1", 1);
 
 			
 			setIndex(cprojA, NONE);
-			assertBCount(3, 8);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			// binding C1 is not referenced by cprojA
 			
 			setIndex(cprojA, REFS);
-			assertBCount(6+6+3-1-1, (6+1+1+1)-1-1 + (3+3+2)-2 + (6+2) -2);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			assertFieldCount("C1", 1);
 			
 			setIndex(cprojA, REFD);
-			assertBCount(3, 8);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			// binding C1 is not referenced by cprojA
 			
 			setIndex(cprojA, BOTH);
-			assertBCount(6+6+3-1-1, (6+1+1+1)-1-1 + (3+3+2)-2 + (6+2) -2);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(5);
 			assertFieldCount("C1", 1);
 		} finally {
@@ -209,40 +219,43 @@ public class IndexCompositeTests  extends BaseTestCase {
 		}
 	}
 
-	// class C1 {};
-	// namespace X { class C2 {}; B1 b; }
-	// enum E {E1,E2};
-	// X::B2 cb;
-	// void foo(C1 c) {}
-
 	// class B1 {};
 	// namespace X { class B2 {}; }
 	// void foo(B1 c) {}
 	// void foo(X::B2 c, B1 c) {}
 
+	// #include "h2.h"
 	// class A1 {};
 	// void foo(X::B2 c) {}
 	// namespace X { class A2 {}; }
 	// B1 ab;
+
+	// #include "h2.h"
+	// class C1 {};
+	// namespace X { class C2 {}; B1 b; }
+	// enum E {E1,E2};
+	// X::B2 cb;
+	// void foo(C1 c) {}
 	public void testTripleUpwardV() throws Exception {
 		CharSequence[] contents = getContentsForTest(3);
 		List projects = new ArrayList();
 		
 		try {
 			ProjectBuilder pb = new ProjectBuilder("projB"+System.currentTimeMillis(), true);
-			pb.addFile("h2.h", contents[1]);
+			pb.addFile("h2.h", contents[0]);
 			ICProject cprojB = pb.create();
 			projects.add(cprojB);
 
+			pb = new ProjectBuilder("projA"+System.currentTimeMillis(), true);
+			pb.addFile("h1.h", contents[1]).addDependency(cprojB.getProject());
+			ICProject cprojA = pb.create();
+			projects.add(cprojA);
+
 			pb = new ProjectBuilder("projC"+System.currentTimeMillis(), true);
-			pb.addFile("h3.h", contents[0]).addDependency(cprojB.getProject());
+			pb.addFile("h3.h", contents[2]).addDependency(cprojB.getProject());
 			ICProject cprojC = pb.create();
 			projects.add(cprojC);
 
-			pb = new ProjectBuilder("projB"+System.currentTimeMillis(), true);
-			pb.addFile("h1.h", contents[2]).addDependency(cprojB.getProject());
-			ICProject cprojA = pb.create();
-			projects.add(cprojA);
 
 			/*  A   C    |
 		     *   \ /     | Depends On / References
@@ -253,44 +266,53 @@ public class IndexCompositeTests  extends BaseTestCase {
 			 * projB: 4, 1, 0, 0
 			 * projA: 4, 1, 1, 1
 			 */
+			
+			final int gC= 7, aC= gC + 2;
+			final int gB= 4, aB= gB + 1;
+			final int gA= 4, aA= gA + 1;
+			
+			final int gBC= gB+gC-1, aBC= aB+aC-1;
+			final int gAB= gA+gB-1, aAB= aA+aB-1;
+			final int gABC= gA+gBC-1, aABC= aA+aBC-1;
+
 
 			setIndex(cprojC, NONE);
-			assertBCount(7+1, 7+2+1+1);
+			assertBCount(gBC, aBC);
 			assertNamespaceXMemberCount(3);
 			setIndex(cprojC, REFS);
-			assertBCount(7+1+4-1-1, 7+1+1+2+4+1-1-2);
+			assertBCount(gBC, aBC);
 			assertNamespaceXMemberCount(3);
 			setIndex(cprojC, REFD);
-			assertBCount(7+1, 7+1+1+2);
+			assertBCount(gBC, aBC);
 			assertNamespaceXMemberCount(3);
 			setIndex(cprojC, BOTH);
-			assertBCount(7+4+4-2, 7+4+4-2 +2+1+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 
 			setIndex(cprojB, NONE);
-			assertBCount(4, 4+1);
+			assertBCount(gB, aB);
 			assertNamespaceXMemberCount(1);
 			setIndex(cprojB, REFS);
-			assertBCount(4, 4+1);
+			assertBCount(gB, aB);
 			assertNamespaceXMemberCount(1);
 			setIndex(cprojB, REFD);
-			assertBCount(7+4+4-2, 7+4+4-2 +2+1+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 			setIndex(cprojB, BOTH);
-			assertBCount(7+4+4-2, 7+4+4-2 +2+1+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 
 			setIndex(cprojA, NONE);
-			assertBCount(4+1, 4+1+1+1);
+			assertBCount(gAB, aAB);
 			assertNamespaceXMemberCount(2);
 			setIndex(cprojA, REFS);
-			assertBCount(4+1+4-1-1, 4+1+4-1-1 +1+1);
+			assertBCount(gAB, aAB);
 			assertNamespaceXMemberCount(2);
 			setIndex(cprojA, REFD);
-			assertBCount(4+1, 4+1+1+1);
+			assertBCount(gAB, aAB);
 			assertNamespaceXMemberCount(2);
 			setIndex(cprojA, BOTH);
-			assertBCount(7+4+4-2, 7+4+4-2 +2+1+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 		} finally {
 			for (Iterator i = projects.iterator(); i.hasNext();)
@@ -303,11 +325,13 @@ public class IndexCompositeTests  extends BaseTestCase {
 	// enum E {E1,E2};
 	// void foo(C1 c) {}
 
+	// #include "h3.h"
+	// #include "h1.h"
 	// class B1 {};
 	// namespace X { class B2 {}; C1 c; }
 	// void foo(A1 c) {}
 	// void foo(X::A2 c, B1 c) {}
-
+	
 	// class A1 {};
 	// void foo(A1 a, A1 b) {}
 	// namespace X { class A2 {}; }
@@ -341,43 +365,51 @@ public class IndexCompositeTests  extends BaseTestCase {
 			 * projA: 3, 1, 0, 0
 			 */
 
+			final int gC= 6, aC= gC + 1;
+			final int gB= 4, aB= gB + 2;
+			final int gA= 3, aA= gA + 1;
+			
+			final int gBC= gB+gC-1, aBC= aB+aC-1;
+			final int gAB= gA+gB-1, aAB= aA+aB-1;
+			final int gABC= gA+gBC-1, aABC= aA+aBC-1;
+
 			setIndex(cprojC, NONE);
-			assertBCount(6, 6+1);
+			assertBCount(gC, aC);
 			assertNamespaceXMemberCount(1);
 			setIndex(cprojC, REFS);
-			assertBCount(6, 6+1);
+			assertBCount(gC, aC);
 			assertNamespaceXMemberCount(1);
 			setIndex(cprojC, REFD);
-			assertBCount(6+4+1-1, 6+4+1-1 +1+1+1+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 			setIndex(cprojC, BOTH);
-			assertBCount(6+4+3-2, 6+4+3-2 +1+2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 
 			setIndex(cprojB, NONE);
-			assertBCount(4+2, 4+2 +2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 			setIndex(cprojB, REFS);
-			assertBCount(6+4+3-2, 6+4+3-2 +1+2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 			setIndex(cprojB, REFD);
-			assertBCount(4+2, 4+2 +2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 			setIndex(cprojB, BOTH);
-			assertBCount(6+4+3-2, 6+4+3-2 +1+2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 
 			setIndex(cprojA, NONE);
-			assertBCount(3, 3 +1);
+			assertBCount(gA, aA);
 			assertNamespaceXMemberCount(1);
 			setIndex(cprojA, REFS);
-			assertBCount(3, 3 +1);
+			assertBCount(gA, aA);
 			assertNamespaceXMemberCount(1);
 			setIndex(cprojA, REFD);
-			assertBCount(4+2+3-1-1, 4+2+3-1-1 +2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 			setIndex(cprojA, BOTH);
-			assertBCount(6+4+3-2, 6+4+3-2 +1+2+1);
+			assertBCount(gABC, aABC);
 			assertNamespaceXMemberCount(4);
 		} finally {
 			for (Iterator i = projects.iterator(); i.hasNext();)
@@ -453,14 +485,15 @@ class ProjectBuilder {
 		return this;
 	}
 
-	ICProject create() throws CoreException {
+	ICProject create() throws Exception {
 		ICProject result = cpp ?
 				CProjectHelper.createCCProject(name, "bin", IPDOMManager.ID_NO_INDEXER) :
 				CProjectHelper.createCCProject(name, "bin", IPDOMManager.ID_NO_INDEXER);
 
+		IFile lastFile= null;
 		for (Iterator i = path2content.entrySet().iterator(); i.hasNext();) {
 			Map.Entry entry = (Map.Entry) i.next();
-			TestSourceReader.createFile(result.getProject(), new Path((String)entry.getKey()), (String) entry.getValue());
+			lastFile= TestSourceReader.createFile(result.getProject(), new Path((String)entry.getKey()), (String) entry.getValue());
 		}
 
 		IProjectDescription desc = result.getProject().getDescription();
@@ -468,7 +501,11 @@ class ProjectBuilder {
 		result.getProject().setDescription(desc, new NullProgressMonitor());
 
 		CCorePlugin.getIndexManager().setIndexerId(result, IPDOMManager.ID_FAST_INDEXER);
-		CCorePlugin.getIndexManager().joinIndexer(4000, new NullProgressMonitor());
+		if (lastFile != null) {
+			IIndex index= CCorePlugin.getIndexManager().getIndex(result);
+			TestSourceReader.waitUntilFileIsIndexed(index, lastFile, 2000);
+		} 
+		BaseTestCase.waitForIndexer(result);
 		return result;
 	}
 }

@@ -43,8 +43,9 @@ import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
  */
 @ThreadSafe
 public class GDBJtagDSFLaunchConfigurationDelegate extends GdbLaunchDelegate {
-	
-	protected IDsfDebugServicesFactory newServiceFactory(String version) {
+
+	@Override
+	protected IDsfDebugServicesFactory newServiceFactory(ILaunchConfiguration config, String version) {
 		if (version.contains(LaunchUtils.MACOS_GDB_MARKER)) {
 			// The version string at this point should look like
 			// 6.3.50-20050815APPLE1346, we extract the gdb version and apple version

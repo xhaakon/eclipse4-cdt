@@ -22,9 +22,9 @@ import org.eclipse.jface.text.source.LineRange;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
+import org.eclipse.cdt.core.formatter.DefaultCodeFormatterOptions;
 import org.eclipse.cdt.ui.tests.BaseUITestCase;
 
-import org.eclipse.cdt.internal.formatter.DefaultCodeFormatterOptions;
 
 import org.eclipse.cdt.internal.ui.editor.CDocumentSetupParticipant;
 import org.eclipse.cdt.internal.ui.editor.IndentUtil;
@@ -57,7 +57,7 @@ public class CIndenterTest extends BaseUITestCase {
 
 	protected void assertIndenterResult() throws Exception {
 		CCorePlugin.setOptions(fOptions);
-		StringBuffer[] contents= getContentsForTest(2);
+		StringBuilder[] contents= getContentsForTest(2);
 		String before= contents[0].toString();
 		IDocument document= new Document(before);
 		String expected= contents[1].toString();

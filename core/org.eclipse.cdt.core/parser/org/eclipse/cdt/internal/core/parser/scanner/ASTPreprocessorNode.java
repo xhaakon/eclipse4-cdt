@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.core.parser.scanner;
 
@@ -40,11 +41,15 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit.IDependencyTree;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit.IDependencyTree.IASTInclusionNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.IFileNomination;
 import org.eclipse.cdt.core.dom.ast.IMacroBinding;
+import org.eclipse.cdt.core.index.IIndexFile;
+import org.eclipse.cdt.core.parser.ISignificantMacros;
 import org.eclipse.cdt.core.parser.IToken;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNodeSpecification;
+import org.eclipse.core.runtime.CoreException;
 
 /**
  * Models various AST-constructs obtained from the preprocessor.
@@ -55,7 +60,7 @@ abstract class ASTPreprocessorNode extends ASTNode {
 		setParent(parent);
 		setPropertyInParent(property);
 		setOffset(startNumber);
-		setLength(endNumber-startNumber);
+		setLength(endNumber - startNumber);
 	}
 	
 	protected char[] getSource(int offset, int length) {
@@ -79,10 +84,12 @@ abstract class ASTPreprocessorNode extends ASTNode {
 		nodeSpec.visit(this);
 	}
 	
+	@Override
 	public IASTNode copy() {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	public IASTNode copy(CopyStyle style) {
 		throw new UnsupportedOperationException();
 	}
@@ -99,26 +106,43 @@ abstract class ASTPreprocessorNode extends ASTNode {
 	
 	@Override
 	public String toString() {
-		return String.valueOf(getSource(getOffset(), getLength()));
+		return String.valueOf(getRawSignatureChars());
 	}
 }
 
-
 class ASTComment extends ASTPreprocessorNode implements IASTComment {
 	private final boolean fIsBlockComment;
-	public ASTComment(IASTTranslationUnit parent, int startNumber, int endNumber, boolean isBlockComment) {
-		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, startNumber, endNumber);
+	private String fFilePath;
+	public ASTComment(IASTTranslationUnit parent, String filePath, int offset, int endOffset, boolean isBlockComment) {
+		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, offset, endOffset);
 		fIsBlockComment= isBlockComment;
+		fFilePath= filePath;
 	}
 
+	@Override
+	public int getOffset() {
+		if (fFilePath != null) {
+			// Perform lazy conversion to sequence number
+			ILocationResolver lr= (ILocationResolver) getTranslationUnit().getAdapter(ILocationResolver.class);
+			if (lr != null) {
+				setOffset(lr.getSequenceNumberForFileOffset(fFilePath, super.getOffset()));
+				fFilePath= null;
+			}
+		}
+		return super.getOffset();
+	}
+	
+	@Override
 	public char[] getComment() {
-		return getSource(getOffset(), getLength());
+		return getRawSignatureChars();
 	}
 
+	@Override
 	public boolean isBlockComment() {
 		return fIsBlockComment;
 	}
 
+	@Override
 	public void setComment(char[] comment) {
 		assert false;
 	}
@@ -127,15 +151,15 @@ class ASTComment extends ASTPreprocessorNode implements IASTComment {
 
 abstract class ASTDirectiveWithCondition extends ASTPreprocessorNode {
 	protected final int fConditionOffset;
-    private final boolean fActive;
-	public ASTDirectiveWithCondition(IASTTranslationUnit parent, int startNumber, int condNumber, int endNumber, boolean active) {
+    private final boolean fTaken;
+	public ASTDirectiveWithCondition(IASTTranslationUnit parent, int startNumber, int condNumber, int endNumber, boolean taken) {
 		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, startNumber, endNumber);
 		fConditionOffset= condNumber;
-		fActive= active;
+		fTaken= taken;
 	}
 
     public boolean taken() {
-        return fActive;
+        return fTaken;
     }
         
     public String getConditionString() {
@@ -154,19 +178,20 @@ class ASTEndif extends ASTPreprocessorNode implements IASTPreprocessorEndifState
 }
 
 class ASTElif extends ASTDirectiveWithCondition implements IASTPreprocessorElifStatement {
-	public ASTElif(IASTTranslationUnit parent, int startNumber, int condNumber, int condEndNumber, boolean active) {
-		super(parent, startNumber, condNumber, condEndNumber, active);
+	public ASTElif(IASTTranslationUnit parent, int startNumber, int condNumber, int condEndNumber, boolean taken) {
+		super(parent, startNumber, condNumber, condEndNumber, taken);
     }
 }
 
 class ASTElse extends ASTPreprocessorNode implements IASTPreprocessorElseStatement {
-	private final boolean fActive;
-    public ASTElse(IASTTranslationUnit parent, int startNumber, int endNumber, boolean active) {
+	private final boolean fTaken;
+    public ASTElse(IASTTranslationUnit parent, int startNumber, int endNumber, boolean taken) {
 		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, startNumber, endNumber);
-		fActive= active;
+		fTaken= taken;
 	}
-    public boolean taken() {
-        return fActive;
+    @Override
+	public boolean taken() {
+        return fTaken;
     }
 }
 
@@ -182,13 +207,14 @@ class ASTIfndef extends ASTDirectiveWithCondition implements IASTPreprocessorIfn
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTPreprocessorIfdefStatement#getMacroReference()
 	 */
+	@Override
 	public ASTPreprocessorName getMacroReference() {
 		return fMacroRef;
 	}
 }
 
 class ASTIfdef extends ASTDirectiveWithCondition implements IASTPreprocessorIfdefStatement {
-	ASTMacroReferenceName fMacroRef;
+	private ASTMacroReferenceName fMacroRef;
 	public ASTIfdef(IASTTranslationUnit parent, int startNumber, int condNumber, int condEndNumber, boolean taken, IMacroBinding macro) {
 		super(parent, startNumber, condNumber, condEndNumber, taken);
 		if (macro != null) {
@@ -198,14 +224,15 @@ class ASTIfdef extends ASTDirectiveWithCondition implements IASTPreprocessorIfde
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTPreprocessorIfdefStatement#getMacroReference()
 	 */
+	@Override
 	public ASTPreprocessorName getMacroReference() {
 		return fMacroRef;
 	}
 }
 
 class ASTIf extends ASTDirectiveWithCondition implements IASTPreprocessorIfStatement {
-	public ASTIf(IASTTranslationUnit parent, int startNumber, int condNumber, int condEndNumber, boolean active) {
-		super(parent, startNumber, condNumber, condEndNumber, active);
+	public ASTIf(IASTTranslationUnit parent, int startNumber, int condNumber, int condEndNumber, boolean taken) {
+		super(parent, startNumber, condNumber, condEndNumber, taken);
 	}
 }
 
@@ -214,6 +241,7 @@ class ASTError extends ASTDirectiveWithCondition implements IASTPreprocessorErro
 		super(parent, startNumber, condNumber, condEndNumber, true);
 	}
 
+	@Override
 	public char[] getMessage() {
 		return getCondition();
 	}
@@ -224,10 +252,12 @@ class ASTPragma extends ASTDirectiveWithCondition implements IASTPreprocessorPra
 		super(parent, startNumber, condNumber, condEndNumber, true);
 	}
 
+	@Override
 	public char[] getMessage() {
 		return getCondition();
 	}
 
+	@Override
 	public boolean isPragmaOperator() {
 		return false;
 	}
@@ -253,38 +283,58 @@ class ASTPragmaOperator extends ASTPragma {
 }
 
 class ASTInclusionStatement extends ASTPreprocessorNode implements IASTPreprocessorIncludeStatement {
+	private static final ISignificantMacros[] NO_VERSIONS = {};
+	
 	private final ASTPreprocessorName fName;
 	private final String fPath;
 	private final boolean fIsResolved;
 	private final boolean fIsSystemInclude;
 	private final boolean fFoundByHeuristics;
+	private final IFileNomination fNominationDelegate;
+	private boolean fPragmaOnce;
+	private boolean fCreatesAST;
+	private ISignificantMacros fSignificantMacros;
+	private ISignificantMacros[] fLoadedVersions = NO_VERSIONS;
+	private long fIncludedFileContentsHash;
+	private long fIncludedFileTimestamp = -1;
+	private long fIncludedFileSize;
+	private long fIncludedFileReadTime;
+	private boolean fErrorInIncludedFile;
 
 	public ASTInclusionStatement(IASTTranslationUnit parent, 
 			int startNumber, int nameStartNumber, int nameEndNumber, int endNumber,
-			char[] headerName, String filePath, boolean userInclude, boolean active, boolean heuristic) {
+			char[] headerName, String filePath, boolean userInclude, boolean active, boolean heuristic, 
+			IFileNomination nominationDelegate) {
 		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, startNumber, endNumber);
-		fName= new ASTPreprocessorName(this, IASTPreprocessorIncludeStatement.INCLUDE_NAME, nameStartNumber, nameEndNumber, headerName, null);
+		fName= new ASTPreprocessorName(this, IASTPreprocessorIncludeStatement.INCLUDE_NAME,
+				nameStartNumber, nameEndNumber, headerName, null);
 		fPath= filePath == null ? "" : filePath; //$NON-NLS-1$
 		fIsResolved= filePath != null;
 		fIsSystemInclude= !userInclude;
 		fFoundByHeuristics= heuristic;
+		fSignificantMacros= ISignificantMacros.NONE;
+		fNominationDelegate= nominationDelegate;
 		if (!active) {
 			setInactive();
 		}
 	}
 
+	@Override
 	public IASTName getName() {
 		return fName;
 	}
 
+	@Override
 	public String getPath() {
 		return fPath;
 	}
 
+	@Override
 	public boolean isResolved() {
 		return fIsResolved;
 	}
 
+	@Override
 	public boolean isSystemInclude() {
 		return fIsSystemInclude;
 	}
@@ -295,8 +345,130 @@ class ASTInclusionStatement extends ASTPreprocessorNode implements IASTPreproces
 		nodeSpec.visit(fName);
 	}
 
+	@Override
 	public boolean isResolvedByHeuristics() {
 		return fFoundByHeuristics;
+	}
+
+	@Override
+	public boolean hasPragmaOnceSemantics() {
+		if (fNominationDelegate != null) {
+			try {
+				return fNominationDelegate.hasPragmaOnceSemantics();
+			} catch (CoreException e) {
+			}
+		} 	
+		return fPragmaOnce;
+	}
+	
+	public void setPragamOnceSemantics(boolean value) {
+		assert fNominationDelegate == null;
+		fPragmaOnce= value;
+	}
+
+	@Override
+	public ISignificantMacros getSignificantMacros() {
+		if (fNominationDelegate != null) {
+			try {
+				return fNominationDelegate.getSignificantMacros();
+			} catch (CoreException e) {
+			}
+		} 	
+		return fSignificantMacros;
+	}
+	
+	public void setSignificantMacros(ISignificantMacros sig) {
+		assert sig != null;
+		assert fNominationDelegate == null;
+		fSignificantMacros= sig;
+	}
+
+	public void setLoadedVersions(ISignificantMacros[] versions) {
+		fLoadedVersions= versions;
+	}
+
+	@Override
+	public ISignificantMacros[] getLoadedVersions() {
+		return fLoadedVersions;
+	}
+	
+	@Override
+	public long getIncludedFileTimestamp() {
+		if (fNominationDelegate != null) {
+			return 0;
+		} 	
+		return fIncludedFileTimestamp;
+	}
+	
+	public void setIncludedFileTimestamp(long timestamp) {
+		assert fNominationDelegate == null;
+		fIncludedFileTimestamp= timestamp;
+	}
+
+	@Override
+	public long getIncludedFileReadTime() {
+		if (fNominationDelegate != null) {
+			return 0;
+		} 	
+		return fIncludedFileReadTime;
+	}
+
+	public void setIncludedFileReadTime(long time) {
+		assert fNominationDelegate == null;
+		fIncludedFileReadTime= time;
+	}
+
+	@Override
+	public long getIncludedFileSize() {
+		if (fNominationDelegate != null) {
+			return 0;
+		} 	
+		return fIncludedFileSize;
+	}
+	
+	public void setIncludedFileSize(long size) {
+		assert fNominationDelegate == null;
+		fIncludedFileSize= size;
+	}
+
+	@Override
+	public long getIncludedFileContentsHash() {
+		if (fNominationDelegate != null) {
+			return 0;
+		} 	
+		return fIncludedFileContentsHash;
+	}
+	
+	public void setIncludedFileContentsHash(long hash) {
+		assert fNominationDelegate == null;
+		fCreatesAST= true;
+		fIncludedFileContentsHash= hash;
+	}
+
+	@Override
+	public boolean isErrorInIncludedFile() {
+		if (fNominationDelegate != null) {
+			return false;
+		} 	
+		return fErrorInIncludedFile;
+	}
+	
+	public void setErrorInIncludedFile(boolean error) {
+		assert fNominationDelegate == null;
+		fErrorInIncludedFile= error;
+	}
+
+	@Override
+	public boolean createsAST() {
+		return fCreatesAST;
+	}
+	
+	@Override
+	public IIndexFile getImportedIndexFile() {
+		if (fNominationDelegate instanceof IIndexFile)
+			return (IIndexFile) fNominationDelegate;
+		
+		return null;
 	}
 }
 
@@ -304,7 +476,6 @@ class ASTMacroDefinition extends ASTPreprocessorNode implements IASTPreprocessor
 	private final ASTPreprocessorName fName;
 	protected final int fExpansionNumber;
 	private final int fExpansionOffset;
-	private final boolean fActive;
 	
 	/**
 	 * Regular constructor.
@@ -314,8 +485,9 @@ class ASTMacroDefinition extends ASTPreprocessorNode implements IASTPreprocessor
 		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, startNumber, endNumber);
 		fExpansionNumber= expansionNumber;
 		fExpansionOffset= -1;
-		fActive= active;
 		fName= new ASTPreprocessorDefinition(this, IASTPreprocessorMacroDefinition.MACRO_NAME, nameNumber, nameEndNumber, macro.getNameCharArray(), macro);
+		if (!active)
+			setInactive();
 	}
 
 	/**
@@ -327,7 +499,6 @@ class ASTMacroDefinition extends ASTPreprocessorNode implements IASTPreprocessor
 		fName= new ASTBuiltinName(this, IASTPreprocessorMacroDefinition.MACRO_NAME, floc, macro.getNameCharArray(), macro);
 		fExpansionNumber= -1;
 		fExpansionOffset= expansionOffset;
-		fActive= true;
 	}
 
 	
@@ -343,14 +514,17 @@ class ASTMacroDefinition extends ASTPreprocessorNode implements IASTPreprocessor
 		return (IMacroBinding) fName.getBinding();
 	}
 	
+	@Override
 	public String getExpansion() {
 		return new String(getMacro().getExpansion());
 	}
 
+	@Override
 	public IASTName getName() {
 		return fName;
 	}
 
+	@Override
 	public int getRoleForName(IASTName n) {
 		return (fName == n) ? r_definition : r_unclear;
 	}
@@ -361,9 +535,12 @@ class ASTMacroDefinition extends ASTPreprocessorNode implements IASTPreprocessor
 		nodeSpec.visit(fName);
 	}
 
+	@Override
 	public void setExpansion(String exp) {assert false;}
+	@Override
 	public void setName(IASTName name) {assert false;}
 
+	@Override
 	public IASTFileLocation getExpansionLocation() {
 		if (fExpansionNumber >= 0) {
 			IASTTranslationUnit ast = getTranslationUnit();
@@ -388,11 +565,6 @@ class ASTMacroDefinition extends ASTPreprocessorNode implements IASTPreprocessor
 	public String toString() {
 		return getName().toString() + '=' + getExpansion();
 	}
-
-	@Override
-	final public boolean isActive() {
-		return fActive;
-	}
 }
 
 class ASTMacroParameter extends ASTPreprocessorNode implements IASTFunctionStyleMacroParameter  {
@@ -403,10 +575,12 @@ class ASTMacroParameter extends ASTPreprocessorNode implements IASTFunctionStyle
 		fParameter= new String(param);
 	}
 
+	@Override
 	public String getParameter() {
 		return fParameter;
 	}
 
+	@Override
 	public void setParameter(String value) {assert false;}
 }
 
@@ -427,6 +601,7 @@ class ASTFunctionStyleMacroDefinition extends ASTMacroDefinition implements IAST
 		super(parent, macro, nameLoc, expansionOffset);
 	}
 
+	@Override
 	public IASTFunctionStyleMacroParameter[] getParameters() {
     	IMacroBinding macro= getMacro();
     	char[][] paramList= macro.getParameterList();
@@ -437,10 +612,10 @@ class ASTFunctionStyleMacroDefinition extends ASTMacroDefinition implements IAST
 		int endIdx= Math.min(fExpansionNumber - defOffset, image.length);
     	char start= '(';
     	for (int i = 0; i < result.length; i++) {
-        	while(idx < endIdx && image[idx] != start) 
+        	while (idx < endIdx && image[idx] != start) 
         		idx++;
         	idx++;
-        	while(idx < endIdx && Character.isWhitespace(image[idx]))
+        	while (idx < endIdx && Character.isWhitespace(image[idx]))
         		idx++;
         	start= ',';
         	
@@ -456,6 +631,7 @@ class ASTFunctionStyleMacroDefinition extends ASTMacroDefinition implements IAST
         return result;
     }
 
+	@Override
 	public void addParameter(IASTFunctionStyleMacroParameter parm) {assert false;}
 	
 	@Override
@@ -478,9 +654,9 @@ class ASTFunctionStyleMacroDefinition extends ASTMacroDefinition implements IAST
 	}
 }
 
-
 class ASTUndef extends ASTPreprocessorNode implements IASTPreprocessorUndefStatement {
 	private final ASTPreprocessorName fName;
+
 	public ASTUndef(IASTTranslationUnit parent, char[] name, int startNumber, int nameNumber, int nameEndNumber, IBinding binding, boolean isActive) {
 		super(parent, IASTTranslationUnit.PREPROCESSOR_STATEMENT, startNumber, nameEndNumber);
 		fName= new ASTPreprocessorName(this, IASTPreprocessorStatement.MACRO_NAME, nameNumber, nameEndNumber, name, binding);
@@ -488,6 +664,7 @@ class ASTUndef extends ASTPreprocessorNode implements IASTPreprocessorUndefState
 			setInactive();
 	}
 
+	@Override
 	public ASTPreprocessorName getMacroName() {
 		return fName;
 	}
@@ -501,10 +678,12 @@ class ASTInclusionNode implements IASTInclusionNode {
 		fLocationCtx= ctx;
 	}
 
+	@Override
 	public IASTPreprocessorIncludeStatement getIncludeDirective() {
 		return fLocationCtx.getInclusionStatement();
 	}
 
+	@Override
 	public IASTInclusionNode[] getNestedInclusions() {
 		if (fInclusions == null) {
 			ArrayList<IASTInclusionNode> result= new ArrayList<IASTInclusionNode>();
@@ -520,10 +699,12 @@ class DependencyTree extends ASTInclusionNode implements IDependencyTree {
 		super(ctx);
 	}
 
+	@Override
 	public IASTInclusionNode[] getInclusions() {
 		return getNestedInclusions();
 	}
 
+	@Override
 	public String getTranslationUnitPath() {
 		return fLocationCtx.getFilePath();
 	}
@@ -540,27 +721,33 @@ class ASTFileLocation implements IASTFileLocation {
 		fLength= length;
 	}
 
+	@Override
 	public String getFileName() {
 		return fLocationCtx.getFilePath();
 	}
 
+	@Override
 	public IASTFileLocation asFileLocation() {
 		return this;
 	}
 
+	@Override
 	public int getNodeLength() {
 		return fLength;
 	}
 
+	@Override
 	public int getNodeOffset() {
 		return fOffset;
 	}
 
+	@Override
 	public int getEndingLineNumber() {
-		int end= fLength > 0 ? fOffset+fLength-1 : fOffset;
+		int end= fLength > 0 ? fOffset + fLength - 1 : fOffset;
 		return fLocationCtx.getLineNumber(end);
 	}
 
+	@Override
 	public int getStartingLineNumber() {
 		return fLocationCtx.getLineNumber(fOffset);
 	}
@@ -571,7 +758,7 @@ class ASTFileLocation implements IASTFileLocation {
 	
 	@Override
 	public String toString() {
-		return getFileName() + "[" + fOffset + "," + (fOffset+fLength) + ")";    //$NON-NLS-1$//$NON-NLS-2$//$NON-NLS-3$
+		return getFileName() + "[" + fOffset + "," + (fOffset + fLength) + "]";  //$NON-NLS-1$//$NON-NLS-2$//$NON-NLS-3$
 	}
 
 	public int getSequenceNumber() {
@@ -579,16 +766,20 @@ class ASTFileLocation implements IASTFileLocation {
 	}
 	
 	public int getSequenceEndNumber() {
-		return fLocationCtx.getSequenceNumberForOffset(fOffset+fLength, true);
+		return fLocationCtx.getSequenceNumberForOffset(fOffset + fLength, true);
 	}
 	
 	public LocationCtxFile getLocationContext() {
 		return fLocationCtx;
 	}
+
+	@Override
+	public IASTPreprocessorIncludeStatement getContextInclusionStatement() {
+		return fLocationCtx.getInclusionStatement();
+	}
 }
 
 class ASTMacroExpansion extends ASTPreprocessorNode implements IASTPreprocessorMacroExpansion {
-
 	private LocationCtxMacroExpansion fContext;
 
 	public ASTMacroExpansion(IASTNode parent, int startNumber, int endNumber) {
@@ -602,6 +793,7 @@ class ASTMacroExpansion extends ASTPreprocessorNode implements IASTPreprocessorM
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroExpansion#getName()
 	 */
+	@Override
 	public ASTMacroReferenceName getMacroReference() {
 		return fContext.getMacroReference();
 	}
@@ -609,6 +801,7 @@ class ASTMacroExpansion extends ASTPreprocessorNode implements IASTPreprocessorM
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroExpansion#getMacroDefinition()
 	 */
+	@Override
 	public IASTPreprocessorMacroDefinition getMacroDefinition() {
 		return fContext.getMacroDefinition();
 	}
@@ -616,6 +809,7 @@ class ASTMacroExpansion extends ASTPreprocessorNode implements IASTPreprocessorM
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroExpansion#getNestedExpansions()
 	 */
+	@Override
 	public ASTPreprocessorName[] getNestedMacroReferences() {
 		return fContext.getNestedMacroReferences();
 	}
@@ -627,7 +821,6 @@ class ASTMacroExpansion extends ASTPreprocessorNode implements IASTPreprocessorM
 
 @SuppressWarnings("deprecation")
 class ASTMacroExpansionLocation implements IASTMacroExpansionLocation, org.eclipse.cdt.core.dom.ast.IASTMacroExpansion {
-
 	private LocationCtxMacroExpansion fContext;
 	private int fOffset;
 	private int fLength;
@@ -641,38 +834,46 @@ class ASTMacroExpansionLocation implements IASTMacroExpansionLocation, org.eclip
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.IASTMacroExpansionLocation#getExpansion()
 	 */
+	@Override
 	public IASTPreprocessorMacroExpansion getExpansion() {
 		return fContext.getExpansion();
 	}
 
+	@Override
 	public IASTNodeLocation[] getExpansionLocations() {
 		final IASTFileLocation fl= asFileLocation();
 		return fl == null ? new IASTNodeLocation[0] : new IASTNodeLocation[] {fl};
 	}
 
+	@Override
 	public IASTPreprocessorMacroDefinition getMacroDefinition() {
 		return fContext.getMacroDefinition();
 	}
 	
+	@Override
 	public IASTName getMacroReference() {
 		return fContext.getMacroReference();
 	}
 
+	@Override
 	public IASTFileLocation asFileLocation() {
-		return ((LocationCtxContainer) fContext.getParent()).createFileLocation(fContext.fOffsetInParent, fContext.fEndOffsetInParent-fContext.fOffsetInParent);
+		return ((LocationCtxContainer) fContext.getParent()).createFileLocation(fContext.fOffsetInParent,
+				fContext.fEndOffsetInParent - fContext.fOffsetInParent);
 	}
 
+	@Override
 	public int getNodeLength() {
 		return fLength;
 	}
 
+	@Override
 	public int getNodeOffset() {
 		return fOffset;
 	}
 
 	@Override
 	public String toString() {
-		return fContext.getMacroDefinition().getName().toString() + "[" + fOffset + "," + (fOffset+fLength) + ")";    //$NON-NLS-1$//$NON-NLS-2$//$NON-NLS-3$
+		return fContext.getMacroDefinition().getName().toString() + "[" + fOffset + "," + (fOffset+fLength) + "]";    //$NON-NLS-1$//$NON-NLS-2$//$NON-NLS-3$
 	}
 
 	public IASTImageLocation getImageLocation() {
@@ -691,31 +892,41 @@ class ASTFileLocationForBuiltins implements IASTFileLocation {
 		fLength= length;
 	}
 
+	@Override
 	public String getFileName() {
 		return fFile;
 	}
 
+	@Override
 	public IASTFileLocation asFileLocation() {
 		return this;
 	}
 
+	@Override
 	public int getNodeLength() {
 		return fLength;
 	}
 
+	@Override
 	public int getNodeOffset() {
 		return fOffset;
 	}
 
+	@Override
 	public int getEndingLineNumber() {
 		return 0;
 	}
 
+	@Override
 	public int getStartingLineNumber() {
 		return 0;
 	}
-}
 
+	@Override
+	public IASTPreprocessorIncludeStatement getContextInclusionStatement() {
+		return null;
+	}
+}
 
 class ASTImageLocation extends ASTFileLocationForBuiltins implements IASTImageLocation {
 	private final int fKind;
@@ -725,8 +936,8 @@ class ASTImageLocation extends ASTFileLocationForBuiltins implements IASTImageLo
 		fKind= kind;
 	}
 
+	@Override
 	public int getLocationKind() {
 		return fKind;
 	}
 }
-

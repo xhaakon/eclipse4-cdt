@@ -6,8 +6,8 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * 	  Sergey Prigogin (Google) - initial API and implementation
- *    Markus Schorn (Wind River Systems)
+ * 	   Sergey Prigogin (Google) - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.cpp;
 
@@ -33,7 +33,6 @@ import org.eclipse.core.runtime.CoreException;
  * @see ICPPUsingDeclaration
  */
 class PDOMCPPUsingDeclaration extends PDOMCPPBinding implements	ICPPUsingDeclaration {
-	
 	private static final int TARGET_BINDING = PDOMCPPBinding.RECORD_SIZE + 0;
 	// Using declarations for functions may have multiple delegates. We model such case
 	// by creating a chain of PDOMCPPUsingDeclaration objects linked by NEXT_DELEGATE field.
@@ -54,7 +53,7 @@ class PDOMCPPUsingDeclaration extends PDOMCPPBinding implements	ICPPUsingDeclara
 		Set<PDOMBinding> targets= new LinkedHashSet<PDOMBinding>();
 		PDOMCPPUsingDeclaration last= null;
 		for (IBinding delegate : using.getDelegates()) {
-			PDOMBinding target = getLinkage().adaptBinding(delegate);
+			PDOMBinding target = getLinkage().addPotentiallyUnknownBinding(delegate);
 			if (target != null && targets.add(target)) {
 				if (last == null) {
 					setTargetBinding(linkage, target);
@@ -91,6 +90,7 @@ class PDOMCPPUsingDeclaration extends PDOMCPPBinding implements	ICPPUsingDeclara
 		return IIndexCPPBindingConstants.CPP_USING_DECLARATION;
 	}
 
+	@Override
 	public IBinding[] getDelegates() {
 		if (delegates == null) {
 			delegates = new IBinding[1];
@@ -100,13 +100,13 @@ class PDOMCPPUsingDeclaration extends PDOMCPPBinding implements	ICPPUsingDeclara
 				do {
 					IBinding delegate = alias.getBinding();
 					if (delegate != null) {
-						delegates= (IBinding[]) ArrayUtil.append(IBinding.class, delegates, i++, delegate);
+						delegates= ArrayUtil.appendAt(IBinding.class, delegates, i++, delegate);
 					}
 				} while ((alias = alias.getNext()) != null);
 			} catch (CoreException e) {
 				CCorePlugin.log(e);
 			}
-			delegates = (IBinding[]) ArrayUtil.trim(IBinding.class, delegates);
+			delegates = ArrayUtil.trim(IBinding.class, delegates);
 		}
 		return delegates;
 	}

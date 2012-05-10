@@ -9,6 +9,7 @@
  *     Alena Laskavaia  - initial API and implementation
  *     Patrick Hofer [bug 315528]
  *     Sergey Prigogin (Google)
+ *     Marc-Andre Laperle
  *******************************************************************************/
 package org.eclipse.cdt.codan.internal.checkers;
 
@@ -39,6 +40,7 @@ public class NonVirtualDestructor extends AbstractIndexAstChecker {
 	// Prevent stack overflow in case: class A: public A {};
 	private static HashSet<ICPPClassType> checkedClassTypes = new HashSet<ICPPClassType>();
 
+	@Override
 	public void processAst(IASTTranslationUnit ast) {
 		// Traverse the AST using the visitor pattern.
 		ast.accept(new OnEachClass());
@@ -77,6 +79,7 @@ public class NonVirtualDestructor extends AbstractIndexAstChecker {
 			shouldVisitDeclSpecifiers = true;
 		}
 
+		@Override
 		public int visit(IASTDeclSpecifier decl) {
 			if (decl instanceof ICPPASTCompositeTypeSpecifier) {
 				ICPPASTCompositeTypeSpecifier spec = (ICPPASTCompositeTypeSpecifier) decl;
@@ -115,7 +118,7 @@ public class NonVirtualDestructor extends AbstractIndexAstChecker {
 						node = decls[0];
 					}
 				}
-				reportProblem(PROBLEM_ID, node, className.getSimpleID().toString(),
+				reportProblem(PROBLEM_ID, node, new String(className.getSimpleID()),
 						virtualMethod.getName());
 				return PROCESS_SKIP;
 			}

@@ -40,7 +40,7 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
 	public CPPMethod(IASTDeclarator declarator) {
 		super(declarator);
 	}
-	
+
 	public IASTDeclaration getPrimaryDeclaration() {
 		//first check if we already know it
 		if (declarations != null) {
@@ -60,7 +60,7 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
 			if (decl.getParent() instanceof ICPPASTCompositeTypeSpecifier)
 				return decl;
 		}
-		
+
 		final char[] myName = getASTName().getLookupKey();
 		ICPPClassScope scope = (ICPPClassScope) getScope();
 		ICPPASTCompositeTypeSpecifier compSpec = (ICPPASTCompositeTypeSpecifier) ASTInternal.getPhysicalNodeOfScope(scope);
@@ -89,35 +89,38 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPMember#getVisibility()
 	 */
+	@Override
 	public int getVisibility() {
 		IASTDeclaration decl = getPrimaryDeclaration();
-		if( decl == null ){
+		if (decl == null) {
 			IScope scope = getScope();
-			if( scope instanceof ICPPClassScope ){
+			if (scope instanceof ICPPClassScope) {
 				ICPPClassType cls = ((ICPPClassScope)scope).getClassType();
-				if( cls != null )
-					return ( cls.getKey() == ICPPClassType.k_class ) ? ICPPASTVisibilityLabel.v_private : ICPPASTVisibilityLabel.v_public;
+				if (cls != null)
+					return (cls.getKey() == ICPPClassType.k_class) ? ICPPASTVisibilityLabel.v_private : ICPPASTVisibilityLabel.v_public;
 			}
 			return ICPPASTVisibilityLabel.v_private;
 		}
-		
+
 		IASTCompositeTypeSpecifier cls = (IASTCompositeTypeSpecifier) decl.getParent();
 		IASTDeclaration [] members = cls.getMembers();
 		ICPPASTVisibilityLabel vis = null;
 		for (IASTDeclaration member : members) {
-			if( member instanceof ICPPASTVisibilityLabel )
+			if (member instanceof ICPPASTVisibilityLabel) {
 				vis = (ICPPASTVisibilityLabel) member;
-			else if( member == decl )
+			} else if (member == decl) {
 				break;
+			}
 		}
-		if( vis != null ){
+		if (vis != null) {
 			return vis.getVisibility();
-		} else if( cls.getKey() == ICPPASTCompositeTypeSpecifier.k_class ){
+		} else if (cls.getKey() == ICPPASTCompositeTypeSpecifier.k_class) {
 			return ICPPASTVisibilityLabel.v_private;
-		} 
+		}
 		return ICPPASTVisibilityLabel.v_public;
 	}
-	
+
+	@Override
 	public ICPPClassType getClassOwner() {
 		ICPPClassScope scope = (ICPPClassScope)getScope();
 		return scope.getClassType();
@@ -139,15 +142,16 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
 	public IScope getScope() {
 		return CPPVisitor.getContainingScope(getASTName());
 	}
-	
+
     /* (non-Javadoc)
      * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod#isVirtual()
      */
-    public boolean isVirtual() {
+    @Override
+	public boolean isVirtual() {
     	IASTDeclaration decl = getPrimaryDeclaration();
-		if( decl != null ){
+		if (decl != null) {
 			ICPPASTDeclSpecifier declSpec = getDeclSpec(decl);
-			if( declSpec != null ){
+			if (declSpec != null) {
 				return declSpec.isVirtual();
 			}
 		}
@@ -156,10 +160,11 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
 
 	protected ICPPASTDeclSpecifier getDeclSpec(IASTDeclaration decl) {
 		ICPPASTDeclSpecifier declSpec = null;
-		if( decl instanceof IASTSimpleDeclaration )
+		if (decl instanceof IASTSimpleDeclaration) {
 			declSpec = (ICPPASTDeclSpecifier) ((IASTSimpleDeclaration)decl).getDeclSpecifier();
-		else if( decl instanceof IASTFunctionDefinition )
+		} else if (decl instanceof IASTFunctionDefinition) {
 			declSpec = (ICPPASTDeclSpecifier) ((IASTFunctionDefinition)decl).getDeclSpecifier();
+		}
 		return declSpec;
 	}
 
@@ -169,11 +174,11 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
     @Override
 	public boolean isInline() {
         IASTDeclaration decl = getPrimaryDeclaration();
-        if( decl instanceof IASTFunctionDefinition )
+        if (decl instanceof IASTFunctionDefinition)
             return true;
-		if( decl == null )
+		if (decl == null)
 			return false;
-		
+
         IASTDeclSpecifier declSpec = ((IASTSimpleDeclaration)decl).getDeclSpecifier();
         return declSpec.isInline();
     }
@@ -183,9 +188,9 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
      */
     @Override
 	public boolean isMutable() {
-        return hasStorageClass( this, IASTDeclSpecifier.sc_mutable );
+        return hasStorageClass(this, IASTDeclSpecifier.sc_mutable);
     }
-    
+
 	@Override
 	public boolean isStatic(boolean resolveAll) {
 		IASTDeclaration decl = getPrimaryDeclaration();
@@ -201,25 +206,28 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
 	/* (non-Javadoc)
      * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod#isDestructor()
      */
+	@Override
 	public boolean isDestructor() {
 		char[] name = getNameCharArray();
 		if (name.length > 1 && name[0] == '~')
 			return true;
-		
+
 		return false;
 	}
 
+	@Override
 	public boolean isImplicit() {
 		return false;
 	}
-	
+
     /* (non-Javadoc)
      * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod#isPureVirtual()
      */
-    public boolean isPureVirtual() {
+    @Override
+	public boolean isPureVirtual() {
     	if (declarations != null) {
 			for (IASTDeclarator dtor : declarations) {
-				if (dtor == null) 
+				if (dtor == null)
 					break;
 
 				dtor = ASTQueries.findOutermostDeclarator(dtor);
@@ -235,7 +243,8 @@ public class CPPMethod extends CPPFunction implements ICPPMethod {
     	return false;
     }
 
-    public boolean isExplicit() {
+    @Override
+	public boolean isExplicit() {
     	IASTDeclaration decl= getPrimaryDeclaration();
     	if (decl != null) {
     		ICPPASTDeclSpecifier declspec= getDeclSpec(decl);

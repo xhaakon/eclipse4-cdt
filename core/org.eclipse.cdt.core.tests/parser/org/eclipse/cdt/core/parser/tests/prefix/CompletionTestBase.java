@@ -114,6 +114,7 @@ public class CompletionTestBase extends BaseTestCase {
 	}
 	
 	private static class BindingsComparator implements Comparator {
+		@Override
 		public int compare(Object o1, Object o2) {
 			IBinding b1 = (IBinding)o1;
 			IBinding b2 = (IBinding)o2;
@@ -132,7 +133,7 @@ public class CompletionTestBase extends BaseTestCase {
 		return getContents(1)[0].toString();
 	}
 	
-	protected StringBuffer[] getContents(int sections) throws IOException {
+	protected StringBuilder[] getContents(int sections) throws IOException {
 		CTestPlugin plugin = CTestPlugin.getDefault();
 		if (plugin == null)
 			throw new AssertionFailedError("This test must be run as a JUnit plugin test");

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems and others.
+ * Copyright (c) 2007, 2011 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -71,13 +71,14 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	private final Map<IStorage, SourceFileInfo> fFileInfoMap = new HashMap<IStorage, SourceFileInfo>();
 
 	private int fMaxFunctionLength = 0;
+	private BigInteger fMaxOpcodeLength = null;
 
 	private boolean fShowAddresses = false;
 	private int fRadix = 16;
 	private boolean fShowRadixPrefix = false;
 	private String fRadixPrefix;
 	private int fNumberOfDigits;
-	private boolean fShowCodeBytes = false;
+	private boolean fShowFunctionOffset = false;
 
 	private int fNumberOfInstructions;
 	private double fMeanSizeOfInstructions = 4;
@@ -102,6 +103,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		setShowRadixPrefix(false);
 		fNumberOfInstructions = 0;
 		fMeanSizeOfInstructions = 4;
+		fMaxFunctionLength = 0;
 	}
 
 	/**
@@ -119,9 +121,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 			fi.dispose();
 		}
 		fFileInfoMap.clear();
-		
 		fInvalidAddressRanges.clear();
-		
 		fInvalidSource.clear();
 	}
 
@@ -140,12 +140,35 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		return fInvalidAddressRanges.toArray(new AddressRangePosition[fInvalidAddressRanges.size()]);
 	}
 
-	public void setMaxOpcodeLength(int opcodeLength) {
-		fMaxFunctionLength = opcodeLength;
+	public void setMaxFunctionLength(int functionLength) {
+		fMaxFunctionLength = functionLength;
 	}
 
 	public int getMaxFunctionLength() {
 		return fMaxFunctionLength;
+	}
+
+	public void setMaxOpcodeLength(BigInteger longOpcode ) {
+		fMaxOpcodeLength = longOpcode;
+	}
+
+	public int getMaxOpcodeLength(int radix ) {
+		int retVal = 0;
+		if (fMaxOpcodeLength != null) {
+			String str = fMaxOpcodeLength.toString(radix);
+			retVal = str.length();
+			switch (radix) {
+			    case 8:
+			    	retVal += 1; // Padded for 0 prefix
+			    	break;
+			    case 16:
+			    	retVal += 2; // Padded for 0x prefix
+			    	break;
+			    default:
+			    	break;
+			}
+		}
+		return retVal;
 	}
 
 	public int getAddressLength() {
@@ -439,6 +462,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @return the address of the given document line number, -1 if no valid
 	 *         address can be computed
 	 */
+	@Override
 	public BigInteger getAddressOfLine(int line) {
 		try {
 			int offset = getLineOffset(line);
@@ -488,6 +512,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @param address
 	 * @return
 	 */
+	@Override
 	public AddressRangePosition getDisassemblyPosition(BigInteger address) {
 		return getPositionOfAddress(CATEGORY_DISASSEMBLY, address);
 	}
@@ -694,9 +719,15 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 			// cannot happen
 		}
 		if (pos instanceof DisassemblyPosition) {
-			int functionLength = ((DisassemblyPosition)pos).fFunction.length;
+			DisassemblyPosition disassPos = (DisassemblyPosition)pos;
+			int functionLength = disassPos.fFunction.length;
 			if (functionLength > fMaxFunctionLength) {
 				fMaxFunctionLength = functionLength;
+			}
+			if (disassPos.fOpcodes != null) {
+				if (fMaxOpcodeLength == null || fMaxOpcodeLength.compareTo(disassPos.fOpcodes) == -1) {
+					fMaxOpcodeLength = disassPos.fOpcodes;
+				}
 			}
 			if (fNumberOfInstructions < 100 && fMeanSizeOfInstructions < 16.0) {
 				fMeanSizeOfInstructions = (fMeanSizeOfInstructions * fNumberOfInstructions + pos.fAddressLength.floatValue()) / (++fNumberOfInstructions);
@@ -989,32 +1020,42 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyDocument#insertDisassemblyLine(org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition, java.math.BigInteger, int, java.lang.String, java.lang.String, java.lang.String, int)
 	 */
-	public AddressRangePosition insertDisassemblyLine(AddressRangePosition pos, BigInteger address, int length, String opcode, String instruction, String file, int lineNr)
+	@Override
+	public AddressRangePosition insertDisassemblyLine(AddressRangePosition pos, BigInteger address, int length, String functionOffset, String instruction, String file, int lineNr)
+		throws BadLocationException {
+		return insertDisassemblyLine(pos, address, length, functionOffset, null, instruction, file, lineNr);
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyDocument#insertDisassemblyLine(org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition, java.math.BigInteger, int, java.lang.String, java.lang.String, java.lang.String, int)
+	 */
+	@Override
+	public AddressRangePosition insertDisassemblyLine(AddressRangePosition pos, BigInteger address, int length, String functionOffset, BigInteger opcode, String instruction, String file, int lineNr)
 		throws BadLocationException {
 		assert isGuiThread();
 		String disassLine = null;
 		if (instruction == null || instruction.length() == 0) {
 			disassLine = ""; //$NON-NLS-1$
 		} else {
-			disassLine = buildDisassemblyLine(address, opcode, instruction);
+			disassLine = buildDisassemblyLine(address, functionOffset, instruction);
 		}
 		AddressRangePosition disassPos;
 		if (lineNr < 0) {
-			disassPos = new DisassemblyPosition(0, disassLine.length(), address, BigInteger.valueOf(length), opcode);
+			disassPos = new DisassemblyPosition(0, disassLine.length(), address, BigInteger.valueOf(length), functionOffset, opcode);
 		} else {
 			disassPos = new DisassemblyWithSourcePosition(0, disassLine.length(), address, BigInteger.valueOf(length),
-				opcode, file, lineNr);
+					functionOffset, opcode, file, lineNr);
 		}
 		pos = insertAddressRange(pos, disassPos, disassLine, true);
 		addDisassemblyPosition(disassPos);
 		return pos;
-	}
+	}	
 	/**
 	 * @param address
-	 * @param opcode
+	 * @param functionOffset
 	 * @param instruction
 	 */
-	private String buildDisassemblyLine(BigInteger address, String opcode, String instruction) {
+	private String buildDisassemblyLine(BigInteger address, String functionOffset, String instruction) {
 		StringBuffer buf = new StringBuffer(40);
 		if (fShowAddresses) {
 			if (fRadixPrefix != null) {
@@ -1027,13 +1068,13 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 			buf.append(':');
 			buf.append(' ');
 		}
-		if (fShowCodeBytes && opcode != null && opcode.length() > 0) {
-			buf.append(opcode);
+		if (fShowFunctionOffset && functionOffset != null && functionOffset.length() > 0) {
+			buf.append(functionOffset);
 			int tab = 16;
-			if (opcode.length() >= 16) {
-				tab = (opcode.length() + 8) & ~7;
+			if (functionOffset.length() >= 16) {
+				tab = (functionOffset.length() + 8) & ~7;
 			}
-			int diff = tab - opcode.length();
+			int diff = tab - functionOffset.length();
 			while (diff-- > 0) {
 				buf.append(' ');
 			}
@@ -1156,6 +1197,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyDocument#insertLabel(org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition, java.math.BigInteger, java.lang.String, boolean)
 	 */
+	@Override
 	public AddressRangePosition insertLabel(AddressRangePosition pos, BigInteger address, String label, boolean showLabels)
 		throws BadLocationException {
 		assert isGuiThread();
@@ -1514,6 +1556,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		}
 	}
 
+	@Override
 	public void addInvalidAddressRange(AddressRangePosition pos) {
 		assert isGuiThread();
 		if (DEBUG) System.out.println("Adding to invalid range list: " + pos); //$NON-NLS-1$

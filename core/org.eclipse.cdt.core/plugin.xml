@@ -589,6 +589,22 @@
       </variable>
    </extension>
    <extension
+         point="org.eclipse.core.variables.dynamicVariables">
+      <variable
+            name="config_name"
+            resolver="org.eclipse.cdt.internal.core.ConfigurationNameVariableResolver"
+            description="%config_name_var.description">
+      </variable>
+   </extension>
+   <extension
+         point="org.eclipse.core.variables.dynamicVariables">
+      <variable
+            name="config_description"
+            resolver="org.eclipse.cdt.internal.core.ConfigurationDescriptionVariableResolver"
+            description="%config_description_var.description">
+      </variable>
+   </extension>
+   <extension
          point="org.eclipse.cdt.core.CBuildConsole">
       <CBuildConsole
             class="org.eclipse.cdt.internal.core.SystemBuildConsole"
@@ -655,6 +671,7 @@
    <extension-point id="ScannerInfoProvider2" name="%scannerInfoProvider2.name" schema="schema/ScannerInfoProvider2.exsd"/>
    <extension-point id="EFSExtensionProvider" name="%efsExtensionProvider.name" schema="schema/EFSExtensionProvider.exsd"/>
    <extension-point id="RefreshExclusionFactory" name="%refreshExclusionFactory.name" schema="schema/RefreshExclusionFactory.exsd"/>
+   <extension-point id="LanguageSettingsProvider" name="%LanguageSettingsProvider.name" schema="schema/LanguageSettingsProvider.exsd"/>
    <extension-point id="UNCPathConverter" name="%uncPathConverter.name" schema="schema/UNCPathConverter.exsd"/>
 
    <extension

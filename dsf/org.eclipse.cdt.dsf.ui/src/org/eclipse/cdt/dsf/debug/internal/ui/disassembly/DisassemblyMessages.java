@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems and others.
+ * Copyright (c) 2007, 2011 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,8 +29,6 @@ public final class DisassemblyMessages extends NLS {
 		return fgBundleForConstructedKeys;
 	}
 
-	public static String Disassembly_action_ShowAddresses_label;
-	public static String Disassembly_action_ShowFunctionOffsets_label;
 	public static String Disassembly_action_ShowSource_label;
 	public static String Disassembly_action_ShowSymbols_label;
 	public static String Disassembly_action_GotoPC_label;
@@ -51,6 +49,7 @@ public final class DisassemblyMessages extends NLS {
 	public static String Disassembly_log_error_expression_eval;
 	public static String Disassembly_log_error_locateFile;
 	public static String Disassembly_log_error_readFile;
+	public static String DisassemblyPart_showRulerColumn_label;
 	public static String DisassemblyPreferencePage_addressFormatTooltip;
 	public static String DisassemblyPreferencePage_addressRadix;
 	public static String DisassemblyPreferencePage_showAddressRadix;
@@ -65,6 +64,10 @@ public final class DisassemblyMessages extends NLS {
 	public static String DisassemblyPreferencePage_radix_hexadecimal;
 	public static String DisassemblyPreferencePage_showFunctionOffsets;
 	public static String DisassemblyPreferencePage_showFunctionOffsetsTooltip;
+	public static String DisassemblyPreferencePage_showCodeBytes;
+	public static String DisassemblyPreferencePage_showCodeBytesTooltip;
+	public static String DisassemblyPreferencePage_OpcodeFormat;
+	public static String DisassemblyPreferencePage_OpcodeFormatTooltip;
 	public static String DisassemblyPreferencePage_showAddress;
 	public static String DisassemblyPreferencePage_showAddressTooltip;
 	public static String DisassemblyPreferencePage_showRadixTooltip;
@@ -80,7 +83,10 @@ public final class DisassemblyMessages extends NLS {
 	public static String Disassembly_Error_Dialog_title;
 	public static String Disassembly_Error_Dialog_ok_button;
 	public static String DisassemblyBackendDsf_error_UnableToRetrieveData;
-
+	public static String Disassembly_action_AddBreakpoint_label;
+    public static String Disassembly_action_AddBreakpoint_errorTitle;
+    public static String Disassembly_action_AddBreakpoint_errorMessage;
+	
 	static {
 		NLS.initializeMessages(DisassemblyMessages.class.getName(), DisassemblyMessages.class);
 	}

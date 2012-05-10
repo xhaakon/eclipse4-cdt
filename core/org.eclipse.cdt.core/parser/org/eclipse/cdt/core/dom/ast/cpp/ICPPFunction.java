@@ -6,8 +6,8 @@
  *  http://www.eclipse.org/legal/epl-v10.html
  * 
  *  Contributors:
- *     Andrew Niefer (IBM Corporation) - initial API and implementation
- *     Markus Schorn (Wind River Systems)
+ *      Andrew Niefer (IBM Corporation) - initial API and implementation
+ *      Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.ast.cpp;
 
@@ -21,16 +21,16 @@ import org.eclipse.cdt.core.dom.ast.IType;
  * @noextend This interface is not intended to be extended by clients.
  */
 public interface ICPPFunction extends IFunction, ICPPBinding {
-
 	/**
-     * does this function have the mutable storage class specifier
+     * Does this function have the mutable storage class specifier
      */
     public boolean isMutable();
     
     /**
-     * is this an inline function
+     * Is this an inline function
      */
-    public boolean isInline();
+    @Override
+	public boolean isInline();
     
     /**
      * Returns whether this function is declared as extern "C".
@@ -49,12 +49,14 @@ public interface ICPPFunction extends IFunction, ICPPBinding {
      * {@inheritDoc}
 	 * @since 5.1
 	 */
-    public ICPPFunctionType getType();
+    @Override
+	public ICPPFunctionType getType();
     
     /**
 	 * @since 5.2
 	 */
-    public ICPPParameter[] getParameters();
+    @Override
+	public ICPPParameter[] getParameters();
     
     /**
      * @since 5.2

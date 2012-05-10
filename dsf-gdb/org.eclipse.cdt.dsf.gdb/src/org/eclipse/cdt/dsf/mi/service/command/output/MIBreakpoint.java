@@ -17,6 +17,8 @@ package org.eclipse.cdt.dsf.mi.service.command.output;
 
 import java.util.StringTokenizer;
 
+import org.eclipse.cdt.dsf.gdb.internal.tracepointactions.TracepointActionManager;
+
 /**
  * Contain info about the GDB/MI breakpoint.
  * 
@@ -86,7 +88,7 @@ public class MIBreakpoint  {
     boolean isHdw  = false;
 
     // Indicate if we are dealing with a tracepoint. 
-    // (if its a fast or slow tracepoint can be known through the 'type' field)
+    // (if its a fast or normal tracepoint can be known through the 'type' field)
     boolean isTpt = false;
 
     /** See {@link #isCatchpoint()} */
@@ -341,8 +343,8 @@ public class MIBreakpoint  {
 
     /**
      * Return whether this breakpoint is actually a tracepoint.
-     * This method will return true for both fast and slow tracepoints.
-     * To know of fast vs slow tracepoint use {@link getType()} and look
+     * This method will return true for both fast and normal tracepoints.
+     * To know of fast vs normal tracepoint use {@link getType()} and look
      * for "tracepoint" or "fast tracepoint"
      * 
 	 * @since 3.0
@@ -497,8 +499,29 @@ public class MIBreakpoint  {
                 cond = str;
             } else if (var.equals("pending")) { //$NON-NLS-1$
             	// Only supported starting with GDB 6.8
-                pending = true;
+            	pending = true;
+            } else if (var.equals("script")) { //$NON-NLS-1$
+            	if (value instanceof MITuple) {
+            		parseCommands((MITuple)value);
+            	}
             }
         }
+    }
+
+    void parseCommands(MITuple tuple) {
+    	MIValue[] values = tuple.getMIValues();
+    	StringBuffer cmds = new StringBuffer();
+    	for (int i = 0; i < values.length; i++) {
+    		MIValue value = values[i];
+    		if (value != null && value instanceof MIConst) {
+    			if (i > 0) {
+    				// Insert a delimiter
+    				cmds.append(TracepointActionManager.TRACEPOINT_ACTION_DELIMITER);
+    			}
+    			cmds.append(((MIConst)value).getCString());
+    		}
+    	}
+    	setCommands(cmds.toString());
+
     }
 }

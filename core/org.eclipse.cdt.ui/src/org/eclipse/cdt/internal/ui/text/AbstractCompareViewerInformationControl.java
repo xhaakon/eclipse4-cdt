@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -216,6 +216,7 @@ public abstract class AbstractCompareViewerInformationControl extends org.eclips
 	public void setInformation(String content) {
 	}
 
+	@Override
 	public void setInput(Object input) {
 		if (input instanceof ICompareInput) {
 			fCompareInput= (ICompareInput) input;
@@ -229,6 +230,14 @@ public abstract class AbstractCompareViewerInformationControl extends org.eclips
 			if (fCompareViewerControl != null) {
 				fCompareViewerControl.setInput(fCompareInput);
 			}
+		}
+	}
+
+	@Override
+	public void setVisible(boolean visible) {
+		super.setVisible(visible);
+		if (!visible) {
+			setInput(null);
 		}
 	}
 
@@ -247,10 +256,12 @@ public abstract class AbstractCompareViewerInformationControl extends org.eclips
 	 * Subclasses may extend.
 	 * </p>
 	 */
+	@Override
 	public void widgetDisposed(DisposeEvent event) {
 		fCompareViewerControl= null;
 	}
 
+	@Override
 	public boolean hasContents() {
 		return fCompareViewerControl != null && fCompareInput != null;
 	}
@@ -336,6 +347,7 @@ public abstract class AbstractCompareViewerInformationControl extends org.eclips
 				final int mouseX= mouseLoc.x;
 				final int mouseY= mouseLoc.y;
 				fMoveListener= new MouseMoveListener() {
+					@Override
 					public void mouseMove(MouseEvent e2) {
 						Point mouseLoc2= control.toDisplay(e2.x, e2.y);
 						int dx= mouseLoc2.x - mouseX;

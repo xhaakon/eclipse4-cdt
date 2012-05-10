@@ -293,6 +293,54 @@ int testCanWrite() {
 	return 1;
 }
 
+int testArrays() {
+	int array_simple[10];
+	int array_int[24321];
+	foo array_foo[1200];
+	int array_double_small[11][21];
+	char array_double_large[111][210];
+
+	return 1;
+}
+
+// For bug 376901 RTTI tests
+class VirtualBase {
+public:
+   virtual ~VirtualBase() {}  // Necessary to force RTTI generation for the base class
+   int a;
+private:
+   bool b;
+};
+
+class Derived: public VirtualBase {
+public:
+    int c;    
+    VirtualBase* ptr;
+private:
+    bool d;
+    int e[4];
+};
+
+class OtherDerived: public VirtualBase {
+public:
+    int d;
+private:
+    bool c;
+    int f[4];
+};
+int testRTTI() {
+    Derived derived;
+    Derived child1;
+    OtherDerived child2;
+    
+    derived.ptr = &child1;  // here derived.b is of type bar
+    
+    derived.ptr = &child2;  // here derived.b is of type foo   
+    
+    return 1;   // here derived.b is of type Derived
+}
+// End of bug 376901 RTTI tests
+
 int main() {
     printf("Running ExpressionTest App\n");
 
@@ -317,6 +365,8 @@ int main() {
     testConcurrentUpdateOutOfScopeChildThenParent();
     testUpdateOfPointer();
     testCanWrite();
+    testArrays();
+    testRTTI();
     
     // For bug 320277
     BaseTest b; b.test();

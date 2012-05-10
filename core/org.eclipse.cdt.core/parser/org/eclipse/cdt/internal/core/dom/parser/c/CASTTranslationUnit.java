@@ -13,7 +13,6 @@
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
 import org.eclipse.cdt.core.dom.ILinkage;
-import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.EScopeKind;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
@@ -39,10 +38,12 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 		fStructMapper= new CStructMapper(this);
 	}
 	
+	@Override
 	public CASTTranslationUnit copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 	
+	@Override
 	public CASTTranslationUnit copy(CopyStyle style) {
 		CASTTranslationUnit copy = new CASTTranslationUnit();
 		copyAbstractTU(copy, style);
@@ -57,6 +58,7 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 	 * 
 	 * @see org.eclipse.cdt.core.dom.ast.IASTTranslationUnit#getScope()
 	 */
+	@Override
 	public IScope getScope() {
 		if (compilationUnit == null)
 			compilationUnit = new CScope(this, EScopeKind.eGlobal);
@@ -64,6 +66,7 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 	}
 
 
+	@Override
 	public IASTName[] getDeclarationsInAST(IBinding binding) {
 		if (binding instanceof IMacroBinding) {
 			return getMacroDefinitionsInAST((IMacroBinding) binding);
@@ -71,17 +74,18 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 		return CVisitor.getDeclarations(this, binding);
 	}
 
-    public IASTName[] getDefinitionsInAST(IBinding binding) {   
+    @Override
+	public IASTName[] getDefinitionsInAST(IBinding binding) {   
 		if (binding instanceof IMacroBinding) {
 			return getMacroDefinitionsInAST((IMacroBinding) binding);
         }
-    	IName[] names = CVisitor.getDeclarations(this, binding);
+    	IASTName[] names = CVisitor.getDeclarations(this, binding);
     	for (int i = 0; i < names.length; i++) {
     		if (!names[i].isDefinition())
     			names[i] = null;
     	}
     	// nulls can be anywhere, don't use trim()
-    	return (IASTName[])ArrayUtil.removeNulls(IASTName.class, names);
+    	return ArrayUtil.removeNulls(IASTName.class, names);
     }
     
 	/*
@@ -89,17 +93,20 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 	 * 
 	 * @see org.eclipse.cdt.core.dom.ast.IASTTranslationUnit#getReferences(org.eclipse.cdt.core.dom.ast.IBinding)
 	 */
+	@Override
 	public IASTName[] getReferences(IBinding binding) {
         if (binding instanceof IMacroBinding)
         	return getMacroReferencesInAST((IMacroBinding) binding);
 		return CVisitor.getReferences(this, binding);
 	}
 
+	@Override
 	@Deprecated
     public ParserLanguage getParserLanguage() {
     	return ParserLanguage.C;
     }
 
+	@Override
 	public ILinkage getLinkage() {
 		return Linkage.C_LINKAGE;
 	}
@@ -112,7 +119,7 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 	/**
 	 * Maps structs from the index into this AST.
 	 */
-	public IType mapToASTType(ICompositeType type) {
+	public ICompositeType mapToASTType(ICompositeType type) {
 		return fStructMapper.mapToAST(type);
 	}
 	

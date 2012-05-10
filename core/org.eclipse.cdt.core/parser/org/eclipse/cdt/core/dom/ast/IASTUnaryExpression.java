@@ -17,7 +17,6 @@ package org.eclipse.cdt.core.dom.ast;
  * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface IASTUnaryExpression extends IASTExpression {
-
 	/**
 	 * Prefix increment.
 	 * <code>op_prefixIncr</code> ++exp
@@ -32,7 +31,7 @@ public interface IASTUnaryExpression extends IASTExpression {
 
 	/**
 	 * Operator plus.
-	 * <code>op_plus</code> ==> + exp
+	 * <code>op_plus</code> ==> +exp
 	 */
 	public static final int op_plus = 2;
 
@@ -162,10 +161,12 @@ public interface IASTUnaryExpression extends IASTExpression {
 	/**
 	 * @since 5.1
 	 */
+	@Override
 	public IASTUnaryExpression copy();
 
 	/**
 	 * @since 5.3
 	 */
+	@Override
 	public IASTUnaryExpression copy(CopyStyle style);
 }

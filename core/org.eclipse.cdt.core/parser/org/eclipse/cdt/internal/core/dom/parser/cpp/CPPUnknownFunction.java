@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2008, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -39,34 +39,42 @@ public class CPPUnknownFunction extends CPPUnknownBinding implements ICPPFunctio
 		super(owner, name);
 	}
 
+	@Override
 	public IType[] getExceptionSpecification() {
 		return null;
 	}
 
+	@Override
 	public boolean isDeleted() {
 		return false;
 	}
 
+	@Override
 	public boolean isExternC() {
 		return false;
 	}
 
+	@Override
 	public boolean isInline() {
 		return false;
 	}
 
+	@Override
 	public boolean isMutable() {
 		return false;
 	}
 
+	@Override
 	public IScope getFunctionScope() {
 		return asScope();
 	}
 
+	@Override
 	public ICPPParameter[] getParameters() {
 		return ICPPParameter.EMPTY_CPPPARAMETER_ARRAY;
 	}
 
+	@Override
 	public ICPPFunctionType getType() {
 		if (fType == null) {
 			fType= new CPPUnknownFunctionType();
@@ -74,30 +82,42 @@ public class CPPUnknownFunction extends CPPUnknownBinding implements ICPPFunctio
 		return fType;
 	}
 
+	@Override
 	public boolean isAuto() {
 		return false;
 	}
 
+	@Override
 	public boolean isExtern() {
 		return false;
 	}
 
+	@Override
 	public boolean isRegister() {
 		return false;
 	}
 
+	@Override
 	public boolean isStatic() {
 		return false;
 	}
 
+	@Override
 	public boolean takesVarArgs() {
 		return false;
 	}
 
+	@Override
+	public boolean isNoReturn() {
+		return false;
+	}
+
+	@Override
 	public int getRequiredArgumentCount() {
 		return 0;
 	}
 
+	@Override
 	public boolean hasParameterPack() {
 		return false;
 	}

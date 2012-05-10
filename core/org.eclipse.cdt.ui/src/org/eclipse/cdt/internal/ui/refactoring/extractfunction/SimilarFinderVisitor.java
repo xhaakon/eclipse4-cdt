@@ -7,139 +7,110 @@
  * http://www.eclipse.org/legal/epl-v10.html  
  *  
  * Contributors: 
- * Institute for Software - initial API and implementation
+ *     Institute for Software - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.refactoring.extractfunction;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 import java.util.Map.Entry;
 
-import org.eclipse.core.resources.IFile;
-import org.eclipse.text.edits.TextEditGroup;
-
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
-import org.eclipse.cdt.core.dom.rewrite.ASTRewrite;
 
-import org.eclipse.cdt.internal.ui.refactoring.ModificationCollector;
+import org.eclipse.cdt.internal.ui.refactoring.NameInformation;
 import org.eclipse.cdt.internal.ui.refactoring.NodeContainer;
-import org.eclipse.cdt.internal.ui.refactoring.NodeContainer.NameInformation;
 
-final class SimilarFinderVisitor extends ASTVisitor {
+abstract class SimilarFinderVisitor extends ASTVisitor {
+	protected final ExtractFunctionRefactoring refactoring;
+	protected final NodeContainer extractedNodes;
+	protected NodeContainer similarContainer;
+	protected final List<IASTStatement> stmtToReplace = new ArrayList<IASTStatement>();
+	private final List<IASTNode> trail;
+	private final List<IASTNode> statements;
+	private int statementCount;
 
-		private final ExtractFunctionRefactoring refactoring;
-
-		private final Vector<IASTNode> trail;
-		private final IASTName name;
-		private final List<IASTNode> stmts;
-		private int i = 0;
-		private NodeContainer similarContainer;
-	private final List<IASTStatement> stmtToReplace = new ArrayList<IASTStatement>();
-
-	private final ModificationCollector collector;
-
-	SimilarFinderVisitor(ExtractFunctionRefactoring refactoring,
-			ModificationCollector collector, Vector<IASTNode> trail, IFile file, IASTName name,
-			List<IASTNode> stmts, String title) {
+	SimilarFinderVisitor(ExtractFunctionRefactoring refactoring, NodeContainer extractedNodes,
+			List<IASTNode> trail, List<IASTNode> statements) {
 		this.refactoring = refactoring;
+		this.extractedNodes = extractedNodes;
 		this.trail = trail;
-		this.name = name;
-		this.stmts = stmts;
-		this.collector = collector;
+		this.statements = statements;
 		this.similarContainer = new NodeContainer();
+		shouldVisitStatements = true;
 	}
 
-		{
-			shouldVisitStatements = true;
-		}
+	@Override
+	public int visit(IASTStatement statement) {
+		if (!isInSelection(statement) && refactoring.isStatementInTrail(statement, trail)) {
+			stmtToReplace.add(statement);
+			similarContainer.add(statement);	
+			++statementCount;
 
-		@Override
-		public int visit(IASTStatement stmt) {
-			
-			boolean isAllreadyInMainRefactoring = isInSelection(stmt);
-			
-			if( (!isAllreadyInMainRefactoring)
-					&& this.refactoring.isStatementInTrail(stmt, trail, this.refactoring.getIndex())){
-				stmtToReplace.add(stmt);
-				similarContainer.add(stmt);	
-				++i;
-				
-				if(i==stmts.size()){
-					//found similar code
-					
-					boolean similarOnReturnWays = true;
-					for (NameInformation nameInfo : similarContainer.getAllAfterUsedNames()) {
-						if(this.refactoring.names.containsKey(nameInfo.getDeclaration().getRawSignature())){
-							Integer nameOrderNumber = this.refactoring.names.get(nameInfo.getDeclaration().getRawSignature());
-							if(this.refactoring.nameTrail.containsValue(nameOrderNumber)){
-								String orgName = null;
-								boolean found = false;
-								for (Entry<String, Integer> entry : this.refactoring.nameTrail.entrySet()) {
-									if(entry.getValue().equals(nameOrderNumber)){
-										orgName = entry.getKey();
+			if (statementCount == statements.size()) {
+				// Found similar code
+				boolean similarOnReturnWays = true;
+				for (NameInformation nameInfo : similarContainer.getParameterCandidates()) {
+					if (refactoring.names.containsKey(nameInfo.getDeclarationName().getRawSignature())) {
+						Integer nameOrderNumber = refactoring.names.get(nameInfo.getDeclarationName().getRawSignature());
+						if (refactoring.nameTrail.containsValue(nameOrderNumber)) {
+							String orgName = null;
+							boolean found = false;
+							for (Entry<String, Integer> entry : refactoring.nameTrail.entrySet()) {
+								if (entry.getValue().equals(nameOrderNumber)) {
+									orgName = entry.getKey();
+									break;
+								}
+							}
+							if (orgName != null) {
+								for (NameInformation orgNameInfo : extractedNodes.getParameterCandidates()) {
+									if (orgName.equals(orgNameInfo.getDeclarationName().getRawSignature()) &&
+											(orgNameInfo.isOutput() || !nameInfo.isOutput())) {
+										found = true;
+										break;
 									}
 								}
-								if(orgName != null){
-									for (NameInformation orgNameInfo : this.refactoring.container.getAllAfterUsedNamesChoosenByUser()) {
-										if( orgName.equals(orgNameInfo.getDeclaration().getRawSignature()) ){
-											found = true;
-										}
-									}
-								}
-								
-								if(!found){
-									similarOnReturnWays = false;
-								}
+							}
+
+							if (!found) {
+								similarOnReturnWays = false;
 							}
 						}
 					}
-										
-					if(similarOnReturnWays){
-						IASTNode call = refactoring.getMethodCall(name,
-								this.refactoring.nameTrail, this.refactoring.names,
-								this.refactoring.container, similarContainer);
-						ASTRewrite rewrite = collector.rewriterForTranslationUnit(stmtToReplace.get(0)
-								.getTranslationUnit());
-						TextEditGroup editGroup = new TextEditGroup(Messages.SimilarFinderVisitor_replaceDuplicateCode);
-						rewrite.replace(stmtToReplace.get(0), call, editGroup);
-						if (stmtToReplace.size() > 1) {
-							for (int i = 1; i < stmtToReplace.size(); ++i) {
-								rewrite.remove(stmtToReplace.get(i), editGroup);
-							}
-						}
-					}
-
-					clear();
 				}
 
-				return PROCESS_SKIP;
-			} else {
+				if (similarOnReturnWays) {
+					foundSimilar();
+				}
 				clear();
-				return super.visit(stmt);
 			}
-			
-		}
-
-		private boolean isInSelection(IASTStatement stmt) {
-			List<IASTNode>nodes = this.refactoring.container.getNodesToWrite();
-			for (IASTNode node : nodes) {
-				if(node.equals(stmt)) {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		private void clear() {
-			i = 0;
-			this.refactoring.names.clear();
-			similarContainer = new NodeContainer();
-			this.refactoring.namesCounter.setObject(ExtractFunctionRefactoring.NULL_INTEGER);
-			this.refactoring.trailPos.setObject(ExtractFunctionRefactoring.NULL_INTEGER);
-		stmtToReplace.clear();
+			return PROCESS_SKIP;
+		} else {
+			clear();
+			return super.visit(statement);
 		}
 	}
+
+	protected abstract void foundSimilar();
+
+	private boolean isInSelection(IASTStatement stmt) {
+		List<IASTNode>nodes = extractedNodes.getNodesToWrite();
+		for (IASTNode node : nodes) {
+			if (node.equals(stmt)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void clear() {
+		statementCount = 0;
+		refactoring.names.clear();
+		similarContainer = new NodeContainer();
+		refactoring.namesCounter.setObject(ExtractFunctionRefactoring.NULL_INTEGER);
+		refactoring.trailPos.setObject(ExtractFunctionRefactoring.NULL_INTEGER);
+		stmtToReplace.clear();
+	}
+}
