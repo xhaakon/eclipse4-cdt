@@ -6,9 +6,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    QNX - Initial API and implementation
- *    Markus Schorn (Wind River Systems)
- *    Andrew Ferguson (Symbian)
+ *     QNX - Initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Andrew Ferguson (Symbian)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.c;
 
@@ -65,6 +65,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		super(linkage, record);
 	}
 	
+	@Override
 	public EScopeKind getKind() {
 		return EScopeKind.eClassType;
 	}
@@ -91,7 +92,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 	@Override
 	public void accept(IPDOMVisitor visitor) throws CoreException {
 		super.accept(visitor);
-		new PDOMNodeLinkedList(getLinkage(), record+MEMBERLIST).accept(visitor);
+		new PDOMNodeLinkedList(getLinkage(), record + MEMBERLIST).accept(visitor);
 	}
 	
 	@Override
@@ -104,6 +105,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		throw new UnsupportedOperationException();
 	}
 	
+	@Override
 	public int getKey() {
 		try {
 			return getDB().getByte(record + KEY);
@@ -113,6 +115,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		}
 	}
 	
+	@Override
 	public boolean isAnonymous() {
 		try {
 			return getDB().getByte(record + ANONYMOUS) != 0;
@@ -124,6 +127,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 
 	private static class GetFields implements IPDOMVisitor {
 		private List<IPDOMNode> fields = new ArrayList<IPDOMNode>();
+		@Override
 		public boolean visit(IPDOMNode node) throws CoreException {
 			if (node instanceof IField) {
 				IField field= (IField) node;
@@ -137,12 +141,14 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 			}
 			return false;
 		}
+		@Override
 		public void leave(IPDOMNode node) throws CoreException {
 		}
 		public IField[] getFields() {
 			return fields.toArray(new IField[fields.size()]);
 		}
 	}
+	@Override
 	public IField[] getFields() {
 		try {
 			GetFields fields = new GetFields();
@@ -160,6 +166,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		public FindField(String name) {
 			this.name = name;
 		}
+		@Override
 		public boolean visit(IPDOMNode node) throws CoreException {
 			if (node instanceof IField) {
 				IField tField = (IField)node;
@@ -176,11 +183,13 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 			}
 			return false;
 		}
+		@Override
 		public void leave(IPDOMNode node) throws CoreException {
 		}
 		public IField getField() { return field; }
 	}
 	
+	@Override
 	public IField findField(String name) {
 		final PDOM pdom = getPDOM();
 		final String key= pdom.createKeyForCache(record, name.toCharArray());
@@ -197,8 +206,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		} catch (CoreException e) {
 			if (e.getStatus().equals(Status.OK_STATUS)) {
 				result= visitor.getField();
-			}
-			else {
+			} else {
 				CCorePlugin.log(e);
 				return null;
 			}
@@ -209,10 +217,12 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		return result;
 	}
 
+	@Override
 	public IScope getCompositeScope() {
 		return this;
 	}
 
+	@Override
 	public boolean isSameType(IType type) {
 		if (type instanceof ITypedef) {
 			return type.isSameType(this);
@@ -252,10 +262,12 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		return true;
 	}
 
+	@Override
 	public ICompositeType getCompositeType() {
 		return this;
 	}
 
+	@Override
 	public IBinding getBinding(char[] name) {
 		return findField(new String(name));
 	}
@@ -270,6 +282,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		return getBindings(name.toCharArray());
 	}
 	
+	@Override
 	public IBinding[] find(String name) {
 		return getBindings(name.toCharArray());
 	}
@@ -281,6 +294,7 @@ public class PDOMCStructure extends PDOMBinding implements ICompositeType, ICCom
 		return new IBinding[]{b};
 	}
 	
+	@Override
 	public IIndexBinding getScopeBinding() {
 		return this;
 	}

@@ -17,12 +17,15 @@ import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.LVALUE;
 import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.PRVALUE;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.glvalueType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.prvalueType;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.typeFromFunctionCall;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.ALLCVQ;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.CVTYPE;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.REF;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getUltimateTypeUptoPointers;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
@@ -41,6 +44,7 @@ import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFieldReference;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -53,15 +57,13 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CVQualifier;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 
-public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReference, IASTAmbiguityParent,
-		ICPPASTCompletionContext {
-
+public class CPPASTFieldReference extends ASTNode
+		implements ICPPASTFieldReference, IASTAmbiguityParent, ICPPASTCompletionContext {
     private boolean isTemplate;
     private IASTExpression owner;
     private IASTName name;
     private boolean isDeref;
-    
-    private IASTImplicitName[] implicitNames = null;
+    private IASTImplicitName[] implicitNames;
     
     public CPPASTFieldReference() {
 	}
@@ -71,10 +73,12 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		setFieldOwner(owner);
 	}
 	
+	@Override
 	public CPPASTFieldReference copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 
+	@Override
 	public CPPASTFieldReference copy(CopyStyle style) {
 		CPPASTFieldReference copy = new CPPASTFieldReference();
 		copy.setFieldName(name == null ? null : name.copy(style));
@@ -88,20 +92,24 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		return copy;
 	}
 
+	@Override
 	public boolean isTemplate() {
         return isTemplate;
     }
 
-    public void setIsTemplate(boolean value) {
+    @Override
+	public void setIsTemplate(boolean value) {
         assertNotFrozen();
         isTemplate = value;
     }
 
-    public IASTExpression getFieldOwner() {
+    @Override
+	public IASTExpression getFieldOwner() {
         return owner;
     }
 
-    public void setFieldOwner(IASTExpression expression) {
+    @Override
+	public void setFieldOwner(IASTExpression expression) {
         assertNotFrozen();
         owner = expression;
         if (expression != null) {
@@ -110,11 +118,13 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		}
     }
 
-    public IASTName getFieldName() {
+    @Override
+	public IASTName getFieldName() {
         return name;
     }
 
-    public void setFieldName(IASTName name) {
+    @Override
+	public void setFieldName(IASTName name) {
         assertNotFrozen();
         this.name = name;
         if (name != null) {
@@ -123,33 +133,32 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		}
     }
 
-    public boolean isPointerDereference() {
+    @Override
+	public boolean isPointerDereference() {
         return isDeref;
     }
 
-    public void setIsPointerDereference(boolean value) {
+    @Override
+	public void setIsPointerDereference(boolean value) {
         assertNotFrozen();
         isDeref = value;
     }
     
-    public IASTImplicitName[] getImplicitNames() {
+    @Override
+	public IASTImplicitName[] getImplicitNames() {
     	if (implicitNames == null) {
     		if (!isDeref)
     			return implicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
 			
-    		// collect the function bindings
+    		// Collect the function bindings
 			List<ICPPFunction> functionBindings = new ArrayList<ICPPFunction>();
-			try {
-				CPPSemantics.getFieldOwnerType(this, functionBindings);
-			} catch (DOMException e) {
-				return implicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
-			}
+			getFieldOwnerType(functionBindings);
 			if (functionBindings.isEmpty())
 				return implicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
 			
-			// create a name to wrap each binding
+			// Create a name to wrap each binding
 			implicitNames = new IASTImplicitName[functionBindings.size()];
-			int i=-1;
+			int i= -1;
 			for (ICPPFunction op : functionBindings) {
 				if (op != null && !(op instanceof CPPImplicitFunction)) {
 					CPPASTImplicitName operatorName = new CPPASTImplicitName(OverloadableOperator.ARROW, this);
@@ -197,13 +206,15 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
         return true;
     }
 
+	@Override
 	public int getRoleForName(IASTName n) {
 		if (n == name)
 			return r_reference;
 		return r_unclear;
 	}
 
-    public void replace(IASTNode child, IASTNode other) {
+    @Override
+	public void replace(IASTNode child, IASTNode other) {
         if (child == owner) {
             other.setPropertyInParent(child.getPropertyInParent());
             other.setParent(child.getParent());
@@ -211,7 +222,8 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
         }
     }
 
-    public IType getExpressionType() {
+    @Override
+	public IType getExpressionType() {
 		IASTName name= getFieldName();
 		IBinding binding = name.resolvePreBinding();
 		try {
@@ -270,8 +282,8 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		}
 		return fieldType;
 	}
-
     
+	@Override
 	public ValueCategory getValueCategory() {
 		IASTName name= getFieldName();
 		IBinding binding = name.resolvePreBinding();
@@ -295,10 +307,12 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		return PRVALUE;
 	}
 	
+	@Override
 	public boolean isLValue() {
 		return getValueCategory() == LVALUE;
 	}
 
+	@Override
 	public IBinding[] findBindings(IASTName n, boolean isPrefix, String[] namespaces) {
 		IBinding[] bindings = CPPSemantics.findBindingsForContentAssist(n, isPrefix, namespaces);
 		List<IBinding> filtered = new ArrayList<IBinding>();
@@ -316,7 +330,67 @@ public class CPPASTFieldReference extends ASTNode implements ICPPASTFieldReferen
 		return filtered.toArray(new IBinding[filtered.size()]);
 	}
 	
+	@Override
 	public IBinding[] findBindings(IASTName n, boolean isPrefix) {
 		return findBindings(n, isPrefix, null);
 	}
+	
+    /**
+     * For a pointer dereference expression e1->e2, return the type that e1 ultimately evaluates to
+     * after chaining overloaded class member access operators <code>operator->()</code> calls.
+     */
+    @Override
+	public IType getFieldOwnerType() {
+    	return getFieldOwnerType(null);
+    }
+    
+    /*
+     * Also collects the function bindings if requested.
+     */
+    private IType getFieldOwnerType(Collection<ICPPFunction> functionBindings) {
+    	final IASTExpression owner = getFieldOwner();
+    	if (owner == null)
+    		return null;
+    	
+    	IType type= owner.getExpressionType();
+    	if (!isPointerDereference())
+    		return type;
+    	
+    	// bug 205964: as long as the type is a class type, recurse. 
+    	// Be defensive and allow a max of 20 levels.
+    	for (int j = 0; j < 20; j++) {
+    		// for unknown types we cannot determine the overloaded -> operator
+    		IType classType= getUltimateTypeUptoPointers(type);
+    		if (classType instanceof ICPPUnknownType)
+    			return CPPUnknownClass.createUnnamedInstance();
+
+    		if (!(classType instanceof ICPPClassType)) 
+    			break;
+    		
+    		/*
+    		 * 13.5.6-1: An expression x->m is interpreted as (x.operator->())->m for a
+    		 * class object x of type T
+    		 * 
+    		 * Construct an AST fragment for x.operator-> which the lookup routines can
+    		 * examine for type information.
+    		 */
+
+    		ICPPFunction op = CPPSemantics.findOverloadedOperator(this, type, (ICPPClassType) classType);
+    		if (op == null) 
+    			break;
+
+    		if (functionBindings != null)
+    			functionBindings.add(op);
+    		
+    		type= typeFromFunctionCall(op);
+			type= SemanticUtil.mapToAST(type, owner);
+    	}
+    	
+		IType prValue=  prvalueType(type);
+		if (prValue instanceof IPointerType) {
+			return glvalueType(((IPointerType) prValue).getType());
+		}
+
+		return new ProblemType(ISemanticProblem.TYPE_UNKNOWN_FOR_EXPRESSION);
+    }
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2011 Wind River Systems and others.
+ * Copyright (c) 2006, 2012 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,9 +7,13 @@
  * 
  * Contributors:
  *     Wind River Systems - initial API and implementation
+ *     Marc Khouzam (Ericsson) - Fix NPE for partial launches (Bug 368597)
+ *     Marc Khouzam (Ericsson) - Create the gdb process through the process factory (Bug 210366)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.launching;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
@@ -20,6 +24,7 @@ import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;
@@ -31,6 +36,7 @@ import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
+import org.eclipse.cdt.dsf.gdb.IGdbDebugConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.internal.memory.GdbMemoryBlockRetrieval;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
@@ -50,6 +56,7 @@ import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.commands.ITerminateHandler;
 import org.eclipse.debug.core.model.IDisconnect;
 import org.eclipse.debug.core.model.IMemoryBlockRetrieval;
 import org.eclipse.debug.core.model.ISourceLocator;
@@ -102,6 +109,7 @@ public class GdbLaunch extends DsfLaunch
     	fSession.registerModelAdapter(ILaunch.class, this);
 
         Runnable initRunnable = new DsfRunnable() { 
+        	@Override
             public void run() {
                 fTracker = new DsfServicesTracker(GdbPlugin.getBundleContext(), fSession.getId());
                 fSession.addServiceEventListener(GdbLaunch.this, null);
@@ -127,6 +135,7 @@ public class GdbLaunch extends DsfLaunch
         // Create a memory retrieval and register it with the session 
         try {
             fExecutor.submit( new Callable<Object>() {
+            	@Override
                 public Object call() throws CoreException {
                 	ICommandControlService commandControl = fTracker.getService(ICommandControlService.class);
                 	IMIProcesses procService = fTracker.getService(IMIProcesses.class);
@@ -159,6 +168,7 @@ public class GdbLaunch extends DsfLaunch
             // Add the CLI process object to the launch.
     		AbstractCLIProcess cliProc =
     			getDsfExecutor().submit( new Callable<AbstractCLIProcess>() {
+    				@Override
     				public AbstractCLIProcess call() throws CoreException {
     					IGDBControl gdb = fTracker.getService(IGDBControl.class);
     					if (gdb != null) {
@@ -168,8 +178,14 @@ public class GdbLaunch extends DsfLaunch
     				}
     			}).get();
 
-            GDBProcess gdbProcess = new GDBProcess(this, cliProc, label, null);
-            addProcess(gdbProcess);
+			// Need to go through DebugPlugin.newProcess so that we can use 
+			// the overrideable process factory to allow others to override.
+			// First set attribute to specify we want to create the gdb process.
+			// Bug 210366
+			Map<String, String> attributes = new HashMap<String, String>();
+		    attributes.put(IGdbDebugConstants.PROCESS_TYPE_CREATION_ATTR, 
+		    		       IGdbDebugConstants.GDB_PROCESS_CREATION_VALUE);
+		    DebugPlugin.newProcess(this, cliProc, label, attributes);
         } catch (InterruptedException e) {
             throw new CoreException(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, 0, "Interrupted while waiting for get process callable.", e)); //$NON-NLS-1$
         } catch (ExecutionException e) {
@@ -186,7 +202,7 @@ public class GdbLaunch extends DsfLaunch
     ///////////////////////////////////////////////////////////////////////////
     // IServiceEventListener
     @DsfServiceEventHandler public void eventDispatched(ICommandControlShutdownDMEvent event) {
-        shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
+        shutdownSession(new ImmediateRequestMonitor());
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -252,13 +268,19 @@ public class GdbLaunch extends DsfLaunch
                     fTracker = null;
                     DsfSession.endSession(fSession);
                     
-                    // DsfMemoryBlockRetrieval.saveMemoryBlocks();
-                    fMemRetrieval.saveMemoryBlocks();
-                    
-                    // Fire a terminate event for the memory retrieval object so
-                    // that the hosting memory views can clean up. See 255120 and
-                    // 283586
-                    DebugPlugin.getDefault().fireDebugEventSet( new DebugEvent[] { new DebugEvent(fMemRetrieval, DebugEvent.TERMINATE) });
+                    // The memory retrieval can be null if the launch was aborted
+                    // in the middle.  We saw this when doing an automatic remote
+                    // launch with an invalid gdbserver
+                    // Bug 368597
+                    if (fMemRetrieval != null) {
+                    	// DsfMemoryBlockRetrieval.saveMemoryBlocks();
+                    	fMemRetrieval.saveMemoryBlocks();
+
+                    	// Fire a terminate event for the memory retrieval object so
+                    	// that the hosting memory views can clean up. See 255120 and
+                    	// 283586
+                    	DebugPlugin.getDefault().fireDebugEventSet( new DebugEvent[] { new DebugEvent(fMemRetrieval, DebugEvent.TERMINATE) });
+                    }
 
                     // 'fireTerminate()' removes this launch from the list of 'DebugEvent' 
                     // listeners. The launch may not be terminated at this point: the inferior 
@@ -279,6 +301,10 @@ public class GdbLaunch extends DsfLaunch
     @SuppressWarnings("rawtypes")
     @Override
     public Object getAdapter(Class adapter) {
+    	// We replace the standard terminate handler by DsfTerminateHandler
+    	// see https://bugs.eclipse.org/bugs/show_bug.cgi?id=377447.
+    	if (adapter.equals(ITerminateHandler.class))
+    		return getSession().getModelAdapter(adapter);
         // Must force adapters to be loaded.
         Platform.getAdapterManager().loadAdapter(this, adapter.getName());
         return super.getAdapter(adapter);

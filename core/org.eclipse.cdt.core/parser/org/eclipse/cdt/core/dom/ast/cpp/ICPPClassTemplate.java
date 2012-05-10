@@ -11,18 +11,17 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.ast.cpp;
 
-import org.eclipse.cdt.core.dom.ast.DOMException;
 
 /**
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface ICPPClassTemplate extends ICPPTemplateDefinition, ICPPClassType {
-	public ICPPClassTemplatePartialSpecialization[] getPartialSpecializations() throws DOMException;
+	public ICPPClassTemplatePartialSpecialization[] getPartialSpecializations();
 	
 	/**
 	 * Returns a deferred instance that allows lookups within this class template. 
 	 * @since 5.1
 	 */
-	public ICPPTemplateInstance asDeferredInstance() throws DOMException;
+	public ICPPTemplateInstance asDeferredInstance();
 }

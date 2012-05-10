@@ -35,7 +35,7 @@ public class CPPDeferredClassInstance extends CPPUnknownClass implements ICPPDef
 	private final ICPPScope fLookupScope;
 
 	public CPPDeferredClassInstance(ICPPClassTemplate template, ICPPTemplateArgument[] arguments,
-			ICPPScope lookupScope) throws DOMException {
+			ICPPScope lookupScope) {
 		// With template template parameters the owner must not be calculated, it'd lead to an infinite loop.
 		// Rather than that we override getOwner().
 		super(null, template.getNameCharArray());
@@ -44,7 +44,7 @@ public class CPPDeferredClassInstance extends CPPUnknownClass implements ICPPDef
 		fLookupScope= lookupScope;
 	}
 
-	public CPPDeferredClassInstance(ICPPClassTemplate template, ICPPTemplateArgument[] arguments) throws DOMException {
+	public CPPDeferredClassInstance(ICPPClassTemplate template, ICPPTemplateArgument[] arguments) {
 		this(template, arguments, null);
 	}
 	
@@ -53,10 +53,12 @@ public class CPPDeferredClassInstance extends CPPUnknownClass implements ICPPDef
 		return fClassTemplate.getOwner();
 	}
 
+	@Override
 	public ICPPClassTemplate getClassTemplate() {
 		return (ICPPClassTemplate) getSpecializedBinding();
 	}
 
+	@Override
 	public boolean isExplicitSpecialization() {
 		return false;
 	}
@@ -92,23 +94,28 @@ public class CPPDeferredClassInstance extends CPPUnknownClass implements ICPPDef
     	return getClassTemplate().getKey();
     }
     
+	@Override
 	@Deprecated
 	public IType[] getArguments() {
 		return CPPTemplates.getArguments(getTemplateArguments());
 	}
 
+	@Override
 	public ICPPTemplateArgument[] getTemplateArguments() {
 		return fArguments;
 	}
 
+	@Override
 	public ICPPTemplateDefinition getTemplateDefinition() {
 		return fClassTemplate;
 	}
 
+	@Override
 	public ObjectMap getArgumentMap() {
 		return ObjectMap.EMPTY_MAP;
 	}
 	
+	@Override
 	public CPPTemplateParameterMap getTemplateParameterMap() {
 		ICPPTemplateParameter[] params = fClassTemplate.getTemplateParameters();
 		int size = Math.min(fArguments.length, params.length);
@@ -119,6 +126,7 @@ public class CPPDeferredClassInstance extends CPPUnknownClass implements ICPPDef
 		return map;
 	}
 
+	@Override
 	public IBinding getSpecializedBinding() {
 		return getTemplateDefinition();
 	}

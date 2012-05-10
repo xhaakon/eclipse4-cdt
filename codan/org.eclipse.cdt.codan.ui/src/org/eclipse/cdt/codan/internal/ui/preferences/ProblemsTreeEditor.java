@@ -6,12 +6,10 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Alena Laskavaia  - initial API and implementation
- *    IBM Corporation
+ *     Alena Laskavaia  - initial API and implementation
+ *     IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.codan.internal.ui.preferences;
-
-import java.text.MessageFormat;
 
 import org.eclipse.cdt.codan.core.CodanRuntime;
 import org.eclipse.cdt.codan.core.PreferenceConstants;
@@ -45,6 +43,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 
+import java.text.MessageFormat;
+
 public class ProblemsTreeEditor extends CheckedTreeEditor {
 	private static final String EMPTY_STRING = ""; //$NON-NLS-1$
 	private static final String SINGLE_PLACEHOLDER_ONLY = "{0}"; //$NON-NLS-1$
@@ -62,6 +62,7 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 		 * org.eclipse.jface.viewers.ICheckStateProvider#isChecked(java.lang
 		 * .Object)
 		 */
+		@Override
 		public boolean isChecked(Object element) {
 			if (element instanceof IProblem) {
 				IProblem p = (IProblem) element;
@@ -88,6 +89,7 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 		 * org.eclipse.jface.viewers.ICheckStateProvider#isGrayed(java.lang.
 		 * Object)
 		 */
+		@Override
 		public boolean isGrayed(Object element) {
 			if (element instanceof IProblem) {
 				IProblem p = (IProblem) element;
@@ -130,14 +132,15 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 	}
 
 	class ProblemsContentProvider implements IContentProvider, ITreeContentProvider {
+		@Override
 		public void dispose() {
-			// TODO Auto-generated method stub
 		}
 
+		@Override
 		public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-			// TODO Auto-generated method stub
 		}
 
+		@Override
 		public Object[] getChildren(Object parentElement) {
 			if (parentElement instanceof Object[])
 				return (Object[]) parentElement;
@@ -150,14 +153,17 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 			return new Object[0];
 		}
 
+		@Override
 		public Object getParent(Object element) {
 			return null;
 		}
 
+		@Override
 		public boolean hasChildren(Object element) {
 			return getChildren(element).length > 0;
 		}
 
+		@Override
 		public Object[] getElements(Object inputElement) {
 			return getChildren(inputElement);
 		}
@@ -308,12 +314,6 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 		getViewer().setInput(profile);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.cdt.codan.internal.ui.preferences.CheckedTreeEditor#doLoad()
-	 */
 	@Override
 	protected void doLoad() {
 		if (getTreeControl() != null) {
@@ -348,12 +348,6 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 		}
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.cdt.codan.internal.ui.preferences.CheckedTreeEditor#doStore()
-	 */
 	@Override
 	protected void doStore() {
 		codanPreferencesLoader.setInput((IProblemProfile) getViewer().getInput());
@@ -368,32 +362,16 @@ public class ProblemsTreeEditor extends CheckedTreeEditor {
 		}
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @seeorg.eclipse.cdt.codan.internal.ui.preferences.CheckedTreeEditor#
-	 * modelFromString(java.lang.String)
-	 */
 	@Override
 	protected Object modelFromString(String s) {
 		return codanPreferencesLoader.getInput();
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.cdt.codan.internal.ui.preferences.CheckedTreeEditor#modelToString
-	 * (java.lang.Object)
-	 */
 	@Override
 	protected String modelToString(Object model) {
 		return ""; //$NON-NLS-1$
 	}
 
-	/**
-	 * @return
-	 */
 	public static String getSampleMessage(IProblem problem) {
 		String messagePattern = problem.getMessagePattern();
 		String message = CodanUIMessages.CodanPreferencePage_NoInfo;

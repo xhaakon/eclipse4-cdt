@@ -24,7 +24,7 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
-import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -75,6 +75,7 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
             fAddresses = addresses;
         }
 
+    	@Override
         public IAddress[] getAddresses() {
             return fAddresses;
         }
@@ -119,7 +120,7 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
 	 */
 	@Override
     public void initialize(final RequestMonitor requestMonitor) {
-        super.initialize(new RequestMonitor(ImmediateExecutor.getInstance(), requestMonitor) {
+        super.initialize(new ImmediateRequestMonitor(requestMonitor) {
             @Override
             protected void handleSuccess() {
                 doInitialize(requestMonitor);
@@ -199,6 +200,7 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
     /* (non-Javadoc)
      * @see org.eclipse.cdt.dsf.debug.service.IMemory#getMemory(org.eclipse.cdt.dsf.datamodel.IDMContext, org.eclipse.cdt.core.IAddress, long, int, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
      */
+	@Override
     public void getMemory(IMemoryDMContext memoryDMC, IAddress address, long offset,
     		int word_size, int count, DataRequestMonitor<MemoryByte[]> drm)
 	{
@@ -231,6 +233,7 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
     /* (non-Javadoc)
      * @see org.eclipse.cdt.dsf.debug.service.IMemory#setMemory(org.eclipse.cdt.dsf.datamodel.IDMContext, org.eclipse.cdt.core.IAddress, long, int, byte[], org.eclipse.cdt.dsf.concurrent.RequestMonitor)
      */
+	@Override
     public void setMemory(IMemoryDMContext memoryDMC, IAddress address, long offset,
     		int word_size, int count, byte[] buffer, RequestMonitor rm)
     {
@@ -270,6 +273,7 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
     /* (non-Javadoc)
      * @see org.eclipse.cdt.dsf.debug.service.IMemory#fillMemory(org.eclipse.cdt.dsf.datamodel.IDMContext, org.eclipse.cdt.core.IAddress, long, int, byte[], org.eclipse.cdt.dsf.concurrent.RequestMonitor)
      */
+	@Override
     public void fillMemory(IMemoryDMContext memoryDMC, IAddress address, long offset,
     		int word_size, int count, byte[] pattern, RequestMonitor rm)
     {
@@ -994,6 +998,7 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
     * {@inheritDoc}
     * @since 1.1
     */
+	@Override
     public void flushCache(IDMContext context) {
     	fCommandCache.reset(context);
     	

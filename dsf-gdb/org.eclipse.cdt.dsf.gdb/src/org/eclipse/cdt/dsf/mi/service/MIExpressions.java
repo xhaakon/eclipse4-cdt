@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.dsf.mi.service;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
@@ -70,6 +72,8 @@ import org.osgi.framework.BundleContext;
  * @since 2.0
  */
 public class MIExpressions extends AbstractDsfService implements IMIExpressions, ICachingService {
+
+	private static final int PARTITION_LENGTH = 100;
 
     /**
      * A format that gives more details about an expression and supports pretty-printing
@@ -349,6 +353,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
         /**
          * @return The full expression string represented by this ExpressionDMC
          */
+    	@Override
         public String getExpression() {
             return exprInfo.getFullExpr();
         }
@@ -380,7 +385,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 			this.exprInfo = info;
 		}
     }
-    
+
     protected static class InvalidContextExpressionDMC extends AbstractDMContext 
         implements IExpressionDMContext
     {
@@ -407,8 +412,89 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
             return baseToString() + ".invalid_expr[" + expression + "]"; //$NON-NLS-1$ //$NON-NLS-2$
         }
 
+    	@Override
         public String getExpression() {
             return expression;
+        }
+    }
+
+    /**
+	 * @since 4.1
+	 */
+    protected static class IndexedPartitionDMC extends MIExpressionDMC implements IIndexedPartitionDMContext {
+
+    	final private ExpressionInfo fParentInfo;
+		private final int fIndex;
+    	private final int fLength;
+    	
+		public IndexedPartitionDMC(
+				String sessionId, 
+				ExpressionInfo parentInfo, 
+				IFrameDMContext frameCtx, 
+				int index, 
+				int length) {
+			this(sessionId, parentInfo, (IDMContext)frameCtx, index, length);
+		}
+
+    	private IndexedPartitionDMC(
+    			String sessionId, 
+    			ExpressionInfo parentInfo, 
+    			IDMContext parent, 
+    			int index, 
+    			int length) {
+			super(sessionId, createExpressionInfo(parentInfo, index, length), parent);
+			fIndex = index;
+			fLength = length;
+			fParentInfo = parentInfo;
+		}
+
+    	public ExpressionInfo getParentInfo() {
+    		return fParentInfo;
+    	}
+
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.dsf.debug.service.IExpressions4.IIndexedPartitionDMContext#getParentExpression()
+		 */
+		@Override
+		public String getParentExpression() {
+			return getParentInfo().getFullExpr();
+		}
+
+		@Override
+		public int getIndex() {
+			return fIndex;
+		}
+
+		@Override
+		public int getLength() {
+			return fLength;
+		}
+
+        @Override
+        public boolean equals(Object other) {
+            return super.baseEquals(other) &&
+                    ((IndexedPartitionDMC) other).getParentInfo().equals(getParentInfo()) &&
+                    ((IndexedPartitionDMC) other).getIndex() == getIndex() &&
+                    ((IndexedPartitionDMC) other).getLength() == getLength();                
+        }
+
+        @Override
+        public int hashCode() {
+            return super.baseHashCode() + 17*getIndex() + 31*getLength();
+        }
+
+        @Override
+        public String toString() {
+            return String.format( "%s.expr[%s][%d-%d]", baseToString(), getParentExpression(), getIndex(), getIndex() + getLength() - 1); //$NON-NLS-1$
+        }
+
+        private static ExpressionInfo createExpressionInfo(ExpressionInfo parentInfo, int index, int length) {
+        	String expression = String.format(
+        			"*((%s)+%d)@%d",  //$NON-NLS-1$
+        			parentInfo.getFullExpr(), 
+        			Integer.valueOf(index), 
+        			Integer.valueOf(length));
+        	return new ExpressionInfo(expression, expression);
         }
     }
     
@@ -437,7 +523,9 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
     		}
     	}
 
+    	@Override
     	public IAddress getAddress() { return fAddr; }
+    	@Override
     	public int getSize() { return fSize; }
 		
 		@Override
@@ -468,14 +556,17 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
      */
     protected class InvalidDMAddress implements IExpressionDMLocation {
 
+    	@Override
 		public IAddress getAddress() {
 			return IExpressions.IExpressionDMLocation.INVALID_ADDRESS;
 		}
 
+    	@Override
 		public int getSize() {
 			return 0;
 		}
 
+    	@Override
 		public String getLocation() {
 			return ""; //$NON-NLS-1$
 		}
@@ -525,22 +616,27 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
             fBasicType = basicType;
         }
 
+    	@Override
 		public BasicType getBasicType() {
 		    return fBasicType;
 		}
 		
+    	@Override
 		public String getEncoding() {
 			return null;
 		}
 
+    	@Override
 		public Map<String, Integer> getEnumerations() {
 			return new HashMap<String, Integer>();
 		}
 
+    	@Override
 		public String getName() {
 			return relativeExpression;
 		}
 
+    	@Override
 		public IRegisterDMContext getRegister() {
 			return null;
 		}
@@ -550,10 +646,12 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 			return null;
 		}
 
+		@Override
 		public String getTypeId() {
 			return null;
 		}
 
+		@Override
 		public String getTypeName() {
 			return exprType;
 		}
@@ -586,6 +684,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 		/**
          * @since 4.0
          */
+		@Override
 		public boolean hasChildren() {
 		    return numChildrenHint > 0;
 		}
@@ -659,7 +758,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 */
 	@Override
 	public void initialize(final RequestMonitor requestMonitor) {
-		super.initialize(new RequestMonitor(ImmediateExecutor.getInstance(), requestMonitor) {
+		super.initialize(new ImmediateRequestMonitor(requestMonitor) {
 			@Override
 			protected void handleSuccess() {
 				doInitialize(requestMonitor);
@@ -739,6 +838,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	/**
 	 * Create an expression context with the same full and relative expression
 	 */
+	@Override
 	public IExpressionDMContext createExpression(IDMContext ctx, String expression) {
 		return createExpression(ctx, expression, expression);
 	}
@@ -797,6 +897,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 *         of an expression in a specific format. 
 	 */
 
+	@Override
 	public FormattedValueDMContext getFormattedValueContext(
 			IFormattedDataDMContext dmc, String formatId) {
 		return new FormattedValueDMContext(this, dmc, formatId);
@@ -813,6 +914,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 *  
 	 */
 
+	@Override
 	public void getAvailableFormats(IFormattedDataDMContext dmc,
 			final DataRequestMonitor<String[]> rm) {
 		rm.setData(FORMATS_SUPPORTED);
@@ -828,6 +930,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The data request monitor that will contain the requested data
 	 */
+	@Override
 	public void getExpressionData(
 			final IExpressionDMContext dmc,
 			final DataRequestMonitor<IExpressionDMData> rm) 
@@ -892,6 +995,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The data request monitor that will contain the requested data
 	 */
+	@Override
     public void getExpressionAddressData(
     		IExpressionDMContext dmc, 
     		final DataRequestMonitor<IExpressionDMAddress> rm) {
@@ -961,6 +1065,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The data request monitor that will contain the requested data
 	 */
+	@Override
 	public void getFormattedExpressionValue(
 			final FormattedValueDMContext dmc,
 			final DataRequestMonitor<FormattedValueDMData> rm) 
@@ -1025,6 +1130,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * (non-Javadoc)
 	 * @see org.eclipse.cdt.dsf.debug.service.IExpressions#getBaseExpressions(org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
 	 */
+	@Override
 	public void getBaseExpressions(IExpressionDMContext exprContext,
 			DataRequestMonitor<IExpressionDMContext[]> rm) {
 		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID,
@@ -1041,33 +1147,9 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The data request monitor that will contain the requested data
 	 */
-	public void getSubExpressions(final IExpressionDMContext dmc,
-			final DataRequestMonitor<IExpressionDMContext[]> rm) 
-	{		
-		if (dmc instanceof MIExpressionDMC) {
-			fExpressionCache.execute(
-					new ExprMetaGetChildren(dmc),				
-					new DataRequestMonitor<ExprMetaGetChildrenInfo>(getExecutor(), rm) {
-						@Override
-						protected void handleSuccess() {
-							ExpressionInfo[] childrenExpr = getData().getChildrenExpressions();
-							IExpressionDMContext[] childArray = new IExpressionDMContext[childrenExpr.length];
-							for (int i=0; i<childArray.length; i++) {
-								childArray[i] = createExpression(
-										dmc.getParents()[0], childrenExpr[i]);
-							}
-
-							rm.setData(childArray);
-							rm.done();
-						}
-					});
-		} else if (dmc instanceof InvalidContextExpressionDMC) {
-			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Invalid context for evaluating expressions.", null)); //$NON-NLS-1$
-			rm.done();
-		} else {
-			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid expression context.", null)); //$NON-NLS-1$
-			rm.done();
-		}
+	@Override
+	public void getSubExpressions(IExpressionDMContext dmc, DataRequestMonitor<IExpressionDMContext[]> rm) {
+		getSubExpressions(dmc, -1, -1, rm);
 	}
 
 	/**
@@ -1085,40 +1167,52 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The data request monitor that will contain the requested data
 	 */
+	@Override
 	public void getSubExpressions(final IExpressionDMContext exprCtx, final int startIndex,
 			final int length, final DataRequestMonitor<IExpressionDMContext[]> rm) {
 
-		if (startIndex < 0 || length < 0) {
-			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid range for evaluating sub expressions.", null)); //$NON-NLS-1$
-			rm.done();
-			return;
+		if (exprCtx instanceof IndexedPartitionDMC) {
+			getIndexedPartitionChildren((IndexedPartitionDMC)exprCtx, startIndex, length, rm);
 		}
-		
-		if (exprCtx instanceof MIExpressionDMC) {
-			fExpressionCache.execute(
-					new ExprMetaGetChildren(exprCtx, startIndex + length),				
-					new DataRequestMonitor<ExprMetaGetChildrenInfo>(getExecutor(), rm) {
-						@Override
-						protected void handleSuccess() {
-							ExpressionInfo[] childrenExpr = getData().getChildrenExpressions();
-
-							if (startIndex >= childrenExpr.length) {
-								rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, "Invalid range for evaluating sub expressions.", null)); //$NON-NLS-1$
-								rm.done();
-								return;
-							}
-
-							int numChildren = childrenExpr.length - startIndex;
-							numChildren = Math.min(length, numChildren);
-							IExpressionDMContext[] childrenArray = new IExpressionDMContext[numChildren];
-							for (int i=0; i < numChildren; i++) {
-								childrenArray[i] = createExpression(
-										exprCtx.getParents()[0], childrenExpr[startIndex + i]);
-							}
-							rm.setData(childrenArray);
+		else if (exprCtx instanceof MIExpressionDMC) {
+			getRealSubExpressionCount(
+				exprCtx, 
+				IMIExpressions.CHILD_COUNT_LIMIT_UNSPECIFIED, 
+				new DataRequestMonitor<Integer>(getExecutor(), rm) {
+					/* (non-Javadoc)
+					 * @see org.eclipse.cdt.dsf.concurrent.RequestMonitor#handleSuccess()
+					 */
+					@Override
+					protected void handleSuccess() {
+						final int realNumChildren = getData().intValue();
+						if (realNumChildren == 0) {
+							rm.setData(new IExpressionDMContext[0]);
 							rm.done();
+							return;
 						}
-					});
+
+						if (realNumChildren <= getArrayPartitionLength()) {
+							getRealSubExpressions(exprCtx, startIndex, length, rm);
+						}
+						else {
+							getExpressionData(
+									exprCtx, 
+									new DataRequestMonitor<IExpressionDMData>(ImmediateExecutor.getInstance(), rm) {
+
+										@Override
+										protected void handleSuccess() {
+											if (IExpressionDMData.BasicType.array.equals(getData().getBasicType())) {
+												rm.setData(getTopLevelIndexedPartitions((MIExpressionDMC)exprCtx, realNumChildren, startIndex, length ));
+												rm.done();
+											}
+											else {
+												getRealSubExpressions(exprCtx, startIndex, length, rm);
+											}
+										}
+									});
+						}
+					}
+				});
 		} else if (exprCtx instanceof InvalidContextExpressionDMC) {
 			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Invalid context for evaluating expressions.", null)); //$NON-NLS-1$
 			rm.done();
@@ -1131,6 +1225,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	/**
 	 * @since 4.0
 	 */
+	@Override
 	public void safeToAskForAllSubExpressions(IExpressionDMContext dmc,
 			final DataRequestMonitor<Boolean> rm) {
 	    if (dmc instanceof MIExpressionDMC) {
@@ -1157,19 +1252,49 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	/**
 	 * @since 4.0
 	 */
-	public void getSubExpressionCount(IExpressionDMContext dmc,
+	@Override
+	public void getSubExpressionCount(final IExpressionDMContext dmc,
 			final int numChildLimit, final DataRequestMonitor<Integer> rm) {
 
 		if (dmc instanceof MIExpressionDMC) {
-			fExpressionCache.execute(
-					new ExprMetaGetChildCount(dmc, numChildLimit),				
-					new DataRequestMonitor<ExprMetaGetChildCountInfo>(getExecutor(), rm) {
+			if (dmc instanceof IndexedPartitionDMC) {
+				int length = ((IndexedPartitionDMC)dmc).getLength();
+				rm.setData(computeNumberOfChildren(length));
+				rm.done();
+			}
+			else {
+				getRealSubExpressionCount( 
+					dmc, 
+					numChildLimit, 
+					new DataRequestMonitor<Integer>(getExecutor(), rm) {
+
 						@Override
 						protected void handleSuccess() {
-							rm.setData(getData().getChildNum());
-							rm.done();
-						}
+							final int realNum = getData().intValue();
+							if (realNum <= getArrayPartitionLength()) {
+								rm.setData(Integer.valueOf(realNum));
+								rm.done();
+							}
+							else {
+								getExpressionData(
+									dmc, 
+									new DataRequestMonitor<IExpressionDMData>(ImmediateExecutor.getInstance(), rm) {
+
+										@Override
+										protected void handleSuccess() {
+											if (IExpressionDMData.BasicType.array.equals(getData().getBasicType())) {
+												rm.setData(computeNumberOfChildren(realNum));
+											}
+											else {
+												rm.setData(Integer.valueOf(realNum));
+											}
+											rm.done();
+										}
+									});
+							}
+						}				
 					});
+			}
 		} else if (dmc instanceof InvalidContextExpressionDMC) {
 			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Invalid context for evaluating expressions.", null)); //$NON-NLS-1$
 			rm.done();
@@ -1188,6 +1313,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The data request monitor that will contain the requested data
 	 */
+	@Override
 	public void getSubExpressionCount(IExpressionDMContext dmc,
 			final DataRequestMonitor<Integer> rm) 
 	{
@@ -1202,6 +1328,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
      * @param rm Data Request monitor containing True if this expression's value can be edited.  False otherwise.
      */
 
+	@Override
 	public void canWriteExpression(IExpressionDMContext dmc, final DataRequestMonitor<Boolean> rm) {
         if (dmc instanceof MIExpressionDMC) {
             fExpressionCache.execute(
@@ -1236,6 +1363,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @param rm
 	 *            The request monitor that will indicate the completion of the operation
 	 */
+	@Override
 	public void writeExpression(final IExpressionDMContext dmc, String expressionValue, 
 			String formatId, final RequestMonitor rm) {
 
@@ -1305,6 +1433,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
      * {@inheritDoc}
      * @since 1.1
      */
+	@Override
     public void flushCache(IDMContext context) {
         fExpressionCache.reset(context);
         // We must also mark all variable objects as out-of-date
@@ -1331,6 +1460,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.dsf.debug.service.IExpressions2.ICastedExpressionDMContext#getCastInfo()
 		 */
+		@Override
 		public CastInfo getCastInfo() {
 			return fCastInfo;
 		}
@@ -1364,6 +1494,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	 * @see org.eclipse.cdt.dsf.debug.service.IExpressions2#createCastedExpression(org.eclipse.cdt.dsf.datamodel.IDMContext, java.lang.String, org.eclipse.cdt.dsf.debug.service.IExpressions2.ICastedExpressionDMContext)
 	 */
 	/** @since 3.0 */
+	@Override
 	public ICastedExpressionDMContext createCastedExpression(IExpressionDMContext exprDMC, CastInfo castInfo) {
 		if (exprDMC instanceof MIExpressionDMC && castInfo != null) {
 			String castType = castInfo.getTypeString();
@@ -1400,6 +1531,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
      * @see org.eclipse.cdt.dsf.debug.service.IExpressions3#getExpressionDataExtension(org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
      */
     /** @since 4.0 */
+	@Override
     public void getExpressionDataExtension(IExpressionDMContext dmc, final DataRequestMonitor<IExpressionDMDataExtension> rm) {
         getExpressionData(dmc, new DataRequestMonitor<IExpressionDMData>(getExecutor(), rm) {
             @Override
@@ -1409,4 +1541,196 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
             }
         }); 
     }
+
+	private IndexedPartitionDMC[] getTopLevelIndexedPartitions(
+			MIExpressionDMC exprCtx, 
+			int realNumChildren, 
+			int startIndex, 
+			int length) {
+
+		int numChildren = computeNumberOfChildren(realNumChildren);
+		if (startIndex >= numChildren)
+			return new IndexedPartitionDMC[0];
+		int startIndex1 = (startIndex < 0) ? 0 : startIndex;
+		int length1 = (length < 0) ? numChildren - startIndex1 : Math.min(length, numChildren - startIndex1);
+
+		IndexedPartitionDMC[] children = new IndexedPartitionDMC[numChildren];
+		int index = 0;
+		for(int i = 0; i < children.length; ++i) {
+			int partLength = computePartitionLength(realNumChildren, i);
+			children[i] = createIndexedPartition(
+				exprCtx.getParents()[0], 
+				exprCtx.getExpressionInfo(), 
+				index, 
+				partLength);
+			index += partLength;
+		}
+		return Arrays.copyOfRange(children, startIndex1, startIndex1 + length1 );
+	}
+
+	private void getIndexedPartitionChildren(
+			final IndexedPartitionDMC partDmc, 
+			final int startIndex,
+			final int length, 
+			final DataRequestMonitor<IExpressionDMContext[]> rm) {
+		
+		final int startIndex1 = (startIndex < 0) ? 0 : startIndex;
+		final int length1 = (length < 0) ? Integer.MAX_VALUE : length;
+
+		final int partStartIndex = partDmc.getIndex();
+		final int partLength = partDmc.getLength();
+		if (partLength > getArrayPartitionLength()) {
+			// create subpartitions
+			int numChildren = computeNumberOfChildren(partLength);
+			
+			if (startIndex1 >= numChildren) {
+				rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, "Invalid range for evaluating sub expressions.", null)); //$NON-NLS-1$
+				rm.done();
+				return;
+			}
+
+			int numPart = Math.min(numChildren, length1);
+			IndexedPartitionDMC[] children = new IndexedPartitionDMC[numPart];
+			int index = partStartIndex;
+			for (int i = 0; i < startIndex1; ++i)
+				index += computePartitionLength(partLength, i);
+			for (int i = 0; i < children.length; ++i) {
+				int childPartLength = computePartitionLength(partLength, i + startIndex1);
+				children[i] = createIndexedPartition(
+					partDmc, 
+					partDmc.getParentInfo(), 
+					index, 
+					childPartLength);
+				index += childPartLength;
+			}
+			rm.setData(children);
+			rm.done();
+		}
+		else {
+			// this is the last partition level, create "real" children
+			if (startIndex1 > partLength) {
+				rm.setData(new IExpressionDMContext[0]);
+				rm.done();
+			}
+			else {
+				getRealSubExpressions(
+						createExpression(partDmc.getParents()[0], partDmc.getParentInfo()), 
+						partStartIndex + startIndex1, 
+						Math.min(length1, partLength - startIndex1), 
+						rm);
+			}
+		}
+	}
+
+	void getRealSubExpressions(
+			final IExpressionDMContext exprCtx, 
+			int startIndex,
+			int length, 
+			final DataRequestMonitor<IExpressionDMContext[]> rm) {
+		
+		ExprMetaGetChildren getChildren = (startIndex < 0 || length < 0) ? 
+				new ExprMetaGetChildren(exprCtx) : new ExprMetaGetChildren(exprCtx, startIndex + length);
+		final int startIndex1 = (startIndex < 0) ? 0 : startIndex;
+		final int length1 = (length < 0) ? Integer.MAX_VALUE : length;
+		fExpressionCache.execute(
+				getChildren,				
+				new DataRequestMonitor<ExprMetaGetChildrenInfo>(getExecutor(), rm) {
+					@Override
+					protected void handleSuccess() {
+						ExpressionInfo[] childrenExpr = getData().getChildrenExpressions();
+
+						if (startIndex1 >= childrenExpr.length) {
+							rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, "Invalid range for evaluating sub expressions.", null)); //$NON-NLS-1$
+							rm.done();
+							return;
+						}
+
+						int numChildren = childrenExpr.length - startIndex1;
+						numChildren = Math.min(length1, numChildren);
+						IExpressionDMContext[] childrenArray = new IExpressionDMContext[numChildren];
+						for (int i=0; i < numChildren; i++) {
+							childrenArray[i] = createExpression(exprCtx.getParents()[0], childrenExpr[startIndex1 + i]);
+						}
+						rm.setData(childrenArray);
+						rm.done();
+					}
+				});
+	}
+
+	/**
+	 * Returns the number of "real" children if it is less or equal to the partition size, 
+	 * otherwise returns the number of partitions. 
+	 */
+	private int computeNumberOfChildren(int realNumberOfChildren) {
+		int childNum = realNumberOfChildren;
+		int partLength = getArrayPartitionLength();
+		while (childNum > partLength) {
+			childNum /= partLength;
+		}
+		if (childNum*partLength < realNumberOfChildren)
+			++childNum;
+		return childNum;
+	}
+
+	private int computePartitionLength(int realNumberOfChildren, int index) {
+		int childNum = realNumberOfChildren;
+		int depth = 0;
+		int partLength = getArrayPartitionLength();
+		int length = partLength;
+		while (childNum > partLength) {
+			childNum /= partLength;
+			if (depth > 0)
+				length *= partLength;
+			++depth;
+		}
+		int diff = realNumberOfChildren - length*index;
+		return ( diff > length ) ? length : diff ;
+	}
+
+	private IndexedPartitionDMC createIndexedPartition(IDMContext ctx, ExpressionInfo info, int index, int length) {
+	    IFrameDMContext frameDmc = DMContexts.getAncestorOfType(ctx, IFrameDMContext.class);
+	    if (frameDmc != null) {
+	        return new IndexedPartitionDMC(getSession().getId(), info, frameDmc, index, length);
+	    } 
+	    
+	    IMIExecutionDMContext execCtx = DMContexts.getAncestorOfType(ctx, IMIExecutionDMContext.class);
+	    if (execCtx != null) {
+	    	// If we have a thread context but not a frame context, we give the user
+	    	// the expression as per the top-most frame of the specified thread.
+	    	// To do this, we create our own frame context.
+	    	MIStack stackService = getServicesTracker().getService(MIStack.class);
+	    	if (stackService != null) {
+	    		frameDmc = stackService.createFrameDMContext(execCtx, 0);
+	            return new IndexedPartitionDMC(getSession().getId(), info, frameDmc, index, length);
+	    	}
+        } 
+
+        return new IndexedPartitionDMC(getSession().getId(), info, ctx, index, length);
+	}
+
+	private void getRealSubExpressionCount(IExpressionDMContext dmc, int numChildLimit, final DataRequestMonitor<Integer> rm) {
+		if (dmc instanceof MIExpressionDMC) {
+			fExpressionCache.execute(
+					new ExprMetaGetChildCount(dmc, numChildLimit),				
+					new DataRequestMonitor<ExprMetaGetChildCountInfo>(getExecutor(), rm) {
+						@Override
+						protected void handleSuccess() {
+							rm.setData(getData().getChildNum());
+							rm.done();
+						}
+					});
+		} else if (dmc instanceof InvalidContextExpressionDMC) {
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Invalid context for evaluating expressions.", null)); //$NON-NLS-1$
+			rm.done();
+		} else {
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid expression context.", null)); //$NON-NLS-1$
+			rm.done();
+		}
+	}
+
+	private int getArrayPartitionLength() {
+		// Replace this in case we or the platform decide to add a user preference.
+		// See org.eclipse.debug.internal.ui.model.elements.VariableContentProvider.
+		return PARTITION_LENGTH;
+	}
 }

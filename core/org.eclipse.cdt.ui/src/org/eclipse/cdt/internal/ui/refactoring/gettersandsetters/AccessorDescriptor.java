@@ -73,6 +73,7 @@ public class AccessorDescriptor implements Comparable<AccessorDescriptor> {
 		return fieldName;
 	}
 
+	@Override
 	public int compareTo(AccessorDescriptor other) {
 		int c = collator.compare(fieldName.toString(), other.fieldName.toString());
 		if (c != 0)

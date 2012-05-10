@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2012 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Andrew Ferguson (Symbian) - Initial implementation
+ *     Andrew Ferguson (Symbian) - Initial implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.pdom.tests;
 
@@ -21,6 +21,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexLocationConverter;
+import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.index.IndexFilter;
 import org.eclipse.cdt.core.index.ResourceContainerRelativeLocationConverter;
 import org.eclipse.cdt.core.index.URIRelativeLocationConverter;
@@ -44,6 +45,7 @@ import org.eclipse.core.runtime.Path;
  * Tests addition of external pdom's into the logical index
  */
 public class PDOMProviderTests extends PDOMTestBase {
+	private static final int A_FRAGMENT_OPTIONS = IIndexManager.ADD_EXTENSION_FRAGMENTS_ADD_IMPORT;
 
 	public static Test suite() {
 		return suite(PDOMProviderTests.class);
@@ -57,7 +59,7 @@ public class PDOMProviderTests extends PDOMTestBase {
 			TestSourceReader.createFile(cproject.getProject(), new Path("/this.h"), "class A {};\n\n");
 			CCorePlugin.getIndexManager().joinIndexer(3000, npm());
 
-			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject);
+			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject, A_FRAGMENT_OPTIONS);
 			index.acquireReadLock();
 			try {
 				IBinding[] bindings= index.findBindings("A".toCharArray(), IndexFilter.ALL, npm());
@@ -78,33 +80,33 @@ public class PDOMProviderTests extends PDOMTestBase {
 		TestSourceReader.createFile(cproject2.getProject(), new Path("/source.cpp"), "namespace X { class A {}; }\n\n");
 		CCorePlugin.getIndexManager().joinIndexer(3000, npm());
 
-
 		IndexProviderManager ipm= CCoreInternals.getPDOMManager().getIndexProviderManager();
 		ipm.addIndexProvider(new ReadOnlyPDOMProviderBridge(
 				new IReadOnlyPDOMProvider() {
-					public IPDOMDescriptor[] getDescriptors(
-							ICConfigurationDescription config) {
+					@Override
+					public IPDOMDescriptor[] getDescriptors(ICConfigurationDescription config) {
 						return new IPDOMDescriptor[] {
 								new IPDOMDescriptor() {
+									@Override
 									public IIndexLocationConverter getIndexLocationConverter() {
 										return new URIRelativeLocationConverter(baseURI);
 									}
 
+									@Override
 									public IPath getLocation() {
 										return new Path(tempPDOM.getAbsolutePath());
 									}
-
 								}
 						};
 					}
-					public boolean providesFor(ICProject project)
-					throws CoreException {
+
+					@Override
+					public boolean providesFor(ICProject project) throws CoreException {
 						return cproject2.equals(project);
 					}
-
 				}
 		));
-		IIndex index= CCorePlugin.getIndexManager().getIndex(cproject2);
+		IIndex index= CCorePlugin.getIndexManager().getIndex(cproject2, A_FRAGMENT_OPTIONS);
 		index.acquireReadLock();
 		try {
 			IBinding[] bindings= index.findBindings("A".toCharArray(), IndexFilter.ALL, npm());
@@ -116,12 +118,10 @@ public class PDOMProviderTests extends PDOMTestBase {
 				}
 			}, null);
 			assertEquals(2, bindings.length);
-		}
-		finally {
+		} finally {
 			index.releaseReadLock();
 		}
 	}
-
 
 	public void testCommonSDK() throws Exception {
 		final File tempPDOM= File.createTempFile("foo", "bar");
@@ -131,7 +131,7 @@ public class PDOMProviderTests extends PDOMTestBase {
 			TestSourceReader.createFile(cproject.getProject(), new Path("/this.h"), "class A {};\n\n");
 			CCorePlugin.getIndexManager().joinIndexer(3000, npm());
 
-			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject);
+			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject, A_FRAGMENT_OPTIONS);
 			index.acquireReadLock();
 			try {
 				IBinding[] bindings= index.findBindings("A".toCharArray(), IndexFilter.ALL, npm());
@@ -156,35 +156,35 @@ public class PDOMProviderTests extends PDOMTestBase {
 		TestSourceReader.createFile(cproject2.getProject(), new Path("/source.cpp"), "namespace X { class A {}; }\n\n");
 		CCorePlugin.getIndexManager().joinIndexer(3000, npm());
 
-
-
 		IndexProviderManager ipm= CCoreInternals.getPDOMManager().getIndexProviderManager();
 		ipm.addIndexProvider(new ReadOnlyPDOMProviderBridge(
 				new IReadOnlyPDOMProvider() {
-					public IPDOMDescriptor[] getDescriptors(
-							ICConfigurationDescription config) {
+					@Override
+					public IPDOMDescriptor[] getDescriptors(ICConfigurationDescription config) {
 						return new IPDOMDescriptor[] {
 								new IPDOMDescriptor() {
+									@Override
 									public IIndexLocationConverter getIndexLocationConverter() {
 										return new URIRelativeLocationConverter(baseURI);
 									}
 
+									@Override
 									public IPath getLocation() {
 										return new Path(tempPDOM.getAbsolutePath());
 									}
-
 								}
 						};
 					}
-					public boolean providesFor(ICProject project)
-					throws CoreException {
+
+					@Override
+					public boolean providesFor(ICProject project) throws CoreException {
 						return cproject2.equals(project) || cproject3.equals(project);
 					}
 				}
 		));
 
 		{
-			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject2);
+			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject2, A_FRAGMENT_OPTIONS);
 			index.acquireReadLock();
 			try {
 				IBinding[] bindings= index.findBindings("A".toCharArray(), IndexFilter.ALL, npm());
@@ -197,14 +197,13 @@ public class PDOMProviderTests extends PDOMTestBase {
 					}
 				}, null);
 				assertEquals(2, bindings.length);
-			}
-			finally {
+			} finally {
 				index.releaseReadLock();
 			}
 		}
 
 		{
-			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject3);
+			IIndex index= CCorePlugin.getIndexManager().getIndex(cproject3, A_FRAGMENT_OPTIONS);
 			index.acquireReadLock();
 			try {
 				IBinding[] bindings= index.findBindings("A".toCharArray(), IndexFilter.ALL, npm());
@@ -217,14 +216,13 @@ public class PDOMProviderTests extends PDOMTestBase {
 					}
 				}, null);
 				assertEquals(2, bindings.length);
-			}
-			finally {
+			} finally {
 				index.releaseReadLock();
 			}
 		}
 		
 		{
-			IIndex index= CCorePlugin.getIndexManager().getIndex(new ICProject[]{cproject2, cproject3});
+			IIndex index= CCorePlugin.getIndexManager().getIndex(new ICProject[]{cproject2, cproject3}, A_FRAGMENT_OPTIONS);
 			index.acquireReadLock();
 			try {
 				IBinding[] bindings= index.findBindings("A".toCharArray(), IndexFilter.ALL, npm());
@@ -237,7 +235,6 @@ public class PDOMProviderTests extends PDOMTestBase {
 					}
 				}, null);
 				assertEquals(3, bindings.length);
-
 			} finally {
 				index.releaseReadLock();
 			}		
@@ -249,8 +246,7 @@ public class PDOMProviderTests extends PDOMTestBase {
 	 */
 	public void testVersionMismatchOfExternalPDOM() throws Exception {
 		final File tempPDOM= File.createTempFile("foo", "bar");
-		
-		
+
 		{
 			ICProject cproject= CProjectHelper.createCCProject("foo"+System.currentTimeMillis(), null, IPDOMManager.ID_FAST_INDEXER);
 			TestSourceReader.createFile(cproject.getProject(), new Path("/this.h"), "class A {};\n\n");
@@ -278,14 +274,16 @@ public class PDOMProviderTests extends PDOMTestBase {
 		IndexProviderManager ipm= CCoreInternals.getPDOMManager().getIndexProviderManager();
 		ipm.addIndexProvider(new ReadOnlyPDOMProviderBridge(
 				new IReadOnlyPDOMProvider() {
-					public IPDOMDescriptor[] getDescriptors(
-							ICConfigurationDescription config) {
+					@Override
+					public IPDOMDescriptor[] getDescriptors(ICConfigurationDescription config) {
 						return new IPDOMDescriptor[] {
 								new IPDOMDescriptor() {
+									@Override
 									public IIndexLocationConverter getIndexLocationConverter() {
 										return new URIRelativeLocationConverter(baseURI);
 									}
 
+									@Override
 									public IPath getLocation() {
 										return new Path(tempPDOM.getAbsolutePath());
 									}
@@ -293,8 +291,9 @@ public class PDOMProviderTests extends PDOMTestBase {
 								}
 						};
 					}
-					public boolean providesFor(ICProject project)
-					throws CoreException {
+
+					@Override
+					public boolean providesFor(ICProject project) throws CoreException {
 						return cproject2.equals(project);
 					}
 				}
@@ -302,11 +301,10 @@ public class PDOMProviderTests extends PDOMTestBase {
 		
 		setExpectedNumberOfLoggedNonOKStatusObjects(1); // (this applies to the entire test duration)
 		
-		for(int i=0; i<3; i++) {
+		for (int i= 0; i < 3; i++) {
 			// try several times in order to test the status is logged only once
 			ICProjectDescription pd= CCorePlugin.getDefault().getProjectDescription(cproject2.getProject(), false);
-			assertEquals(0, ipm.getProvidedIndexFragments(pd.getActiveConfiguration()).length);
+			assertEquals(0, ipm.getProvidedIndexFragments(pd.getActiveConfiguration(), -1).length);
 		}
-
 	}
 }

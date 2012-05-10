@@ -35,13 +35,14 @@ public class GnuCygwinConfigurationEnvironmentSupplier implements
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.managedbuilder.envvar.IConfigurationEnvironmentVariableSupplier#getVariable(java.lang.String, org.eclipse.cdt.managedbuilder.core.IConfiguration, org.eclipse.cdt.managedbuilder.envvar.IEnvironmentVariableProvider)
 	 */
+	@Override
 	public IBuildEnvironmentVariable getVariable(String variableName,
 			IConfiguration configuration, IEnvironmentVariableProvider provider) {
 		
 		if (variableName == null)
 			return null;
 
-		if (!System.getProperty(PROPERTY_OSNAME).toLowerCase().startsWith("windows ")) //$NON-NLS-1$ 
+		if (!System.getProperty(PROPERTY_OSNAME).toLowerCase().startsWith("windows ")) //$NON-NLS-1$
 			return null;
 		
 		if (variableName.equalsIgnoreCase(PATH)) {
@@ -71,6 +72,7 @@ public class GnuCygwinConfigurationEnvironmentSupplier implements
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.managedbuilder.envvar.IConfigurationEnvironmentVariableSupplier#getVariables(org.eclipse.cdt.managedbuilder.core.IConfiguration, org.eclipse.cdt.managedbuilder.envvar.IEnvironmentVariableProvider)
 	 */
+	@Override
 	public IBuildEnvironmentVariable[] getVariables(
 			IConfiguration configuration, IEnvironmentVariableProvider provider) {
 

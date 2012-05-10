@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2011 QNX Software Systems and others.
+ * Copyright (c) 2000, 2012 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,10 @@
  *     Jens Elmenthaler (Verigy) - Added Full GDB pretty-printing support (bug 302121)
  *     Onur Akdemir (TUBITAK BILGEM-ITI) - Multi-process debugging (Bug 237306)
  *     Abeer Bagul - Support for -exec-arguments (bug 337687)
+ *     Marc Khouzam (Ericsson) - New methods for new MIDataDisassemble (Bug 357073)
+ *     Marc Khouzam (Ericsson) - New method for new MIGDBSetPythonPrintStack (Bug 367788)
+ *     Mathias Kunter - New methods for handling different charsets (Bug 370462)
+ *     Anton Gorenkov - A preference to use RTTI for variable types determination (Bug 377536)
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.mi.service.command;
@@ -44,6 +48,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIJump;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIMaintenance;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIPasscount;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRecord;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRemoteGet;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLISource;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIThread;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLITrace;
@@ -96,13 +101,21 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSet;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetArgs;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetAutoSolib;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetBreakpointPending;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetCharset;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetDetachOnFork;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetEnv;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetHostCharset;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetNonStop;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetPagination;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetPrintObject;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetPrintSevenbitStrings;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetPythonPrintStack;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetSchedulerLocking;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetSolibAbsolutePrefix;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetSolibSearchPath;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTargetAsync;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTargetCharset;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTargetWideCharset;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBShowExitCode;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInferiorTTYSet;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExec;
@@ -118,6 +131,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIStackListLocals;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIStackSelectFrame;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MITargetAttach;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MITargetDetach;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MITargetDisconnect;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MITargetDownload;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MITargetSelect;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MITargetSelectCore;
@@ -255,6 +269,11 @@ public class CommandFactory {
 		return new CLIRecord(ctx, enable);
 	}
 
+	/** @since 4.1 */
+	public ICommand<MIInfo> createCLIRemoteGet(ICommandControlDMContext ctx, String remoteFile, String localFile) {
+		return new CLIRemoteGet(ctx, remoteFile, localFile);
+	}
+
 	public ICommand<MIInfo> createCLISource(ICommandControlDMContext ctx, String file) {
 		return new CLISource(ctx, file);
 	}
@@ -345,7 +364,17 @@ public class CommandFactory {
 		return new MIDataDisassemble(ctx, start, end, mode);
 	}
 
+	/** @since 4.1 */
+	public ICommand<MIDataDisassembleInfo> createMIDataDisassemble(IDisassemblyDMContext ctx, String start, String end, int mode) {
+		return new MIDataDisassemble(ctx, start, end, mode);
+	}
+
 	public ICommand<MIDataDisassembleInfo> createMIDataDisassemble(IDisassemblyDMContext ctx, String file, int linenum, int lines, boolean mode) {
+		return new MIDataDisassemble(ctx, file, linenum, lines, mode);
+	}
+
+	/** @since 4.1 */
+	public ICommand<MIDataDisassembleInfo> createMIDataDisassemble(IDisassemblyDMContext ctx, String file, int linenum, int lines, int mode) {
 		return new MIDataDisassemble(ctx, file, linenum, lines, mode);
 	}
 
@@ -597,6 +626,11 @@ public class CommandFactory {
 		return new MIGDBSetBreakpointPending(ctx, enable);
 	}
 
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetCharset(ICommandControlDMContext ctx, String charset) {
+		return new MIGDBSetCharset(ctx, charset);
+	}
+
 	/** @since 4.0 */
 	public ICommand<MIInfo> createMIGDBSetDetachOnFork(ICommandControlDMContext ctx, boolean detach) {
 		return new MIGDBSetDetachOnFork(ctx, detach);
@@ -610,6 +644,11 @@ public class CommandFactory {
 		return new MIGDBSetEnv(dmc, name, value);
 	}
 
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetHostCharset(ICommandControlDMContext ctx, String hostCharset) {
+		return new MIGDBSetHostCharset(ctx, hostCharset);
+	}
+
 	public ICommand<MIInfo> createMIGDBSetNonStop(ICommandControlDMContext ctx, boolean isSet) {
 		return new MIGDBSetNonStop(ctx, isSet);
 	}
@@ -618,7 +657,36 @@ public class CommandFactory {
 		return new MIGDBSetPagination(ctx, isSet);
 	}
 
-	/** @since 4.0 */
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetPrintObject(ICommandControlDMContext ctx, boolean enable) {
+		return new MIGDBSetPrintObject(ctx, enable);
+	}
+
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetPrintSevenbitStrings(ICommandControlDMContext ctx, boolean enable) {
+		return new MIGDBSetPrintSevenbitStrings(ctx, enable);
+	}
+
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetPythonPrintStack(ICommandControlDMContext ctx, String option) {
+		return new MIGDBSetPythonPrintStack(ctx, option);
+	}	
+
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetSchedulerLocking(ICommandControlDMContext ctx, String mode) {
+		return new MIGDBSetSchedulerLocking(ctx, mode);
+	}
+
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetTargetCharset(ICommandControlDMContext ctx, String targetCharset) {
+		return new MIGDBSetTargetCharset(ctx, targetCharset);
+	}
+	
+	/** @since 4.1 */
+	public ICommand<MIInfo> createMIGDBSetTargetWideCharset(ICommandControlDMContext ctx, String targetWideCharset) {
+		return new MIGDBSetTargetWideCharset(ctx, targetWideCharset);
+	}
+	
 	public ICommand<MIInfo> createMIGDBSetSolibAbsolutePrefix(ICommandControlDMContext ctx, String prefix) {
 		return new MIGDBSetSolibAbsolutePrefix(ctx, prefix);
 	}
@@ -668,6 +736,11 @@ public class CommandFactory {
 
 	public ICommand<MIListThreadGroupsInfo> createMIListThreadGroups(ICommandControlDMContext ctx, boolean listAll) {
 		return new MIListThreadGroups(ctx, listAll);
+	}
+
+	/** @since 4.1 */
+	public ICommand<MIListThreadGroupsInfo> createMIListThreadGroups(ICommandControlDMContext ctx, boolean listAll, boolean recurse) {
+		return new MIListThreadGroups(ctx, listAll, recurse);
 	}
 
 	/** @since 4.0 */
@@ -754,6 +827,11 @@ public class CommandFactory {
 	public ICommand<MIInfo> createMITargetSelectTFile(IDMContext ctx, String traceFilePath) {
 		return new MITargetSelectTFile(ctx, traceFilePath);
 	}
+
+    /** @since 4.1 */
+    public ICommand<MIInfo> createMITargetDisconnect(ICommandControlDMContext ctx) {
+        return new MITargetDisconnect(ctx);
+    }
 
     public ICommand<MITargetDownloadInfo> createMITargetDownload(ICommandControlDMContext ctx) {
         return new MITargetDownload(ctx);

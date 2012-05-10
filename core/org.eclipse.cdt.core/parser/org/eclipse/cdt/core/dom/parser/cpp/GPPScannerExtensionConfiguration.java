@@ -42,8 +42,7 @@ public class GPPScannerExtensionConfiguration extends GNUScannerExtensionConfigu
 	}
 
 	/**
-	 * @noreference This method is not intended to be referenced by clients. 
-	 * Will be available in next version of CDT.
+	 * @since 5.4
 	 */
 	public static GPPScannerExtensionConfiguration getInstance(IScannerInfo info) {
 		if (info != null) {
@@ -67,8 +66,7 @@ public class GPPScannerExtensionConfiguration extends GNUScannerExtensionConfigu
 	}
 	
 	/**
-	 * @noreference This constructor is not intended to be referenced by clients.
-	 * Will be available in next version of CDT.
+	 * @since 5.4
 	 */
 	@SuppressWarnings("nls")
 	public GPPScannerExtensionConfiguration(int version) {

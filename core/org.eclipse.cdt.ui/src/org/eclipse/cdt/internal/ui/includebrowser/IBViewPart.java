@@ -6,8 +6,8 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
- *    Ed Swartz (Nokia)
+ *     Markus Schorn - initial API and implementation
+ *     Ed Swartz (Nokia)
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.ui.includebrowser;
 
@@ -104,9 +104,7 @@ import org.eclipse.cdt.internal.ui.viewsupport.WorkingSetFilterUI;
 /**
  * The view part for the include browser.
  */
-public class IBViewPart extends ViewPart 
-        implements IShowInSource, IShowInTarget, IShowInTargetList {
-
+public class IBViewPart extends ViewPart implements IShowInSource, IShowInTarget, IShowInTargetList {
 	private static final int MAX_HISTORY_SIZE = 10;
     private static final String TRUE = "true"; //$NON-NLS-1$
     private static final String FALSE = "false"; //$NON-NLS-1$
@@ -183,8 +181,7 @@ public class IBViewPart extends ViewPart
     	
     	if (CCorePlugin.getIndexManager().isIndexerIdle()) {
     		setInputIndexerIdle(input);
-    	}
-    	else {
+    	} else {
     		setMessage(IBMessages.IBViewPart_waitingOnIndexerMessage);
     		fSetInputJob.setInput(input);
     		fSetInputJob.schedule();
@@ -202,8 +199,7 @@ public class IBViewPart extends ViewPart
         	fIncludesToAction.setChecked(!isHeader);
         	fIncludedByAction.setEnabled(false);
         	updateSorter();
-        }
-        else {
+        } else {
         	fIncludedByAction.setEnabled(true);
         }
         fTreeViewer.setInput(input);
@@ -226,6 +222,7 @@ public class IBViewPart extends ViewPart
 							final ITranslationUnit alt= CoreModelUtil.findTranslationUnitForLocation(input.getLocation(), input.getCProject());
 							if (alt != null && IndexUI.isIndexed(index, alt)) {
 								display.asyncExec(new Runnable() {
+									@Override
 									public void run() {
 										if (fTreeViewer.getInput() == input) {
 											setInput(alt);
@@ -235,6 +232,7 @@ public class IBViewPart extends ViewPart
 							} else {
 								final String msg = IndexUI.getFileNotIndexedMessage(input);
 								display.asyncExec(new Runnable() {
+									@Override
 									public void run() {
 										if (fTreeViewer.getInput() == input) {
 											setMessage(msg);
@@ -349,13 +347,11 @@ public class IBViewPart extends ViewPart
         }
     }
 
-
     @Override
 	public void init(IViewSite site, IMemento memento) throws PartInitException {
         fMemento= memento;
         super.init(site, memento);
     }
-
 
     @Override
 	public void saveState(IMemento memento) {
@@ -397,7 +393,8 @@ public class IBViewPart extends ViewPart
         MenuManager manager = new MenuManager();
         manager.setRemoveAllWhenShown(true);
         manager.addMenuListener(new IMenuListener() {
-            public void menuAboutToShow(IMenuManager m) {
+            @Override
+			public void menuAboutToShow(IMenuManager m) {
                 onContextMenuAboutToShow(m);
             }
         });
@@ -422,7 +419,8 @@ public class IBViewPart extends ViewPart
         fTreeViewer.setLabelProvider(fLabelProvider);
         fTreeViewer.setAutoExpandLevel(2);     
         fTreeViewer.addOpenListener(new IOpenListener() {
-            public void open(OpenEvent event) {
+            @Override
+			public void open(OpenEvent event) {
                 onShowInclude(event.getSelection());
             }
         });
@@ -501,8 +499,7 @@ public class IBViewPart extends ViewPart
 			public void run() {
                 if (isChecked()) {
                     fTreeViewer.addFilter(fInactiveFilter);
-                }
-                else {
+                } else {
                     fTreeViewer.removeFilter(fInactiveFilter);
                 }
             }
@@ -525,8 +522,7 @@ public class IBViewPart extends ViewPart
 			public void run() {
                 if (isChecked()) {
                     fTreeViewer.addFilter(fSystemFilter);
-                }
-                else {
+                } else {
                     fTreeViewer.removeFilter(fSystemFilter);
                 }
             }
@@ -675,8 +671,7 @@ public class IBViewPart extends ViewPart
     private void updateSorter() {
         if (fIncludedByAction.isChecked()) {
             fTreeViewer.setComparator(fSorterAlphaNumeric);
-        }
-        else {
+        } else {
             fTreeViewer.setComparator(fSorterReferencePosition);
         }
     }
@@ -693,15 +688,13 @@ public class IBViewPart extends ViewPart
                     file= path.lastSegment() + "(" + path.removeLastSegments(1) + ")";  //$NON-NLS-1$//$NON-NLS-2$
                     if (fWorkingSetFilter == null) {
                         scope= IBMessages.IBViewPart_workspaceScope;
-                    }
-                    else {
+                    } else {
                         scope= fWorkingSetFilter.getLabel();
                     }
                     
                     if (fIncludedByAction.isChecked()) {
                         format= IBMessages.IBViewPart_IncludedByContentDescription;
-                    }
-                    else {
+                    } else {
                         format= IBMessages.IBViewPart_IncludesToContentDescription;
                     }
                     message= Messages.format(format, file, scope);
@@ -717,12 +710,10 @@ public class IBViewPart extends ViewPart
                 fTreeViewer.removeFilter(fWorkingSetFilter);
                 fWorkingSetFilter= null;
             }
-        }
-        else {
+        } else {
             if (fWorkingSetFilter != null) {
                 fTreeViewer.refresh();
-            }
-            else {
+            } else {
                 fWorkingSetFilter= new IBWorkingSetFilter(filterUI);
                 fTreeViewer.addFilter(fWorkingSetFilter);
             }
@@ -777,7 +768,6 @@ public class IBViewPart extends ViewPart
             			}
             		});
             	}
-
             }
         }
         m.add(new Separator(IContextMenuConstants.GROUP_ADDITIONS));
@@ -797,8 +787,7 @@ public class IBViewPart extends ViewPart
                 IFile f= ibf.getResource();
                 if (f != null) {
                 	EditorOpener.open(page, f, region, timestamp);
-                }
-                else {
+                } else {
                     IIndexFileLocation ifl = ibf.getLocation();
                     if (ifl != null) {
                     	IPath location= IndexLocationFactory.getAbsolutePath(ifl);
@@ -807,8 +796,7 @@ public class IBViewPart extends ViewPart
                     	}
                     }
                 }
-            }
-            else {
+            } else {
             	ITranslationUnit tu= IBConversions.selectionToTU(selection);
             	if (tu != null) {
             		IResource r= tu.getResource();
@@ -822,11 +810,13 @@ public class IBViewPart extends ViewPart
         }
     }
 
-    public ShowInContext getShowInContext() {
+    @Override
+	public ShowInContext getShowInContext() {
         return new ShowInContext(null, IBConversions.nodeSelectionToRepresentedTUSelection(fTreeViewer.getSelection()));
     }
 
-    public boolean show(ShowInContext context) {
+    @Override
+	public boolean show(ShowInContext context) {
         ITranslationUnit tu= IBConversions.selectionToTU(context.getSelection());
         if (tu == null) {
             tu= IBConversions.objectToTU(context.getInput());
@@ -840,7 +830,8 @@ public class IBViewPart extends ViewPart
         return true;
     }
     
-    public String[] getShowInTargetIds() {
+    @Override
+	public String[] getShowInTargetIds() {
         return new String[] {
         		ProjectExplorer.VIEW_ID, 
         		IPageLayout.ID_PROJECT_EXPLORER

@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html  
  * 
  * Contributors: 
- * Institute for Software (IFS)- initial API and implementation 
+ * 	   Institute for Software (IFS)- initial API and implementation 
  ******************************************************************************/
 package org.eclipse.cdt.internal.ui.refactoring.extractfunction;
 
@@ -19,19 +19,15 @@ import org.eclipse.cdt.internal.ui.refactoring.CRefactoringContribution;
 
 /**
  * @author Emanuel Graf IFS
- *
  */
 public class ExtractFunctionRefactoringContribution extends CRefactoringContribution {
-
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public RefactoringDescriptor createDescriptor(String id, String project, String description,
 			String comment, Map arguments, int flags) throws IllegalArgumentException {
-		if(id.equals(ExtractFunctionRefactoring.ID)) {
-			return new ExtractFunctionRefactoringDescription(project, description, comment, arguments);
-		}else {
-			return null;
+		if (id.equals(ExtractFunctionRefactoring.ID)) {
+			return new ExtractFunctionRefactoringDescriptor(project, description, comment, arguments);
 		}
+		return null;
 	}
-
 }

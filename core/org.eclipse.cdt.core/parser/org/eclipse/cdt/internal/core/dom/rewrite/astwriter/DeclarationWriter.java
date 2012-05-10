@@ -98,17 +98,12 @@ public class DeclarationWriter extends NodeWriter {
 			writeVisibilityLabel((ICPPASTVisibilityLabel) declaration);
 		}
 
-		if (hasTrailingComments(declaration)) {
-			writeTrailingComments(declaration, false);
-		}
-		if (addNewLine) {
-			scribe.newLine();
-		}
+		writeTrailingComments(declaration, addNewLine);
 		if (hasFreestandingComments(declaration)) {
 			if (declaration instanceof IASTFunctionDefinition) {
 				scribe.newLine();
 			}
-			writeFreeStandingComments(declaration);
+			writeFreestandingComments(declaration);
 		}
 	}
 
@@ -186,7 +181,7 @@ public class DeclarationWriter extends NodeWriter {
 		scribe.newLine(2);
 		writeDeclarationsInNamespace(namespaceDefinition, namespaceDefinition.getDeclarations());
 		if (hasFreestandingComments(namespaceDefinition)) {
-			writeFreeStandingComments(namespaceDefinition);
+			writeFreestandingComments(namespaceDefinition);
 		}
 		scribe.newLine();
 		scribe.print('}');
@@ -264,7 +259,8 @@ public class DeclarationWriter extends NodeWriter {
 
 	private void writeFunctionDefinition(IASTFunctionDefinition funcDef) {
 		IASTDeclSpecifier declSpecifier = funcDef.getDeclSpecifier();
-		declSpecifier.accept(visitor);
+		if (declSpecifier != null)
+			declSpecifier.accept(visitor);
 		if (declSpecifier instanceof IASTSimpleDeclSpecifier) {
 			IASTSimpleDeclSpecifier simDeclSpec = (IASTSimpleDeclSpecifier) declSpecifier;
 			if (simDeclSpec.getType() != IASTSimpleDeclSpecifier.t_unspecified) {

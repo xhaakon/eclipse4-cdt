@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2009 Symbian Software Systems and others.
+ * Copyright (c) 2006, 2012 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Symbian - Initial implementation
+ *     Symbian - Initial implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.pdom.tests;
 
@@ -28,9 +28,10 @@ import org.eclipse.core.runtime.CoreException;
  * a lo-fidelity debugging tool)
  */
 public class PDOMPrettyPrinter implements IPDOMVisitor {
-	StringBuffer indent = new StringBuffer();
+	StringBuilder indent = new StringBuilder();
 	final String step = "   "; //$NON-NLS-1$
 
+	@Override
 	public void leave(IPDOMNode node) throws CoreException {
 //		if (node instanceof PDOMCPPClassTemplate) {
 //			((PDOMCPPClassTemplate) node).specializationsAccept(this);
@@ -39,6 +40,7 @@ public class PDOMPrettyPrinter implements IPDOMVisitor {
 			indent.setLength(indent.length() - step.length());
 	}
 
+	@Override
 	public boolean visit(IPDOMNode node) throws CoreException {
 		indent.append(step);
 		StringBuilder sb= new StringBuilder();
@@ -61,7 +63,7 @@ public class PDOMPrettyPrinter implements IPDOMVisitor {
 	 */
 	public static void dumpLinkage(IIndex index, final int linkageID) {
 		final IPDOMVisitor v= new PDOMPrettyPrinter();
-		IIndexFragment[] frg= ((CIndex) index).getPrimaryFragments();
+		IIndexFragment[] frg= ((CIndex) index).getFragments();
 		for (IIndexFragment element : frg) {
 			final PDOM pdom = (PDOM) element;
 			dumpLinkage(pdom, linkageID, v);
@@ -78,10 +80,12 @@ public class PDOMPrettyPrinter implements IPDOMVisitor {
 			final PDOMLinkage linkage = pdom.getLinkage(linkageID);
 			if (linkage != null) {
 				linkage.getIndex().accept(new IBTreeVisitor() {
+					@Override
 					public int compare(long record) throws CoreException {
 						return 0;
 					}
 
+					@Override
 					public boolean visit(long record) throws CoreException {
 						if (record == 0)
 							return false;

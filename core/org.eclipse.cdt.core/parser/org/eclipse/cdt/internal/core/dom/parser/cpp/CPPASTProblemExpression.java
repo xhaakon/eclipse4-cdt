@@ -28,17 +28,15 @@ public class CPPASTProblemExpression extends CPPASTProblemOwner implements IASTP
 		super(problem);
 	}
 
+	@Override
 	public CPPASTProblemExpression copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 	
+	@Override
 	public CPPASTProblemExpression copy(CopyStyle style) {
 		CPPASTProblemExpression copy = new CPPASTProblemExpression();
-		copyBaseProblem(copy, style);
-		if (style == CopyStyle.withLocations) {
-			copy.setCopyLocation(this);
-		}
-		return copy;
+		return copy(copy, style);
 	}
 
 	@Override
@@ -61,14 +59,17 @@ public class CPPASTProblemExpression extends CPPASTProblemOwner implements IASTP
         return true;
     }
     
-    public IType getExpressionType() {
+    @Override
+	public IType getExpressionType() {
 		return new ProblemType(ISemanticProblem.TYPE_UNKNOWN_FOR_EXPRESSION);
     }
 
+	@Override
 	public boolean isLValue() {
 		return false;
 	}
 
+	@Override
 	public ValueCategory getValueCategory() {
 		return ValueCategory.PRVALUE;
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2009 Ericsson and others.
+ * Copyright (c) 2008, 2011 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,10 +7,12 @@
  * 
  * Contributors:
  *     Ericsson - initial API and implementation
+ *     Marc Khouzam (Ericsson) - Add support for multi-attach (Bug 293679)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.actions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,7 @@ import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
+import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -32,6 +35,7 @@ import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
 import org.eclipse.cdt.dsf.gdb.actions.IConnect;
 import org.eclipse.cdt.dsf.gdb.internal.ui.GdbUIPlugin;
+import org.eclipse.cdt.dsf.gdb.internal.ui.launching.LaunchUIMessages;
 import org.eclipse.cdt.dsf.gdb.internal.ui.launching.ProcessPrompter.PrompterInfo;
 import org.eclipse.cdt.dsf.gdb.launching.IProcessExtendedInfo;
 import org.eclipse.cdt.dsf.gdb.launching.LaunchMessages;
@@ -70,7 +74,7 @@ public class GdbConnectCommand implements IConnect {
     // This map is only needed for remote sessions, since we don't need to specify
     // the binary location for a local attach session.
     private Map<String, String> fProcessNameToBinaryMap = new HashMap<String, String>();
-
+    
     public GdbConnectCommand(DsfSession session) {
         fExecutor = session.getExecutor();
         fTracker = new DsfServicesTracker(GdbUIPlugin.getBundleContext(), session.getId());
@@ -80,6 +84,7 @@ public class GdbConnectCommand implements IConnect {
         fTracker.dispose();
     }
 
+    @Override
     public boolean canConnect() {
        	Query<Boolean> canConnectQuery = new Query<Boolean>() {
             @Override
@@ -107,7 +112,12 @@ public class GdbConnectCommand implements IConnect {
 		return false;
      }
 
-    // Need a job because prompter.handleStatus will block
+    /**
+     * This job will prompt the user to select a set of processes
+     * to attach too.
+     * We need a job because prompter.handleStatus will block and
+     * we don't want to block the executor.
+     */
     protected class PromptForPidJob extends Job {
 
     	// The list of processes used in the case of an ATTACH session
@@ -144,7 +154,7 @@ public class GdbConnectCommand implements IConnect {
     			Object result = prompter.handleStatus(processPromptStatus, info);
     			 if (result == null) {
  					fRequestMonitor.cancel();
- 				} else if (result instanceof IProcessExtendedInfo || result instanceof String) {
+ 				} else if (result instanceof IProcessExtendedInfo[] || result instanceof String) {
     				fRequestMonitor.setData(result);
     		    } else {
     				fRequestMonitor.setStatus(NO_PID_STATUS);
@@ -158,16 +168,22 @@ public class GdbConnectCommand implements IConnect {
     	}
     };
     
-    // Need a job to free the executor while we prompt the user for a binary path
-    // Bug 344892
+    /**
+     * This job will prompt the user for a path to the binary to use,
+     * and then will attach to the process.
+     * We need a job to free the executor while we prompt the user for 
+     * a binary path. Bug 344892
+     */
     private class PromptAndAttachToProcessJob extends UIJob {
     	private final String fPid;
     	private final RequestMonitor fRm;
+    	private final String fTitle;
     	private final String fProcName;
-
-    	public PromptAndAttachToProcessJob(String pid, String procName, RequestMonitor rm) {
+    	
+    	public PromptAndAttachToProcessJob(String pid, String title, String procName, RequestMonitor rm) {
     		super(""); //$NON-NLS-1$
     		fPid = pid;
+    		fTitle = title;
     		fProcName = procName;
     		fRm = rm;
     	}
@@ -183,10 +199,11 @@ public class GdbConnectCommand implements IConnect {
     			Shell shell = Display.getCurrent().getActiveShell();
     			if (shell != null) {
     				FileDialog fd = new FileDialog(shell, SWT.NONE);
+    				fd.setText(fTitle);
     				binaryPath = fd.open();
     			}
     		}
-
+    		
     		if (binaryPath == null) {
     			// The user pressed the cancel button, so we cancel the attach gracefully
     			fRm.done();
@@ -194,6 +211,7 @@ public class GdbConnectCommand implements IConnect {
 
     			final String finalBinaryPath = binaryPath;
     			fExecutor.execute(new DsfRunnable() {
+                    @Override
     				public void run() {
     					IGDBProcesses procService = fTracker.getService(IGDBProcesses.class);
     					ICommandControlService commandControl = fTracker.getService(ICommandControlService.class);
@@ -223,6 +241,7 @@ public class GdbConnectCommand implements IConnect {
     	}
     }
 
+    @Override
     public void connect(RequestMonitor requestMonitor)
     {
     	// Create a fake rm to avoid null pointer exceptions
@@ -239,6 +258,7 @@ public class GdbConnectCommand implements IConnect {
     	// thread to prompt the user for the process to choose.
     	// This is why we simply use a DsfRunnable.
     	fExecutor.execute(new DsfRunnable() {
+            @Override
     		public void run() {
     			final IProcesses procService = fTracker.getService(IProcesses.class);
     			ICommandControlService commandControl = fTracker.getService(ICommandControlService.class);
@@ -263,7 +283,7 @@ public class GdbConnectCommand implements IConnect {
 										@Override
 										protected void handleSuccess() {
 											new PromptForPidJob(
-													"Prompt for Process", newProcessSupported, procInfoList.toArray(new IProcessExtendedInfo[0]),   //$NON-NLS-1$
+													LaunchUIMessages.getString("ProcessPrompter.PromptJob"), newProcessSupported, procInfoList.toArray(new IProcessExtendedInfo[0]),   //$NON-NLS-1$
 													new DataRequestMonitor<Object>(fExecutor, rm) {
 														@Override
 														protected void handleCancel() {
@@ -272,53 +292,15 @@ public class GdbConnectCommand implements IConnect {
 														}
 														@Override
 														protected void handleSuccess() {
-															// New cycle, look for service again
-															final IGDBProcesses procService = fTracker.getService(IGDBProcesses.class);
-															if (procService != null) {
-																Object data = getData();
-																if (data instanceof String) {
-																	// User wants to start a new process
-																	String binaryPath = (String)data;
-																	procService.debugNewProcess(
-																			controlCtx, binaryPath, 
-																			new HashMap<String, Object>(), new DataRequestMonitor<IDMContext>(fExecutor, rm));
-																} else if (data instanceof IProcessExtendedInfo) {
-																	IProcessExtendedInfo process = (IProcessExtendedInfo)data;
-																	String pidStr = Integer.toString(process.getPid());
-																	final IGDBBackend backend = fTracker.getService(IGDBBackend.class);
-																	if (backend != null && backend.getSessionType() == SessionType.REMOTE) {
-																		// For remote attach, we must set the binary first so we need to prompt the user.
-															    		
-																		// If this is the very first attach of a remote session, check if the user
-																		// specified the binary in the launch.  If so, let's add it to our map to 
-															    		// avoid having to prompt the user for that binary.
-															    		// This would be particularly annoying since we didn't use to have
-																		// to do that before we supported multi-process.
-																		// Must do this here to be in the executor
-																		// Bug 350365
-																		if (fProcessNameToBinaryMap.isEmpty()) {
-																			IPath binaryPath = backend.getProgramPath();
-																			if (binaryPath != null && !binaryPath.isEmpty()) {
-																				fProcessNameToBinaryMap.put(binaryPath.lastSegment(), binaryPath.toOSString());
-																			}
-																		}
-																		
-																		// Because the prompt is a very long operation, we need to run outside the
-																		// executor, so we don't lock it.
-																		// Bug 344892
-								    									IPath processPath = new Path(process.getName());
-								    									String processShortName = processPath.lastSegment();
-								    									new PromptAndAttachToProcessJob(pidStr, processShortName, rm).schedule();
-																	} else {
-																		// For a local attach, GDB can figure out the binary automatically,
-																		// so we don't need to prompt for it.
-																		IProcessDMContext procDmc = procService.createProcessContext(controlCtx, pidStr);
-																		procService.attachDebuggerToProcess(procDmc, null, new DataRequestMonitor<IDMContext>(fExecutor, rm));
-																	}
-																} else {
-														            rm.setStatus(new Status(IStatus.ERROR, GdbUIPlugin.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR, "Invalid return type for process prompter", null)); //$NON-NLS-1$
-														            rm.done();
-																}
+															Object data = getData();
+															if (data instanceof String) {
+																// User wants to start a new process
+																startNewProcess(controlCtx, (String)data, rm);
+															} else if (data instanceof IProcessExtendedInfo[]) {
+																attachToProcesses(controlCtx, (IProcessExtendedInfo[])data, rm);
+															} else {
+																rm.setStatus(new Status(IStatus.ERROR, GdbUIPlugin.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR, "Invalid return type for process prompter", null)); //$NON-NLS-1$
+																rm.done();
 															}
 														}
 													}).schedule();
@@ -398,4 +380,108 @@ public class GdbConnectCommand implements IConnect {
     		}
     	});
     }
+    
+    private void startNewProcess(ICommandControlDMContext controlDmc, String binaryPath, RequestMonitor rm) {
+		final IGDBProcesses procService = fTracker.getService(IGDBProcesses.class);
+		procService.debugNewProcess(
+				controlDmc, binaryPath, 
+				new HashMap<String, Object>(), new DataRequestMonitor<IDMContext>(fExecutor, rm));
+    }
+    
+    private void attachToProcesses(final ICommandControlDMContext controlDmc, IProcessExtendedInfo[] processes, final RequestMonitor rm) {
+
+    	// For a local attach, GDB can figure out the binary automatically,
+    	// so we don't need to prompt for it.
+    	final IGDBProcesses procService = fTracker.getService(IGDBProcesses.class);
+    	final IGDBBackend backend = fTracker.getService(IGDBBackend.class);
+
+    	if (procService != null && backend != null) {
+    		// Attach to each process in a sequential fashion.  We must do this
+    		// to be able to check if we are allowed to attach to the next process.
+    		// Attaching to all of them in parallel would assume that all attach are supported.
+
+    		// Create a list of all our processes so we can attach to one at a time.
+    		// We need to create a new list so that we can remove elements from it.
+    		final List<IProcessExtendedInfo> procList = new ArrayList<IProcessExtendedInfo>(Arrays.asList(processes));
+
+    		class AttachToProcessRequestMonitor extends ImmediateDataRequestMonitor<IDMContext> {
+    			public AttachToProcessRequestMonitor() {
+    				super();
+    			}
+    			
+    			@Override
+    			protected void handleCompleted() {
+    				if (!isSuccess()) {
+    					// Failed to attach to a process.  Just ignore it and move on.
+    				}
+
+    				// Check that we have a process to attach to
+    				if (procList.size() > 0) {
+
+    					// Check that we can actually attach to the process.
+    					// This is because some backends may not support multi-process.
+    					// If the backend does not support multi-process, we only attach to the first process.
+    					procService.isDebuggerAttachSupported(controlDmc, new ImmediateDataRequestMonitor<Boolean>() {
+    						@Override
+    						protected void handleCompleted() {
+    							if (isSuccess() && getData()) {
+    								// Can attach to process
+
+    								// Remove process from list and attach to it. 
+    								IProcessExtendedInfo process = procList.remove(0);
+    								String pidStr = Integer.toString(process.getPid());
+
+    								if (backend.getSessionType() == SessionType.REMOTE) {
+    									// For remote attach, we must set the binary first so we need to prompt the user.
+    									
+    									// If this is the very first attach of a remote session, check if the user
+    									// specified the binary in the launch.  If so, let's add it to our map to 
+    						    		// avoid having to prompt the user for that binary.
+    						    		// This would be particularly annoying since we didn't use to have
+    									// to do that before we supported multi-process.
+    									// Must do this here to be in the executor
+    									// Bug 350365
+    									if (fProcessNameToBinaryMap.isEmpty()) {
+   											IPath binaryPath = backend.getProgramPath();
+   											if (binaryPath != null && !binaryPath.isEmpty()) {
+   												fProcessNameToBinaryMap.put(binaryPath.lastSegment(), binaryPath.toOSString());
+   											}
+    									}
+    									
+    									// Because the prompt is a very long operation, we need to run outside the
+    									// executor, so we don't lock it.
+    									// Bug 344892
+    									IPath processPath = new Path(process.getName());
+    									String processShortName = processPath.lastSegment();
+    									new PromptAndAttachToProcessJob(pidStr, 
+    											                        LaunchUIMessages.getString("ProcessPrompterDialog.TitlePrefix") + process.getName(), //$NON-NLS-1$
+    											                        processShortName, new AttachToProcessRequestMonitor()).schedule();
+    								} else {
+    									IProcessDMContext procDmc = procService.createProcessContext(controlDmc, pidStr);
+    									procService.attachDebuggerToProcess(procDmc, null, new AttachToProcessRequestMonitor());
+    								}
+    							} else {
+    								// Not allowed to attach to another process.  Just stop.
+    								rm.done();
+    							}
+    						}
+    					});
+    				} else {
+    					// No other process to attach to
+    					rm.done();
+    				}
+    			}
+    		};
+
+    		// Trigger the first attach.
+    		new AttachToProcessRequestMonitor().done();
+
+    	} else {
+    		rm.setStatus(new Status(IStatus.ERROR, GdbUIPlugin.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR, "Cannot find service", null)); //$NON-NLS-1$
+    		rm.done();
+    	}
+
+    }
 }
+
+

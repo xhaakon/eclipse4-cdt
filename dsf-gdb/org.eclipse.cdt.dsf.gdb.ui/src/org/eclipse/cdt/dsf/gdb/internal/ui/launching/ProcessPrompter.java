@@ -8,6 +8,7 @@
  * Contributors:
  *     QNX Software Systems - initial API and implementation
  *     Ericsson             - Modified for DSF
+ *     Marc Khouzam (Ericsson) - Add support for multi-attach (Bug 293679)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.launching;
 
@@ -47,6 +48,7 @@ public class ProcessPrompter implements IStatusHandler {
 	 * @see org.eclipse.debug.core.IStatusHandler#handleStatus(org.eclipse.core.runtime.IStatus,
 	 *      java.lang.Object)
 	 */
+    @Override
 	public Object handleStatus(IStatus status, Object info) throws CoreException {
 		Shell shell = GdbUIPlugin.getShell();
 		if (shell == null) {
@@ -89,7 +91,21 @@ public class ProcessPrompter implements IStatusHandler {
 				@Override
 				public String getText(Object element) {
 					IProcessExtendedInfo info = (IProcessExtendedInfo)element;
-					IPath path = new Path(info.getName());
+					// Sometimes, if we are not getting the list of processes from GDB,
+					// we use CCorePlugin.getDefault().getProcessList(); which returns
+					// the process and its arguments.  If the arguments contain a /
+					// we will get confused when using path.lastSegment(), so,
+					// let's only keep the name to be sure
+					String name = info.getName();
+					if (name == null || name.isEmpty()) {
+						// Skip elements that have no name
+						// Bug 374823
+						return null;
+					}
+					
+					name = name.split("\\s", 2)[0]; //$NON-NLS-1$
+					
+					IPath path = new Path(name);
 					StringBuffer text = new StringBuffer(path.lastSegment());
 					
 					String owner = info.getOwner();
@@ -147,8 +163,11 @@ public class ProcessPrompter implements IStatusHandler {
 
 			// Display the list of processes and have the user choose
 			ProcessPrompterDialog dialog = new ProcessPrompterDialog(shell, provider, qprovider, prompterInfo.supportsNewProcess);
-			dialog.setTitle(LaunchMessages.getString("LocalAttachLaunchDelegate.Select_Process")); //$NON-NLS-1$
-			dialog.setMessage(LaunchMessages.getString("LocalAttachLaunchDelegate.Select_Process_to_attach_debugger_to")); //$NON-NLS-1$
+			dialog.setTitle(LaunchUIMessages.getString("LocalAttachLaunchDelegate.Select_Process")); //$NON-NLS-1$
+			dialog.setMessage(LaunchUIMessages.getString("LocalAttachLaunchDelegate.Select_Process_to_attach_debugger_to")); //$NON-NLS-1$
+
+			// Allow for multiple selection
+			dialog.setMultipleSelection(true);
 
 			dialog.setElements(plist);
 			if (dialog.open() == Window.OK) {
@@ -158,7 +177,14 @@ public class ProcessPrompter implements IStatusHandler {
 					return binaryPath;
 				}
 				
-				return dialog.getFirstResult();
+				Object[] results = dialog.getResult();
+				if (results != null) {
+					IProcessExtendedInfo[] processes = new IProcessExtendedInfo[results.length];
+					for (int i=0; i<processes.length; i++) {
+						processes[i] = (IProcessExtendedInfo)results[i];
+					}
+					return processes;
+				}
 			}
 		}
 		

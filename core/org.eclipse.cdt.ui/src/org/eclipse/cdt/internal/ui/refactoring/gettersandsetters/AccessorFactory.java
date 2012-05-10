@@ -25,8 +25,10 @@ import org.eclipse.cdt.core.dom.ast.IASTNode.CopyStyle;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
+import org.eclipse.cdt.core.dom.rewrite.TypeHelper;
 import org.eclipse.cdt.core.parser.Keywords;
 
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTDeclarator;
@@ -47,6 +49,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTReferenceOperator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTReturnStatement;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 import org.eclipse.cdt.internal.ui.refactoring.gettersandsetters.AccessorDescriptor.AccessorKind;
 
@@ -70,8 +73,8 @@ public abstract class AccessorFactory {
 		this.fieldName = fieldName;
 		this.fieldDeclaration = fieldDeclaration;
 		this.accessorName = accessorName;
-//		IType type = CPPVisitor.createType(fieldDeclaration.getDeclSpecifier());
-//		passByReference = TypeHelper.shouldBePassedByReference(type, fieldDeclaration.getTranslationUnit());
+		IType type = CPPVisitor.createType(fieldDeclaration.getDeclSpecifier());
+		passByReference = TypeHelper.shouldBePassedByReference(type, fieldDeclaration.getTranslationUnit());
 	}
 
 	/**

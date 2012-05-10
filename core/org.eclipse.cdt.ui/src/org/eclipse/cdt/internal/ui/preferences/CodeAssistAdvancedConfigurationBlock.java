@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 IBM Corporation and others.
+ * Copyright (c) 2005, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -55,6 +55,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.commands.ICommandService;
 import org.eclipse.ui.dialogs.PreferencesUtil;
@@ -66,6 +67,7 @@ import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.PreferenceConstants;
 
 import org.eclipse.cdt.internal.ui.dialogs.IStatusChangeListener;
+import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
 import org.eclipse.cdt.internal.ui.text.contentassist.CompletionProposalCategory;
 import org.eclipse.cdt.internal.ui.text.contentassist.CompletionProposalComputerRegistry;
 import org.eclipse.cdt.internal.ui.util.Messages;
@@ -80,11 +82,13 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 	
 	private static final Key PREF_EXCLUDED_CATEGORIES= getCDTUIKey(PreferenceConstants.CODEASSIST_EXCLUDED_CATEGORIES);
 	private static final Key PREF_CATEGORY_ORDER= getCDTUIKey(PreferenceConstants.CODEASSIST_CATEGORY_ORDER);
+	private static final Key PREF_PROPOSAL_TIMEOUT= getCDTUIKey(PreferenceConstants.CODEASSIST_PROPOSALS_TIMEOUT);
 	
 	private static Key[] getAllKeys() {
 		return new Key[] {
 				PREF_EXCLUDED_CATEGORIES,
 				PREF_CATEGORY_ORDER,
+				PREF_PROPOSAL_TIMEOUT
 		};
 	}
 
@@ -93,6 +97,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		/*
 		 * @see org.eclipse.jface.viewers.ITableLabelProvider#getColumnImage(java.lang.Object, int)
 		 */
+		@Override
 		public Image getColumnImage(Object element, int columnIndex) {
 			if (columnIndex == 0)
 				return ((ModelElement) element).getImage();
@@ -102,6 +107,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		/*
 		 * @see org.eclipse.jface.viewers.ITableLabelProvider#getColumnText(java.lang.Object, int)
 		 */
+		@Override
 		public String getColumnText(Object element, int columnIndex) {
 			switch (columnIndex) {
 	            case 0:
@@ -128,6 +134,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		/*
 		 * @see org.eclipse.jface.viewers.ITableLabelProvider#getColumnImage(java.lang.Object, int)
 		 */
+		@Override
 		public Image getColumnImage(Object element, int columnIndex) {
 			if (columnIndex == 0)
 				return ((ModelElement) element).getImage();
@@ -137,6 +144,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		/*
 		 * @see org.eclipse.jface.viewers.ITableLabelProvider#getColumnText(java.lang.Object, int)
 		 */
+		@Override
 		public String getColumnText(Object element, int columnIndex) {
 			switch (columnIndex) {
 				case 0:
@@ -149,6 +157,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 	}
 
 	private final Comparator<ModelElement> fCategoryComparator= new Comparator<ModelElement>() {
+		@Override
 		public int compare(ModelElement o1, ModelElement o2) {
 			return o1.getRank() - o2.getRank();
 		}
@@ -355,7 +364,6 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		layout.marginHeight= 0;
 		composite.setLayout(layout);
 		
-		
 		createDefaultLabel(composite, columns);
 		createDefaultViewer(composite, columns);
 		createKeysLink(composite, columns);
@@ -366,7 +374,9 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
         createSeparateSection(composite);
         
         createFiller(composite, columns);
-		
+
+		createTimeoutField(composite, columns);
+        
 		updateControls();
 		if (fModel.elements.size() > 0) {
 			fDefaultViewer.getTable().select(0);
@@ -379,6 +389,22 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		return scrolled;
 	}
 	
+	private void createTimeoutField(Composite composite, int columns) {
+		Composite timeoutComposite= new Composite(composite, SWT.NONE);
+		GridLayout layout= new GridLayout(3, false);
+		layout.marginWidth= 0;
+		layout.marginHeight= 0;
+		timeoutComposite.setLayout(layout);
+		GridData gd= new GridData(GridData.FILL, GridData.FILL, true, false, columns, 1);
+		timeoutComposite.setLayoutData(gd);
+
+		PixelConverter pixelConverter= new PixelConverter(composite);
+		String label = PreferencesMessages.CEditorPreferencePage_ContentAssistPage_completionProposalTimeout;
+		Text textField = addTextField(timeoutComposite, label, PREF_PROPOSAL_TIMEOUT, 0, pixelConverter.convertWidthInCharsToPixels(7));
+		String toolTip = PreferencesMessages.CEditorPreferencePage_ContentAssistPage_completionProposalTimeoutToolTip;
+		textField.setToolTipText(toolTip);
+	}
+
 	private void createDefaultLabel(Composite composite, int h_span) {
 	    final ICommandService commandSvc= (ICommandService) PlatformUI.getWorkbench().getAdapter(ICommandService.class);
 		final Command command= commandSvc.getCommand(ITextEditorActionDefinitionIds.CONTENT_ASSIST_PROPOSALS);
@@ -420,6 +446,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		keyColumn.setResizable(true);
 		
 		fDefaultViewer.addCheckStateListener(new ICheckStateListener() {
+			@Override
 			public void checkStateChanged(CheckStateChangedEvent event) {
 				boolean checked= event.getChecked();
 				ModelElement element= (ModelElement) event.getElement();
@@ -515,6 +542,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		nameColumn.setWidth(minNameWidth);
 		
 		fSeparateViewer.addCheckStateListener(new ICheckStateListener() {
+			@Override
 			public void checkStateChanged(CheckStateChangedEvent event) {
 				boolean checked= event.getChecked();
 				ModelElement element= (ModelElement) event.getElement();
@@ -642,6 +670,26 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 	 */
 	@Override
 	protected void validateSettings(Key changedKey, String oldValue, String newValue) {
+		if (changedKey == null) {
+			String newVal = getStoredValue(PREF_PROPOSAL_TIMEOUT);
+			validateSettings(PREF_PROPOSAL_TIMEOUT, null, newVal);
+		} 
+		else if (changedKey.equals(PREF_PROPOSAL_TIMEOUT)) {
+			StatusInfo statusInfo = new StatusInfo();
+			String errMsg = PreferencesMessages.CEditorPreferencePage_ContentAssistPage_completionProposalTimeoutErrMsg;
+			statusInfo.setError(errMsg);
+			if (newValue != null) {
+			    try {
+				    long parseLong = Long.parseLong(newValue);
+				    if (parseLong >= 0l) {
+					    statusInfo.setOK();
+				    }
+			    } catch (final NumberFormatException e) {
+				    // do nothing
+			    }
+			}
+			fContext.statusChanged(statusInfo);
+		}
 	}
 
 	/*

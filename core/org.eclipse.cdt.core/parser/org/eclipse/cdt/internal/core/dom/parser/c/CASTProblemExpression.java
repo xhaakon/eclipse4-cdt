@@ -29,17 +29,15 @@ public class CASTProblemExpression extends CASTProblemOwner implements IASTProbl
 		super(problem);
 	}
 
+	@Override
 	public CASTProblemExpression copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 
+	@Override
 	public CASTProblemExpression copy(CopyStyle style) {
 		CASTProblemExpression copy = new CASTProblemExpression();
-		copyBaseProblem(copy, style);
-		if (style == CopyStyle.withLocations) {
-			copy.setCopyLocation(this);
-		}
-		return copy;
+		return copy(copy, style);
 	}
 	
 	@Override
@@ -51,7 +49,9 @@ public class CASTProblemExpression extends CASTProblemOwner implements IASTProbl
 	            default: break;
 	        }
 		}
+
         super.accept(action);	// visits the problem
+
         if (action.shouldVisitExpressions) {
 		    switch (action.leave(this)) {
 	            case ASTVisitor.PROCESS_ABORT: return false;
@@ -62,14 +62,17 @@ public class CASTProblemExpression extends CASTProblemOwner implements IASTProbl
         return true;
     }
     
-    public IType getExpressionType() {
+    @Override
+	public IType getExpressionType() {
 		return new ProblemType(ISemanticProblem.TYPE_UNKNOWN_FOR_EXPRESSION);
     }
 
+	@Override
 	public boolean isLValue() {
 		return false;
 	}
 	
+	@Override
 	public ValueCategory getValueCategory() {
 		return ValueCategory.PRVALUE;
 	}

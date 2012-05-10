@@ -13,10 +13,10 @@ package org.eclipse.cdt.internal.core;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -229,13 +229,16 @@ public class XmlUtil {
 			return null;
 		}
 
-		InputStream xmlStream;
 		try {
-			xmlStream = new FileInputStream(xmlFile);
+			InputStream xmlStream = new FileInputStream(xmlFile);
+			try {
+				return loadXml(xmlStream);
+			} finally {
+				xmlStream.close();
+			}
 		} catch (Exception e) {
 			throw new CoreException(CCorePlugin.createStatus(Messages.XmlUtil_InternalErrorLoading, e));
 		}
-		return loadXml(xmlStream);
 	}
 
 	/**
@@ -246,8 +249,16 @@ public class XmlUtil {
 	 * @throws CoreException if something goes wrong.
 	 */
 	public static Document loadXml(IFile xmlFile) throws CoreException {
-		InputStream xmlStream = xmlFile.getContents();
-		return loadXml(xmlStream);
+		try {
+			InputStream xmlStream = xmlFile.getContents();
+			try {
+				return loadXml(xmlStream);
+			} finally {
+				xmlStream.close();
+			}
+		} catch (Exception e) {
+			throw new CoreException(CCorePlugin.createStatus(Messages.XmlUtil_InternalErrorLoading, e));
+		}
 	}
 
 	/**
@@ -266,8 +277,6 @@ public class XmlUtil {
 		if (!storeFile.exists()) {
 			storeFile.createNewFile();
 		}
-		OutputStream fileStream = new FileOutputStream(storeFile);
-
 		TransformerFactory transformerFactory = TransformerFactory.newInstance();
 		Transformer transformer = transformerFactory.newTransformer();
 		transformer.setOutputProperty(OutputKeys.METHOD, "xml");	//$NON-NLS-1$
@@ -276,11 +285,44 @@ public class XmlUtil {
 
 		XmlUtil.prettyFormat(doc);
 		DOMSource source = new DOMSource(doc);
-		StreamResult result = new StreamResult(new FileOutputStream(storeFile));
+		StreamResult result = new StreamResult(getFileOutputStreamWorkaround(storeFile));
 		transformer.transform(source, result);
 
-		fileStream.close();
+		result.getOutputStream().close();
 		ResourcesUtil.refreshWorkspaceFiles(uriLocation);
+	}
+
+	/**
+	 * Workaround for Java problem on Windows with releasing buffers for memory-mapped files.
+	 *
+	 * @see "http://stackoverflow.com/questions/3602783/file-access-synchronized-on-java-object"
+	 * @see "http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6354433"
+	 * @see "http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154"
+	 * @see "http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4469299"
+	 */
+	private static FileOutputStream getFileOutputStreamWorkaround(java.io.File storeFile) throws FileNotFoundException {
+		final int maxCount = 10;
+		for (int i = 0; i <= maxCount; i++) {
+			try {
+				// there is no sleep on first round
+				Thread.sleep(10 * i);
+			} catch (InterruptedException e) {
+				// restore interrupted status
+				Thread.currentThread().interrupt();
+			}
+			try {
+				return new FileOutputStream(storeFile);
+			} catch (FileNotFoundException e) {
+				// only apply workaround for the very specific exception
+				if (i >= maxCount || !e.getMessage().contains("The requested operation cannot be performed on a file with a user-mapped section open")) { //$NON-NLS-1$
+					throw e;
+				}
+//				CCorePlugin.log(new Status(IStatus.INFO, CCorePlugin.PLUGIN_ID, "Workaround for concurrent access to memory-mapped files applied, attempt " + (i + 1), e)); //$NON-NLS-1$
+			}
+		}
+
+		// will never get here
+		return null;
 	}
 
 	/**

@@ -84,6 +84,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 		bFlatten = flat;
 	}
 
+	@Override
 	public Object[] getChildren(Object obj) {
 		if (obj instanceof IWorkspaceRoot) {
 			try {
@@ -150,6 +151,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 		return new Object[0];
 	}
 
+	@Override
 	public Object getParent(Object obj) {
 		if (obj instanceof IMakeTarget) {
 			// this is ambiguous as make target can sit in 2 places, in its container
@@ -165,10 +167,12 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 		return null;
 	}
 
+	@Override
 	public boolean hasChildren(Object obj) {
 		return getChildren(obj).length > 0;
 	}
 
+	@Override
 	public Object[] getElements(Object obj) {
 		if (bFlatten) {
 			List<Object> list = new ArrayList<Object>();
@@ -182,12 +186,14 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 		return getChildren(obj);
 	}
 
+	@Override
 	public void dispose() {
 		if (viewer != null) {
 			MakeCorePlugin.getDefault().getTargetManager().removeListener(this);
 		}
 	}
 
+	@Override
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 		if (this.viewer == null) {
 			MakeCorePlugin.getDefault().getTargetManager().addListener(this);
@@ -229,6 +235,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 	 */
 	private void refreshView() {
 		Display.getDefault().asyncExec(new Runnable() {
+			@Override
 			public void run() {
 				viewer.refresh();
 			}
@@ -240,6 +247,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 	 */
 	private void refreshProjectTree(final IProject project) {
 		Display.getDefault().asyncExec(new Runnable() {
+			@Override
 			public void run() {
 				if (viewer == null || viewer.getControl() == null || viewer.getControl().isDisposed())
 					return;
@@ -285,6 +293,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 		});
 	}
 
+	@Override
 	public void targetChanged(MakeTargetEvent event) {
 		// Additions/removal of projects. Only notifications for projects having applicable builder come here.
 		int type = event.getType();
@@ -333,6 +342,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 		}
 	}
 
+	@Override
 	public void resourceChanged(IResourceChangeEvent event) {
 		IResourceDelta delta = event.getDelta();
 		if (delta == null) {
@@ -356,6 +366,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 	 *
 	 * @since 7.1
 	 */
+	@Override
 	public void handleEvent(CProjectDescriptionEvent event) {
 		ICDescriptionDelta delta = event.getDefaultSettingCfgDelta();
 		if (delta==null)
@@ -386,6 +397,7 @@ public class MakeContentProvider implements ITreeContentProvider, IMakeTargetLis
 	 *
 	 * @since 7.1
 	 */
+	@Override
 	public void preferenceChange(PreferenceChangeEvent event) {
 		if (event.getKey().equals(CCorePreferenceConstants.SHOW_SOURCE_ROOTS_AT_TOP_LEVEL_OF_PROJECT)) {
 			refreshView();

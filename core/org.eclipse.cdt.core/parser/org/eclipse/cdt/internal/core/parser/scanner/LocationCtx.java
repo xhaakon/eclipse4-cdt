@@ -6,7 +6,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.core.parser.scanner;
 
@@ -47,10 +47,12 @@ abstract class LocationCtx implements ILocationCtx {
 		}
 	}
 	
+	@Override
 	public String getFilePath() {
 		return fParent.getFilePath();
 	}
 	
+	@Override
 	final public ILocationCtx getParent() {
 		return fParent;
 	}
@@ -111,14 +113,14 @@ abstract class LocationCtx implements ILocationCtx {
 	 * that it is contained in this context.
 	 */
 	public ASTFileLocation findMappedFileLocation(int sequenceNumber, int length) {
-		return fParent.createMappedFileLocation(fOffsetInParent, fEndOffsetInParent-fOffsetInParent);
+		return fParent.createMappedFileLocation(fOffsetInParent, fEndOffsetInParent - fOffsetInParent);
 	}
 
 	/**
 	 * Returns the file location containing the specified offset range in this context.
 	 */
 	public ASTFileLocation createMappedFileLocation(int offset, int length) {
-		return fParent.createMappedFileLocation(fOffsetInParent, fEndOffsetInParent-fOffsetInParent);
+		return fParent.createMappedFileLocation(fOffsetInParent, fEndOffsetInParent - fOffsetInParent);
 	}
 
 	/**
@@ -136,6 +138,7 @@ abstract class LocationCtx implements ILocationCtx {
 	/**
 	 * Support for the dependency tree, returns inclusion statement that created this context, or <code>null</code>.
 	 */
+	@Override
 	public ASTInclusionStatement getInclusionStatement() {
 		return null;
 	}

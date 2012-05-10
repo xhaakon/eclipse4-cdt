@@ -22,7 +22,6 @@ import org.eclipse.jface.text.IDocument;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
-import org.eclipse.cdt.core.testplugin.util.TestSourceReader;
 
 /**
  * Completion tests for plain C.
@@ -173,7 +172,7 @@ public class CompletionTests_PlainC extends AbstractContentAssistTest {
 	protected IFile setUpProjectContent(IProject project) throws Exception {
 		fProject= project;
 		String headerContent= readTaggedComment(HEADER_FILE_NAME);
-		StringBuffer sourceContent= getContentsForTest(1)[0];
+		StringBuilder sourceContent= getContentsForTest(1)[0];
 		int includeOffset= Math.max(0, sourceContent.indexOf(INCLUDE_LOCATION_TAG));
 		sourceContent.insert(includeOffset, "#include \""+HEADER_FILE_NAME+"\"\n");
 		fCursorOffset= sourceContent.indexOf(CURSOR_LOCATION_TAG);
@@ -309,12 +308,11 @@ public class CompletionTests_PlainC extends AbstractContentAssistTest {
 	// #include "header191315.h"
 	// void xxx() { c_lin/*cursor*/
 	public void testExternC_bug191315() throws Exception {
-		StringBuffer[] content= getContentsForTest(3);
+		CharSequence[] content= getContentsForTest(3);
 		createFile(fProject, "header191315.h", content[0].toString());
 		createFile(fProject, "source191315.c", content[1].toString());
 		createFile(fProject, "source191315.cpp", content[1].toString());
-		IFile dfile= createFile(fProject, "header191315.h", content[0].toString());
-		TestSourceReader.waitUntilFileIsIndexed(CCorePlugin.getIndexManager().getIndex(fCProject), dfile, 8000);
+		waitForIndexer(fCProject);
 		final String[] expected= {
 			"c_linkage(void)"
 		};
@@ -360,6 +358,7 @@ public class CompletionTests_PlainC extends AbstractContentAssistTest {
 				"DEBUG",
 				"XMacro(x, y)",
 				"__CDT_PARSER__",
+				"__COUNTER__",
 				"__DATE__",
 				"__FILE__",
 				"__LINE__",

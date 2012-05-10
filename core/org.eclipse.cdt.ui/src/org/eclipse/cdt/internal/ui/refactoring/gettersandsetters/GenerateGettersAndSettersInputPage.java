@@ -48,6 +48,7 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage impl
 		node.addPreferenceChangeListener(this);
 	}
 
+	@Override
 	public void createControl(Composite parent) {
 		setTitle(Messages.GenerateGettersAndSettersInputPage_Name);
 		setMessage(Messages.GenerateGettersAndSettersInputPage_Header);
@@ -187,6 +188,7 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage impl
 		updateSelectedFunctions();
 
 		variableSelectionView.addCheckStateListener(new ICheckStateListener() {
+			@Override
 			public void checkStateChanged(CheckStateChangedEvent event) {
 				updateSelectedFunctions();
 			}
@@ -203,6 +205,7 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage impl
 		setPageComplete(!context.selectedAccessors.isEmpty());
 	}
 
+	@Override
 	public void preferenceChange(PreferenceChangeEvent event) {
 		if (variableSelectionView.getTree().isDisposed()) {
 			return;

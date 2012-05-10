@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2000, 2009 IBM Corporation and others.
+ *  Copyright (c) 2000, 2012 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -31,6 +31,7 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.cdt.ui.text.CSourceViewerConfiguration;
 import org.eclipse.cdt.ui.text.ICPartitions;
 import org.eclipse.cdt.ui.text.IColorManager;
+
 import org.eclipse.cdt.internal.ui.text.CPresentationReconciler;
 import org.eclipse.cdt.internal.ui.text.CSourceViewerScalableConfiguration;
 
@@ -472,6 +473,7 @@ public class SemanticHighlightingManager implements IPropertyChangeListener {
 	/*
 	 * @see org.eclipse.jface.util.IPropertyChangeListener#propertyChange(org.eclipse.jface.util.PropertyChangeEvent)
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent event) {
 		handlePropertyChangeEvent(event);
 	}
@@ -480,7 +482,7 @@ public class SemanticHighlightingManager implements IPropertyChangeListener {
 	 * Handle the given property change event
 	 *
 	 * @param event The event
-	 * @return 
+	 * @return whether a refresh is needed
 	 */
 	protected boolean handlePropertyChangeEvent(PropertyChangeEvent event) {
 		if (fPreferenceStore == null)
@@ -559,7 +561,7 @@ public class SemanticHighlightingManager implements IPropertyChangeListener {
 		return refreshNeeded;
 	}
 
-	private void adaptToEnablementChange(HighlightingStyle highlighting, PropertyChangeEvent event) {
+	protected void adaptToEnablementChange(HighlightingStyle highlighting, PropertyChangeEvent event) {
 		Object value= event.getNewValue();
 		boolean eventValue;
 		if (value instanceof Boolean)
@@ -571,7 +573,7 @@ public class SemanticHighlightingManager implements IPropertyChangeListener {
 		highlighting.setEnabled(eventValue);
 	}
 
-	private void adaptToTextForegroundChange(HighlightingStyle highlighting, PropertyChangeEvent event) {
+	protected void adaptToTextForegroundChange(HighlightingStyle highlighting, PropertyChangeEvent event) {
 		RGB rgb= null;
 
 		Object value= event.getNewValue();
@@ -596,7 +598,7 @@ public class SemanticHighlightingManager implements IPropertyChangeListener {
 		}
 	}
 
-	private void adaptToTextStyleChange(HighlightingStyle highlighting, PropertyChangeEvent event, int styleAttribute) {
+	protected void adaptToTextStyleChange(HighlightingStyle highlighting, PropertyChangeEvent event, int styleAttribute) {
 		boolean eventValue= false;
 		Object value= event.getNewValue();
 		if (value instanceof Boolean)

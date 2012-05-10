@@ -118,14 +118,17 @@ public class Value implements IValue {
 		fUnknownBindings= unknown;
 	}
 	
+	@Override
 	public char[] getInternalExpression() {
 		return fExpression;
 	}
 
+	@Override
 	public IBinding[] getUnknownBindings() {
 		return fUnknownBindings;
 	}
 	
+	@Override
 	public char[] getSignature() {
 		if (fSignature == null) {
 			if (fUnknownBindings.length == 0) {
@@ -148,6 +151,7 @@ public class Value implements IValue {
 		return fSignature;
 	}
 	
+	@Override
 	public Long numericalValue() {
 		return parseLong(fExpression);
 	}
@@ -446,6 +450,7 @@ public class Value implements IValue {
 			IASTLiteralExpression litEx= (IASTLiteralExpression) e;
 			switch (litEx.getKind()) {
 			case IASTLiteralExpression.lk_false:
+			case IASTLiteralExpression.lk_nullptr:
 				return 0;
 			case IASTLiteralExpression.lk_true:
 				return 1;
@@ -576,13 +581,16 @@ public class Value implements IValue {
 		final int unaryOp= ue.getOperator();
 
 		if (unaryOp == IASTUnaryExpression.op_sizeof) {
-			IType type = ue.getExpressionType();
-			ASTTranslationUnit ast = (ASTTranslationUnit) ue.getTranslationUnit();
-			SizeofCalculator calculator = ast.getSizeofCalculator();
-			SizeAndAlignment info = calculator.sizeAndAlignment(type);
-			if (info == null)
-				throw UNKNOWN_EX;
-			return info.size;
+			final IASTExpression operand = ue.getOperand();
+			if (operand != null) {
+				IType type = operand.getExpressionType();
+				ASTTranslationUnit ast = (ASTTranslationUnit) ue.getTranslationUnit();
+				SizeofCalculator calculator = ast.getSizeofCalculator();
+				SizeAndAlignment info = calculator.sizeAndAlignment(type);
+				if (info != null)
+					return info.size;
+			}
+			throw UNKNOWN_EX;
 		}
 
 		if (unaryOp == IASTUnaryExpression.op_amper || unaryOp == IASTUnaryExpression.op_star ||

@@ -6,10 +6,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
- *    Andrew Ferguson (Symbian)
+ *     Markus Schorn - initial API and implementation
+ *     Andrew Ferguson (Symbian)
  *******************************************************************************/ 
-
 package org.eclipse.cdt.core.testplugin.util;
 
 import java.io.BufferedReader;
@@ -24,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import junit.framework.Assert;
-import junit.framework.TestCase;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ILinkage;
@@ -36,6 +34,7 @@ import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.core.testplugin.CTestPlugin;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -47,73 +46,103 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.osgi.framework.Bundle;
 
 /**
  * Utilities for reading test source code from plug-in .java sources
  */
 public class TestSourceReader {
-
 	/**
-	 * Returns an array of StringBuffer objects for each comment section found preceding the named
-	 * test in the source code. 
-	 * @param bundle the bundle containing the source, if null can try to load using classpath (source folder has to be in the classpath for this to work)
+	 * Returns an array of StringBuilder objects for each comment section found preceding the named
+	 * test in the source code.
+	 *
+	 * @param bundle the bundle containing the source, if null can try to load using classpath
+	 *     (source folder has to be in the classpath for this to work)
 	 * @param srcRoot the directory inside the bundle containing the packages
 	 * @param clazz the name of the class containing the test
 	 * @param testName the name of the test
-	 * @param sections the number of comment sections preceding the named test to return
-	 * @return an array of StringBuffer objects for each comment section found preceding the named
-	 * test in the source code. 
+	 * @param sections the number of comment sections preceding the named test to return. Pass zero
+	 *     to get all available sections.
+	 * @return an array of StringBuilder objects for each comment section found preceding the named
+	 *     test in the source code. 
 	 * @throws IOException
 	 */
-	public static StringBuffer[] getContentsForTest(Bundle bundle, String srcRoot, Class clazz, final String testName, int sections) throws IOException {
-		String fqn = clazz.getName().replace('.', '/');
-		fqn = fqn.indexOf("$")==-1 ? fqn : fqn.substring(0,fqn.indexOf("$"));
-		String classFile = fqn + ".java";
-		IPath filePath= new Path(srcRoot + '/' + classFile);
-	
-		InputStream in;
+	public static StringBuilder[] getContentsForTest(Bundle bundle, String srcRoot, Class clazz,
+			final String testName, int sections) throws IOException {
+		// Walk up the class inheritance chain until we find the test method.
 		try {
-			if (bundle != null)
-				in = FileLocator.openStream(bundle, filePath, false);
-			else {
-				in = clazz.getResourceAsStream('/'+classFile);
+			while (clazz.getMethod(testName).getDeclaringClass() != clazz) {
+				clazz = clazz.getSuperclass();
 			}
-		} catch(IOException e) {
-			if(clazz.getSuperclass()!=null && !clazz.equals(TestCase.class)) {
-		    	return getContentsForTest(bundle, srcRoot, clazz.getSuperclass(), testName, sections);
-		    }
-			throw e;
+		} catch (SecurityException e) {
+			Assert.fail(e.getMessage());
+		} catch (NoSuchMethodException e) {
+			Assert.fail(e.getMessage());
 		}
-	    
-	    BufferedReader br = new BufferedReader(new InputStreamReader(in));
-	    
-	    List contents = new ArrayList();
-	    StringBuffer content = new StringBuffer();
-	    for(String line = br.readLine(); line!=null; line = br.readLine()) {
-	    	line = line.replaceFirst("^\\s*", ""); // replace leading whitespace, preserve trailing
-	    	if(line.startsWith("//")) {
-	    		content.append(line.substring(2)+"\n");
-	    	} else {
-	    		if(content.length()>0) {
-	    			contents.add(content);
-	    			if(contents.size()==sections+1)
-	    				contents.remove(0);
-	    			content = new StringBuffer();
-	    		}
-	    		int idx= line.indexOf(testName);
-	    		if( idx != -1 && !Character.isJavaIdentifierPart(line.charAt(idx+testName.length()))) {
-	    			return (StringBuffer[]) contents.toArray(new StringBuffer[contents.size()]);
-	    		}
-	    	}
-	    }
-	    
-	    if(clazz.getSuperclass()!=null && !clazz.equals(TestCase.class)) {
-	    	return getContentsForTest(bundle, srcRoot, clazz.getSuperclass(), testName, sections);
-	    }
-	    throw new IOException("Test data not found for "+clazz+" "+testName);	
+
+		while (true) {
+			// Find and open the .java file for the class clazz.
+			String fqn = clazz.getName().replace('.', '/');
+			fqn = fqn.indexOf("$") == -1 ? fqn : fqn.substring(0, fqn.indexOf("$"));
+			String classFile = fqn + ".java";
+			IPath filePath= new Path(srcRoot + '/' + classFile);
+		
+			InputStream in;
+			Class superclass = clazz.getSuperclass();
+			try {
+				if (bundle != null) {
+					in = FileLocator.openStream(bundle, filePath, false);
+				} else {
+					in = clazz.getResourceAsStream('/' + classFile);
+				}
+			} catch (IOException e) {
+				if (superclass == null || !superclass.getPackage().equals(clazz.getPackage())) {
+					throw e;
+				}
+				clazz = superclass;
+				continue;
+			}
+		    
+		    BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		    try {
+		    	// Read the java file collecting comments until we encounter the test method.
+			    List<StringBuilder> contents = new ArrayList<StringBuilder>();
+			    StringBuilder content = new StringBuilder();
+			    for (String line = br.readLine(); line != null; line = br.readLine()) {
+			    	line = line.replaceFirst("^\\s*", ""); // Replace leading whitespace, preserve trailing
+			    	if (line.startsWith("//")) {
+			    		content.append(line.substring(2) + "\n");
+			    	} else {
+			    		if (!line.startsWith("@") && content.length() > 0) {
+			    			contents.add(content);
+			    			if (sections > 0 && contents.size() == sections + 1)
+			    				contents.remove(0);
+			    			content = new StringBuilder();
+			    		}
+			    		if (line.length() > 0 && !contents.isEmpty()) {
+			    			int idx= line.indexOf(testName);
+			    			if (idx != -1 && !Character.isJavaIdentifierPart(line.charAt(idx + testName.length()))) {
+			    				return contents.toArray(new StringBuilder[contents.size()]);
+			    			}
+			    			if (!line.startsWith("@")) {
+			    				contents.clear();
+			    			}
+			    		}
+			    	}
+			    }
+		    } finally {
+		    	br.close();
+		    }
+
+			if (superclass == null || !superclass.getPackage().equals(clazz.getPackage())) {
+			    throw new IOException("Test data not found for " + clazz.getName() + "." + testName);
+			}
+			clazz = superclass;
+		}
 	}
 	
 	/**
@@ -132,21 +161,21 @@ public class TestSourceReader {
 		try {
 			int c= 0;
 			int offset= 0;
-			StringBuffer buf= new StringBuffer();
+			StringBuilder buf= new StringBuilder();
 			while ((c = reader.read()) >= 0) {
 				buf.append((char) c);
 				if (c == '\n') {
 					int idx= buf.indexOf(lookfor);
 					if (idx >= 0) {
-						return idx+offset;
+						return idx + offset;
 					}
-					offset+=buf.length();
+					offset += buf.length();
 					buf.setLength(0);
 				}
 			}
 			int idx= buf.indexOf(lookfor);
 			if (idx >= 0) {
-				return idx+offset;
+				return idx + offset;
 			}
 			return -1;
 		} finally {
@@ -182,7 +211,7 @@ public class TestSourceReader {
 	    InputStream in= FileLocator.openStream(bundle, filePath, false);
 	    LineNumberReader reader= new LineNumberReader(new InputStreamReader(in));
 	    boolean found= false;
-	    final StringBuffer content= new StringBuffer();
+	    final StringBuilder content= new StringBuilder();
 	    try {
 	        String line= reader.readLine();
 	        while (line != null) {
@@ -195,8 +224,8 @@ public class TestSourceReader {
 	                } else {
 	                    line= line.trim();
 	                    if (line.startsWith("{" + tag)) {
-	                        if (line.length() == tag.length()+1 ||
-	                                !Character.isJavaIdentifierPart(line.charAt(tag.length()+1))) {
+	                        if (line.length() == tag.length() + 1 ||
+	                                !Character.isJavaIdentifierPart(line.charAt(tag.length() + 1))) {
 	                            found= true;
 	                        }
 	                    }
@@ -206,8 +235,7 @@ public class TestSourceReader {
 	            }
 	            line= reader.readLine();
 	        }
-	    }
-	    finally {
+	    } finally {
 	        reader.close();
 	    }
 	    Assert.assertTrue("Tag '" + tag + "' is not defined inside of '" + filePath + "'.", found);
@@ -222,24 +250,30 @@ public class TestSourceReader {
 	 * @param contents the content for the file
 	 * @return a file object.
 	 * @throws CoreException 
-	 * @throws Exception
 	 * @since 4.0
 	 */    
-	public static IFile createFile(final IContainer container, final IPath filePath, final String contents) throws CoreException {
+	public static IFile createFile(final IContainer container, final IPath filePath,
+			final CharSequence contents) throws CoreException {
 		final IWorkspace ws = ResourcesPlugin.getWorkspace();
 		final IFile result[] = new IFile[1];
 		ws.run(new IWorkspaceRunnable() {
+			@Override
 			public void run(IProgressMonitor monitor) throws CoreException {
-				//Obtain file handle
+				// Obtain file handle
 				IFile file = container.getFile(filePath);
 
-				InputStream stream = new ByteArrayInputStream(contents.getBytes());
-				//Create file input stream
+				InputStream stream;
+				try {
+					stream = new ByteArrayInputStream(contents.toString().getBytes("UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					throw new CoreException(new Status(IStatus.ERROR, CTestPlugin.PLUGIN_ID, null, e));
+				}
+				// Create file input stream
 				if (file.exists()) {
 					long timestamp= file.getLocalTimeStamp();
 					file.setContents(stream, false, false, new NullProgressMonitor());
 					if (file.getLocalTimeStamp() == timestamp) {
-						file.setLocalTimeStamp(timestamp+1000);
+						file.setLocalTimeStamp(timestamp + 1000);
 					}
 				} else {
 					createFolders(file);
@@ -247,6 +281,7 @@ public class TestSourceReader {
 				}
 				result[0]= file;
 			}
+
 			private void createFolders(IResource res) throws CoreException {
 				IContainer container= res.getParent();
 				if (!container.exists() && container instanceof IFolder) {
@@ -264,16 +299,13 @@ public class TestSourceReader {
 	 * @param container a container to create the file in
 	 * @param filePath the path relative to the container to create the file at
 	 * @param contents the content for the file
-	 * @return 
 	 * @return a file object.
-	 * @throws Exception 
-	 * @throws Exception
 	 * @since 4.0
-	 */    
+	 */
 	public static IFile createFile(IContainer container, String filePath, String contents) throws CoreException {
 		return createFile(container, new Path(filePath), contents);
 	}
-	
+
 	/**
 	 * Waits until the given file is indexed. Fails if this does not happen within the
 	 * given time. 
@@ -289,12 +321,12 @@ public class TestSourceReader {
 			Assert.assertTrue(CCorePlugin.getIndexManager().joinIndexer(timeLeft, new NullProgressMonitor()));
 			index.acquireReadLock();
 			try {
-				IIndexFile pfile= index.getFile(ILinkage.CPP_LINKAGE_ID, IndexLocationFactory.getWorkspaceIFL(file));
-				if (pfile != null && pfile.getTimestamp() >= file.getLocalTimeStamp()) {
+				IIndexFile[] files= index.getFiles(ILinkage.CPP_LINKAGE_ID, IndexLocationFactory.getWorkspaceIFL(file));
+				if (files.length > 0 && areAllFilesNotOlderThan(files, file.getLocalTimeStamp())) {
 					return;
 				}
-				pfile= index.getFile(ILinkage.C_LINKAGE_ID, IndexLocationFactory.getWorkspaceIFL(file));
-				if (pfile != null && pfile.getTimestamp() >= file.getLocalTimeStamp()) {
+				files= index.getFiles(ILinkage.C_LINKAGE_ID, IndexLocationFactory.getWorkspaceIFL(file));
+				if (files.length > 0 && areAllFilesNotOlderThan(files, file.getLocalTimeStamp())) {
 					return;
 				}
 			} finally {
@@ -304,16 +336,25 @@ public class TestSourceReader {
 			Thread.sleep(50);
 			timeLeft= (int) (endTime - System.currentTimeMillis());
 		}
-		Assert.fail("Indexing " + file.getFullPath() + " did not complete in time!");
+		Assert.fail("Indexing " + file.getFullPath() + " did not complete in " + maxmillis / 1000. + " sec");
 	}
 
-    public static IASTTranslationUnit createIndexBasedAST(IIndex index, ICProject project, IFile file) throws CModelException, CoreException {
+	private static boolean areAllFilesNotOlderThan(IIndexFile[] files, long timestamp) throws CoreException {
+		for (IIndexFile file : files) {
+			if (file.getTimestamp() < timestamp) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static IASTTranslationUnit createIndexBasedAST(IIndex index, ICProject project, IFile file) throws CModelException, CoreException {
     	ICElement elem= project.findElement(file.getFullPath());
     	if (elem instanceof ITranslationUnit) {
     		ITranslationUnit tu= (ITranslationUnit) elem;
    			return tu.getAST(index, ITranslationUnit.AST_SKIP_INDEXED_HEADERS);
     	}
-    	Assert.fail("Could not create ast for " + file.getFullPath());
+    	Assert.fail("Could not create AST for " + file.getFullPath());
     	return null;
     }
 }

@@ -54,7 +54,7 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 	//    field= 1;
 	// }
 	public void testCallHierarchyFromOutlineView_183941() throws Exception {
-		StringBuffer[] contents = getContentsForTest(2);
+		StringBuilder[] contents = getContentsForTest(2);
 		IFile file1= createFile(getProject(), "SomeClass.h", contents[0].toString());
 		IFile file2= createFile(getProject(), "SomeClass.cpp", contents[1].toString());
 		waitForIndexer(fIndex, file2, CallHierarchyBaseTest.INDEXER_WAIT_TIME);
@@ -95,7 +95,7 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 	//    ref2= 0;
 	// }
 	public void testCallHierarchyFromOutlineViewAmbiguous_183941() throws Exception {
-		StringBuffer[] contents = getContentsForTest(2);
+		StringBuilder[] contents = getContentsForTest(2);
 		IFile file1= createFile(getProject(), "SomeClass.h", contents[0].toString());
 		IFile file2= createFile(getProject(), "SomeClass.cpp", contents[1].toString());
 		waitForIndexer(fIndex, file2, CallHierarchyBaseTest.INDEXER_WAIT_TIME);
@@ -363,7 +363,7 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 	//     shared_func();
 	//	}
 	public void testMultiLanguageWithPrototype_260262() throws Exception {
-		final StringBuffer[] contents = getContentsForTest(3);
+		final StringBuilder[] contents = getContentsForTest(3);
 		final String hcontent = contents[0].toString();
 		final String content_inc = contents[1].toString();
 		final String content_full = content_inc + contents[2].toString();
@@ -393,7 +393,7 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 	//     shared_func();
 	//	}
 	public void testMultiLanguageWithInlinedfunc_260262() throws Exception {
-		final StringBuffer[] contents = getContentsForTest(3);
+		final StringBuilder[] contents = getContentsForTest(3);
 		final String hcontent = contents[0].toString();
 		final String content_inc = contents[1].toString();
 		final String content_full = content_inc + contents[2].toString();
@@ -425,7 +425,7 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 	//		return 0;
 	//	}
 	public void testUnnamedNamespace_283679() throws Exception {
-		final StringBuffer[] contents = getContentsForTest(1);
+		final StringBuilder[] contents = getContentsForTest(1);
 		final String content = contents[0].toString();
 		IFile f2= createFile(getProject(), "testUnnamedNamespace_283679.cpp", content);
 		waitForIndexer(fIndex, f2, CallHierarchyBaseTest.INDEXER_WAIT_TIME);
@@ -460,7 +460,7 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 	//		delete dbPtr;
 	//	}
 	public void testCallsToFromVirtualMethod_246064() throws Exception {
-		final StringBuffer[] contents = getContentsForTest(1);
+		final StringBuilder[] contents = getContentsForTest(1);
 		final String content = contents[0].toString();
 		IFile f2= createFile(getProject(), "testCallsToFromVirtualMethod_246064.cpp", content);
 		waitForIndexer(fIndex, f2, CallHierarchyBaseTest.INDEXER_WAIT_TIME);
@@ -478,5 +478,31 @@ public class CallHierarchyBugs extends CallHierarchyBaseTest {
 		expandTreeItem(item);
 		checkTreeNode(chTree, 0, 1, "Derived::dosomething() : void");
 		checkTreeNode(chTree, 0, 2, null);
+	}
+	
+	//	template<typename T> struct Array {
+	//	      template<typename TIterator> void erase(TIterator it) {}
+	//	};
+	//
+	//	int main() {
+	//		Array<int> test;
+	//		test.erase(1); 
+	//	}
+	public void testCallsToInstanceofSpecializedTemplate_361999() throws Exception {
+		final String content = getAboveComment();
+		IFile f2= createFile(getProject(), "testCallsToInstanceofSpecializedTemplate_361999.cpp", content);
+		waitForIndexer(fIndex, f2, CallHierarchyBaseTest.INDEXER_WAIT_TIME);
+
+		final CHViewPart ch= (CHViewPart) activateView(CUIPlugin.ID_CALL_HIERARCHY);
+
+		// open editor, check outline
+		CEditor editor= openEditor(f2);
+		int idx = content.indexOf("erase(TIterator it)");
+		editor.selectAndReveal(idx, 0);
+		openCallHierarchy(editor, true);
+
+		Tree chTree= checkTreeNode(ch, 0, "Array<T>::erase(TIterator) : void").getParent();
+		TreeItem ti= checkTreeNode(chTree, 0, 0, "main() : int");
+		checkTreeNode(chTree, 0, 1, null);
 	}
 }

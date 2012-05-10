@@ -107,12 +107,14 @@ public class AST2BaseTest extends BaseTestCase {
 		map.put("__GNUC__", "4");
 		map.put("__GNUC_MINOR__", "5");
 		map.put("__SIZEOF_INT__", "4");
+		map.put("__SIZEOF_LONG__", "8");
 		return map;
 	}
 
 	private static Map<String, String> getStdMap() {
 		Map<String, String> map= new HashMap<String, String>();
 		map.put("__SIZEOF_INT__", "4");
+		map.put("__SIZEOF_LONG__", "8");
 		return map;
 	}
 
@@ -480,7 +482,7 @@ public class AST2BaseTest extends BaseTestCase {
 		return getContents(1)[0].toString();
 	}
 	
-	protected StringBuffer[] getContents(int sections) throws IOException {
+	protected CharSequence[] getContents(int sections) throws IOException {
 		CTestPlugin plugin = CTestPlugin.getDefault();
 		if (plugin == null)
 			throw new AssertionFailedError("This test must be run as a JUnit plugin test");
@@ -597,11 +599,27 @@ public class AST2BaseTest extends BaseTestCase {
     	
     	public IASTName findName(String section, int len) {
     		final int offset = contents.indexOf(section);
-    		assertTrue(offset >= 0);
+    		assertTrue("Section \"" + section + "\" not found", offset >= 0);
     		IASTNodeSelector selector = tu.getNodeSelector(null);
     		return selector.findName(offset, len);
     	}
  
+    	public IASTName findName(String context, String name) {
+    		if (context == null) {
+    			context = contents;
+    		}
+    		int offset = contents.indexOf(context);
+    		assertTrue("Context \"" + context + "\" not found", offset >= 0);
+    		int nameOffset = context.indexOf(name);
+    		assertTrue("Name \"" + name + "\" not found", nameOffset >= 0);
+    		IASTNodeSelector selector = tu.getNodeSelector(null);
+    		return selector.findName(offset + nameOffset, name.length());
+    	}
+
+    	public IASTName findName(String name) {
+    		return findName(contents, name);
+    	}
+
     	public IASTName findImplicitName(String section, int len) {
     		final int offset = contents.indexOf(section);
     		assertTrue(offset >= 0);
@@ -628,6 +646,8 @@ public class AST2BaseTest extends BaseTestCase {
     	}
     	
     	public <T extends IBinding> T assertNonProblem(String section, int len, Class<T> type, Class... cs) {
+    		if (len <= 0)
+    			len+= section.length();
     		IBinding binding= binding(section, len);
     		assertTrue("ProblemBinding for name: " + section.substring(0, len),
     				!(binding instanceof IProblemBinding));

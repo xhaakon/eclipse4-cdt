@@ -13,14 +13,16 @@
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.IASTCompletionContext;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTFieldDesignator;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 
 /**
  * Implementation of field designators
  */
-public class CASTFieldDesignator extends ASTNode implements ICASTFieldDesignator {
+public class CASTFieldDesignator extends ASTNode implements ICASTFieldDesignator, IASTCompletionContext {
 
     private IASTName name;
 
@@ -32,10 +34,12 @@ public class CASTFieldDesignator extends ASTNode implements ICASTFieldDesignator
 		setName(name);
 	}
 	
+	@Override
 	public CASTFieldDesignator copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 
+	@Override
 	public CASTFieldDesignator copy(CopyStyle style) {
 		CASTFieldDesignator copy = new CASTFieldDesignator(name == null ? null : name.copy(style));
 		copy.setOffsetAndLength(this);
@@ -45,11 +49,13 @@ public class CASTFieldDesignator extends ASTNode implements ICASTFieldDesignator
 		return copy;
 	}
 
+	@Override
 	public IASTName getName() {
         return name;
     }
 
-    public void setName(IASTName name) {
+    @Override
+	public void setName(IASTName name) {
         assertNotFrozen();
         this.name = name;
         if (name != null) {
@@ -74,4 +80,9 @@ public class CASTFieldDesignator extends ASTNode implements ICASTFieldDesignator
 		
         return true;
     }
+    
+	@Override
+	public IBinding[] findBindings(IASTName n, boolean isPrefix) {
+		return CVisitor.findBindingsForContentAssist(n, isPrefix);
+	}
 }

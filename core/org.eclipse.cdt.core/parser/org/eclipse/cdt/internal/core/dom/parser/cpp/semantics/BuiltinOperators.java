@@ -6,7 +6,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
@@ -59,7 +59,8 @@ class BuiltinOperators {
 	private static final int SECOND = 1;
 	private static final IType PTR_DIFF = new CPPBasicType(Kind.eInt, 0);
 
-	public static ICPPFunction[] create(OverloadableOperator operator, IASTInitializerClause[] args, IASTTranslationUnit tu, Object[] globCandidates) {
+	public static ICPPFunction[] create(OverloadableOperator operator, IASTInitializerClause[] args,
+			IASTTranslationUnit tu, Object[] globCandidates) {
 		if (operator == null || args == null || args.length == 0)
 			return EMPTY;
 		
@@ -70,14 +71,15 @@ class BuiltinOperators {
 	private final boolean fUnary;
 	private IType fType1;
 	private IType fType2;
-	private IType[][] fClassConversionTypes= {null, null};
-	private boolean[] fIsClass= {false,false};
+	private IType[][] fClassConversionTypes= { null, null };
+	private boolean[] fIsClass= { false, false };
 	private IScope fFileScope;
 	private List<ICPPFunction> fResult;
 	private Set<String> fSignatures;
 	private Object[] fGlobalCandidates;
 
-	BuiltinOperators(OverloadableOperator operator, IASTInitializerClause[] args, IScope fileScope, Object[] globCandidates) {
+	BuiltinOperators(OverloadableOperator operator, IASTInitializerClause[] args, IScope fileScope,
+			Object[] globCandidates) {
 		fFileScope= fileScope;
 		fOperator= operator;
 		fUnary= args.length<2;
@@ -97,7 +99,7 @@ class BuiltinOperators {
 
 
 	private ICPPFunction[] create() {
-		switch(fOperator) {
+		switch (fOperator) {
 		case ARROW:
 		case COMMA:
 		case DELETE:
@@ -390,7 +392,7 @@ class BuiltinOperators {
 		for (IType t1 : p1) {
 			for (IType t2 : p2) {
 				IType rt= null;
-				switch(rstrat) {
+				switch (rstrat) {
 				case USE_BOOL:
 					rt= CPPBasicType.BOOLEAN;
 					break;
@@ -491,7 +493,7 @@ class BuiltinOperators {
 		if (refType instanceof ICPPReferenceType) {
 			IType t= SemanticUtil.getNestedType(((ICPPReferenceType) refType).getType(), TDEF);
 			if (!SemanticUtil.getCVQualifier(t).isConst()) {
-				switch(assign) {
+				switch (assign) {
 				case WITHOUT_OPERATION:
 					if (isEnumeration(t) || isPointerToMember(t) || isPointer(t)) {
 						addFunction(refType, refType, SemanticUtil.getNestedType(t, TDEF|ALLCVQ));
@@ -592,7 +594,7 @@ class BuiltinOperators {
 	private boolean isFloatingPoint(IType type) {
 		if (type instanceof IBasicType) {
 			IBasicType.Kind kind= ((IBasicType) type).getKind();
-			switch(kind) {
+			switch (kind) {
 			case eDouble:
 			case eFloat:
 				return true;
@@ -604,6 +606,7 @@ class BuiltinOperators {
 			case eWChar:
 			case eUnspecified:
 			case eVoid:
+			case eNullPtr:
 				return false;
 			}
 		}
@@ -613,7 +616,7 @@ class BuiltinOperators {
 	private boolean isArithmetic(IType type) {
 		if (type instanceof IBasicType) {
 			IBasicType.Kind kind= ((IBasicType) type).getKind();
-			switch(kind) {
+			switch (kind) {
 			case eBoolean:
 			case eChar:
 			case eChar16:
@@ -624,6 +627,7 @@ class BuiltinOperators {
 			case eWChar:
 				return true;
 			case eUnspecified:
+			case eNullPtr:
 			case eVoid:
 				return false;
 			}
@@ -634,7 +638,7 @@ class BuiltinOperators {
 	private boolean isIntegral(IType type) {
 		if (type instanceof IBasicType) {
 			IBasicType.Kind kind= ((IBasicType) type).getKind();
-			switch(kind) {
+			switch (kind) {
 			case eBoolean:
 			case eChar:
 			case eChar16:
@@ -646,6 +650,7 @@ class BuiltinOperators {
 			case eFloat:
 			case eUnspecified:
 			case eVoid:
+			case eNullPtr:
 				return false;
 			}
 		}

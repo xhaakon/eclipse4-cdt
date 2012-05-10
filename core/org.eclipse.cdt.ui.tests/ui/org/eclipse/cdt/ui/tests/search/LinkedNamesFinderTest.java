@@ -33,6 +33,7 @@ import org.eclipse.cdt.internal.ui.search.LinkedNamesFinder;
  */
 public class LinkedNamesFinderTest extends AST2BaseTest {
 	private static class RegionComparator implements Comparator<IRegion> {
+		@Override
 		public int compare(IRegion r1, IRegion r2) {
 			return r1.getOffset() - r2.getOffset();
 		}
@@ -52,7 +53,7 @@ public class LinkedNamesFinderTest extends AST2BaseTest {
 	}
 
 	@Override
-	protected StringBuffer[] getContents(int sections) throws IOException {
+	protected CharSequence[] getContents(int sections) throws IOException {
 		CTestPlugin plugin = CTestPlugin.getDefault();
 		if (plugin == null)
 			throw new AssertionFailedError("This test must be run as a JUnit plugin test");

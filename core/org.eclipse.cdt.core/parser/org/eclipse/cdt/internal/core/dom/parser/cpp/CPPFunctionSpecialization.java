@@ -1,14 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 IBM Corporation and others.
+ * Copyright (c) 2005, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Andrew Niefer (IBM) - Initial API and implementation
- *    Bryan Wilkinson (QNX)
- *    Markus Schorn (Wind River Systems)
+ *     Andrew Niefer (IBM) - Initial API and implementation
+ *     Bryan Wilkinson (QNX)
+ *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -24,6 +25,7 @@ import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
@@ -39,18 +41,32 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
  * also used as base class for function instances.
  */
 public class CPPFunctionSpecialization extends CPPSpecialization implements ICPPFunction, ICPPInternalFunction {
-	private ICPPFunctionType type = null;
-	private ICPPParameter[] fParams = null;
-	private IType[] specializedExceptionSpec = null;
+	private ICPPFunctionType type;
+	private ICPPParameter[] fParams;
+	private IType[] specializedExceptionSpec;
+	private final ICPPClassSpecialization fContext;
 
 	public CPPFunctionSpecialization(ICPPFunction orig, IBinding owner, ICPPTemplateParameterMap argMap) {
+		this(orig, owner, argMap, null);
+	}
+	
+	public CPPFunctionSpecialization(ICPPFunction orig, IBinding owner, ICPPTemplateParameterMap argMap, ICPPClassSpecialization context) {
 		super(orig, owner, argMap);
+		fContext= context;
+	}
+	
+	@Override
+	protected ICPPClassSpecialization getSpecializationContext() {
+		if (fContext != null)
+			return fContext;
+		return super.getSpecializationContext(); 
 	}
 	
 	private ICPPFunction getFunction() {
 		return (ICPPFunction) getSpecializedBinding();
 	}
 
+	@Override
 	public ICPPParameter[] getParameters() {
 		if (fParams == null) {
 			ICPPFunction function = getFunction();
@@ -75,18 +91,22 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return fParams;
 	}
 
+	@Override
 	public int getRequiredArgumentCount() {
 		return ((ICPPFunction) getSpecializedBinding()).getRequiredArgumentCount();
 	}
 
+	@Override
 	public boolean hasParameterPack() {
 		return ((ICPPFunction) getSpecializedBinding()).hasParameterPack();
 	}
 
+	@Override
 	public IScope getFunctionScope() {
 		return null;
 	}
 
+	@Override
 	public ICPPFunctionType getType() {
 		if (type == null) {
 			ICPPFunction function = (ICPPFunction) getSpecializedBinding();
@@ -96,10 +116,12 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return type;
 	}
 
+	@Override
 	public boolean isMutable() {
 		return false;
 	}
 
+	@Override
 	public boolean isDeleted() {
 		IASTNode def = getDefinition();
 		if (def != null)
@@ -112,16 +134,18 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return false;
 	}
 
+	@Override
 	public boolean isInline() {
 		if (getDefinition() != null) {
 			IASTNode def = getDefinition();
 			while (!(def instanceof IASTFunctionDefinition))
 				def = def.getParent();
-			return ((IASTFunctionDefinition)def).getDeclSpecifier().isInline();
+			return ((IASTFunctionDefinition) def).getDeclSpecifier().isInline();
 		}
 		return getFunction().isInline();
 	}
 	
+	@Override
 	public boolean isExternC() {
 		if (CPPVisitor.isExternC(getDefinition())) {
 			return true;
@@ -129,20 +153,24 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return getFunction().isExternC();
 	}
 
+	@Override
 	public boolean isStatic() {
 		return isStatic(true);
 	}
+
+	@Override
 	public boolean isStatic(boolean resolveAll) {
 		//TODO resolveAll
 		IBinding f = getSpecializedBinding();
 		if (f instanceof ICPPInternalFunction)
-			return ((ICPPInternalFunction)f).isStatic(resolveAll);
+			return ((ICPPInternalFunction) f).isStatic(resolveAll);
 		if (f instanceof IIndexBinding && f instanceof ICPPFunction) {
 			return ((ICPPFunction) f).isStatic();
 		}
 		return CPPFunction.hasStorageClass(this, IASTDeclSpecifier.sc_static);
 	}
 
+	@Override
 	public boolean isExtern() {
 		ICPPFunction f = (ICPPFunction) getSpecializedBinding();
 		if (f != null)
@@ -150,6 +178,7 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return CPPFunction.hasStorageClass(this, IASTDeclSpecifier.sc_extern);
 	}
 
+	@Override
 	public boolean isAuto() {
 		ICPPFunction f = (ICPPFunction) getSpecializedBinding();
 		if (f != null)
@@ -157,6 +186,7 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return CPPFunction.hasStorageClass(this, IASTDeclSpecifier.sc_auto);
 	}
 
+	@Override
 	public boolean isRegister() {
 		ICPPFunction f = (ICPPFunction) getSpecializedBinding();
 		if (f != null)
@@ -164,6 +194,7 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return CPPFunction.hasStorageClass(this, IASTDeclSpecifier.sc_register);
 	}
 
+	@Override
 	public boolean takesVarArgs() {
 		ICPPFunction f = (ICPPFunction) getSpecializedBinding();
 		if (f != null)
@@ -180,7 +211,16 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
         return false;
 	}
 
-    public IBinding resolveParameter(CPPParameter param) {
+	@Override
+	public boolean isNoReturn() {
+		ICPPFunction f = (ICPPFunction) getSpecializedBinding();
+		if (f != null)
+			return f.isNoReturn();
+        return false;
+	}
+
+    @Override
+	public IBinding resolveParameter(CPPParameter param) {
 		int pos= param.getParameterPosition();
 		
     	final IASTNode[] decls= getDeclarations();
@@ -247,10 +287,10 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 	private ICPPASTFunctionDeclarator extractFunctionDtor(IASTNode node) {
 		if (node instanceof IASTName)
 			node = node.getParent();
-		if (node instanceof IASTDeclarator == false)
+		if (!(node instanceof IASTDeclarator))
 			return null;
 		node= ASTQueries.findTypeRelevantDeclarator((IASTDeclarator) node);
-		if (node instanceof ICPPASTFunctionDeclarator == false)
+		if (!(node instanceof ICPPASTFunctionDeclarator))
 			return null;
 		
 		return (ICPPASTFunctionDeclarator) node;
@@ -288,14 +328,15 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		return result.toString();
 	}
 
+	@Override
 	public IType[] getExceptionSpecification() {
 		if (specializedExceptionSpec == null) {
 			ICPPFunction function = (ICPPFunction) getSpecializedBinding();
 			IType[] types = function.getExceptionSpecification();
 			if (types != null) {
 				IType[] specializedTypeList = new IType[types.length];
-				int j=0;
-				for (int i=0; i<types.length; ++i) {
+				int j= 0;
+				for (int i= 0; i < types.length; ++i) {
 					final IType origType = types[i];
 					if (origType instanceof ICPPParameterPackType) {
 						IType[] specialized= specializeTypePack((ICPPParameterPackType) origType);

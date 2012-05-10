@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2012 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,7 +13,6 @@
  *     Warren Paul (Nokia)
  *	   IBM Corporation (EFS Support)
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.core.model;
 
 import java.io.File;
@@ -134,7 +133,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	/**
 	 * Set of elements which are out of sync with their buffers.
 	 */
-	protected Map<ICElement,ICElement> elementsOutOfSynchWithBuffers = new HashMap<ICElement, ICElement>(11);
+	protected Map<ICElement, ICElement> elementsOutOfSynchWithBuffers = new HashMap<ICElement, ICElement>(11);
 
 	/*
 	 * Temporary cache of newly opened elements
@@ -166,9 +165,9 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	 */
 	private HashMap<ICProject, SourceMapper> sourceMappers = new HashMap<ICProject, SourceMapper>();
 
-	public static final IWorkingCopy[] NoWorkingCopy = new IWorkingCopy[0];
+	public static final IWorkingCopy[] NoWorkingCopy = {};
 
-	static volatile CModelManager factory = null;
+	static volatile CModelManager factory;
 
 	private CModelManager() {
 	}
@@ -230,7 +229,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			}
 			if (res != null && !res.exists()) {
 				res = null;
-			}			
+			}
 		}
 
 		// In case this is an external resource see if we can find
@@ -343,7 +342,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 					break;
 				}
 			}
-			
+
 			// check for binary on output entry
 			if (celement == null && cproject.isOnOutputEntry(file)) {
 				IBinaryFile bin = createBinaryFile(file);
@@ -371,19 +370,19 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			if (cproject.isOnOutputEntry(file)) {
 				IPath resourcePath = file.getParent().getFullPath();
 				ICElement cfolder = cproject.findElement(resourcePath);
-				
+
 				// Check if folder is a source root and use that instead
 				ISourceRoot sourceRoot = cproject.findSourceRoot(resourcePath);
 				if (sourceRoot != null)
 					cfolder = sourceRoot;
-				
+
 				if (bin.getType() == IBinaryFile.ARCHIVE) {
 					ArchiveContainer vlib = (ArchiveContainer)cproject.getArchiveContainer();
-					celement = new Archive(cfolder, file, (IBinaryArchive)bin);
+					celement = new Archive(cfolder, file, (IBinaryArchive) bin);
 					vlib.addChild(celement);
 				} else {
 					BinaryContainer vbin = (BinaryContainer)cproject.getBinaryContainer();
-					celement = new Binary(cfolder, file, (IBinaryObject)bin);
+					celement = new Binary(cfolder, file, (IBinaryObject) bin);
 					vbin.addChild(celement);
 				}
 			}
@@ -405,7 +404,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			if (!Util.isNonZeroLengthFile(path)) {
 				return null;
 			}
-			
+
 			try {
 				IIncludeReference[] includeReferences = cproject.getIncludeReferences();
 				for (IIncludeReference includeReference : includeReferences) {
@@ -414,7 +413,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 						if (headerContentTypeId == null) {
 							headerContentTypeId= CoreModel.hasCCNature(project) ? CCorePlugin.CONTENT_TYPE_CXXHEADER : CCorePlugin.CONTENT_TYPE_CHEADER;
 						}
-						
+
 						// TODO:  use URI
 						return new ExternalTranslationUnit(includeReference, URIUtil.toURI(path), headerContentTypeId);
 					}
@@ -422,7 +421,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			} catch (CModelException e) {
 			}
 
-			// if the file exists and it has a known C/C++ file extension then just create
+			// If the file exists and it has a known C/C++ file extension then just create
 			// an external translation unit for it.
 			if (contentTypeId != null && path.toFile().exists()) {
 				// TODO:  use URI
@@ -439,7 +438,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 						if (headerContentTypeId == null) {
 							headerContentTypeId= CoreModel.hasCCNature(project) ? CCorePlugin.CONTENT_TYPE_CXXHEADER : CCorePlugin.CONTENT_TYPE_CHEADER;
 						}
-						
+
 						// TODO:  use URI
 						return new ExternalTranslationUnit(includeReference, URIUtil.toURI(includePath), headerContentTypeId);
 					}
@@ -449,10 +448,10 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Creates a translation unit in the given project for the given location.
-	 * 
+	 *
 	 * @param cproject
 	 * @param locationURI
 	 * @return ITranslationUnit
@@ -465,48 +464,49 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		if(!locationURI.isAbsolute()) {
 			throw new IllegalArgumentException();
 		}
-		
+
 		final IProject project= cproject.getProject();
-		
+
 		IFileStore fileStore = null;
 		try {
 			fileStore = EFS.getStore(locationURI);
-		} catch (CoreException e1) {
-			CCorePlugin.log(e1);
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
 			return null;
 		}
-		
-		final String contentTypeId = CoreModel.getRegistedContentTypeId(project, fileStore.getName());
-			if (!Util.isNonZeroLengthFile(locationURI)) {
-				return null;
-			}
-			
-			try {
-				IIncludeReference[] includeReferences = cproject.getIncludeReferences();
-				for (IIncludeReference includeReference : includeReferences) {
-					// crecoskie
-					// TODO FIXME:  include entries don't handle URIs yet
-					IPath path = URIUtil.toPath(locationURI);
-					if (path != null && includeReference.isOnIncludeEntry(path)) {
-						String headerContentTypeId= contentTypeId;
-						if (headerContentTypeId == null) {
-							headerContentTypeId= CoreModel.hasCCNature(project) ? CCorePlugin.CONTENT_TYPE_CXXHEADER : CCorePlugin.CONTENT_TYPE_CHEADER;
-						}
-						
-						return new ExternalTranslationUnit(includeReference, locationURI, headerContentTypeId);
-					}
-				}
-			} catch (CModelException e) {
-			}
 
-			// if the file exists and it has a known C/C++ file extension then just create
-			// an external translation unit for it.
-			IFileInfo info = fileStore.fetchInfo();
-			
-			if (contentTypeId != null && info != null && info.exists()) {
-				return new ExternalTranslationUnit(cproject, locationURI, contentTypeId);
+		final String contentTypeId = CoreModel.getRegistedContentTypeId(project, fileStore.getName());
+		if (!Util.isNonZeroLengthFile(locationURI)) {
+			return null;
+		}
+
+		try {
+			IIncludeReference[] includeReferences = cproject.getIncludeReferences();
+			for (IIncludeReference includeReference : includeReferences) {
+				// crecoskie
+				// TODO FIXME:  include entries don't handle URIs yet
+				IPath path = URIUtil.toPath(locationURI);
+				if (path != null && includeReference.isOnIncludeEntry(path)) {
+					String headerContentTypeId= contentTypeId;
+					if (headerContentTypeId == null) {
+						headerContentTypeId= CoreModel.hasCCNature(project) ?
+								CCorePlugin.CONTENT_TYPE_CXXHEADER : CCorePlugin.CONTENT_TYPE_CHEADER;
+					}
+
+					return new ExternalTranslationUnit(includeReference, locationURI, headerContentTypeId);
+				}
 			}
-		
+		} catch (CModelException e) {
+		}
+
+		// if the file exists and it has a known C/C++ file extension then just create
+		// an external translation unit for it.
+		IFileInfo info = fileStore.fetchInfo();
+
+		if (contentTypeId != null && info != null && info.exists()) {
+			return new ExternalTranslationUnit(cproject, locationURI, contentTypeId);
+		}
+
 		return null;
 	}
 
@@ -632,7 +632,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		if (parsers.length == 0) {
 			return null;
 		}
-		
+
 		// Only if file has no extension, has an extension that is an integer
 		// or is a binary file content type
 		String ext = file.getFileExtension();
@@ -650,7 +650,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 				baseFileName = baseFileName.removeFileExtension();
 				ext = baseFileName.getFileExtension();
 			} while (ext != null && ext.length() > 0);
-			
+
 			boolean isBinary= false;
 			final IContentTypeManager ctm = Platform.getContentTypeManager();
 			final IContentType ctbin = ctm.getContentType(CCorePlugin.CONTENT_TYPE_BINARYFILE);
@@ -662,13 +662,13 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 				return null;
 			}
 		}
-		
+
 		URI fileUri = file.getLocationURI();
-		//Avoid name special devices, empty files and the like
+		// Avoid name special devices, empty files and the like
 		if (!Util.isNonZeroLengthFile(fileUri)) {
 			// PR:xxx the EFS does not seem to work for newly created file
 			// so before bailing out give another try?
-			//Avoid name special devices, empty files and the like
+			// Avoid name special devices, empty files and the like
 			if("file".equals(fileUri.getScheme())) { //$NON-NLS-1$
 				File f = new File(fileUri);
 				if (f.length() == 0) {
@@ -677,9 +677,9 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			}
 			//return null;
 		}
-		
+
 		int hints = 0;
-		
+
 		for (BinaryParserConfig parser2 : parsers) {
 			IBinaryParser parser = null;
 			try {
@@ -771,14 +771,14 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			runner = binaryRunners.get(project);
 		}
 		if (runner == null) {
-			// creation of BinaryRunner must occur outside the synchronized block
+			// Creation of BinaryRunner must occur outside the synchronized block
 			runner = new BinaryRunner(project);
 			synchronized (binaryRunners) {
 				if (binaryRunners.get(project) == null) {
 					binaryRunners.put(project, runner);
 					runner.start();
 				} else {
-					// another thread was faster
+					// Another thread was faster
 					runner = binaryRunners.get(project);
 				}
 			}
@@ -850,10 +850,11 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	 * on the platform, and that the C Model should update any required
 	 * internal structures such that its elements remain consistent.
 	 * Translates <code>IResourceDeltas</code> into <code>ICElementDeltas</code>.
-	 * 
+	 *
 	 * @see IResourceDelta
 	 * @see IResource
 	 */
+	@Override
 	public void resourceChanged(IResourceChangeEvent event) {
 		if (event.getSource() instanceof IWorkspace) {
 			IResourceDelta delta = event.getDelta();
@@ -861,7 +862,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			switch (event.getType()) {
 			case IResourceChangeEvent.PRE_DELETE:
 				try {
-					if (resource.getType() == IResource.PROJECT && 	
+					if (resource.getType() == IResource.PROJECT &&
 							( ((IProject)resource).hasNature(CProjectNature.C_NATURE_ID) ||
 									((IProject)resource).hasNature(CCProjectNature.CC_NATURE_ID) )){
 						this.preDeleteProject((IProject) resource);}
@@ -871,7 +872,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 
 			case IResourceChangeEvent.PRE_CLOSE:
 				try {
-					if (resource.getType() == IResource.PROJECT && 	
+					if (resource.getType() == IResource.PROJECT &&
 					    ( ((IProject)resource).hasNature(CProjectNature.C_NATURE_ID) ||
 					      ((IProject)resource).hasNature(CCProjectNature.CC_NATURE_ID) )){
 						this.preCloseProject((IProject) resource);}
@@ -899,6 +900,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		}
 	}
 
+	@Override
 	public void handleEvent(CProjectDescriptionEvent event) {
 		switch(event.getEventType()) {
 		case CProjectDescriptionEvent.APPLIED:
@@ -919,12 +921,12 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 					}
 				}
 				if ((flags & ICDescriptionDelta.EXT_REF) != 0) {
-					// update binary parsers
+					// Update binary parsers
 					IProject project = newDes.getProject();
 					try {
 						ICConfigExtensionReference[] newExts = CCorePlugin.getDefault().getDefaultBinaryParserExtensions(project);
 						BinaryParserConfig[] currentConfigs = binaryParsersMap.get(project);
-						// anything added/removed
+						// Anything added/removed
 						if (currentConfigs != null) {
 							if (newExts.length != currentConfigs.length) {
 								resetBinaryParser(project);
@@ -958,9 +960,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.core.runtime.content.IContentTypeManager.IContentTypeListener#contentTypeChanged()
-	 */
+	@Override
 	public void contentTypeChanged(ContentTypeChangeEvent event) {
 		ContentTypeProcessor.processContentTypeChanges(new ContentTypeChangeEvent[]{ event });
 	}
@@ -975,12 +975,12 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 
 	public void fireShift(ICElement element, int offset, int size, int lines) {
 		ICElementDelta delta = new CShiftData(element, offset, size, lines);
-		fire(delta, ElementChangedEvent.POST_SHIFT); 
+		fire(delta, ElementChangedEvent.POST_SHIFT);
 	}
-	
+
 	/**
-	 * Fire C Model deltas, flushing them after the fact. 
-	 * If the firing mode has been turned off, this has no effect. 
+	 * Fire C Model deltas, flushing them after the fact.
+	 * If the firing mode has been turned off, this has no effect.
 	 */
 	@SuppressWarnings("deprecation")
 	void fire(ICElementDelta customDeltas, int eventType) {
@@ -1046,7 +1046,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			System.out.println(deltaToNotify == null ? "<NONE>" : deltaToNotify.toString()); //$NON-NLS-1$
 		}
 		if (deltaToNotify != null) {
-				// flush now so as to keep listener reactions to post their own deltas for subsequent iteration
+			// flush now so as to keep listener reactions to post their own deltas for subsequent iteration
 			this.flush();
 			notifyListeners(deltaToNotify, ElementChangedEvent.POST_CHANGE, listeners, listenerMask, listenerCount);
 		}
@@ -1059,7 +1059,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			System.out.println(deltaToNotify == null ? "<NONE>" : deltaToNotify.toString()); //$NON-NLS-1$
 		}
 		if (deltaToNotify != null) {
-			// flush now so as to keep listener reactions to post their own deltas for subsequent iteration
+			// Flush now so as to keep listener reactions to post their own deltas for subsequent iteration
 			this.reconcileDeltas = new HashMap<IWorkingCopy, ICElementDelta>();
 			notifyListeners(deltaToNotify, ElementChangedEvent.POST_RECONCILE, listeners, listenerMask, listenerCount);
 		}
@@ -1067,7 +1067,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 
 	private void fireShiftEvent(ICElementDelta deltaToNotify, IElementChangedListener[] listeners,
 			int[] listenerMask, int listenerCount) {
-		// post change deltas
+		// Post change deltas
 		if (Util.VERBOSE_DELTA) {
 			System.out.println("FIRING POST_SHIFT event [" + Thread.currentThread() + "]:"); //$NON-NLS-1$//$NON-NLS-2$
 			System.out.println(deltaToNotify == null ? "<NONE>" : deltaToNotify.toString()); //$NON-NLS-1$
@@ -1077,7 +1077,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			notifyListeners(deltaToNotify, ElementChangedEvent.POST_SHIFT, listeners, listenerMask, listenerCount);
 		}
 	}
-	
+
 	public void notifyListeners(ICElementDelta deltaToNotify, int eventType,
 		IElementChangedListener[] listeners, int[] listenerMask, int listenerCount) {
 
@@ -1090,13 +1090,15 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 					System.out.print("Listener #" + (i + 1) + "=" + listener.toString());//$NON-NLS-1$//$NON-NLS-2$
 					start = System.currentTimeMillis();
 				}
-				// wrap callbacks with Safe runnable for subsequent listeners to be called when some are causing grief
+				// Wrap callbacks with Safe runnable for subsequent listeners to be called when some are causing grief
 				SafeRunner.run(new ISafeRunnable() {
-
+					@Override
 					public void handleException(Throwable exception) {
 						//CCorePlugin.log(exception, "Exception occurred in listener of C element change notification"); //$NON-NLS-1$
 						CCorePlugin.log(exception);
 					}
+
+					@Override
 					public void run() throws Exception {
 						listener.elementChanged(extraEvent);
 					}
@@ -1157,7 +1159,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	/**
 	 * Returns the set of elements which are out of synch with their buffers.
 	 */
-	protected Map<ICElement,ICElement> getElementsOutOfSynchWithBuffers() {
+	public Map<ICElement,ICElement> getElementsOutOfSynchWithBuffers() {
 		return this.elementsOutOfSynchWithBuffers;
 	}
 
@@ -1192,7 +1194,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	/*
 	 * Puts the infos in the given map (keys are ICElements and values are CElementInfos)
 	 * in the C model cache in an atomic way.
-	 * First checks that the info for the opened element (or one of its ancestors) has not been 
+	 * First checks that the info for the opened element (or one of its ancestors) has not been
 	 * added to the cache. If it is the case, another thread has opened the element (or one of
 	 * its ancestors). So returns without updating the cache.
 	 */
@@ -1211,8 +1213,9 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			}
 		}
 
-		for (Map.Entry<ICElement, CElementInfo> element : newElements.entrySet())
+		for (Map.Entry<ICElement, CElementInfo> element : newElements.entrySet()) {
 			this.cache.putInfo(element.getKey(), element.getValue());
+		}
 	}
 
 	/**
@@ -1306,11 +1309,13 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 					movedTo= delta.getMovedToPath();
 				}
 				LocalProjectScope.deletePreferences(res.getFullPath(), movedTo);
-			}				
+			}
 		}
 	}
-	
+
 	private void preDeleteProject(IProject project) {
+		// remove binary parsers
+		binaryParsersMap.remove(project);
 		// stop the binary runner for this project
 		removeBinaryRunner(project);
 		// stop indexing jobs for this project
@@ -1318,6 +1323,8 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	}
 
 	private void preCloseProject(IProject project) {
+		// remove binary parsers
+		binaryParsersMap.remove(project);
 		// stop the binary runner for this project
 		removeBinaryRunner(project);
 		// stop indexing jobs for this project

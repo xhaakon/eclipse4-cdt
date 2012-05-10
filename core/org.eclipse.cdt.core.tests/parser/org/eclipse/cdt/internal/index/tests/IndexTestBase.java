@@ -39,6 +39,7 @@ public class IndexTestBase extends BaseTestCase {
 		final ICProject[] result= new ICProject[] {null};
 		final IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		workspace.run(new IWorkspaceRunnable() {
+			@Override
 			public void run(IProgressMonitor monitor) throws CoreException {
 				String name= "IndexTest_" + System.currentTimeMillis();
 				if (useCpp) {
@@ -59,7 +60,7 @@ public class IndexTestBase extends BaseTestCase {
 		return TestSourceReader.readTaggedComment(CTestPlugin.getDefault().getBundle(), "parser", getClass(), tag);
 	}
 	
-    protected StringBuffer[] getContentsForTest(int blocks) throws IOException {
+    protected StringBuilder[] getContentsForTest(int blocks) throws IOException {
     	return TestSourceReader.getContentsForTest(
     			CTestPlugin.getDefault().getBundle(), "parser", getClass(), getName(), blocks);
     }

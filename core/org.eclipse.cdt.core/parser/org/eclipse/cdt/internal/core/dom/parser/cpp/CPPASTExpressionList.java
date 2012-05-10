@@ -41,7 +41,7 @@ import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
 
 public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionList, IASTAmbiguityParent {
-	private static final ICPPFunction[] NO_FUNCTIONS = new ICPPFunction[0];
+	private static final ICPPFunction[] NO_FUNCTIONS = {};
 
     private IASTExpression[] expressions = new IASTExpression[2];
     
@@ -50,12 +50,14 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
 	 * @see CPPASTExpressionList#computeImplicitNames
 	 */
 	private IASTImplicitName[] implicitNames;
-	private ICPPFunction[] overloads = null;
+	private ICPPFunction[] overloads;
 	
+	@Override
 	public CPPASTExpressionList copy() {
 		return copy(CopyStyle.withoutLocations);
 	}
 
+	@Override
 	public CPPASTExpressionList copy(CopyStyle style) {
 		CPPASTExpressionList copy = new CPPASTExpressionList();
 		for(IASTExpression expr : getExpressions())
@@ -67,12 +69,14 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
 		return copy;
 	}
 	
+	@Override
 	public IASTExpression[] getExpressions() {
         if (expressions == null) return IASTExpression.EMPTY_EXPRESSION_ARRAY;
-        return (IASTExpression[]) ArrayUtil.trim(IASTExpression.class, expressions);
+        return ArrayUtil.trim(IASTExpression.class, expressions);
     }
 
-    public void addExpression(IASTExpression expression) {
+    @Override
+	public void addExpression(IASTExpression expression) {
         assertNotFrozen();
 		expressions = ArrayUtil.append(expressions, expression);
         if (expression != null) {
@@ -127,7 +131,7 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
 			if (exprs.length < 2)
 				return implicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
 			
-			implicitNames = new IASTImplicitName[exprs.length-1];
+			implicitNames = new IASTImplicitName[exprs.length - 1];
 			
 			ICPPFunction[] overloads = getOverloads();
 			for(int i = 0; i < overloads.length; i++) {
@@ -144,8 +148,9 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
 		return implicitNames;
 	}
 
-    public IASTImplicitName[] getImplicitNames() {
-    	return (IASTImplicitName[])ArrayUtil.removeNulls(IASTImplicitName.class, computeImplicitNames());
+    @Override
+	public IASTImplicitName[] getImplicitNames() {
+    	return ArrayUtil.removeNulls(IASTImplicitName.class, computeImplicitNames());
     }
 
     private ICPPFunction[] getOverloads() {
@@ -161,7 +166,7 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
 	    			prop == ICPPASTNewExpression.NEW_INITIALIZER)
 	    		return overloads = NO_FUNCTIONS;
 	    	
-	    	overloads = new ICPPFunction[exprs.length-1];
+	    	overloads = new ICPPFunction[exprs.length - 1];
 	    	IType lookupType = typeOrFunctionSet(exprs[0]);
 	    	ValueCategory vcat= valueCat(exprs[0]);
 	    	
@@ -187,7 +192,8 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
     	return overloads;
     }
 
-    public void replace(IASTNode child, IASTNode other) {
+    @Override
+	public void replace(IASTNode child, IASTNode other) {
         if (expressions == null) return;
         for (int i = 0; i < expressions.length; ++i) {
             if (child == expressions[i]) {
@@ -198,6 +204,7 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
         }
     }
     
+	@Override
 	public IType getExpressionType() {
 		ICPPFunction[] overloads = getOverloads();
 		if (overloads.length > 0) {
@@ -216,6 +223,7 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
     	return new ProblemType(ISemanticProblem.TYPE_UNKNOWN_FOR_EXPRESSION);
 	}
     
+	@Override
 	public ValueCategory getValueCategory() {
 		ICPPFunction[] overloads = getOverloads();
 		if (overloads.length > 0) {
@@ -233,6 +241,7 @@ public class CPPASTExpressionList extends ASTNode implements ICPPASTExpressionLi
     	return PRVALUE;
 	}
 	
+	@Override
 	public boolean isLValue() {
 		return getValueCategory() == LVALUE;
 	}
