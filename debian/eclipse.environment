@@ -70,3 +70,12 @@ cross/org.eclipse.cdt.build.crossgcc-feature
 cross/org.eclipse.cdt.launch.remote
 cross/org.eclipse.cdt.launch.remote-feature
 
+# Needed for feature org.eclipse.cdt.gnu.multicorevisualizer
+
+dsf-gdb/org.eclipse.cdt.gnu.multicorevisualizer-feature
+dsf-gdb/org.eclipse.cdt.dsf.gdb.multicorevisualizer.ui
+visualizer/org.eclipse.cdt.visualizer*
+
+# Needed for feature org.eclipse.cdt.testsrunner.feature
+
+testsrunner/org.eclipse.cdt.testsrunner*
