@@ -16,6 +16,8 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
@@ -64,6 +66,13 @@ import org.w3c.dom.Element;
 /**
  * Abstract parser capable to execute compiler command printing built-in compiler
  * specs and parse built-in language settings out of it.
+ * <p>
+ * <strong>EXPERIMENTAL</strong>. This class interface is not stable yet as
+ * it is not currently (CDT 8.1, Juno) clear how it may need to be used in future.
+ * There is no guarantee that this API will work or that it will remain the same.
+ * Please do not use this API without consulting with the CDT team.
+ * </p>
+ * @noextend This class is not intended to be subclassed by clients.
  *
  * @since 8.1
  */
@@ -83,6 +92,9 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 
 	private static final String ATTR_PARAMETER = "parameter"; //$NON-NLS-1$
 	private static final String ATTR_CONSOLE = "console"; //$NON-NLS-1$
+
+	private static final String ENV_LANGUAGE = "LANGUAGE"; //$NON-NLS-1$
+	private static final String ENV_LC_ALL = "LC_ALL"; //$NON-NLS-1$
 
 	private static final int MONITOR_SCALE = 100;
 	private static final int TICKS_REMOVE_MARKERS = 1 * MONITOR_SCALE;
@@ -533,7 +545,7 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 				}
 			}
 
-			String[] envp = BuildRunnerHelper.getEnvp(currentCfgDescription);
+			String[] envp = getEnvp();
 
 			// Using GMAKE_ERROR_PARSER_ID as it can handle generated error messages
 			ErrorParserManager epm = new ErrorParserManager(currentProject, buildDirURI, markerGenerator, new String[] {GMAKE_ERROR_PARSER_ID});
@@ -565,6 +577,30 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 			}
 			monitor.done();
 		}
+	}
+
+	/**
+	 * Get array of environment variables in format "var=value".
+	 */
+	private String[] getEnvp() {
+		// On POSIX (Linux, UNIX) systems reset language variables to default (English)
+		// with UTF-8 encoding since GNU compilers can handle only UTF-8 characters.
+		// Include paths with locale characters will be handled properly regardless
+		// of the language as long as the encoding is set to UTF-8.
+		// English language is set for parser because it relies on English messages
+		// in the output of the 'gcc -v' command.
+
+		List<String> envp = new ArrayList<String>(Arrays.asList(BuildRunnerHelper.getEnvp(currentCfgDescription)));
+		for (Iterator<String> iterator = envp.iterator(); iterator.hasNext();) {
+			String var = iterator.next();
+			if (var.startsWith(ENV_LANGUAGE + '=') || var.startsWith(ENV_LC_ALL + '=')) {
+				iterator.remove();
+			}
+		}
+		envp.add(ENV_LANGUAGE + "=en");    // override for GNU gettext //$NON-NLS-1$
+		envp.add(ENV_LC_ALL + "=C.UTF-8"); // for other parts of the system libraries //$NON-NLS-1$
+
+		return envp.toArray(new String[envp.size()]);
 	}
 
 	protected int runProgramForLanguage(String languageId, String command, String[] envp, URI workingDirectoryURI, OutputStream consoleOut, OutputStream consoleErr, IProgressMonitor monitor) throws CoreException, IOException {

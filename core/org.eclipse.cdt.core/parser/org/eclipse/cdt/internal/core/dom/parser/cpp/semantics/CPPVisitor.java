@@ -13,7 +13,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
-import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.*;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.ALLCVQ;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.CVTYPE;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getNestedType;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getUltimateTypeUptoPointers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1468,8 +1472,9 @@ public class CPPVisitor extends ASTQueries {
 				        break;
 				    } else if (prop == IASTElaboratedTypeSpecifier.TYPE_NAME) {
 						IASTNode p = name.getParent().getParent();
-						if (p instanceof IASTSimpleDeclaration &&
-								((IASTSimpleDeclaration) p).getDeclarators().length == 0) {
+						if (p instanceof IASTParameterDeclaration ||
+								(p instanceof IASTSimpleDeclaration &&
+								((IASTSimpleDeclaration) p).getDeclarators().length == 0)) {
 							break;
 						}
 					} else if (prop == IASTDeclarator.DECLARATOR_NAME) {
@@ -1757,10 +1762,9 @@ public class CPPVisitor extends ASTQueries {
 	 * Creates the type for a parameter declaration.
 	 */
 	public static IType createType(final ICPPASTParameterDeclaration pdecl, boolean forFuncType) {
-		IType pt;
 		IASTDeclSpecifier pDeclSpec = pdecl.getDeclSpecifier();
 		ICPPASTDeclarator pDtor = pdecl.getDeclarator();
-		pt = createType(pDeclSpec);
+		IType pt = createType(pDeclSpec);
 		if (pDtor != null) {
 			pt = createType(pt, pDtor);
 		}
@@ -2012,7 +2016,8 @@ public class CPPVisitor extends ASTQueries {
 		return createAutoType(autoInitClause, declSpec, declarator);
 	}
 
-	private static IType createAutoType(IASTInitializerClause initClause, IASTDeclSpecifier declSpec, IASTDeclarator declarator) {
+	private static IType createAutoType(IASTInitializerClause initClause, IASTDeclSpecifier declSpec,
+			IASTDeclarator declarator) {
 		//  C++0x: 7.1.6.4
 		if (initClause == null || !autoTypeDeclSpecs.get().add(declSpec)) {
 			// Detected a self referring auto type, e.g.: auto x = x;
@@ -2059,6 +2064,9 @@ public class CPPVisitor extends ASTQueries {
 			return new ProblemType(ISemanticProblem.TYPE_CANNOT_DEDUCE_AUTO_TYPE);
 		}
 		type = argument.getTypeValue();
+		IType t = SemanticUtil.substituteTypedef(type, initType);
+		if (t != null)
+			type = t;
 		if (initClause instanceof ICPPASTInitializerList) {
 			type = (IType) CPPTemplates.instantiate(initializer_list_template,
 					new ICPPTemplateArgument[] { new CPPTemplateArgument(type) });
