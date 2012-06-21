@@ -2,6 +2,8 @@ eclipse-cdt (8.1.0-1) UNRELEASED; urgency=low
 
   * New upstream release.
   * Compile for Java 1.6.
+  * Use default CPPFLAGS in jni library build.
+    - Enables Fortify Source functions.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 10 May 2012 23:17:12 +0200
 

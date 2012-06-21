@@ -1,0 +1,21 @@
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Thu, 21 Jun 2012 22:58:17 +0200
+Subject: use-default-cppflags
+
+---
+ core/org.eclipse.cdt.core.linux/library/Makefile |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/org.eclipse.cdt.core.linux/library/Makefile b/core/org.eclipse.cdt.core.linux/library/Makefile
+index 6e67977..4e10da3 100644
+--- a/core/org.eclipse.cdt.core.linux/library/Makefile
++++ b/core/org.eclipse.cdt.core.linux/library/Makefile
+@@ -12,7 +12,7 @@ JDK_INCLUDES= $(JAVA_HOME)/include
+ JDK_OS_INCLUDES= $(JAVA_HOME)/include/$(OS)
+ 
+ CC=gcc
+-CPPFLAGS = -I. -I$(JDK_INCLUDES) -I$(JDK_OS_INCLUDES)
++CPPFLAGS += -I. -I$(JDK_INCLUDES) -I$(JDK_OS_INCLUDES)
+ CFLAGS +=-fpic -D_REENTRANT -D_GNU_SOURCE
+ 
+ INSTALL_DIR = ../../org.eclipse.cdt.core.linux.$(ARCH)/os/$(OS)/$(ARCH)
