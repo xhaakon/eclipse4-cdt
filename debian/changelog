@@ -1,4 +1,4 @@
-eclipse-cdt (8.1.0~git1-1) UNRELEASED; urgency=low
+eclipse-cdt (8.1.0-1) UNRELEASED; urgency=low
 
   * New upstream release.
   * Compile for Java 1.6.
