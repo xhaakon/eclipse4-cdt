@@ -1,4 +1,4 @@
-eclipse-cdt (8.1.0-1) UNRELEASED; urgency=low
+eclipse-cdt (8.1.0-1) unstable; urgency=low
 
   [ Jakub Adam ]
   * New upstream release.
@@ -10,7 +10,7 @@ eclipse-cdt (8.1.0-1) UNRELEASED; urgency=low
   * Cherry-pick upstream patch for Eclipse Bug 382496.
   * Bump (Build-)Depends on eclipse to 3.8.
 
- -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 10 May 2012 23:17:12 +0200
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Sat, 23 Jun 2012 19:38:18 +0200
 
 eclipse-cdt (8.0.2-1) unstable; urgency=low
 
