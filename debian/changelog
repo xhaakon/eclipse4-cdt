@@ -1,4 +1,4 @@
-eclipse-cdt (8.1.0-2) UNRELEASED; urgency=low
+eclipse-cdt (8.1.0-2) unstable; urgency=low
 
   * Bump versioned build dependency on debhelper to get better
     handling of architecture specific override targets.
@@ -8,7 +8,7 @@ eclipse-cdt (8.1.0-2) UNRELEASED; urgency=low
     works around a FTBFS on sparc and reduces the build time for
     doing architecture specific builds.
 
- -- Niels Thykier <niels@thykier.net>  Sun, 24 Jun 2012 10:18:08 +0200
+ -- Niels Thykier <niels@thykier.net>  Sun, 24 Jun 2012 10:34:20 +0200
 
 eclipse-cdt (8.1.0-1) unstable; urgency=low
 
