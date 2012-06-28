@@ -38,6 +38,13 @@ override_dh_auto_clean:
 override_dh_auto_build:
 	# Do not use the auto-build with ant.
 
+MACROS_DIR=debian/.eclipse-build/org.eclipse.cdt.autotools.ui/macros
+override_jh_setupenvironment:
+	jh_setupenvironment
+	mkdir -p $(MACROS_DIR)
+	cd debian/docs && ./regenerateFromTexinfo.sh
+	cp debian/docs/acmacros-*.xml debian/docs/ammacros-*.xml $(MACROS_DIR)
+
 override_jh_compilefeatures-arch:
 	cd $(BUILD_DIR)/org.eclipse.cdt.core.linux/library && \
 		make JAVA_HOME="$(JAVA_HOME)" ARCH=$(ECLIPSE_BUILD_ARCH) CC='gcc -D_GNU_SOURCE' CFLAGS="$(CFLAGS) -fPIC" LDFLAGS="$(LDFLAGS) -fPIC"
@@ -54,6 +61,10 @@ override_dh_install-arch:
 override_jh_installeclipse-indep:
 	jh_installeclipse
 	rm -f debian/eclipse-cdt/usr/share/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.launch.remote.source*.jar
+
+override_dh_clean:
+	dh_clean
+	rm -rf debian/docs/*.xml
 
 get-orig-source:
 	debian/fetch-cdt.sh

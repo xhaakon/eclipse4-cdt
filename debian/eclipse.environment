@@ -79,3 +79,8 @@ visualizer/org.eclipse.cdt.visualizer*
 # Needed for feature org.eclipse.cdt.testsrunner.feature
 
 testsrunner/org.eclipse.cdt.testsrunner*
+
+# Needed for org.eclipse.cdt.autotools
+
+build/org.eclipse.cdt.autotools*
+build/org.eclipse.linuxtools*

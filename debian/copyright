@@ -91,6 +91,14 @@ Copyright: 2008, Andrew Overholt
            2008-2010, Jeff Johnston
 License: Fedora-contribution
 
+Files: debian/docs/src/autoconf/*
+Copyright: 1992-1996, 1998-2012, Free Software Foundation, Inc.
+License: GFDL-NIV
+
+Files: debian/docs/src/automake/*
+Copyright: 1995-2012, Free Software Foundation, Inc.
+License: GFDL-NIV
+
 License: BSD-like
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -475,3 +483,10 @@ License: EPL-1.0
  this Agreement will bring a legal action under this Agreement more than
  one year after the cause of action arose. Each party waives its rights to
  a jury trial in any resulting litigation.
+
+License: GFDL-NIV
+ On a Debian system, full text of the GNU Free Documentation License 1.3
+ can be found at /usr/share/common-licenses/GFDL-1.3.
+ .
+ Files contained in this source package released under GFDL do not
+ identify any "Invariant Sections" that would make them DFSG incompatible.
