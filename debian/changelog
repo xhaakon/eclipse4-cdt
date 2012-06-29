@@ -1,9 +1,9 @@
-eclipse-cdt (8.1.0+dfsg-1) UNRELEASED; urgency=low
+eclipse-cdt (8.1.0+dfsg-1) unstable; urgency=low
 
   * Remove files generated out of texi documentation.
   * Update d/watch.
 
- -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 28 Jun 2012 16:58:26 +0200
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 29 Jun 2012 11:29:38 +0200
 
 eclipse-cdt (8.1.0-2) unstable; urgency=low
 
