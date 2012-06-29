@@ -1,7 +1,6 @@
 eclipse-cdt (8.1.0+dfsg-1) UNRELEASED; urgency=low
 
   * Remove files generated out of texi documentation.
-  * Enable eclipse-cdt-autotools plugin.
   * Update d/watch.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 28 Jun 2012 16:58:26 +0200

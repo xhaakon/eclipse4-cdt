@@ -64,29 +64,29 @@ Description: C/C++ Development Tools for Eclipse (JNI)
  .
  This package contains architecture specific JNI libraries
 
-Package: eclipse-cdt-autotools
-Architecture: all
-Depends: eclipse-cdt (= ${source:Version}),
-         autoconf,
-         automake,
-         ${misc:Depends},
-         ${orbit:Depends}
-Description: Autotools support for Eclipse CDT
- The Autotools suite of plugins adds to the CDT a support for building and
- maintaining C/C++ projects that use Autotools. With this additional support,
- a vast repository of C/C++ code can be checked out, built, and maintained
- under the CDT rather easily without having to resort to the command line.
- .
- In conjunction with the CDT, the plugin can do the following:
-  * Build a C/C++ project that uses a configure script or an autogen
-    script or a Makefile.cvs script
-  * Create a simple C or C++ hello world Autotools project via a template
-  * Allow configuration parameters to be set via a gui and to rebuild when
-    configuration parameters are changed
-  * Colorized editing of configuration files such as configure.in, configure.ac,
-    Makefile.am, and Makefile.in with full hover help for autoconf/automake
-    macros
-  * Allow specification of multiple build configurations for a single project
-  * Run autotools such as autoconf, automake, or aclocal directly using a gui
-    interface
-  * Includes hover help for autoconf and automake macros in the editors
+#Package: eclipse-cdt-autotools
+#Architecture: all
+#Depends: eclipse-cdt (= ${source:Version}),
+#         autoconf,
+#         automake,
+#         ${misc:Depends},
+#         ${orbit:Depends}
+#Description: Autotools support for Eclipse CDT
+# The Autotools suite of plugins adds to the CDT a support for building and
+# maintaining C/C++ projects that use Autotools. With this additional support,
+# a vast repository of C/C++ code can be checked out, built, and maintained
+# under the CDT rather easily without having to resort to the command line.
+# .
+# In conjunction with the CDT, the plugin can do the following:
+#  * Build a C/C++ project that uses a configure script or an autogen
+#    script or a Makefile.cvs script
+#  * Create a simple C or C++ hello world Autotools project via a template
+#  * Allow configuration parameters to be set via a gui and to rebuild when
+#    configuration parameters are changed
+#  * Colorized editing of configuration files such as configure.in, configure.ac,
+#    Makefile.am, and Makefile.in with full hover help for autoconf/automake
+#    macros
+#  * Allow specification of multiple build configurations for a single project
+#  * Run autotools such as autoconf, automake, or aclocal directly using a gui
+#    interface
+#  * Includes hover help for autoconf and automake macros in the editors
