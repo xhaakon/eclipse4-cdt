@@ -1,3 +1,9 @@
+eclipse-cdt (8.1.0+dfsg-2) UNRELEASED; urgency=low
+
+  * Enable eclipse-cdt-autotools plugin.
+
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 29 Jun 2012 11:50:01 +0200
+
 eclipse-cdt (8.1.0+dfsg-1) unstable; urgency=low
 
   * Remove files generated out of texi documentation.
