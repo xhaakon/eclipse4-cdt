@@ -1,8 +1,8 @@
-eclipse-cdt (8.1.0+dfsg-2) UNRELEASED; urgency=low
+eclipse-cdt (8.1.0+dfsg-2) unstable; urgency=low
 
   * Enable eclipse-cdt-autotools plugin.
 
- -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 29 Jun 2012 11:50:01 +0200
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 29 Jun 2012 11:51:21 +0200
 
 eclipse-cdt (8.1.0+dfsg-1) unstable; urgency=low
 
