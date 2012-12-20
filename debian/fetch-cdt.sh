@@ -1,66 +1,65 @@
 #!/bin/sh
-# This file has been obtained from:
-#   http://cvs.fedoraproject.org/viewvc/rpms/eclipse-cdt/devel/
-#
-# The author list below is not from the original file, but has been
-# written based on the CVS commit log (in case the CVS should some day
-# be unavailable).
-#
-# Written by: 2008, Andrew Overholt
-# Modified by: 2008-2010, Jeff Johnston 
 
 set -e
 
-CDTTAG=v201002161416
-UPSTREAM_VERSION=6.0.2
-ECLIPSEBASE=/usr/lib/eclipse
+NAME=eclipse-cdt
+VERSION=8.1.1
+DEB_VERSION=${VERSION}
 
-mkdir -p temp && cd temp
-mkdir -p home
-mkdir -p ws
-rm -rf org.eclipse.cdt-releng
-cvs -d:pserver:anonymous@dev.eclipse.org:/cvsroot/tools export -r $CDTTAG org.eclipse.cdt-releng/org.eclipse.cdt.releng
-cd org.eclipse.cdt-releng/org.eclipse.cdt.releng/
+CDT_GIT_WEB=http://git.eclipse.org/c/cdt/org.eclipse.cdt.git/
 
-# The build.xml doesn't fetch master or testing features so we must add this ourselves.
-sed --in-place -e'91,91i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">\n\t\t\t<property name="builder" value="${basedir}/master"/>\n\t\t</ant>' build.xml
-sed --in-place -e'91,91i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">\n\t\t\t<property name="builder" value="${basedir}/testing"/>\n\t\t</ant>' build.xml
-sed --in-place -e'71,71i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">\n\t\t\t<property name="builder" value="${basedir}/master"/>\n\t\t</ant>' build.xml
-sed --in-place -e'71,71i\\t\t<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">\n\t\t\t<property name="builder" value="${basedir}/testing"/>\n\t\t</ant>' build.xml
+OUT_DIR=${NAME}-${VERSION}
 
-# Remove copying of binary jar in build.xml.  We remove this jar so this operation will fail.
-sed --in-place -e "/copy file=\"\${buildDirectory}.*net\.sourceforge\.lpg/,/\/>/"d build.xml 
+downloadSnapshot() {
+	VERSION_UNDERSCORE=$(echo $VERSION | sed "s/\./_/g")
+	SRC_DIR=org.eclipse.cdt-CDT_$VERSION_UNDERSCORE
+	TARBALL=$SRC_DIR.tar.bz2
 
-sed --in-place -e "s,eclipse.cdt/mylyn,eclipse.cdt-old/mylyn,g" maps/cdt.map
+	rm -rf $OUT_DIR
+	wget "$CDT_GIT_WEB/snapshot/$TARBALL"
+	tar xf $TARBALL
+	rm -f $TARBALL
+	mv $SRC_DIR $OUT_DIR
+}
 
+downloadSnapshot
 
-PDEBUILDVERSION=$(ls $ECLIPSEBASE/plugins | grep pde.build_ | sed 's/org.eclipse.pde.build_//')
-java -cp /usr/lib/eclipse/startup.jar \
-     -Duser.home=../../home \
--XX:CompileCommand="exclude,org/eclipse/core/internal/dtree/DataTreeNode,forwardDeltaWith" \
--XX:CompileCommand="exclude,org/eclipse/jdt/internal/compiler/lookup/ParameterizedMethodBinding,<init>" \
--XX:CompileCommand="exclude,org/eclipse/cdt/internal/core/dom/parser/cpp/semantics/CPPTemplates,instantiateTemplate" \
--XX:CompileCommand="exclude,org/eclipse/cdt/internal/core/pdom/dom/cpp/PDOMCPPLinkage,addBinding" \
-     org.eclipse.core.launcher.Main             \
-  -Dpde.build.scripts=$ECLIPSEBASE/plugins/org.eclipse.pde.build_$PDEBUILDVERSION/scripts \
-  -application org.eclipse.ant.core.antRunner \
-  -buildfile build.xml -DbaseLocation=$ECLIPSEBASE \
-  -Dpde.build.scripts=$ECLIPSEBASE/plugins/org.eclipse.pde.build_$PDEBUILDVERSION/scripts \
-  -DcdtTag=$CDTTAG \
-  -DdontUnzip=true fetch
+cd $OUT_DIR
+
+find -type f -name .gitignore -delete
+
+# Remove files generated from texi documentation
+rm -rf build/org.eclipse.cdt.autotools.ui/macros
+
+# Remove precompiled binaries
+rm -rf core/org.eclipse.cdt.core.aix/os \
+       core/org.eclipse.cdt.core.aix/cdtaix.jar
+rm -rf core/org.eclipse.cdt.core.linux.ia64/os \
+       core/org.eclipse.cdt.core.linux.ppc/os \
+       core/org.eclipse.cdt.core.linux.ppc64/os \
+       core/org.eclipse.cdt.core.linux.x86/os \
+       core/org.eclipse.cdt.core.linux.x86_64/os \
+       core/org.eclipse.cdt.core.linux/cdt_linux.jar
+rm -rf core/org.eclipse.cdt.core.macosx/os \
+       core/org.eclipse.cdt.core.macosx/cdt_macosx.jar
+rm -rf core/org.eclipse.cdt.core.qnx/os
+rm -rf core/org.eclipse.cdt.core.solaris/os \
+       core/org.eclipse.cdt.core.solaris/cdt_solaris.jar
+rm -rf core/org.eclipse.cdt.core.win32.x86/os \
+       core/org.eclipse.cdt.core.win32.x86_64/os \
+       core/org.eclipse.cdt.core.win32/cdt_win32.jar
+
+find core/org.eclipse.cdt.core.tests/resources/exe -type f \
+     \( -name exe -o -name exe_g -o -name *.o \) -delete
+find core/org.eclipse.cdt.core.tests/resources/exebig -type f \
+     \( -name exebig_g -o -name *.o \) -delete
+find core/org.eclipse.cdt.core.tests/resources/testlib/x86 -type f \
+     \( -name *.a -o -name *.o -o -name *.so \) -delete
 
 cd ..
-mv org.eclipse.cdt.releng eclipse-cdt-${UPSTREAM_VERSION}
-find eclipse-cdt-${UPSTREAM_VERSION} -type f -a \
-    \( -name '*.so' -o -name '*.o' -o -name 'net.*.jar' -o -name '*.dll' -o \
-       -name '*.exe' -o -name 'exe' -o -name '*_g' -o -name '*.zip' -o \
-       -name '*.a' -o -name '*.jnilib' \
-    \) \
-    -a -delete
-find eclipse-cdt-${UPSTREAM_VERSION} -depth -type d -empty -delete
-sed -i s/^#.*//g eclipse-cdt-${UPSTREAM_VERSION}/results/pluginVersions.properties \
-               eclipse-cdt-${UPSTREAM_VERSION}/results/featureVersions.properties
 
-tar jcf ../../../eclipse-cdt_${UPSTREAM_VERSION}.orig.tar.bz2 eclipse-cdt-${UPSTREAM_VERSION}
-cd ../../
-rm -fr temp/
+echo "Creating tarball '${NAME}_${DEB_VERSION}.orig.tar.bz2'..."
+tar -cjf ../${NAME}_${DEB_VERSION}.orig.tar.bz2 $OUT_DIR
+
+rm -rf $OUT_DIR
+
