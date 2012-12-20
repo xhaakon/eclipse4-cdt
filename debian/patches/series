@@ -1,3 +1,2 @@
 use-default-cppflags.patch
-ebug-382496.patch
 autotools-add-distro-version-to-list.patch
