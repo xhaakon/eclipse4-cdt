@@ -4,6 +4,7 @@ eclipse-cdt (8.1.1-1) UNRELEASED; urgency=low
   * Rewritten obsolete d/fetch-cdt.sh.
   * Updated d/watch.
   * Removed d/patches/ebug-382496.patch (applied upstream).
+  * Bump Standards-Version to 3.9.4.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 20 Dec 2012 12:29:49 +0100
 
