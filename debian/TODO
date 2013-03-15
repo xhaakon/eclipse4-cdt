@@ -2,5 +2,4 @@
  * split the package into a -sdk package
 
 = Related =
- * Package autotools plugin?
  * Package cppunit plugin?
