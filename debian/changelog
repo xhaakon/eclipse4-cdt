@@ -1,6 +1,7 @@
 eclipse-cdt (8.1.2-1) UNRELEASED; urgency=low
 
   * New upstream release.
+  * Use xz compression for orig tarball.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 15 Mar 2013 17:16:32 +0100
 

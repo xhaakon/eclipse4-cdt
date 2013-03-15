@@ -58,8 +58,8 @@ find core/org.eclipse.cdt.core.tests/resources/testlib/x86 -type f \
 
 cd ..
 
-echo "Creating tarball '${NAME}_${DEB_VERSION}.orig.tar.bz2'..."
-tar -cjf ../${NAME}_${DEB_VERSION}.orig.tar.bz2 $OUT_DIR
+echo "Creating tarball '${NAME}_${DEB_VERSION}.orig.tar.xz'..."
+tar -cJf ../${NAME}_${DEB_VERSION}.orig.tar.xz $OUT_DIR
 
 rm -rf $OUT_DIR
 
