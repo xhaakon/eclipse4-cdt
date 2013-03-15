@@ -60,7 +60,7 @@ override_dh_install-arch:
 
 override_jh_installeclipse-indep:
 	jh_installeclipse
-	rm -f debian/eclipse-cdt/usr/share/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.launch.remote.source*.jar
+	rm -f debian/eclipse-cdt-launch-remote/usr/share/eclipse/dropins/cdt-launch-remote/eclipse/plugins/org.eclipse.cdt.launch.remote.source*.jar
 
 override_dh_clean:
 	dh_clean

@@ -20,7 +20,6 @@ Homepage: http://www.eclipse.org/cdt/
 Package: eclipse-cdt
 Architecture: all
 Depends: eclipse-platform (>= 3.8~),
-         eclipse-rse,
          eclipse-cdt-jni (>= ${source:Version}),
          gcc,
          make,
@@ -90,3 +89,16 @@ Description: Autotools support for Eclipse CDT
   * Run autotools such as autoconf, automake, or aclocal directly using a gui
     interface
   * Includes hover help for autoconf and automake macros in the editors
+
+Package: eclipse-cdt-launch-remote
+Architecture: all
+Depends: eclipse-cdt (= ${source:Version}),
+         eclipse-rse,
+         ${misc:Depends},
+         ${orbit:Depends}
+Description: Remote launch and debug support for Eclipse CDT
+ The eclipse-cdt package contains Eclipse features and plugins that are
+ useful for C and C++ development.
+ .
+ This package allows one to upload and launch a C/C++ application on a remote
+ host machine from within CDT. Remote debugging is also supported.

@@ -5,7 +5,6 @@ org.eclipse.cdt.gnu.debug
 org.eclipse.cdt.gnu.dsf
 org.eclipse.cdt.debug.ui.memory
 org.eclipse.cdt.build.crossgcc
-org.eclipse.cdt.launch.remote
 org.eclipse.cdt.visualizer
 org.eclipse.cdt.gnu.multicorevisualizer
 org.eclipse.cdt.testsrunner.feature
