@@ -1,4 +1,4 @@
-eclipse-cdt (8.1.2-1) UNRELEASED; urgency=low
+eclipse-cdt (8.1.2-1) experimental; urgency=low
 
   * New upstream release.
   * Use xz compression for orig tarball.
