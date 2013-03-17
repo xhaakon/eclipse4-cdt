@@ -3,7 +3,7 @@ eclipse-cdt (8.1.2-1) experimental; urgency=low
   * New upstream release.
   * Use xz compression for orig tarball.
   * Package remote launch feature as a separate binary deb.
-    - Doesn't force all CDT users to install cca 5MB of eclipse-rse,
+    - Doesn't force all CDT users to install about 5MB of eclipse-rse,
       only those who need remote launch capabilities will have to.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 15 Mar 2013 17:16:32 +0100
