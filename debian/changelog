@@ -1,3 +1,11 @@
+eclipse-cdt (8.1.2-2) UNRELEASED; urgency=low
+
+  * Add Breaks/Replaces: eclipse-cdt (<< 8.1.2-1) into eclipse-cdt-launch-remote
+    to allow clean upgrades.
+  * Make eclipse-cdt Suggest eclipse-cdt-autotools and eclipse-cdt-launch-remote.
+
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 04 Apr 2013 16:38:16 +0200
+
 eclipse-cdt (8.1.2-1) experimental; urgency=low
 
   * New upstream release.

@@ -25,7 +25,9 @@ Depends: eclipse-platform (>= 3.8~),
          make,
          ${misc:Depends},
          ${orbit:Depends}
-Suggests: g++
+Suggests: g++,
+          eclipse-cdt-autotools,
+          eclipse-cdt-launch-remote
 Description: C/C++ Development Tools for Eclipse
  The eclipse-cdt package contains Eclipse features and plugins that are
  useful for C and C++ development.
@@ -96,6 +98,8 @@ Depends: eclipse-cdt (= ${source:Version}),
          eclipse-rse,
          ${misc:Depends},
          ${orbit:Depends}
+Breaks: eclipse-cdt (<< 8.1.2-1)
+Replaces: eclipse-cdt (<< 8.1.2-1)
 Description: Remote launch and debug support for Eclipse CDT
  The eclipse-cdt package contains Eclipse features and plugins that are
  useful for C and C++ development.
