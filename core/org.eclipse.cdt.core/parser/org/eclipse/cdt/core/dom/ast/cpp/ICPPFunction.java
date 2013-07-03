@@ -41,7 +41,7 @@ public interface ICPPFunction extends IFunction, ICPPBinding {
 
 	/**
 	 * Returns whether this function is declared constexpr.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	public boolean isConstexpr();
 

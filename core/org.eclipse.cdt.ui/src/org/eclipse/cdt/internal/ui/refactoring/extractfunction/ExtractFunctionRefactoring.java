@@ -128,10 +128,9 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 			"org.eclipse.cdt.internal.ui.refactoring.extractfunction.ExtractFunctionRefactoring"; //$NON-NLS-1$
 
 	static final Integer NULL_INTEGER = Integer.valueOf(0);
-	static final char[] ZERO= "0".toCharArray(); //$NON-NLS-1$
 
 	private NodeContainer container;
-	final ExtractFunctionInformation info;
+	private final ExtractFunctionInformation info;
 
 	final Map<String, Integer> names;
 	final Container<Integer> namesCounter;
@@ -142,7 +141,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 
 	private FunctionExtractor extractor;
 	private INodeFactory nodeFactory;
-	DefaultCodeFormatterOptions formattingOptions;
+	private DefaultCodeFormatterOptions formattingOptions;
 
 	private IIndex index;
 	private IASTTranslationUnit ast;
@@ -215,6 +214,10 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 			info.setDeclarator(getDeclaration(container.getNodesToWrite().get(0)));
 			MethodContext context =	NodeHelper.findMethodContext(container.getNodesToWrite().get(0),
 					refactoringContext, sm.newChild(1));
+			if (context.getType() == ContextType.METHOD && context.getMethodDeclarationName() == null) {
+				initStatus.addFatalError(Messages.ExtractFunctionRefactoring_no_declaration_of_surrounding_method);
+				return initStatus;
+			}
 			info.setMethodContext(context);
 			return initStatus;
 		} finally {
@@ -290,8 +293,9 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 		MethodContext context = info.getMethodContext();
 
 		if (context.getType() == ContextType.METHOD && !context.isInline()) {
+			IASTDeclaration contextDeclaration = context.getMethodDeclaration();
 			ICPPASTCompositeTypeSpecifier classDeclaration =
-					(ICPPASTCompositeTypeSpecifier) context.getMethodDeclaration().getParent();
+					(ICPPASTCompositeTypeSpecifier) contextDeclaration.getParent();
 			IASTSimpleDeclaration methodDeclaration = getDeclaration(methodName);
 
 			if (isMethodAllreadyDefined(methodDeclaration, classDeclaration, getIndex())) {

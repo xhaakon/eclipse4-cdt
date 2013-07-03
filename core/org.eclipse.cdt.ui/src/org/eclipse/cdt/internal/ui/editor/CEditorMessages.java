@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2013 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
  *     Tomasz Wesolowski
+ *     Alvaro Sanchez-Leon (Ericsson AB)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.editor;
 
@@ -36,6 +37,15 @@ public final class CEditorMessages extends NLS {
 	public static String AddIncludeOnSelection_insertion_failed;
 	public static String AddIncludeOnSelection_help_provider_error;
 	public static String AddIncludesOperation_description;
+	public static String OrganizeIncludes_label;
+	public static String OrganizeIncludes_description;
+	public static String OrganizeIncludes_action;
+	public static String OrganizeIncludes_error_title;
+	public static String OrganizeIncludes_insertion_failed;
+	public static String OrganizeIncludes_help_provider_error;
+	public static String OrganizeIncludes_failed;
+	public static String OrganizeIncludes_choose_header;
+	public static String OrganizeIncludesOperation_description;
 	public static String ShowInCView_description;
 	public static String ShowInCView_label;
 	public static String ShowInCView_tooltip;
@@ -97,6 +107,7 @@ public final class CEditorMessages extends NLS {
 	public static String CEditor_markOccurrences_job_name;
 	public static String CEditor_index_expander_job_name;
 	public static String CEditorActionContributor_ExpandSelectionMenu_label;
+	public static String StepIntoSelection_unable_to_resolve_name;
 
 	static {
 		NLS.initializeMessages(CEditorMessages.class.getName(), CEditorMessages.class);

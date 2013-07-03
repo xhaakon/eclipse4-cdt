@@ -22,9 +22,11 @@ import java.util.Map;
 
 import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
+import org.eclipse.cdt.debug.core.model.IConnectHandler;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ReflectionSequence;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitorWithProgress;
@@ -209,11 +211,25 @@ public class FinalLaunchSequence extends ReflectionSequence {
 					new RequestMonitor(getExecutor(), requestMonitor) {
 						@Override
 						protected void handleCompleted() {
-							fCommandControl.setPrintPythonErrors(false, requestMonitor);
+							fCommandControl.setPrintPythonErrors(false,  new ImmediateRequestMonitor() {
+								@Override
+								protected void handleCompleted() {
+									// Ignore this error
+									// Bug 402988
+									requestMonitor.done();
+								}
+							});
 						}
 					});
 		} else {
-			fCommandControl.setPrintPythonErrors(false, requestMonitor);
+			fCommandControl.setPrintPythonErrors(false, new ImmediateRequestMonitor() {
+				@Override
+				protected void handleCompleted() {
+					// Ignore this error
+					// Bug 402988
+					requestMonitor.done();
+				}
+			});
 		}
 	}
 	
@@ -520,9 +536,9 @@ public class FinalLaunchSequence extends ReflectionSequence {
 						fProcService.createProcessContext(fCommandControl.getContext(), Integer.toString(pid)),
 						new DataRequestMonitor<IDMContext>(getExecutor(), requestMonitor));
 			} else {
-				IConnect connectCommand = (IConnect)fSession.getModelAdapter(IConnect.class);
-				if (connectCommand != null) {
-					connectCommand.connect(requestMonitor);
+				IConnectHandler connectCommand = (IConnectHandler)fSession.getModelAdapter(IConnectHandler.class);
+				if (connectCommand instanceof IConnect) {
+					((IConnect)connectCommand).connect(requestMonitor);
 				} else {
 					requestMonitor.done();
 				}

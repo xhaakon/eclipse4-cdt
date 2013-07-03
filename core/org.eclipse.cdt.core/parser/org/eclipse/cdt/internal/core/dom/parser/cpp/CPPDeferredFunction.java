@@ -43,6 +43,16 @@ public class CPPDeferredFunction extends CPPUnknownBinding implements ICPPFuncti
 		final IBinding owner = candidates[0].getOwner();
 		return new CPPDeferredFunction(owner, candidates[0].getNameCharArray(), candidates);
 	}
+	
+	/**
+	 * Creates a CPPDeferredFunction given a name. This is for cases where there
+	 * are no candidates that could be passed to createForCandidates().
+	 * @param name the name of the function
+	 * @return the constructed CPPDeferredFunction
+	 */
+	public static ICPPFunction createForName(char[] name) {
+		return new CPPDeferredFunction(null, name, null);
+	}
 
 	private final IBinding fOwner;
 	private final ICPPFunction[] fCandidates;

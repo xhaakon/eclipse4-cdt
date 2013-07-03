@@ -48,7 +48,7 @@ public interface ICPPTemplateArgument {
 	/**
 	 * Similar to {@link #getTypeValue()} but returns the original type value before typedef
 	 * resolution.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	IType getOriginalTypeValue();
 

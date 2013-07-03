@@ -15,8 +15,12 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.glvalueType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.prvalueType;
 
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory;
+import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.ast.IArrayType;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IFunction;
@@ -27,12 +31,14 @@ import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameterPackType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
+import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.internal.core.dom.parser.IInternalVariable;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
@@ -43,7 +49,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.core.runtime.CoreException;
 
-public class EvalBinding extends CPPEvaluation {
+public class EvalBinding extends CPPDependentEvaluation {
 	/**
 	 * The function owning the parameter if the binding is a function parameter, otherwise
 	 * {@code null}. May be computed lazily and remains {@code null} until computed.
@@ -68,14 +74,22 @@ public class EvalBinding extends CPPEvaluation {
 	private boolean fIsTypeDependent;
 	private boolean fCheckedIsTypeDependent;
 
-	public EvalBinding(IBinding binding, IType type) {
+	public EvalBinding(IBinding binding, IType type, IASTNode pointOfDefinition) {
+		this(binding, type, findEnclosingTemplate(pointOfDefinition));
+	}
+	public EvalBinding(IBinding binding, IType type, IBinding templateDefinition) {
+		super(templateDefinition);
 		fParameterPosition = -1;
 		fBinding= binding;
 		fType= type;
 		fFixedType= type != null;
 	}
 
-	public EvalBinding(ICPPFunction parameterOwner, int parameterPosition, IType type) {
+	public EvalBinding(ICPPFunction parameterOwner, int parameterPosition, IType type, IASTNode pointOfDefinition) {
+		this(parameterOwner, parameterPosition, type, findEnclosingTemplate(pointOfDefinition));
+	}
+	public EvalBinding(ICPPFunction parameterOwner, int parameterPosition, IType type, IBinding templateDefinition) {
+		super(templateDefinition);
 		fParameterOwner = parameterOwner;
 		fParameterPosition = parameterPosition;
 		fType= type;
@@ -238,10 +252,46 @@ public class EvalBinding extends CPPEvaluation {
 		}
 		if (binding instanceof ICPPTemplateNonTypeParameter) {
 			IType type= ((ICPPTemplateNonTypeParameter) binding).getType();
+			// If the binding is a non-type parameter pack, it must have been 
+			// referenced from inside the expansion pattern of a pack expansion. 
+			// In such a context, the type of the binding is the type of each 
+			// parameter in the parameter pack, not the type of the pack itself.
+			if (type instanceof ICPPParameterPackType)
+				type = ((ICPPParameterPackType) type).getType();
 			return prvalueType(type);
 		}
 		if (binding instanceof IVariable) {
-			final IType type = ((IVariable) binding).getType();
+			IType type = ((IVariable) binding).getType();
+			if (type instanceof IArrayType && ((IArrayType) type).getSize() == null &&
+					binding instanceof IIndexBinding && point != null) {
+				// Refine the type of the array variable by filling in missing size information.
+				// This may be necessary if the variable is declared outside of the current
+				// translation unit	without providing array size information, but is defined in
+				// the current translation unit with such information.
+				// For example:
+				// header.h
+				// --------
+				// struct S {
+				//   static const char[] c;
+				// };
+				//
+				// source.cpp
+				// ----------
+				// #include "header.h"
+				// const char S::c[] = "abc";
+				IASTTranslationUnit ast = point.getTranslationUnit();
+				IASTName[] definitions = ast.getDefinitionsInAST(binding);
+				for (IASTName definition : definitions) {
+					IASTDeclarator declarator = CPPVisitor.findAncestorWithType(definition, IASTDeclarator.class);
+					if (declarator != null) {
+						IType localType = CPPVisitor.createType(declarator);
+						if (localType instanceof IArrayType && ((IArrayType) localType).getSize() != null) {
+							type = localType;
+							break;
+						}
+					}
+				}
+			}
 			return SemanticUtil.mapToAST(glvalueType(type), point);
 		}
 		if (binding instanceof IFunction) {
@@ -285,31 +335,34 @@ public class EvalBinding extends CPPEvaluation {
 
 	@Override
 	public void marshal(ITypeMarshalBuffer buffer, boolean includeValue) throws CoreException {
-		byte firstByte = ITypeMarshalBuffer.EVAL_BINDING;
+		short firstBytes = ITypeMarshalBuffer.EVAL_BINDING;
 		ICPPFunction parameterOwner = getParameterOwner();
 		if (parameterOwner != null) {
 			// A function parameter cannot be marshalled directly. We are storing the owning
 			// function and the parameter position instead.
-			buffer.putByte((byte) (ITypeMarshalBuffer.EVAL_BINDING | ITypeMarshalBuffer.FLAG1));
+			buffer.putShort((short) (ITypeMarshalBuffer.EVAL_BINDING | ITypeMarshalBuffer.FLAG1));
 			buffer.marshalBinding(parameterOwner);
 			buffer.putInt(getFunctionParameterPosition());
 		} else {
-			buffer.putByte(firstByte);
+			buffer.putShort(firstBytes);
 			buffer.marshalBinding(fBinding);
 		}
 		buffer.marshalType(fFixedType ? fType : null);
+		marshalTemplateDefinition(buffer);
 	}
 
-	public static ISerializableEvaluation unmarshal(int firstByte, ITypeMarshalBuffer buffer) throws CoreException {
-		if ((firstByte & ITypeMarshalBuffer.FLAG1) != 0) {
+	public static ISerializableEvaluation unmarshal(short firstBytes, ITypeMarshalBuffer buffer) throws CoreException {
+		if ((firstBytes & ITypeMarshalBuffer.FLAG1) != 0) {
 			ICPPFunction parameterOwner= (ICPPFunction) buffer.unmarshalBinding();
 			int parameterPosition= buffer.getInt();
 			IType type= buffer.unmarshalType();
-			return new EvalBinding(parameterOwner, parameterPosition, type);
+			IBinding templateDefinition= buffer.unmarshalBinding();
+			return new EvalBinding(parameterOwner, parameterPosition, type, templateDefinition);
 		} else {
 			IBinding binding= buffer.unmarshalBinding();
 			IType type= buffer.unmarshalType();
-			return new EvalBinding(binding, type);
+			IBinding templateDefinition= buffer.unmarshalBinding();
+			return new EvalBinding(binding, type, templateDefinition);
 		}
 	}
 
@@ -318,14 +371,18 @@ public class EvalBinding extends CPPEvaluation {
 			ICPPClassSpecialization within, int maxdepth, IASTNode point) {
 		IBinding origBinding = getBinding();
 		if (origBinding instanceof ICPPTemplateNonTypeParameter) {
-			ICPPTemplateArgument argument = tpMap.getArgument((ICPPTemplateNonTypeParameter) origBinding);
-			if (argument != null && argument.isNonTypeValue()) {
-				return argument.getNonTypeEvaluation();
+			if (tpMap != null) {
+				ICPPTemplateArgument argument = tpMap.getArgument((ICPPTemplateNonTypeParameter) origBinding, packOffset);
+				if (argument != null && argument.isNonTypeValue()) {
+					return argument.getNonTypeEvaluation();
+				}
 			}
-			// TODO(sprigogin): Do we need something similar for pack expansion?
 		} else if (origBinding instanceof ICPPParameter) {
 			ICPPParameter parameter = (ICPPParameter) origBinding;
 			IType origType = parameter.getType();
+			if (origType instanceof ICPPParameterPackType && packOffset != -1) {
+				origType = ((ICPPParameterPackType) origType).getType();
+			}
 			IType instantiatedType = CPPTemplates.instantiateType(origType, tpMap, packOffset, within, point);
 			if (origType != instantiatedType) {
 				return new EvalFixed(instantiatedType, ValueCategory.LVALUE, Value.create(this));
@@ -333,7 +390,7 @@ public class EvalBinding extends CPPEvaluation {
 		} else {
 			IBinding instantiatedBinding = instantiateBinding(origBinding, tpMap, packOffset, within, maxdepth, point);
 			if (instantiatedBinding != origBinding)
-				return new EvalBinding(instantiatedBinding, null);
+				return new EvalBinding(instantiatedBinding, null, getTemplateDefinition());
 		}
 		return this;
 	}
@@ -361,6 +418,10 @@ public class EvalBinding extends CPPEvaluation {
 		}
 		if (binding instanceof ICPPUnknownBinding) {
 			return CPPTemplates.determinePackSize((ICPPUnknownBinding) binding, tpMap);
+		}
+		if (binding instanceof ICPPParameter && ((ICPPParameter) binding).isParameterPack()) {
+			ICPPParameterPackType type = (ICPPParameterPackType) ((ICPPParameter) binding).getType();
+			return CPPTemplates.determinePackSize(type.getType(), tpMap);
 		}
 		
 		if (binding instanceof ICPPSpecialization) {

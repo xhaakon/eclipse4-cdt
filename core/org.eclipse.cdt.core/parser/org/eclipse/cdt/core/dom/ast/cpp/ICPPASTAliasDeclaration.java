@@ -19,8 +19,8 @@ import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 /**
  * Represents a C++ alias declaration.
  * e.g. struct Type {}; using Alias = Type;
+ * @since 5.5
  *
- * Experimental API. May change without notice.
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.
  */

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2012 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,7 +14,6 @@
  *     Anton Gorenkov
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
-
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,12 +40,16 @@ import org.eclipse.cdt.core.dom.ast.IQualifierType;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTAliasDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
@@ -59,6 +62,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPReferenceType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexName;
@@ -69,6 +73,7 @@ import org.eclipse.cdt.internal.core.dom.parser.ASTInternal;
 import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.core.runtime.CoreException;
 
@@ -582,61 +587,64 @@ public class ClassTypeHelper {
 
 		final ArrayList<ICPPMethod> result= new ArrayList<ICPPMethod>();
 		final HashMap<ICPPClassType, Boolean> virtualInClass= new HashMap<ICPPClassType, Boolean>();
-		final ICPPFunctionType mft= method.getType();
+		final ICPPFunctionType methodType= method.getType();
 
 		virtualInClass.put(mcl, method.isVirtual());
 		ICPPBase[] bases= getBases(mcl, point);
 		for (ICPPBase base : bases) {
 			IBinding b= base.getBaseClass();
 			if (b instanceof ICPPClassType) {
-				findOverridden((ICPPClassType) b, mname, mft, virtualInClass, result);
+				findOverridden((ICPPClassType) b, point, mname, methodType, virtualInClass, result);
 			}
 		}
 
-		// list is filled from most derived up to here, reverse it
+		// List is filled from most derived up to here, reverse it.
 		Collections.reverse(result);
 		return result.toArray(new ICPPMethod[result.size()]);
 	}
 
 	/**
-	 * Searches for overridden methods starting in {@code cl}. The map {@code virtualInClass} contains a mapping
-	 * of classes that have been visited to the information whether they (or a base-class) contain an overridden
-	 * method.
-	 * Returns whether {@code cl} contains an overridden method.
+	 * Searches for overridden methods starting in {@code classType}. The map {@code virtualInClass}
+	 * contains a mapping of classes that have been visited to the information whether they
+	 * (or a base-class) contain an overridden method.
+	 *
+	 * @return whether {@code classType} contains an overridden method.
 	 */
-	private static boolean findOverridden(ICPPClassType cl, char[] mname, ICPPFunctionType mft,
-			HashMap<ICPPClassType, Boolean> virtualInClass, ArrayList<ICPPMethod> result) {
-		Boolean visitedBefore= virtualInClass.get(cl);
+	private static boolean findOverridden(ICPPClassType classType, IASTNode point, char[] methodName,
+			ICPPFunctionType methodType, Map<ICPPClassType, Boolean> virtualInClass,
+			List<ICPPMethod> result) {
+		Boolean visitedBefore= virtualInClass.get(classType);
 		if (visitedBefore != null)
 			return visitedBefore;
 
-		ICPPMethod[] methods= cl.getDeclaredMethods();
+		ICPPMethod[] methods= classType.getDeclaredMethods();
 		ICPPMethod candidate= null;
 		boolean hasOverridden= false;
 		for (ICPPMethod method : methods) {
-			if (CharArrayUtils.equals(mname, method.getNameCharArray()) && functionTypesAllowOverride(mft,method.getType())) {
+			if (CharArrayUtils.equals(methodName, method.getNameCharArray()) &&
+					functionTypesAllowOverride(methodType, method.getType())) {
 				candidate= method;
 				hasOverridden= method.isVirtual();
 				break;
 			}
 		}
 
-		// prevent recursion
-		virtualInClass.put(cl, hasOverridden);
-		ICPPBase[] bases= cl.getBases();
+		// Prevent recursion.
+		virtualInClass.put(classType, hasOverridden);
+		ICPPBase[] bases= getBases(classType, point);
 		for (ICPPBase base : bases) {
 			IBinding b= base.getBaseClass();
 			if (b instanceof ICPPClassType) {
-				if (findOverridden((ICPPClassType) b, mname, mft, virtualInClass, result)) {
+				if (findOverridden((ICPPClassType) b, point, methodName, methodType, virtualInClass, result)) {
 					hasOverridden= true;
 				}
 			}
 		}
 		if (hasOverridden) {
-			// the candidate is virtual
+			// The candidate is virtual.
 			if (candidate != null)
 				result.add(candidate);
-			virtualInClass.put(cl, hasOverridden);
+			virtualInClass.put(classType, hasOverridden);
 		}
 		return hasOverridden;
 	}
@@ -880,6 +888,152 @@ public class ClassTypeHelper {
 			}
 		}
 		return resultArray;
+	}
+
+	/**
+	 * Returns the visibility for a given <code>member</code> in the <code>host</code>.
+	 * Throws an IllegalArgumentException if <code>member</code> is not a member of <code>host</code>
+	 *
+	 * @param classType The class to get the member's visibility specifier of.
+	 * @return the visibility of the <code>member</code>.
+	 */
+	public static int getVisibility(ICPPInternalClassTypeMixinHost classType, IBinding member) {
+		if (classType.getDefinition() == null) {
+			classType.checkForDefinition();
+			if (classType.getDefinition() == null) {
+				ICPPClassType backup = getBackupDefinition(classType);
+				if (backup != null) {
+					return backup.getVisibility(member);
+				}
+				if (classType instanceof ICPPClassSpecialization) {
+					// A class instance doesn't have a definition. Delegate to the class template.
+					ICPPClassType specialized = ((ICPPClassSpecialization) classType).getSpecializedBinding();
+					if (!specialized.equals(member.getOwner())) {
+						if (!(member instanceof ICPPSpecialization))
+							throw invalidMember(specialized, member);
+						member = ((ICPPSpecialization) member).getSpecializedBinding();
+					}
+					return specialized.getVisibility(member);
+				}
+
+				return ICPPClassType.v_public; // Fallback visibility
+			}
+		}
+
+		ICPPASTCompositeTypeSpecifier classDeclSpec = classType.getCompositeTypeSpecifier();
+		int visibility = getVisibility(classDeclSpec, member);
+		if (visibility >= 0)
+			return visibility;
+
+		ICPPMethod[] implicitMethods = getImplicitMethods(classType, null);
+		for (ICPPMethod implicitMethod : implicitMethods) {
+			if (member.equals(implicitMethod)) {
+				return ICPPClassType.v_public;
+			}
+		}
+
+		// It's possible that we haven't found the member because the class was illegally redefined
+		// and the member belongs to another definition. Try to search the definition containing
+		// the member.
+		if (member instanceof ICPPInternalBinding) {
+			IASTNode node = ((ICPPInternalBinding) member).getDefinition();
+			if (node != null) {
+				IASTName ownerName = CPPVisitor.findDeclarationOwnerDefinition(node, false);
+				if (ownerName != null && !ownerName.equals(classDeclSpec.getName()) &&
+						ownerName.getPropertyInParent() == ICPPASTCompositeTypeSpecifier.TYPE_NAME) {
+					classDeclSpec = (ICPPASTCompositeTypeSpecifier) ownerName.getParent();
+					visibility = getVisibility(classDeclSpec, member);
+					if (visibility >= 0)
+						return visibility;
+				}
+			}
+		}
+
+		throw invalidMember(classType, member);
+	}
+
+	private static int getVisibility(ICPPASTCompositeTypeSpecifier classDeclSpec, IBinding member) {
+		int visibility = classDeclSpec.getKey() == ICPPASTCompositeTypeSpecifier.k_class ?
+				ICPPClassType.v_private : ICPPClassType.v_public;
+		IASTDeclaration[] hostMembers = classDeclSpec.getMembers();
+		for (IASTDeclaration hostMember : hostMembers) {
+			if (hostMember instanceof ICPPASTVisibilityLabel) {
+				visibility = ((ICPPASTVisibilityLabel) hostMember).getVisibility();
+				continue;
+			}
+			while (hostMember instanceof ICPPASTTemplateDeclaration) {
+				hostMember = ((ICPPASTTemplateDeclaration) hostMember).getDeclaration();
+			}
+			if (hostMember instanceof IASTSimpleDeclaration) {
+				IASTSimpleDeclaration memberDeclaration = (IASTSimpleDeclaration) hostMember;
+				for (IASTDeclarator memberDeclarator : memberDeclaration.getDeclarators()) {
+					IBinding memberBinding =
+							ASTQueries.findInnermostDeclarator(memberDeclarator).getName().resolveBinding();
+					if (member.equals(memberBinding)){
+						return visibility;
+					}
+				}
+
+				IASTDeclSpecifier declSpec = memberDeclaration.getDeclSpecifier();
+				if (declSpec instanceof ICPPASTCompositeTypeSpecifier) {
+					IBinding memberBinding =
+							((ICPPASTCompositeTypeSpecifier) declSpec).getName().resolveBinding();
+					if (member.equals(memberBinding)) {
+						return visibility;
+					}
+					if (member instanceof IType && memberBinding instanceof IType &&
+							((IType) member).isSameType((IType) memberBinding)) {
+						return visibility;
+					}
+				} else if (declSpec instanceof ICPPASTElaboratedTypeSpecifier
+						&& memberDeclaration.getDeclarators().length == 0) {
+					IBinding memberBinding =
+							((ICPPASTElaboratedTypeSpecifier) declSpec).getName().resolveBinding();
+					if (member.equals(memberBinding)) {
+						return visibility;
+					}
+				} else if (declSpec instanceof ICPPASTEnumerationSpecifier) {
+					IBinding enumerationBinding = ((ICPPASTEnumerationSpecifier) declSpec).getName().resolveBinding();
+					if (member.equals(enumerationBinding)) {
+						return visibility;
+					}
+					if (member instanceof IType && enumerationBinding instanceof IType &&
+							((IType) member).isSameType((IType) enumerationBinding)) {
+						return visibility;
+					}
+				}
+			} else if (hostMember instanceof IASTFunctionDefinition) {
+				IASTDeclarator declarator = ((IASTFunctionDefinition) hostMember).getDeclarator();
+				declarator = ASTQueries.findInnermostDeclarator(declarator);
+				IBinding functionBinding = declarator.getName().resolveBinding();
+				if (member.equals(functionBinding)){
+					return visibility;
+				}
+			} else if (hostMember instanceof ICPPASTAliasDeclaration) {
+				IBinding aliasBinding = ((ICPPASTAliasDeclaration) hostMember).getAlias().resolveBinding();
+				if (member.equals(aliasBinding)) {
+					return visibility;
+				}
+			} else if (hostMember instanceof ICPPASTUsingDeclaration) {
+				IBinding usingBinding = ((ICPPASTUsingDeclaration) hostMember).getName().resolveBinding();
+				if (member.equals(usingBinding)) {
+					return visibility;
+				}
+			} else if (hostMember instanceof ICPPASTNamespaceDefinition) { // Not valid but possible due to the parser
+				IBinding namespaceBinding = ((ICPPASTNamespaceDefinition) hostMember).getName().resolveBinding();
+				if (member.equals(namespaceBinding)) {
+					return visibility;
+				}
+			}
+		}
+		return -1;
+	}
+
+	private static IllegalArgumentException invalidMember(IBinding classType, IBinding member) {
+		String name = member.getName();
+		if (name.isEmpty())
+			name = "<anonymous>"; //$NON-NLS-1$
+		return new IllegalArgumentException(name + " is not a member of " + classType.getName()); //$NON-NLS-1$
 	}
 
 	private static Map<String, List<ICPPMethod>> collectPureVirtualMethods(ICPPClassType classType,

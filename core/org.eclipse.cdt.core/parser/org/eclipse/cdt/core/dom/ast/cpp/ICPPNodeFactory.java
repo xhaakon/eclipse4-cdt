@@ -357,7 +357,7 @@ public interface ICPPNodeFactory extends INodeFactory {
 	public ICPPASTWhileStatement newWhileStatement(IASTExpression condition, IASTStatement body);
 
 	/**
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	public ICPPASTAliasDeclaration newAliasDeclaration(IASTName aliasName, ICPPASTTypeId aliasedType);
 }

@@ -283,8 +283,8 @@ int testUpdateOfPointer() {
 }
 
 int testCanWrite() {
-	int a;
-	int* b;
+	int a = 1;
+	int* b = &a;
 	struct {
 		int in;
 	} c;
@@ -299,6 +299,15 @@ int testArrays() {
 	foo array_foo[1200];
 	int array_double_small[11][21];
 	char array_double_large[111][210];
+
+	return 1;
+}
+
+int testCasting() {
+	int array_large[111] = {65, 0x41424344, 0x45464748}; // Decimal: 65, 1094861636, 1162233672, Char: A, ABCD, EFGH
+	int array_small[4] = {65, 0x41424344, 0x45464748}; // Decimal: 65, 1094861636, 1162233672, Char: A, ABCD, EFGH
+
+	int* int_ptr = &array_small[0];
 
 	return 1;
 }
@@ -367,6 +376,7 @@ int main() {
     testCanWrite();
     testArrays();
     testRTTI();
+    testCasting();
     
     // For bug 320277
     BaseTest b; b.test();

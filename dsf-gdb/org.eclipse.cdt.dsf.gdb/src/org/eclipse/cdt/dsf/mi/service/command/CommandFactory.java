@@ -18,6 +18,8 @@
  *     Marc Khouzam (Ericsson) - New method for new MIGDBSetPythonPrintStack (Bug 367788)
  *     Mathias Kunter - New methods for handling different charsets (Bug 370462)
  *     Anton Gorenkov - A preference to use RTTI for variable types determination (Bug 377536)
+ *     Vladimir Prus (Mentor Graphics) - Support for -info-os (Bug 360314)
+ *     John Dallaway - Support for -data-write-memory-bytes (Bug 387793)
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.mi.service.command;
@@ -26,6 +28,7 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
@@ -41,6 +44,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIAttach;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLICatch;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIDetach;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIExecAbort;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoBreak;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoProgram;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoSharedLibrary;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoThreads;
@@ -49,6 +53,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIMaintenance;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIPasscount;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRecord;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRemoteGet;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLIShowEndian;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLISource;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIThread;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLITrace;
@@ -72,6 +77,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIDataListRegisterValues;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIDataReadMemory;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIDataReadMemoryBytes;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIDataWriteMemory;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIDataWriteMemoryBytes;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIEnablePrettyPrinting;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIEnvironmentCD;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIEnvironmentDirectory;
@@ -118,6 +124,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTargetCharset;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTargetWideCharset;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBShowExitCode;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInferiorTTYSet;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIInfoOs;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExec;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsole;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsoleKill;
@@ -163,9 +170,11 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarShowAttributes;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarShowFormat;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarUpdate;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLICatchInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoBreakInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoProgramInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoSharedLibraryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoThreadsInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.CLIShowEndianInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIThreadInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLITraceDumpInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLITraceInfo;
@@ -181,6 +190,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIDataReadMemoryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIDataWriteMemoryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowExitCodeInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIInfoOsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListFeaturesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIStackInfoDepthInfo;
@@ -236,6 +246,16 @@ public class CommandFactory {
 		return new CLIExecAbort(ctx);
 	}
 
+	/** @since 4.2 */
+	public ICommand<CLIInfoBreakInfo> createCLIInfoBreak(IDMContext ctx) {
+		return new CLIInfoBreak(ctx);
+	}
+	
+	/** @since 4.2 */
+	public ICommand<CLIInfoBreakInfo> createCLIInfoBreak(IDMContext ctx, int bpRef) {
+		return new CLIInfoBreak(ctx, bpRef);
+	}
+
 	public ICommand<CLIInfoProgramInfo> createCLIInfoProgram(IContainerDMContext ctx) {
 		return new CLIInfoProgram(ctx);
 	}
@@ -272,6 +292,13 @@ public class CommandFactory {
 	/** @since 4.1 */
 	public ICommand<MIInfo> createCLIRemoteGet(ICommandControlDMContext ctx, String remoteFile, String localFile) {
 		return new CLIRemoteGet(ctx, remoteFile, localFile);
+	}
+
+	/**
+	 * @since 4.2
+	 */
+	public ICommand<CLIShowEndianInfo> createCLIShowEndian(IMemoryDMContext ctx) {
+		return new CLIShowEndian(ctx);
 	}
 
 	public ICommand<MIInfo> createCLISource(ICommandControlDMContext ctx, String file) {
@@ -425,6 +452,11 @@ public class CommandFactory {
 	public ICommand<MIDataWriteMemoryInfo> createMIDataWriteMemory(IDMContext ctx, long offset, String address, 
 			int wordFormat, int wordSize, String value) {
 		return new MIDataWriteMemory(ctx, offset, address, wordFormat, wordSize, value);
+	}
+
+	/** @since 4.2 */
+	public ICommand<MIInfo> createMIDataWriteMemoryBytes(IDMContext ctx, String address, byte[] contents) {
+		return new MIDataWriteMemoryBytes(ctx, address, contents);
 	}
 
 	/** @since 4.0 */
@@ -708,6 +740,20 @@ public class CommandFactory {
 		return new MIInferiorTTYSet(dmc, tty);
 	}
 
+	/**
+	 * @since 4.2
+	 */
+	public ICommand<MIInfoOsInfo> createMIInfoOS(IDMContext ctx) {
+		return new MIInfoOs(ctx);
+	}
+
+	/**
+	 * @since 4.2
+	 */
+	public ICommand<MIInfoOsInfo> createMIInfoOS(IDMContext ctx, String resourceClass) {
+		return new MIInfoOs(ctx, resourceClass);
+	}
+	
 	public ICommand<MIInfo> createMIInterpreterExec(IDMContext ctx, String interpreter, String cmd) {
 		return new MIInterpreterExec<MIInfo>(ctx, interpreter, cmd);
 	}

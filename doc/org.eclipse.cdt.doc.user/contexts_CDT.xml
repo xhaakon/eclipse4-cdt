@@ -147,40 +147,25 @@
    <topic href="reference/cdt_u_discovery_preferences.htm"
    	label="Discovery Options"/>
 </context>
-<context id ="man_prop_info">
+<context id ="cdt_u_pref_build_scanner_discovery">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_info.htm"
-   	label="Info"/>
+   <topic href="reference/cdt_u_pref_build_scanner_discovery.htm"
+   	label="Scanner Discovery Preferences"/>
 </context>
-<context id ="man_prop_builder">
+<context id ="cdt_u_prop_general_sd_entries">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_builders.htm"
-   	label="Builders"/>
+   <topic href="reference/cdt_u_prop_general_sd_entries.htm"
+   	label="Scanner Discovery Entries Tab"/>
 </context>
-<context id ="man_prop_build">
+<context id ="cdt_u_prop_general_sd_providers">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_build.htm"
-   	label="Build"/>
-</context>
-<context id ="man_prop_file_types">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_file_types.htm"
-   	label="File Types"/>
+   <topic href="reference/cdt_u_prop_general_sd_providers.htm"
+   	label="Scanner Discovery Providers Tab"/>
 </context>
 <context id ="man_prop_indexer">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_prop_general_idx.htm"
    	label="Indexer"/>
-</context>
-<context id ="man_prop_error">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_merror.htm"
-   	label="Error Parser"/>
-</context>
-<context id ="man_prop_references">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_ref.htm"
-   	label="Project References"/>
 </context>
 <context id ="std_prop_info">
    <description>Click below to see help.</description>

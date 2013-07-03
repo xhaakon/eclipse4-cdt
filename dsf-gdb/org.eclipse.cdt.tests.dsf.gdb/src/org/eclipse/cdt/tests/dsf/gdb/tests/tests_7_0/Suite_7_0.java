@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Ericsson and others.
+ * Copyright (c) 2009, 2013 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,6 +34,7 @@ import org.junit.runners.Suite;
 	MIRunControlTargetAvailableTest_7_0.class,
 	MIRunControlNonStopTargetAvailableTest_7_0.class,
 	MIExpressionsTest_7_0.class,
+	GDBPatternMatchingExpressionsTest_7_0.class,
 	MIMemoryTest_7_0.class,
 	MIBreakpointsTest_7_0.class,
 	MICatchpointsTest_7_0.class,
@@ -45,7 +46,9 @@ import org.junit.runners.Suite;
 	PostMortemCoreTest_7_0.class,
 	CommandTimeoutTest_7_0.class,
 	GDBMultiNonStopRunControlTest_7_0.class,
-	Suite_Sessionless_Tests.class,	
+	Suite_Sessionless_Tests.class,
+	StepIntoSelectionTest_7_0_NS.class,
+	
 	/* Add your test class here */
 })
 

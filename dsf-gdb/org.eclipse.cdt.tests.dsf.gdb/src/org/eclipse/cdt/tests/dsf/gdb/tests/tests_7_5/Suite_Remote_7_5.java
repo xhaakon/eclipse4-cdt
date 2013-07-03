@@ -36,6 +36,7 @@ import org.junit.runners.Suite;
 	MIRunControlTargetAvailableTest_7_5.class,
 	MIRunControlNonStopTargetAvailableTest_7_5.class,
 	MIExpressionsTest_7_5.class,
+	GDBPatternMatchingExpressionsTest_7_5.class,
 	MIMemoryTest_7_5.class,
 	MIBreakpointsTest_7_5.class,
 	MICatchpointsTest_7_5.class,
@@ -45,7 +46,9 @@ import org.junit.runners.Suite;
 	OperationsWhileTargetIsRunningNonStopTest_7_5.class,
 	CommandTimeoutTest_7_5.class,
 	GDBMultiNonStopRunControlTest_7_5.class,
-	Suite_Sessionless_Tests.class	
+	Suite_Sessionless_Tests.class,
+	GDBConsoleBreakpointsTest_7_5.class,
+	TraceFileTest_7_5.class,
 	/* Add your test class here */
 })
 

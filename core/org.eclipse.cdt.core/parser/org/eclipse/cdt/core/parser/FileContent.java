@@ -136,7 +136,7 @@ public abstract class FileContent {
 	public static FileContent adapt(CodeReader reader) {
 		if (reader == null)
 			return null;
-		
+
 		long fileReadTime = System.currentTimeMillis();
 		CharArray chars = new CharArray(reader.buffer);
 		String filePath = reader.getPath();

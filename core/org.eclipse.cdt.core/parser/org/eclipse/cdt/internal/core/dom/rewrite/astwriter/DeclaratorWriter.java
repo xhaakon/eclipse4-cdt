@@ -33,7 +33,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTPointerToMember;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTReferenceOperator;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.parser.Keywords;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTFunctionDeclarator;
 import org.eclipse.cdt.internal.core.dom.rewrite.commenthandler.NodeCommentMap;
 
 /**
@@ -174,7 +173,7 @@ public class DeclaratorWriter extends NodeWriter {
 		if (noexceptExpression != null) {
 			scribe.printSpace();
 			scribe.print(Keywords.NOEXCEPT);
-			if (noexceptExpression != CPPASTFunctionDeclarator.NOEXCEPT_DEFAULT) {
+			if (noexceptExpression != ICPPASTFunctionDeclarator.NOEXCEPT_DEFAULT) {
 				scribe.printSpace();
 				scribe.print('(');
 				noexceptExpression.accept(visitor);

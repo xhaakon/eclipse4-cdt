@@ -504,8 +504,8 @@ public class MIMemoryTest extends BaseTestCase {
 		//	Ensure that we receive a block of invalid memory bytes
 		assertTrue(fWait.getMessage(), fWait.isOK());
 		MemoryByte[] buffer = (MemoryByte[]) fWait.getReturnInfo();
-		assertTrue("Wrong value: expected '-1, 0', received '" + buffer[0].getValue() + ", " + buffer[0].getFlags() + "'",
-				(buffer[0].getValue() == (byte) 0) && (buffer[0].getFlags() == (byte) 0));
+		assertTrue("Wrong value: expected '0, 32', received '" + buffer[0].getValue() + ", " + buffer[0].getFlags() + "'",
+				(buffer[0].getValue() == (byte) 0) && (buffer[0].getFlags() == (byte) 32));
 
 		// Ensure no MemoryChangedEvent event was received
 		assertTrue("MemoryChangedEvent problem: expected " + 0 + ", received " + getEventCount(), getEventCount() == 0);
@@ -797,9 +797,7 @@ public class MIMemoryTest extends BaseTestCase {
 		writeMemory(fMemoryDmc, fBaseAddress, offset, word_size, count, buffer);
 		fWait.waitUntilDone(AsyncCompletionWaitor.WAIT_FOREVER);
 		assertFalse(fWait.getMessage(), fWait.isOK());
-		String expected = "Cannot access memory at address";	// Error msg returned by gdb
-		assertTrue("Wrong error message: expected '" + expected + "', received '" + fWait.getMessage() + "'",
-				fWait.getMessage().contains(expected));
+		// Don't test the error message since it changes from one GDB version to another
 
 		// Ensure no MemoryChangedEvent event was received
 		assertTrue("MemoryChangedEvent problem: expected " + 0 + ", received " + getEventCount(), getEventCount() == 0);
@@ -1153,9 +1151,14 @@ public class MIMemoryTest extends BaseTestCase {
 		fillMemory(fMemoryDmc, fBaseAddress, offset, word_size, count, pattern);
 		fWait.waitUntilDone(AsyncCompletionWaitor.WAIT_FOREVER);
 		assertFalse(fWait.getMessage(), fWait.isOK());
-		String expected = "Cannot access memory at address";	// Error msg returned by gdb
-		assertTrue("Wrong error message: expected '" + expected + "', received '" + fWait.getMessage() + "'",
-				fWait.getMessage().contains(expected));
+		
+		// Depending on the GDB, a different command can be used.  Both error message are valid.
+		// Error message for -data-write-memory command
+		String expected = "Cannot access memory at address";
+		// Error message for new -data-write-memory-bytes command
+		String expected2 = "Could not write memory";
+		assertTrue("Wrong error message: expected '" + expected + ", or '" + expected2 + "', received '" + fWait.getMessage() + "'",
+				fWait.getMessage().contains(expected) || fWait.getMessage().contains(expected2));
 
 		// Ensure no MemoryChangedEvent event was received
 		assertTrue("MemoryChangedEvent problem: expected " + 0 + ", received " + getEventCount(), getEventCount() == 0);

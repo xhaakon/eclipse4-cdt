@@ -15,9 +15,7 @@ import org.eclipse.cdt.core.dom.ast.ITypedef;
 
 /**
  * Represents an instance of an alias template (14.5.7).
- * Experimental API. May change without notice.
- * @noextend This interface is not intended to be extended by clients.
- * @noimplement This interface is not intended to be implemented by clients.
+ * @since 5.5
  */
 public interface ICPPAliasTemplateInstance extends ITypedef, ICPPBinding {
 	/**

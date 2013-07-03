@@ -19,15 +19,15 @@ package org.eclipse.cdt.core.parser;
  */
 @SuppressWarnings("nls")
 public class GCCKeywords {
-	public static final String TYPEOF = "typeof"; 
-	public static final String __ALIGNOF__ = "__alignof__"; 
-	public static final String __ATTRIBUTE__ = "__attribute__"; 
-	public static final String __DECLSPEC = "__declspec"; 
-	/** Experimental constant. May change without notice. */
+	public static final String TYPEOF = "typeof";
+	public static final String __ALIGNOF__ = "__alignof__";
+	public static final String __ATTRIBUTE__ = "__attribute__";
+	public static final String __DECLSPEC = "__declspec";
+	/** @since 5.5 */
 	public static final String __DECLTYPE = "__decltype";
-	/** Experimental constant. May change without notice. */
+	/** @since 5.5 */
 	public static final String __INT128 = "__int128";
-	/** Experimental constant. May change without notice. */
+	/** @since 5.5 */
 	public static final String __FLOAT128 = "__float128";
 
 	public static final char[]
@@ -71,10 +71,8 @@ public class GCCKeywords {
 		cp__is_polymorphic= 			"__is_polymorphic".toCharArray(),
 		cp__is_union= 					"__is_union".toCharArray();
 
-	/**
-	 * Experimental constants. May change without notice.
-	 */
-	public static final char[] 
+	/** @since 5.5 */
+	public static final char[]
 		cp__DECLTYPE=			 		__DECLTYPE.toCharArray(),
 		cp__float128= 					__FLOAT128.toCharArray(),
 		cp__int128= 					__INT128.toCharArray(),

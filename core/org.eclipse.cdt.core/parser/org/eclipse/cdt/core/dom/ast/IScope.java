@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 IBM Corporation and others.
+ * Copyright (c) 2004, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -100,7 +100,7 @@ public interface IScope {
 
 	
 	/**
-	 * @noinstantiate This class is not intended to be instantiated by clients.
+	 * @since 5.5
 	 * @noextend This class is not intended to be subclassed by clients.
 	 */
 	public static class ScopeLookupData {
@@ -109,8 +109,8 @@ public interface IScope {
 		private final IASTTranslationUnit fTu;
 		private final boolean fLookupPointIsName;
 		private boolean fResolve= true;
-		private boolean fPrefixLookup= false;
-		private boolean fIgnorePointOfDeclaration= false;
+		private boolean fPrefixLookup;
+		private boolean fIgnorePointOfDeclaration;
 		
 		public ScopeLookupData(IASTName name, boolean resolve, boolean prefixLookup) {
 			if (name == null)
@@ -185,7 +185,7 @@ public interface IScope {
 	 * have not yet been resolved.
 	 * 
 	 * @return : the bindings in this scope that match the name or prefix, or null
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	public IBinding[] getBindings(ScopeLookupData lookup);
 }

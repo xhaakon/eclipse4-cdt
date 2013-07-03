@@ -42,6 +42,7 @@
    <extension-point id="projectConverter" name="%projectConverter.name" schema="schema/projectConverter.exsd"/>
    <extension-point id="CIndex" name="%CIndex.name" schema="schema/CIndex.exsd"/>
    <extension-point id="externalSettingsProvider" name="%externalSettingsProvider.name" schema="schema/externalSettingsProvider.exsd"/>
+   <extension-point id="tagger" name="%tagger.name" schema="schema/tagger.exsd"/>
 <!-- =================================================================================== -->
 <!-- CProjectDescriptionStorage provides addition types of project description storage      -->
 <!-- =================================================================================== -->
@@ -268,7 +269,7 @@
          <pattern description-expr="make: $3" eat-processed-line="true" file-expr="$1" line-expr="$2" regex="(.*):(\d*): (\*\*\* .*)" severity="Error"/>
          <pattern description-expr="$0" eat-processed-line="true" file-expr="" line-expr="" regex=".*make.*: \*\*\* .*" severity="Error"/>
          <pattern description-expr="$0" eat-processed-line="true" file-expr="" line-expr="" regex=".*make.*: Target (.*) not remade because of errors." severity="Error"/>
-         <pattern description-expr="$0" eat-processed-line="true" file-expr="" line-expr="" regex=".*command not found.*" severity="Error"/>
+         <pattern description-expr="$0" eat-processed-line="true" file-expr="" line-expr="" regex=".*[Cc]ommand not found.*" severity="Error"/>
          <pattern description-expr="$1" eat-processed-line="true" file-expr="" line-expr="" regex="Error:\s*(.*)" severity="Error"/>
          <pattern description-expr="make: $3" eat-processed-line="true" file-expr="$1" line-expr="$2" regex="(.*[Mm]akefile):(\d*): warning: (.*)" severity="Warning"/>
          <pattern description-expr="$0" eat-processed-line="true" file-expr="" line-expr="" regex=".*make.*\[.*\] Error [-]{0,1}\d*.*" severity="Warning"/>
@@ -757,6 +758,30 @@
          <simple name="valueName"/>
          <simple name="appName"/>
       </processType>
+      <processType
+            name="AddFiles2"
+            processRunner="org.eclipse.cdt.core.templateengine.process.processes.AddFiles">
+         <simple name="projectName"/>
+         <simple name="startPattern"/>
+         <simple name="endPattern"/>
+         <complexArray name="files">
+            <baseType>
+               <simple name="source"/>
+               <simple name="target"/>
+               <simple name="replaceable"/>
+            </baseType>
+         </complexArray>
+      </processType>
+      <processType
+            name="AddNature"
+            processRunner="org.eclipse.cdt.core.templateengine.process.processes.AddNature">
+         <simple
+               name="projectName">
+         </simple>
+         <simple
+               name="natureId">
+         </simple>
+      </processType>
    </extension>
    <extension
          point="org.eclipse.cdt.core.CProjectDescriptionStorage">
@@ -788,6 +813,11 @@
             class="org.eclipse.cdt.internal.core.language.settings.providers.ScannerInfoExtensionLanguageSettingsProvider"
             id="org.eclipse.cdt.core.LegacyScannerInfoLanguageSettingsProvider"
             name="%ScannerInfoExtensionLanguageSettingsProvider.name">
+      </provider>
+      <provider
+            class="org.eclipse.cdt.internal.core.language.settings.providers.PathEntryScannerInfoLanguageSettingsProvider"
+            id="org.eclipse.cdt.core.PathEntryScannerInfoLanguageSettingsProvider"
+            name="%PathEntryScannerInfoLanguageSettingsProvider.name">
       </provider>
    </extension>
 

@@ -44,6 +44,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.core.parser.util.ObjectMap;
+import org.eclipse.cdt.internal.core.dom.parser.IRecursionResolvingBinding;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemFunctionType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
@@ -55,7 +56,7 @@ import org.eclipse.core.runtime.Assert;
 public class CPPClassSpecialization extends CPPSpecialization 
 		implements ICPPClassSpecialization, ICPPInternalClassTypeMixinHost {
 
-	public static class RecursionResolvingBinding extends ProblemBinding implements ICPPMember {
+	public static class RecursionResolvingBinding extends ProblemBinding implements ICPPMember, IRecursionResolvingBinding {
 		public static RecursionResolvingBinding createFor(IBinding original, IASTNode point) {
 			if (original instanceof ICPPMethod)
 				return new RecursionResolvingMethod(point, original.getNameCharArray());
@@ -414,7 +415,7 @@ public class CPPClassSpecialization extends CPPSpecialization
 	}
 
 	public static boolean isSameClassSpecialization(ICPPClassSpecialization t1, ICPPClassSpecialization t2) {
-		// exclude class template specialization or class instance
+		// Exclude class template specialization or class instance.
 		if (t2 instanceof ICPPTemplateInstance || t2 instanceof ICPPTemplateDefinition || 
 				t2 instanceof IProblemBinding) {
 			return false;
@@ -426,13 +427,13 @@ public class CPPClassSpecialization extends CPPSpecialization
 		if (!CharArrayUtils.equals(t1.getNameCharArray(), t2.getNameCharArray()))
 			return false;
 		
-		// the argument map is not significant for comparing specializations, the map is
+		// The argument map is not significant for comparing specializations, the map is
 		// determined by the owner of the specialization. This is different for instances,
 		// which have a separate implementation for isSameType().
 		final IBinding owner1= t1.getOwner();
 		final IBinding owner2= t2.getOwner();
 		
-		// for a specialization that is not an instance the owner has to be a class-type
+		// For a specialization that is not an instance the owner has to be a class-type.
 		if (!(owner1 instanceof ICPPClassType) || !(owner2 instanceof ICPPClassType))
 			return false;
 
@@ -446,5 +447,10 @@ public class CPPClassSpecialization extends CPPSpecialization
 			return typeSpecifier.isFinal();
 		}
 		return false;
+	}
+
+	@Override
+	public int getVisibility(IBinding member) {
+		return ClassTypeHelper.getVisibility(this, member);
 	}
 }

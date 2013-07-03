@@ -13,6 +13,7 @@ package org.eclipse.cdt.core.settings.model;
 import java.util.Map;
 
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationDataProvider;
@@ -370,7 +371,8 @@ public interface ICConfigurationDescription extends ICSettingContainer, ICSettin
 
 	/**
 	 * @deprecated Deprecated as of CDT 8.1. This method returns settings supplied by MBS only.
-	 * For most cases, more generic Language Settings Providers mechanism should be used instead.
+	 * For most cases, more generic Language Settings Providers mechanism should be used instead, see
+	 * {@link LanguageSettingsManager#getSettingEntriesByKind(ICConfigurationDescription, org.eclipse.core.resources.IResource, String, int)}.
 	 *
 	 * Convenience method to return a language setting for the file with the specified project-relative path.
 	 * 

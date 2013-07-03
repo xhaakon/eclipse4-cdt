@@ -16,6 +16,7 @@ import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionT
 
 import org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
@@ -28,7 +29,7 @@ import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.core.runtime.CoreException;
 
-public class EvalComma extends CPPEvaluation {
+public class EvalComma extends CPPDependentEvaluation {
 	private static final ICPPFunction[] NO_FUNCTIONS = {};
 
 	private final ICPPEvaluation[] fArguments;
@@ -36,7 +37,11 @@ public class EvalComma extends CPPEvaluation {
 
 	private IType fType;
 
-	public EvalComma(ICPPEvaluation[] evals) {
+	public EvalComma(ICPPEvaluation[] evals, IASTNode pointOfDefinition) {
+		this(evals, findEnclosingTemplate(pointOfDefinition));		
+	}
+	public EvalComma(ICPPEvaluation[] evals, IBinding templateDefinition) {
+		super(templateDefinition);
 		fArguments= evals;
 	}
 
@@ -93,7 +98,7 @@ public class EvalComma extends CPPEvaluation {
 		ICPPEvaluation e1= fArguments[0];
 		for (int i = 1; i < fArguments.length; i++) {
 			ICPPEvaluation e2 = fArguments[i];
-			ICPPFunction overload = CPPSemantics.findOverloadedOperatorComma(point, e1, e2);
+			ICPPFunction overload = CPPSemantics.findOverloadedOperatorComma(point, getTemplateDefinitionScope(), e1, e2);
 			if (overload == null) {
 				e1= e2;
 			} else {
@@ -154,20 +159,22 @@ public class EvalComma extends CPPEvaluation {
 
 	@Override
 	public void marshal(ITypeMarshalBuffer buffer, boolean includeValue) throws CoreException {
-		buffer.putByte(ITypeMarshalBuffer.EVAL_COMMA);
+		buffer.putShort(ITypeMarshalBuffer.EVAL_COMMA);
 		buffer.putInt(fArguments.length);
 		for (ICPPEvaluation arg : fArguments) {
 			buffer.marshalEvaluation(arg, includeValue);
 		}
+		marshalTemplateDefinition(buffer);
 	}
 
-	public static ISerializableEvaluation unmarshal(int firstByte, ITypeMarshalBuffer buffer) throws CoreException {
+	public static ISerializableEvaluation unmarshal(short firstBytes, ITypeMarshalBuffer buffer) throws CoreException {
 		int len= buffer.getInt();
 		ICPPEvaluation[] args = new ICPPEvaluation[len];
 		for (int i = 0; i < args.length; i++) {
 			args[i]= (ICPPEvaluation) buffer.unmarshalEvaluation();
 		}
-		return new EvalComma(args);
+		IBinding templateDefinition = buffer.unmarshalBinding();
+		return new EvalComma(args, templateDefinition);
 	}
 
 	@Override
@@ -186,7 +193,7 @@ public class EvalComma extends CPPEvaluation {
 		}
 		if (args == fArguments)
 			return this;
-		return new EvalComma(args);
+		return new EvalComma(args, getTemplateDefinition());
 	}
 
 	@Override
@@ -205,7 +212,7 @@ public class EvalComma extends CPPEvaluation {
 		}
 		if (args == fArguments)
 			return this;
-		return new EvalComma(args);
+		return new EvalComma(args, getTemplateDefinition());
 	}
 
 	@Override

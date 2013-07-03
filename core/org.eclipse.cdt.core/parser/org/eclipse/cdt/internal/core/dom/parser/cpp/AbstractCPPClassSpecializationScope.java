@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2012 IBM Corporation and others.
+ * Copyright (c) 2005, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -106,11 +106,12 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		IScope classScope = specialized.getCompositeScope();
 		if (classScope == null)
 			return IBinding.EMPTY_BINDING_ARRAY;
-		
-		IBinding[] bindings= classScope.getBindings(lookup);
+
+	    IBinding[] bindings= classScope.getBindings(lookup);
 		IBinding[] result= null;
 		for (IBinding binding : bindings) {
-			if (binding == specialized) {
+			if (binding == specialized ||
+					(binding instanceof ICPPClassType && specialized.isSameType((IType) binding))) {
 				binding= specialClass;
 			} else {
 				binding= specialClass.specializeMember(binding, lookup.getLookupPoint());
@@ -155,7 +156,11 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 					}
 					if (origClass instanceof IType) {
 						ICPPBase specBase = base.clone();
-						IType specClass= CPPTemplates.instantiateType((IType) origClass, tpmap, -1, specialClass, point);
+						ICPPClassSpecialization specializationContext = specialClass;
+						if (specialClass.getOwner() instanceof ICPPClassSpecialization) {
+							specializationContext = (ICPPClassSpecialization) specialClass.getOwner();
+						}
+						IType specClass= CPPTemplates.instantiateType((IType) origClass, tpmap, -1, specializationContext, point);
 						specClass = SemanticUtil.getUltimateType(specClass, false);
 						if (specClass instanceof IBinding && !(specClass instanceof IProblemBinding)) {
 							specBase.setBaseClass((IBinding) specClass);

@@ -30,7 +30,6 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionListener;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.WriteAccessException;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.cdt.internal.core.model.APathEntry;
 import org.eclipse.cdt.internal.core.model.BatchOperation;
 import org.eclipse.cdt.internal.core.model.CModel;
@@ -1263,7 +1262,7 @@ public class CoreModel {
 						indexCfg instanceof ILanguageSettingsProvidersKeeper) {
 					List<String> languageIds = LanguageSettingsManager.getLanguages(resource, indexCfg);
 					for (String langId : languageIds) {
-						List<ICLanguageSettingEntry> entries = LanguageSettingsProvidersSerializer.getSettingEntriesByKind(indexCfg, resource, langId,
+						List<ICLanguageSettingEntry> entries = LanguageSettingsManager.getSettingEntriesByKind(indexCfg, resource, langId,
 								ICSettingEntry.INCLUDE_PATH | ICSettingEntry.MACRO | ICSettingEntry.INCLUDE_FILE | ICSettingEntry.MACRO_FILE);
 						if (!(entries == null || entries.isEmpty())) {
 							return false;

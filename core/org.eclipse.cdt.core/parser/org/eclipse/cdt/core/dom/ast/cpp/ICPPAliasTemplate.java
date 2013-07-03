@@ -15,9 +15,7 @@ import org.eclipse.cdt.core.dom.ast.IType;
 
 /**
  * Represents an alias template (14.5.7).
- * Experimental API. May change without notice.
- * @noimplement This interface is not intended to be implemented by clients.
- * @noextend This interface is not intended to be extended by clients.
+ * @since 5.5
  */
 public interface ICPPAliasTemplate extends IType, ICPPTemplateDefinition {
 	/**

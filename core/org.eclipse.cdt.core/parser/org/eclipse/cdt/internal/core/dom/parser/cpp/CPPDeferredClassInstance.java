@@ -227,8 +227,8 @@ public class CPPDeferredClassInstance extends CPPUnknownBinding implements ICPPD
 	
 	@Override
 	public void marshal(ITypeMarshalBuffer buffer) throws CoreException {
-		int firstByte= ITypeMarshalBuffer.DEFERRED_CLASS_INSTANCE;
-		buffer.putByte((byte) firstByte);
+		short firstBytes= ITypeMarshalBuffer.DEFERRED_CLASS_INSTANCE;
+		buffer.putShort(firstBytes);
 		buffer.marshalBinding(fClassTemplate);
 		buffer.putInt(fArguments.length);
 		for (ICPPTemplateArgument arg : fArguments) {
@@ -236,7 +236,7 @@ public class CPPDeferredClassInstance extends CPPUnknownBinding implements ICPPD
 		}
 	}
 	
-	public static ICPPDeferredClassInstance unmarshal(IIndexFragment fragment, int firstByte,
+	public static ICPPDeferredClassInstance unmarshal(IIndexFragment fragment, short firstBytes,
 			ITypeMarshalBuffer buffer) throws CoreException {
 		IBinding template= buffer.unmarshalBinding();
 		int argcount= buffer.getInt();
@@ -245,5 +245,10 @@ public class CPPDeferredClassInstance extends CPPUnknownBinding implements ICPPD
 			args[i]= buffer.unmarshalTemplateArgument();
 		}
 		return new PDOMCPPDeferredClassInstance(fragment, (ICPPClassTemplate) template, args);
+	}
+
+	@Override
+	public int getVisibility(IBinding member) {
+		throw new IllegalArgumentException(member.getName() + " is not a member of " + getName()); //$NON-NLS-1$
 	}
 }

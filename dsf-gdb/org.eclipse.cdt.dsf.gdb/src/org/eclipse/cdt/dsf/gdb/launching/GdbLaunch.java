@@ -18,6 +18,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.eclipse.cdt.debug.core.model.IConnectHandler;
+import org.eclipse.cdt.debug.core.model.IDebugNewExecutableHandler;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DefaultDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
@@ -289,6 +291,14 @@ public class GdbLaunch extends DsfLaunch
     	// see https://bugs.eclipse.org/bugs/show_bug.cgi?id=377447.
     	if (adapter.equals(ITerminateHandler.class))
     		return getSession().getModelAdapter(adapter);
+
+    	// Allow to call the connect handler when the launch is selected
+    	if (adapter.equals(IConnectHandler.class))
+    		return getSession().getModelAdapter(adapter);
+    	
+    	if (adapter.equals(IDebugNewExecutableHandler.class))
+    		return getSession().getModelAdapter(adapter);
+
         // Must force adapters to be loaded.
         Platform.getAdapterManager().loadAdapter(this, adapter.getName());
         return super.getAdapter(adapter);
