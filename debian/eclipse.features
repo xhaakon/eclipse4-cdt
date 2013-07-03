@@ -10,3 +10,4 @@ org.eclipse.cdt.visualizer
 org.eclipse.cdt.gnu.multicorevisualizer
 org.eclipse.cdt.testsrunner.feature
 org.eclipse.cdt.autotools
+org.eclipse.cdt.qt

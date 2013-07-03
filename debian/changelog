@@ -2,6 +2,7 @@ eclipse-cdt (8.2.0-1) UNRELEASED; urgency=low
 
   * New upstream release.
   * Updated automake documentation sources.
+  * New binary package eclipse-cdt-qt.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Wed, 03 Jul 2013 10:31:52 +0200
 

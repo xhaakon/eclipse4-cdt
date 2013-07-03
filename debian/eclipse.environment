@@ -80,3 +80,7 @@ testsrunner/org.eclipse.cdt.testsrunner*
 
 build/org.eclipse.cdt.autotools*
 build/org.eclipse.linuxtools*
+
+# Needed for org.eclipse.cdt.qt
+
+qt/*

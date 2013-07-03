@@ -106,3 +106,12 @@ Description: Remote launch and debug support for Eclipse CDT
  .
  This package allows one to upload and launch a C/C++ application on a remote
  host machine from within CDT. Remote debugging is also supported.
+
+Package: eclipse-cdt-qt
+Architecture: all
+Depends: eclipse-cdt (= ${source:Version}),
+         ${misc:Depends},
+         ${orbit:Depends}
+Description: Qt framework support for Eclipse CDT
+ This package provides basic keyword highlighting and code completion for
+ development of C++ applications with Qt framework in Eclipse IDE.
