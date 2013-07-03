@@ -24,6 +24,18 @@ import org.eclipse.cdt.core.dom.ast.IField;
 public interface ICPPClassType extends ICompositeType, ICPPBinding {
 	public static final ICPPClassType[] EMPTY_CLASS_ARRAY = {};
 	public static final int k_class = ICPPASTCompositeTypeSpecifier.k_class;
+	/**
+	 * @since 5.5
+	 */
+	public static final int v_public = ICPPASTVisibilityLabel.v_public;
+	/**
+	 * @since 5.5
+	 */
+	public static final int v_protected = ICPPASTVisibilityLabel.v_protected;
+	/**
+	 * @since 5.5
+	 */
+	public static final int v_private = ICPPASTVisibilityLabel.v_private;
 
 	/**
 	 * Returns an array of base class relationships. The returned array is empty if there
@@ -104,7 +116,21 @@ public interface ICPPClassType extends ICompositeType, ICPPBinding {
 	/**
 	 * Returns whether this type is declared final.
 	 * 
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	public boolean isFinal();
+
+	/**
+	 * Gets the access specifier of the <code>member</code>.
+	 *
+	 * @param member The binding of the member to get the visibility for.
+	 * <code>member</code> must be a member of this type.
+	 *
+	 * @return the visibility of the specified member.
+	 *
+	 * @throws IllegalArgumentException if <code>member</code> is not a member of this type.
+	 *
+	 * @since 5.5
+	 */
+	public int getVisibility(IBinding member);
 }

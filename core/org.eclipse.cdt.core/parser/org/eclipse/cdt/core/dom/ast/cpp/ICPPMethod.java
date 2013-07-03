@@ -53,13 +53,15 @@ public interface ICPPMethod extends ICPPFunction, ICPPMember {
 
 	/**
 	 * Returns whether this method is declared override.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * 
+	 * @since 5.5
 	 */
 	public boolean isOverride();
 
 	/**
 	 * Returns whether this method is declared final.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * 
+	 * @since 5.5
 	 */
 	public boolean isFinal();
 }

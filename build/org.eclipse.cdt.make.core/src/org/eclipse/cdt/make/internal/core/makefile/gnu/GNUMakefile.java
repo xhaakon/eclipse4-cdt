@@ -36,6 +36,7 @@ import org.eclipse.cdt.make.internal.core.makefile.EmptyLine;
 import org.eclipse.cdt.make.internal.core.makefile.IgnoreRule;
 import org.eclipse.cdt.make.internal.core.makefile.InferenceRule;
 import org.eclipse.cdt.make.internal.core.makefile.MakeFileConstants;
+import org.eclipse.cdt.make.internal.core.makefile.MakefileMessages;
 import org.eclipse.cdt.make.internal.core.makefile.MakefileReader;
 import org.eclipse.cdt.make.internal.core.makefile.PosixRule;
 import org.eclipse.cdt.make.internal.core.makefile.PreciousRule;
@@ -71,21 +72,27 @@ import org.eclipse.core.runtime.CoreException;
  */
 
 public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
-
 	public static String PATH_SEPARATOR = System.getProperty("path.separator", ":"); //$NON-NLS-1$ //$NON-NLS-2$
 	public static String FILE_SEPARATOR = System.getProperty("file.separator", "/"); //$NON-NLS-1$ //$NON-NLS-2$
 
-	String[] includeDirectories = new String[0];
-	IDirective[] builtins = new IDirective[0];
+	private String[] includeDirectories = new String[0];
+	@SuppressWarnings("nls")
+	private IDirective[] builtins = new IDirective[]{
+		new AutomaticVariable(this, "@", MakefileMessages.getString("GNUMakefile.automaticVariable.at")),
+		new AutomaticVariable(this, "%", MakefileMessages.getString("GNUMakefile.automaticVariable.percent")),
+		new AutomaticVariable(this, "<", MakefileMessages.getString("GNUMakefile.automaticVariable.less")),
+		new AutomaticVariable(this, "?", MakefileMessages.getString("GNUMakefile.automaticVariable.question")),
+		new AutomaticVariable(this, "^", MakefileMessages.getString("GNUMakefile.automaticVariable.carrot")),
+		new AutomaticVariable(this, "+", MakefileMessages.getString("GNUMakefile.automaticVariable.plus")),
+		new AutomaticVariable(this, "|", MakefileMessages.getString("GNUMakefile.automaticVariable.pipe")),
+		new AutomaticVariable(this, "*", MakefileMessages.getString("GNUMakefile.automaticVariable.star")),
+	};
 	private IMakefileReaderProvider makefileReaderProvider;
 
 	public GNUMakefile() {
 		super(null);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMakefile#getMakefileReaderProvider()
-	 */
 	@Override
 	public IMakefileReaderProvider getMakefileReaderProvider() {
 		return makefileReaderProvider;
@@ -96,9 +103,6 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 		parse(URIUtil.toURI(filePath), new MakefileReader(reader));
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMakefile#parse(java.net.URI, org.eclipse.cdt.make.core.makefile.IMakefileReaderProvider)
-	 */
 	@Override
 	public void parse(URI fileURI,
 			IMakefileReaderProvider makefileReaderProvider) throws IOException {
@@ -108,8 +112,9 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 			try {
 				final IFileStore store = EFS.getStore(fileURI);
 				final IFileInfo info = store.fetchInfo();
-				if (!info.exists() || info.isDirectory())
+				if (!info.exists() || info.isDirectory()) {
 					throw new IOException();
+				}
 
 				reader = new MakefileReader(new InputStreamReader(
 						store.openInputStream(EFS.NONE, null)));
@@ -529,20 +534,20 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 	}
 
 	/**
-	   * There are three forms of the "vpath" directive:
-	   *      "vpath PATTERN DIRECTORIES"
-	   * Specify the search path DIRECTORIES for file names that match PATTERN.
-	   *
-	   * The search path, DIRECTORIES, is a list of directories to be
-	   * searched, separated by colons (semi-colons on MS-DOS and
-	   * MS-Windows) or blanks, just like the search path used in the `VPATH' variable.
-	   *
-	   *      "vpath PATTERN"
-	   * Clear out the search path associated with PATTERN.
-	   *
-	   *      "vpath"
-	   * Clear all search paths previously specified with `vpath' directives.
-	   */
+	 * There are three forms of the "vpath" directive:
+	 *      "vpath PATTERN DIRECTORIES"
+	 * Specify the search path DIRECTORIES for file names that match PATTERN.
+	 *
+	 * The search path, DIRECTORIES, is a list of directories to be
+	 * searched, separated by colons (semi-colons on MS-DOS and
+	 * MS-Windows) or blanks, just like the search path used in the `VPATH' variable.
+	 *
+	 *      "vpath PATTERN"
+	 * Clear out the search path associated with PATTERN.
+	 *
+	 *      "vpath"
+	 * Clear all search paths previously specified with `vpath' directives.
+	 */
 	protected VPath parseVPath(String line) {
 		String pattern = null;
 		String[] directories;
@@ -712,8 +717,8 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 			if (index > 0) {
 				type = line.charAt(index - 1);
 				if (type == VariableDefinition.TYPE_SIMPLE_EXPAND
-					|| type == VariableDefinition.TYPE_APPEND
-					|| type == VariableDefinition.TYPE_CONDITIONAL) {
+						|| type == VariableDefinition.TYPE_APPEND
+						|| type == VariableDefinition.TYPE_CONDITIONAL) {
 					separator = index - 1;
 				} else {
 					type = VariableDefinition.TYPE_RECURSIVE_EXPAND;
@@ -797,22 +802,17 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 		}
 		IDirective[] dirs = getDirectives();
 		ArrayList<IDirective> list = new ArrayList<IDirective>(Arrays.asList(dirs));
-		for (int i = 0; i < dirs.length; ++i) {
-			if (dirs[i] instanceof Include) {
-				Include include = (Include)dirs[i];
-				IDirective[] includedMakefiles = include.getDirectives();
-				for (int j = 0; j < includedMakefiles.length; ++j) {
-					IMakefile includedMakefile = (IMakefile)includedMakefiles[j];
-					list.addAll(Arrays.asList(includedMakefile.getDirectives()));
+		for (IDirective dir : dirs) {
+			if (dir instanceof Include) {
+				IDirective[] includedMakefiles = ((Include)dir).getDirectives();
+				for (IDirective includedMakefile : includedMakefiles) {
+					list.addAll(Arrays.asList(((IMakefile)includedMakefile).getDirectives()));
 				}
 			}
 		}
 		return list.toArray(new IDirective[list.size()]);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.internal.core.makefile.AbstractMakefile#getBuiltins()
-	 */
 	@Override
 	public IDirective[] getBuiltins() {
 		return builtins;

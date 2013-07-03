@@ -57,6 +57,8 @@ import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.IBasicType.Kind;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
@@ -86,6 +88,8 @@ import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.AbstractGNUSourceCodeParser;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.model.ASTStringUtil;
@@ -99,6 +103,11 @@ public class AST2TestBase extends BaseTestCase {
 	public final static String TEST_CODE = "<testcode>";
     protected static final IParserLogService NULL_LOG = new NullLogService();
     protected static boolean sValidateCopy;
+
+    protected static class CommonTypes {
+    	public static IType int_ = new CPPBasicType(Kind.eInt, 0);
+    	public static IType pointerToInt = new CPPPointerType(int_);
+    }
 
     private static final ScannerInfo GNU_SCANNER_INFO = new ScannerInfo(getGnuMap());
 	private static final ScannerInfo SCANNER_INFO = new ScannerInfo(getStdMap());
@@ -293,49 +302,12 @@ public class AST2TestBase extends BaseTestCase {
 		return (T) copy;
 	}
 
-
-    static protected class CNameCollector extends ASTVisitor {
-        {
-            shouldVisitNames = true;
-        }
-        public List<IASTName> nameList = new ArrayList<IASTName>();
-
-        @Override
-		public int visit(IASTName name) {
-            nameList.add(name);
-            return PROCESS_CONTINUE;
-        }
-
-        public IASTName getName(int idx) {
-            if (idx < 0 || idx >= nameList.size())
-                return null;
-            return nameList.get(idx);
-        }
-
-        public int size() {
-        	return nameList.size();
-        }
-    }
-
-    protected void assertInstances(CNameCollector collector, IBinding binding, int num) throws Exception {
-        int count = 0;
-
-        assertNotNull(binding);
-
-        for (int i = 0; i < collector.size(); i++) {
-            if (collector.getName(i).resolveBinding() == binding)
-                count++;
-        }
-
-        assertEquals(count, num);
-    }
-
-    static protected class CPPNameCollector extends ASTVisitor {
-    	public CPPNameCollector() {
+    static protected class NameCollector extends ASTVisitor {
+    	public NameCollector() {
     		this(false);  // don't visit implicit names by default
         }
 
-    	public CPPNameCollector(boolean shouldVisitImplicitNames) {
+    	public NameCollector(boolean shouldVisitImplicitNames) {
     		this.shouldVisitNames = true;
     		this.shouldVisitImplicitNames = shouldVisitImplicitNames;
     	}
@@ -367,7 +339,7 @@ public class AST2TestBase extends BaseTestCase {
         }
     }
 
-    protected void assertInstances(CPPNameCollector collector, IBinding binding, int num) throws Exception {
+    protected void assertInstances(NameCollector collector, IBinding binding, int num) throws Exception {
         int count = 0;
         for (int i = 0; i < collector.size(); i++) {
             if (collector.getName(i).resolveBinding() == binding)
@@ -377,7 +349,7 @@ public class AST2TestBase extends BaseTestCase {
         assertEquals(num, count);
     }
 
-	protected void assertSameType(IType expected, IType actual) {
+	protected static void assertSameType(IType expected, IType actual) {
 		assertNotNull(expected);
 		assertNotNull(actual);
 		assertTrue("Expected same types, but the types were: '" +
@@ -599,10 +571,6 @@ public class AST2TestBase extends BaseTestCase {
 			return assertNonProblem(section, getIdentifierLength(section), cs);
 		}
 
-		public IBinding assertNonProblemOnFirstIdentifier(String section) {
-			return assertNonProblem(section, getIdentifierLength(section), IBinding.class);
-		}
-
     	public void assertNoName(String section, int len) {
 			IASTName name= findName(section, len);
 			if (name != null) {
@@ -740,6 +708,11 @@ public class AST2TestBase extends BaseTestCase {
     		return assertType(binding, cs);
     	}
 
+    	public void assertVariableType(String variableName, IType expectedType) {
+    		IVariable var = assertNonProblem(variableName, IVariable.class);
+    		assertSameType(expectedType, var.getType());
+    	}
+
 		public <T, U extends T> U assertType(T obj, Class... cs) {
     		for (Class c : cs) {
     			assertInstance(obj, c);
@@ -782,22 +755,22 @@ public class AST2TestBase extends BaseTestCase {
 	final protected IASTTranslationUnit parseAndCheckBindings(String code, ParserLanguage lang, boolean useGnuExtensions,
 			boolean skipTrivialInitializers) throws Exception {
 		IASTTranslationUnit tu = parse(code, lang, useGnuExtensions, true, skipTrivialInitializers);
-		CNameCollector col = new CNameCollector();
+		NameCollector col = new NameCollector();
 		tu.accept(col);
 		assertNoProblemBindings(col);
 		return tu;
 	}
 
-	final protected void assertNoProblemBindings(CNameCollector col) {
+	final protected void assertNoProblemBindings(NameCollector col) {
 		for (IASTName n : col.nameList) {
 			assertFalse("ProblemBinding for " + n.getRawSignature(), n.resolveBinding() instanceof IProblemBinding);
 		}
 	}
 
-	final protected void assertProblemBindings(CNameCollector col, int count) {
+	final protected void assertProblemBindings(NameCollector col, int count) {
 		int sum = 0;
 		for (IASTName n : col.nameList) {
-			if (n.getBinding() instanceof IProblemBinding)
+			if (n.resolveBinding() instanceof IProblemBinding)
 				++sum;
 		}
 		assertEquals(count, sum);

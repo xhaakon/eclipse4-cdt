@@ -102,13 +102,13 @@ public interface IASTSimpleDeclSpecifier extends IASTDeclSpecifier {
 
 	/**
 	 * <code>__int128 i;</code>
-	 * Experimental constant. May change without notice.
+	 * @since 5.5
 	 */
 	public static final int t_int128 = 13;
 
 	/**
 	 * <code>__float128 i;</code>
-	 * Experimental constant. May change without notice.
+	 * @since 5.5
 	 */
 	public static final int t_float128 = 14;
 

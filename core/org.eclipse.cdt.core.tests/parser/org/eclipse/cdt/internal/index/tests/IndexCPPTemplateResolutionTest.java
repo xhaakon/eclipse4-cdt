@@ -13,9 +13,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.index.tests;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
@@ -67,6 +64,9 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 import org.eclipse.core.runtime.CoreException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Tests for exercising resolution of template bindings against IIndex
@@ -450,6 +450,20 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		assertInstance(b0, ICPPSpecialization.class);
 	}
 
+	//	template <typename T, int N>
+	//	char (&f(T (&a)[N]))[N];
+	//
+	//	template <typename T, int N>
+	//	char (&f(const T (&a)[N]))[N];
+	//
+	//	struct C { static const char c[]; };
+
+	//	const char C::c[] = "";
+	//	int x = sizeof(f(C::c));
+	public void testOverloadedFunctionTemplate_407579() throws Exception {
+		checkBindings();
+	}
+
 	//	template<typename T, template<typename U> class S>
 	//	class Foo {
 	//	public:
@@ -585,20 +599,17 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
  		IBinding b3= getBindingFromASTName("D<B", 1);
 
  		List spBindings= new ArrayList();
- 		assertInstance(b0, ICPPSpecialization.class);
- 		assertInstance(b0, ICPPClassTemplate.class);
- 		spBindings.add(((ICPPSpecialization)b0).getSpecializedBinding());
+ 		assertInstance(b0, ICPPClassTemplatePartialSpecialization.class);
+ 		spBindings.add(((ICPPClassTemplatePartialSpecialization) b0).getPrimaryClassTemplate());
 
- 		assertInstance(b1, ICPPSpecialization.class);
- 		assertInstance(b1, ICPPClassTemplate.class);
- 		spBindings.add(((ICPPSpecialization)b1).getSpecializedBinding());
+ 		assertInstance(b1, ICPPClassTemplatePartialSpecialization.class);
+ 		spBindings.add(((ICPPClassTemplatePartialSpecialization) b1).getPrimaryClassTemplate());
 
- 		assertInstance(b2, ICPPSpecialization.class);
- 		assertInstance(b2, ICPPClassTemplate.class);
- 		spBindings.add(((ICPPSpecialization)b2).getSpecializedBinding());
+ 		assertInstance(b2, ICPPClassTemplatePartialSpecialization.class);
+ 		spBindings.add(((ICPPClassTemplatePartialSpecialization) b2).getPrimaryClassTemplate());
 
- 		for(int i=0; i<spBindings.size(); i++) {
- 			for(int j=0; j<spBindings.size(); j++) {
+ 		for (int i= 0; i < spBindings.size(); i++) {
+ 			for (int j= 0; j < spBindings.size(); j++) {
  	 			IType ty1= (IType) spBindings.get(i);
  	 			IType ty2= (IType) spBindings.get(j);
  	 			assertTrue(ty1.isSameType(ty2));
@@ -1301,7 +1312,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		assertTrue(t2 instanceof ICPPSpecialization);
 		final IType type = t2.getType();
 		assertTrue(type instanceof IBasicType);
-		assertEquals(((IBasicType)type).getType(), IBasicType.t_int);
+		assertEquals("int", ASTTypeUtil.getType(type));
 	}
 
 	//	template<typename _Iterator> struct iterator_traits {
@@ -1355,7 +1366,19 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 
 		final IType type = t2.getType();
 		assertTrue(type instanceof IBasicType);
-		assertEquals(((IBasicType)type).getType(), IBasicType.t_int);
+		assertEquals("int", ASTTypeUtil.getType(type));
+	}
+
+	//	struct A {
+	//	  template<typename T>
+	//	  struct S;
+	//	};
+	//	template<typename T>
+	//	struct A::S {};
+
+	//  A::S<int> a;
+	public void testMemberTemplateClass() throws Exception {
+		checkBindings();
 	}
 
 	//	template <int x>
@@ -2212,5 +2235,91 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	}
 	public void testDependentExpression_395875() throws Exception {
 		getBindingFromASTName("f(n.foo(0))", 1, ICPPFunction.class);
+	}
+
+	//	struct true_ {
+	//	    static const bool value = true;
+	//	};
+	//
+	//	struct false_ {
+	//	    static const bool value = false;
+	//	};
+	//
+	//	template <typename T>
+	//	struct has_type {
+	//	    template <typename U>
+	//	    static true_ test(U*);
+	//
+	//	    template <typename U>
+	//	    static false_ test(...);
+	//
+	//	    typedef decltype(test<T>(0)) type;
+	//	};
+
+	//	struct T {
+	//	    typedef int type;
+	//	};
+	//
+	//	template <bool>
+	//	struct A;
+	//
+	//	template <>
+	//	struct A<true> {
+	//	    typedef int type;
+	//	};
+	//
+	//	int main() {
+	//	    A<has_type<T>::type::value>::type a;
+	//	}
+	public void testIntNullPointerConstant_407808() throws Exception {
+		checkBindings();
+	}
+
+	//	namespace bar {
+	//	    template<class T>
+	//	    void join(T);
+	//	}
+	//
+	//	namespace foo {
+	//	    template<typename T>
+	//	    void join(T);
+	//
+	//	    struct cat {};
+	//	}
+
+	//	template <typename T>
+	//	auto waldo(T t) -> decltype(bar::join(t));
+	//
+	//	int main() {
+	//	    waldo(foo::cat{});
+	//	}
+	public void testADLForQualifiedName_408296() throws Exception {
+		checkBindings();
+	}
+
+	//	template <typename>
+	//	struct waldo {
+	//	};
+	//
+	//	struct outer {
+	//	    template <typename>
+	//	    struct inner;
+	//	};
+	//
+	//	template <typename T>
+	//	struct outer::inner<waldo<T>> {};
+
+	//	int main() {}
+	public void testRegression_408314() throws Exception {
+		checkBindings();
+	}
+
+	//	template<typename T> struct A { enum { v = 0 }; };
+	//	template<> struct A<int> { enum { v = 1 }; };
+	//	template<> struct A<int> { enum { v = 1 }; };
+
+	//	int main() {}
+	public void testSpecializationRedefinition_409444() throws Exception {
+		checkBindings();
 	}
 }

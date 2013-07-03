@@ -36,7 +36,7 @@ public class GCCScannerExtensionConfiguration extends GNUScannerExtensionConfigu
 	}
 
 	/**
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	public static GCCScannerExtensionConfiguration getInstance(IScannerInfo info) {
 		if (info != null) {
@@ -60,7 +60,7 @@ public class GCCScannerExtensionConfiguration extends GNUScannerExtensionConfigu
 	}
 
 	/**
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	@SuppressWarnings("nls")
 	public GCCScannerExtensionConfiguration(int version) {

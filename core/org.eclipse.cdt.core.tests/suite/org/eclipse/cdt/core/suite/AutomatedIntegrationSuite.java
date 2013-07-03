@@ -36,6 +36,7 @@ import org.eclipse.cdt.utils.ByteUtilsTest;
 import org.eclipse.cdt.utils.CdtVariableResolverTest;
 import org.eclipse.cdt.utils.CommandLineUtilTest;
 import org.eclipse.cdt.utils.FindProgramLocationTest;
+import org.eclipse.cdt.utils.StorableCdtVariablesTest;
 import org.eclipse.cdt.utils.WeakHashSetTest;
 
 /**
@@ -61,8 +62,12 @@ public class AutomatedIntegrationSuite extends TestSuite {
 	public static Test suite() throws Exception {
 		final AutomatedIntegrationSuite suite = new AutomatedIntegrationSuite();
 
-		// Add all success tests
+	// Add all success tests
+		
+	// Has intermittent failures
+	if (System.getProperty("cdt.skip.known.test.failures") == null) {		
 		suite.addTest(CDescriptorTests.suite());
+	}
 		suite.addTest(CDescriptorOldTests.suite());
 		suite.addTest(IEnvironmentVariableManagerTests.suite());
 		suite.addTest(ErrorParserTests.suite());
@@ -76,6 +81,7 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTest(AllLanguageTests.suite());
 		suite.addTest(RewriteTests.suite());
 		suite.addTest(CdtVariableResolverTest.suite());
+		suite.addTest(StorableCdtVariablesTest.suite());
 		suite.addTest(CommandLineUtilTest.suite());
 		suite.addTest(WeakHashSetTest.suite());
 		suite.addTest(FindProgramLocationTest.suite());

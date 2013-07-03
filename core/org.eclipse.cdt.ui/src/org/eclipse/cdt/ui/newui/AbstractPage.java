@@ -353,7 +353,7 @@ implements
 		GridData gd;
 		parentComposite = new Composite(c, SWT.NONE);
 		parentComposite.setLayoutData(gd= new GridData(GridData.FILL_BOTH));
-		gd.widthHint= 800;
+		gd.widthHint= 600;
 		itabs.clear();
 		if (!isSingle()) {
 			parentComposite.setLayout(new FillLayout());
@@ -979,8 +979,11 @@ implements
 	}
 
 	protected void cfgChanged(ICConfigurationDescription _cfgd) {
-
 		CConfigurationStatus st = _cfgd.getConfigurationStatus();
+		if (st.getCode() == CConfigurationStatus.TOOLCHAIN_NOT_SUPPORTED) {
+			// Re-check, maybe user got the problem fixed 
+			st = _cfgd.getConfigurationData().getStatus();
+		}
 		if (errPane != null && errMessage != null) {
 			if (st.isOK()) {
 				errPane.setVisible(false);

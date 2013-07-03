@@ -11,40 +11,43 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.testplugin;
 
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
 
-import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 
-public class TestScannerInfo implements IExtendedScannerInfo {
-	private static final String[] EMPTY = new String[0];
-	private static final Map EMPTY_MAP = new HashMap(0);
+public class TestScannerInfo extends ExtendedScannerInfo {
+	private static final String[] EMPTY = {};
 	private String[] fIncludes;
 	private String[] fIncludeFiles;
 	private String[] fMacroFiles;
 
-	public TestScannerInfo(String[] includes, String[] includeFiles, String[] macroFiles) {
+	public TestScannerInfo(String[] includes, String[] macroFiles, String[] includeFiles) {
 		fIncludes= includes;
 		fIncludeFiles= includeFiles;
 		fMacroFiles= macroFiles;
 	}
+
 	@Override
 	public Map getDefinedSymbols() {
-		return EMPTY_MAP;
+		return Collections.emptyMap();
 	}
 
 	@Override
 	public String[] getIncludePaths() {
 		return fIncludes == null ? EMPTY : fIncludes;
 	}
+
 	@Override
 	public String[] getIncludeFiles() {
 		return fIncludeFiles == null ? EMPTY: fIncludeFiles;
 	}
+
 	@Override
 	public String[] getLocalIncludePath() {
 		return null;
 	}
+
 	@Override
 	public String[] getMacroFiles() {
 		return fMacroFiles == null ? EMPTY: fMacroFiles;

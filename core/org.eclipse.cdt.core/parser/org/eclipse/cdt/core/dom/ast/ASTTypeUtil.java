@@ -424,6 +424,8 @@ public class ASTTypeUtil {
 		if (normalize) {
 			result.append('#');
 			result.append(Integer.toString(type.getParameterID(), 16));
+			if (type.isParameterPack())
+				result.append("(...)");  //$NON-NLS-1$
 		} else {
 			result.append(type.getName());
 		}
@@ -801,7 +803,7 @@ public class ASTTypeUtil {
 				char[] fname= loc.getFileName().toCharArray();
 				int fnamestart= findFileNameStart(fname);
 				buf.append('{');
-				buf.append(fname, fnamestart, fname.length-fnamestart);
+				buf.append(fname, fnamestart, fname.length - fnamestart);
 				buf.append(':');
 				buf.append(loc.getNodeOffset());
 				buf.append('}');

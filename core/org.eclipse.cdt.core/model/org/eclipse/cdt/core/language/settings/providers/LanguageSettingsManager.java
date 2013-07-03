@@ -25,6 +25,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IFile;
@@ -39,6 +40,29 @@ import org.eclipse.core.runtime.IPath;
  * @since 5.4
  */
 public class LanguageSettingsManager {
+	/**
+	 * Returns the list of setting entries of a certain kind (such as include paths)
+	 * for the given configuration description, resource and language. This is a
+	 * combined list for all providers taking into account settings of parent folder
+	 * if settings for the given resource are not defined. For include paths both
+	 * local (#include "...") and system (#include <...>) entries are returned.
+	 *
+	 * @param cfgDescription - configuration description.
+	 * @param rc - resource such as file or folder.
+	 * @param languageId - language id.
+	 * @param kind - kind of language settings entries, such as
+	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
+	 *     and it is possible to specify composite kind.
+	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
+	 *
+	 * @return the list of setting entries.
+	 *
+	 * @since 5.5
+	 */
+	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
+		return LanguageSettingsProvidersSerializer.getSettingEntriesByKind(cfgDescription, rc, languageId, kind);
+	}
+
 	/**
 	 * Returns the list of setting entries of the given provider
 	 * for the given configuration description, resource and language.
@@ -106,7 +130,7 @@ public class LanguageSettingsManager {
 	 * @return raw underlying provider for workspace provider or provider itself if no wrapper is used.
 	 */
 	public static ILanguageSettingsProvider getRawProvider(ILanguageSettingsProvider provider) {
-		if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+		if (isWorkspaceProvider(provider)) {
 			provider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(provider.getId());
 		}
 		return provider;
@@ -352,4 +376,32 @@ public class LanguageSettingsManager {
 	public static void serializeLanguageSettingsWorkspaceInBackground() {
 		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspaceInBackground();
 	}
+
+	/**
+	 * Create a list of providers with intention to assign to a configuration description.
+	 * 
+	 * The list will contain global providers for ones where attribute "prefer-non-shared" is {@code true}
+	 * and a new copy for those where attribute "prefer-non-shared" is {@code false}. Attribute "prefer-non-shared"
+	 * is defined in extension point {@code org.eclipse.cdt.core.LanguageSettingsProvider}.
+	 * 
+	 * @param ids - list of providers id which cannot be {@code null}.
+	 * @return a list of language settings providers with given ids.
+	 * 
+	 * @since 5.5
+	 */
+	public static List<ILanguageSettingsProvider> createLanguageSettingsProviders(String[] ids) {
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		for (String id : ids) {
+			ILanguageSettingsProvider provider = null;
+			if (!isPreferShared(id)) {
+				provider = getExtensionProviderCopy(id, false);
+			}
+			if (provider == null) {
+				provider = getWorkspaceProvider(id);
+			}
+			providers.add(provider);
+		}
+		return providers;
+	}
+
 }

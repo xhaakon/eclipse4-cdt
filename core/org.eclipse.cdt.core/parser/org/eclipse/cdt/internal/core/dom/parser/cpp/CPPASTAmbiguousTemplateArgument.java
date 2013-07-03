@@ -100,9 +100,9 @@ public class CPPASTAmbiguousTemplateArgument extends ASTAmbiguousNode implements
 		int arrayIndex = 0;
 		for (IASTNode node : fNodes) {
 			if (node != null) {
-				copyNodes[arrayIndex]= node.copy(style);
+				copyNodes[arrayIndex] = node.copy(style);
 			} else {
-				copyNodes[arrayIndex]= null;
+				copyNodes[arrayIndex] = null;
 			}
 			arrayIndex++;
 		}

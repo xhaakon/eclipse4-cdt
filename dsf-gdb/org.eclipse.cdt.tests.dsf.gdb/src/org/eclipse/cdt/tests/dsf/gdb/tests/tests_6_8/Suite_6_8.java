@@ -33,6 +33,7 @@ import org.junit.runners.Suite;
 	MIRunControlTest_6_8.class,
 	MIRunControlTargetAvailableTest_6_8.class,
 	MIExpressionsTest_6_8.class,
+	GDBPatternMatchingExpressionsTest_6_8.class,
 	MIMemoryTest_6_8.class,
 	MIBreakpointsTest_6_8.class,
 	MICatchpointsTest_6_8.class,
@@ -43,6 +44,7 @@ import org.junit.runners.Suite;
 	PostMortemCoreTest_6_8.class,
 	CommandTimeoutTest_6_8.class,
 	Suite_Sessionless_Tests.class,
+	StepIntoSelectionTest_6_8.class,
 	/* Add your test class here */
 })
 

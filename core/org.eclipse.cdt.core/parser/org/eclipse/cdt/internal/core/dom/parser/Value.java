@@ -56,6 +56,7 @@ import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBasicType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.SizeofCalculator.SizeAndAlignment;
@@ -68,11 +69,14 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalBinary;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalFixed;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.TypeTraits;
 import org.eclipse.cdt.internal.core.parser.scanner.ExpressionEvaluator;
 import org.eclipse.cdt.internal.core.parser.scanner.ExpressionEvaluator.EvalException;
 import org.eclipse.cdt.internal.core.pdom.db.TypeMarshalBuffer;
 import org.eclipse.core.runtime.CoreException;
+
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
 
 /**
  * Represents values of variables, enumerators or expressions. The primary purpose of
@@ -153,41 +157,41 @@ public class Value implements IValue {
 		return IBinding.EMPTY_BINDING_ARRAY;
 	}
 
-	public void marshall(ITypeMarshalBuffer buf) throws CoreException {
+	public void marshal(ITypeMarshalBuffer buf) throws CoreException {
 		if (UNKNOWN == this) {
-			buf.putByte((byte) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG1));
+			buf.putShort((short) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG1));
 		} else {
 			Long num= numericalValue();
 			if (num != null) {
 				long lv= num;
 				if (lv >= 0) {
-					buf.putByte((byte) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG2));
+					buf.putShort((short) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG2));
 					buf.putLong(lv);
 				} else {
-					buf.putByte((byte) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG3));
+					buf.putShort((short) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG3));
 					buf.putLong(-lv);
 				}
 			} else if (fFixedValue != null) {
-				buf.putByte((byte) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG4));
+				buf.putShort((short) (ITypeMarshalBuffer.VALUE | ITypeMarshalBuffer.FLAG4));
 				buf.putCharArray(fFixedValue);
 			} else {
-				buf.putByte((ITypeMarshalBuffer.VALUE));
+				buf.putShort(ITypeMarshalBuffer.VALUE);
 				fEvaluation.marshal(buf, true);
 			}
 		}
 	}
 
 	public static IValue unmarshal(ITypeMarshalBuffer buf) throws CoreException {
-		int firstByte= buf.getByte();
-		if (firstByte == TypeMarshalBuffer.NULL_TYPE)
+		short firstBytes= buf.getShort();
+		if (firstBytes == TypeMarshalBuffer.NULL_TYPE)
 			return null;
-		if ((firstByte & ITypeMarshalBuffer.FLAG1) != 0)
+		if ((firstBytes & ITypeMarshalBuffer.FLAG1) != 0)
 			return Value.UNKNOWN;
-		if ((firstByte & ITypeMarshalBuffer.FLAG2) != 0)
+		if ((firstBytes & ITypeMarshalBuffer.FLAG2) != 0)
 			return Value.create(buf.getLong());
-		if ((firstByte & ITypeMarshalBuffer.FLAG3) != 0)
+		if ((firstBytes & ITypeMarshalBuffer.FLAG3) != 0)
 			return Value.create(-buf.getLong());
-		if ((firstByte & ITypeMarshalBuffer.FLAG4) != 0)
+		if ((firstBytes & ITypeMarshalBuffer.FLAG4) != 0)
 			return new Value(buf.getCharArray(), null);
 
 		ISerializableEvaluation eval= buf.unmarshalEvaluation();
@@ -234,10 +238,11 @@ public class Value implements IValue {
 	}
 
 	/**
-	 * Creates a value representing the given template parameter.
+	 * Creates a value representing the given template parameter
+	 * in the given template.
 	 */
-	public static IValue create(ICPPTemplateNonTypeParameter tntp) {
-		EvalBinding eval = new EvalBinding(tntp, null);
+	public static IValue create(ICPPTemplateDefinition template, ICPPTemplateNonTypeParameter tntp) {
+		EvalBinding eval = new EvalBinding(tntp, null, template);
 		return new Value(null, eval);
 	}
 
@@ -278,13 +283,15 @@ public class Value implements IValue {
 	}
 
 	public static IValue incrementedValue(IValue value, int increment) {
+		if (value == UNKNOWN)
+			return UNKNOWN;
 		Long val = value.numericalValue();
 		if (val != null) {
 			return create(val.longValue() + increment);
 		}
 		ICPPEvaluation arg1 = value.getEvaluation();
 		EvalFixed arg2 = new EvalFixed(INT_TYPE, ValueCategory.PRVALUE, create(increment));
-		return create(new EvalBinary(IASTBinaryExpression.op_plus, arg1, arg2));
+		return create(new EvalBinary(IASTBinaryExpression.op_plus, arg1, arg2, arg1.getTemplateDefinition()));
 	}
 
 	private static Number applyUnaryTypeIdOperator(int operator, IType type, IASTNode point) {
@@ -345,6 +352,8 @@ public class Value implements IValue {
 			IType type1, IType type2, IASTNode point) {
 		switch (operator) {
 		case __is_base_of:
+			type1 = SemanticUtil.getNestedType(type1, TDEF);
+			type2 = SemanticUtil.getNestedType(type2, TDEF);
 			if (type1 instanceof ICPPClassType && type2 instanceof ICPPClassType) {
 				return ClassTypeHelper.isSubclass((ICPPClassType) type2, (ICPPClassType) type1) ? 1 : 0;
 			} else {

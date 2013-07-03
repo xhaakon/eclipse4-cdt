@@ -35,70 +35,70 @@ public interface ICPPClassSpecialization extends ICPPSpecialization, ICPPClassTy
 	/**
 	 * Creates a specialized binding for a member of the original class. The result is 
 	 * a member of this class specialization.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	IBinding specializeMember(IBinding binding, IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getBases()} but a accepts a starting point for template
 	 * instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPBase[] getBases(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getConstructors()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPConstructor[] getConstructors(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getDeclaredFields()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPField[] getDeclaredFields(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getMethods()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPMethod[] getMethods(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getAllDeclaredMethods()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPMethod[] getAllDeclaredMethods(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getDeclaredMethods()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPMethod[] getDeclaredMethods(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getFriends()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	IBinding[] getFriends(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getFriends()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	IField[] getFields(IASTNode point);
 
 	/**
 	 * Similar to {@link ICPPClassType#getNestedClasses()} but a accepts a starting point
 	 * for template instantiation.
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.5
 	 */
 	ICPPClassType[] getNestedClasses(IASTNode point);
 }

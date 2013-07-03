@@ -130,22 +130,28 @@ public interface IASTTypeIdExpression extends IASTExpression {
 			
 	/**
 	 * Built-in type trait of g++. 
-	 * Experimental API. May change without notice.
+	 * @since 5.5
 	 */
 	public static final int op_is_literal_type= 19;
 			
 	/**
 	 * Built-in type trait of g++. 
-	 * Experimental API. May change without notice.
+	 * @since 5.5
 	 */
 	public static final int op_is_standard_layout= 20;
 			
 	/**
 	 * Built-in type trait of g++. 
-	 * Experimental API. May change without notice.
+	 * @since 5.5
 	 */
 	public static final int op_is_trivial= 21;
-			
+
+	/**
+	 * <code>op_sizeofParameterPack</code> is used for sizeof... ( typeid ) expressions.
+	 * @since 5.5
+	 */
+	public static final int op_sizeofParameterPack = 22;
+	
 	/**
 	 * @deprecated constants should be declared here, to avoid using the same constant in different
 	 * interfaces.

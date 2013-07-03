@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2012 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -32,6 +32,7 @@ import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
 import org.eclipse.cdt.core.index.IIndexMacro;
 import org.eclipse.cdt.core.parser.AbstractParserLogService;
 import org.eclipse.cdt.core.parser.EndOfFileException;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.FileContent;
 import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IMacro;
@@ -42,6 +43,7 @@ import org.eclipse.cdt.core.parser.IScanner;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.ISignificantMacros;
 import org.eclipse.cdt.core.parser.IToken;
+import org.eclipse.cdt.core.parser.IncludeExportPatterns;
 import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
 import org.eclipse.cdt.core.parser.Keywords;
 import org.eclipse.cdt.core.parser.OffsetLimitReachedException;
@@ -68,8 +70,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 
 /**
- * C-Preprocessor providing tokens for the parsers. The class should not be used directly, rather than that
- * you should be using the {@link IScanner} interface.
+ * C-Preprocessor providing tokens for the parsers. The class should not be used directly,
+ * rather than that you should be using the {@link IScanner} interface.
  * @since 5.0
  */
 public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
@@ -87,8 +89,7 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
 	
     private static final char[] ONE = "1".toCharArray(); //$NON-NLS-1$
 
-
-    // standard built-ins
+    // Standard built-ins
     private static final ObjectStyleMacro __CDT_PARSER__= new ObjectStyleMacro("__CDT_PARSER__".toCharArray(), ONE);   //$NON-NLS-1$
     private static final ObjectStyleMacro __cplusplus = new ObjectStyleMacro("__cplusplus".toCharArray(), ONE);   //$NON-NLS-1$
     private static final ObjectStyleMacro __STDC__ = new ObjectStyleMacro("__STDC__".toCharArray(), ONE);  //$NON-NLS-1$
@@ -290,6 +291,9 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
         fLexOptions.fSupportMinAndMax = configuration.supportMinAndMaxOperators();
         fLexOptions.fSupportSlashPercentComments= configuration.supportSlashPercentComments();
         fLexOptions.fSupportUTFLiterals = configuration.supportUTFLiterals();
+        fLexOptions.fSupportRawStringLiterals = configuration.supportRawStringLiterals();
+        if (info instanceof ExtendedScannerInfo)
+        	fLexOptions.fIncludeExportPatterns = ((ExtendedScannerInfo) info).getIncludeExportPatterns();
         fLocationMap= new LocationMap(fLexOptions);
         fKeywords= new CharArrayIntMap(40, -1);
         fPPKeywords= new CharArrayIntMap(40, -1);
@@ -350,6 +354,11 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
     }
 
 	@Override
+	public void setTrackIncludeExport(IncludeExportPatterns patterns) {
+    	fLexOptions.fIncludeExportPatterns= patterns;
+    }
+
+	@Override
 	public void setContentAssistMode(int offset) {
 		fContentAssistLimit= offset;
 		fRootContext.getLexer().setContentAssistMode(offset);
@@ -373,7 +382,7 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
 		return fLocationMap;
 	}
 
-	private void configureKeywords(ParserLanguage language,	IScannerExtensionConfiguration configuration) {
+	private void configureKeywords(ParserLanguage language, IScannerExtensionConfiguration configuration) {
 		Keywords.addKeywordsPreprocessor(fPPKeywords);
 		if (language == ParserLanguage.C) {
         	Keywords.addKeywordsC(fKeywords);
@@ -398,34 +407,42 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
 		return array == null ? CharArrayUtils.EMPTY_CHAR_ARRAY : array;
 	}
 
+	/**
+	 * Returns include search path for a given current directory and a IScannerInfo. 
+	 * @param directory the current directory
+	 * @param info scanner information, or {@code null} if not available
+	 * @return the include search path
+	 */
 	public static IncludeSearchPath configureIncludeSearchPath(File directory, IScannerInfo info) {
     	boolean inhibitUseOfCurrentFileDirectory= false;
     	List<IncludeSearchPathElement> elements = new ArrayList<IncludeSearchPathElement>();
 
-    	// Quote includes first
-    	if (info instanceof IExtendedScannerInfo) {
-        	final IExtendedScannerInfo einfo= (IExtendedScannerInfo) info;
-            final String[] paths= einfo.getLocalIncludePath();
-            if (paths != null) {
-            	for (String path : paths) {
-            		if ("-".equals(path)) { //$NON-NLS-1$
-            			inhibitUseOfCurrentFileDirectory= true;
-            		} else {
-            			elements.add(new IncludeSearchPathElement(makeAbsolute(directory, path), true));
-            		}
+    	if (info != null) {
+	    	// Quote includes first
+	    	if (info instanceof IExtendedScannerInfo) {
+	        	final IExtendedScannerInfo einfo= (IExtendedScannerInfo) info;
+	            final String[] paths= einfo.getLocalIncludePath();
+	            if (paths != null) {
+	            	for (String path : paths) {
+	            		if ("-".equals(path)) { //$NON-NLS-1$
+	            			inhibitUseOfCurrentFileDirectory= true;
+	            		} else {
+	            			elements.add(new IncludeSearchPathElement(makeAbsolute(directory, path), true));
+	            		}
+					}
+	            }
+	        }
+	    	// Regular includes
+	    	String[] paths= info.getIncludePaths();
+	    	if (paths != null) {
+	        	for (String path : paths) {
+	        		if ("-".equals(path)) { //$NON-NLS-1$
+	        			inhibitUseOfCurrentFileDirectory= true;
+	        		} else {
+	        			elements.add(new IncludeSearchPathElement(makeAbsolute(directory, path), false));
+	        		}
 				}
-            }
-        }
-    	// Regular includes
-    	String[] paths= info.getIncludePaths();
-    	if (paths != null) {
-        	for (String path : paths) {
-        		if ("-".equals(path)) { //$NON-NLS-1$
-        			inhibitUseOfCurrentFileDirectory= true;
-        		} else {
-        			elements.add(new IncludeSearchPathElement(makeAbsolute(directory, path), false));
-        		}
-			}
+	    	}
     	}
         return new IncludeSearchPath(elements, inhibitUseOfCurrentFileDirectory);
 	}
@@ -1197,8 +1214,8 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
     }
 
 	@Override
-	public void handleComment(boolean isBlockComment, int offset, int endOffset) {
-		fLocationMap.encounteredComment(offset, endOffset, isBlockComment);
+	public void handleComment(boolean isBlockComment, int offset, int endOffset, AbstractCharArray input) {
+		fLocationMap.encounteredComment(offset, endOffset, isBlockComment, input);
 	}
 
     @Override

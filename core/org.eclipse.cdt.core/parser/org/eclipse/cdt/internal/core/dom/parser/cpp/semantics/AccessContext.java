@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Google, Inc and others.
+ * Copyright (c) 2009, 2013 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -88,8 +88,12 @@ public class AccessContext {
 		if (binding instanceof ICPPMember) {
 			bindingVisibility = ((ICPPMember) binding).getVisibility();
 		} else {
-			// TODO(sprigogin): Handle visibility of nested types
-			bindingVisibility = v_public;
+			IBinding owner = binding.getOwner();
+			if (owner instanceof ICPPClassType) {
+				bindingVisibility = ((ICPPClassType) owner).getVisibility(binding);
+			} else {
+				bindingVisibility = v_public;
+			}
 		}
 		return isAccessible(binding, bindingVisibility);
 	}
@@ -177,9 +181,10 @@ public class AccessContext {
 
 	/**
 	 * Returns access level to the members of a class.
+	 *
 	 * @param classType A class
-	 * @param inheritedAccessLevel Access level inherited from derived class. One of: v_public, v_protected,
-	 * v_private.
+	 * @param inheritedAccessLevel Access level inherited from derived class.
+	 *     One of: v_public, v_protected, v_private.
 	 * @return One of: v_public, v_protected, v_private.
 	 */
 	private int getMemberAccessLevel(ICPPClassType classType, int inheritedAccessLevel) {
@@ -197,14 +202,14 @@ public class AccessContext {
 		return accessLevel;
 	}
 
-	private boolean isAccessibleBaseClass(ICPPClassType classType, ICPPClassType defived, int depth) {
+	private boolean isAccessibleBaseClass(ICPPClassType classType, ICPPClassType derived, int depth) {
 		if (depth > CPPSemantics.MAX_INHERITANCE_DEPTH)
 			return false;
 
-		if (defived.isSameType(classType))
+		if (derived.isSameType(classType))
 			return true;
 
-		ICPPBase[] bases = defived.getBases();
+		ICPPBase[] bases = ClassTypeHelper.getBases(derived, name);
 		if (bases != null) {
 			for (ICPPBase base : bases) {
 				IBinding baseClass = base.getBaseClass();

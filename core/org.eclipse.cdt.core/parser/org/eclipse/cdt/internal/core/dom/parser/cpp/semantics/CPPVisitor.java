@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2012 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,7 @@
  *     Sergey Prigogin (Google)
  *     Thomas Corbat (IFS)
  *     Nathan Ridge
+ *     Marc-Andre Laperle
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
@@ -20,13 +21,6 @@ import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUti
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getNestedType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getUltimateTypeUptoPointers;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.ASTGenericVisitor;
 import org.eclipse.cdt.core.dom.ast.ASTNodeProperty;
@@ -94,6 +88,7 @@ import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
+import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTAliasDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCatchHandler;
@@ -115,6 +110,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerList;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLambdaExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceAlias;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
@@ -171,7 +167,6 @@ import org.eclipse.cdt.internal.core.dom.parser.SizeofCalculator;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTFieldReference;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTFunctionCallExpression;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTFunctionDeclarator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTIdExpression;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTName;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTranslationUnit;
@@ -212,12 +207,20 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownType;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 /**
  * Collection of methods to extract information from a C++ translation unit.
  */
 public class CPPVisitor extends ASTQueries {
-	private static final CPPBasicType UNSIGNED_LONG = new CPPBasicType(Kind.eInt, IBasicType.IS_LONG | IBasicType.IS_UNSIGNED);
 	private static final CPPBasicType INT_TYPE = new CPPBasicType(Kind.eInt, 0);
+	private static final CPPBasicType LONG_TYPE = new CPPBasicType(Kind.eInt, IBasicType.IS_LONG);
+	private static final CPPBasicType UNSIGNED_LONG = new CPPBasicType(Kind.eInt, IBasicType.IS_LONG | IBasicType.IS_UNSIGNED);
 
 	public static final String BEGIN_STR = "begin"; //$NON-NLS-1$
 	public static final char[] BEGIN = BEGIN_STR.toCharArray();
@@ -225,7 +228,7 @@ public class CPPVisitor extends ASTQueries {
 	static final String STD = "std"; //$NON-NLS-1$
 	private static final char[] SIZE_T = "size_t".toCharArray(); //$NON-NLS-1$
 	private static final char[] PTRDIFF_T = "ptrdiff_t".toCharArray(); //$NON-NLS-1$
-	private static final char[] TYPE_INFO= "type_info".toCharArray(); //$NON-NLS-1$
+	private static final char[] TYPE_INFO = "type_info".toCharArray(); //$NON-NLS-1$
 	private static final char[] INITIALIZER_LIST = "initializer_list".toCharArray(); //$NON-NLS-1$
 	private static final char[][] EMPTY_CHAR_ARRAY_ARRAY = {};
 	public static final IASTInitializerClause[] NO_ARGS = {};
@@ -339,11 +342,11 @@ public class CPPVisitor extends ASTQueries {
 				return false;
 			}
 		}
-		
+
 		if (inScope == null)
 			return false;
-		
-		IBinding pb= names[names.length-2].resolvePreBinding();
+
+		IBinding pb= names[names.length - 2].resolvePreBinding();
 		if (pb instanceof IProblemBinding)
 			return false;
 
@@ -356,7 +359,7 @@ public class CPPVisitor extends ASTQueries {
 		} else if (pb instanceof ICPPNamespace) {
 			scope= ((ICPPNamespace)pb).getNamespaceScope();
 		}
-		
+
 		return scope == inScope;
 	}
 
@@ -406,6 +409,9 @@ public class CPPVisitor extends ASTQueries {
 		IBinding binding = scope.getBinding(name, false);
 		if (binding instanceof CPPEnumeration) {
 			CPPEnumeration e= (CPPEnumeration) binding;
+			if (name.equals(e.getDefinition())) {
+				return e;
+			}
 			if (e.isScoped() == specifier.isScoped()) {
 				IType ft2= e.getFixedType();
 				if (fixedType == ft2 || (fixedType != null && fixedType.isSameType(ft2))) {
@@ -926,11 +932,11 @@ public class CPPVisitor extends ASTQueries {
 				if (name instanceof ICPPASTQualifiedName) {
 					IASTName[] names = ((ICPPASTQualifiedName) name).getNames();
 					if (names.length >= 2) {
-						IBinding b= names[names.length-2].resolvePreBinding();
+						IBinding b= names[names.length - 2].resolvePreBinding();
 						if (b instanceof IType) {
 							IType classType= getNestedType((IType) b, TDEF);
 							if (classType instanceof ICPPClassType) {
-							    final char[] dtorName = names[names.length-1].getLookupKey();
+							    final char[] dtorName = names[names.length - 1].getLookupKey();
 								final char[] className = ((ICPPClassType) classType).getNameCharArray();
 								return CharArrayUtils.equals(dtorName, className);
 							}
@@ -1028,7 +1034,7 @@ public class CPPVisitor extends ASTQueries {
 
 				}
 			} else if (node instanceof IASTParameterDeclaration ||
-					node.getPropertyInParent() == CPPASTFunctionDeclarator.NOEXCEPT_EXPRESSION) {
+					node.getPropertyInParent() == ICPPASTFunctionDeclarator.NOEXCEPT_EXPRESSION) {
 			    IASTNode parent = node.getParent();
 			    if (parent instanceof ICPPASTFunctionDeclarator) {
 					IScope result = scopeViaFunctionDtor((ICPPASTFunctionDeclarator) parent);
@@ -1299,7 +1305,7 @@ public class CPPVisitor extends ASTQueries {
 		    IASTName name = findInnermostDeclarator(fnDeclarator).getName();
 		    if (name instanceof ICPPASTQualifiedName) {
 		        IASTName[] ns = ((ICPPASTQualifiedName) name).getNames();
-		        name = ns[ns.length -1];
+		        name = ns[ns.length - 1];
 		    }
 		    return getContainingScope(name);
 		}
@@ -1576,11 +1582,11 @@ public class CPPVisitor extends ASTQueries {
 			return true;
 		}
 		if ((binding1 instanceof IIndexBinding) != (binding2 instanceof IIndexBinding) && index != null) {
-			if (binding1 instanceof IIndexBinding) {
-				binding2 = index.adaptBinding(binding2);
-			} else {
-				binding1 = index.adaptBinding(binding1);
-			}
+			// Even though we know one of them is an index binding, we need to adapt both because they might not come from an
+			// index with the same number of fragments. So one of them could be a composite binding and the other one not.
+			binding1 = index.adaptBinding(binding1);
+			binding2 = index.adaptBinding(binding2);
+
 			if (binding1 == null || binding2 == null) {
 				return false;
 			}
@@ -1920,11 +1926,31 @@ public class CPPVisitor extends ASTQueries {
 		return type.getModifiers() & (IBasicType.IS_SIGNED | IBasicType.IS_UNSIGNED);
 	}
 
-	private static IType getArrayTypes(IType type, IASTArrayDeclarator declarator) {
+	private static IType getArrayType(IType type, IASTArrayDeclarator declarator) {
 	    IASTArrayModifier[] mods = declarator.getArrayModifiers();
-	    for (int i = mods.length - 1; i >= 0; i--) {
+	    for (int i = mods.length; --i >= 0;) {
 	    	IASTArrayModifier mod = mods[i];
-	        type = new CPPArrayType(type, mod.getConstantExpression());
+	        IASTExpression sizeExpression = mod.getConstantExpression();
+	        if (sizeExpression != null) {
+	        	type = new CPPArrayType(type, sizeExpression);
+	        } else {
+		        IValue sizeValue = null;
+	        	IASTInitializer initializer = declarator.getInitializer();
+	        	if (initializer instanceof IASTEqualsInitializer) {
+	        		IASTInitializerClause clause = ((IASTEqualsInitializer) initializer).getInitializerClause();
+	        		if (clause instanceof IASTInitializerList) {
+	        			IASTInitializerClause[] clauses = ((IASTInitializerList) clause).getClauses();
+	        			sizeValue = Value.create(clauses.length);
+	        		} else if (clause instanceof ICPPASTLiteralExpression) {
+	        			ICPPEvaluation value = ((ICPPASTLiteralExpression) clause).getEvaluation();
+	        			IType valueType = value.getTypeOrFunctionSet(clause);
+	        			if (valueType instanceof IArrayType) {
+	        				sizeValue = ((IArrayType) valueType).getSize();
+	        			}
+	        		}
+	        	}
+	        	type = new CPPArrayType(type, sizeValue);
+	        }
 	    }
 	    return type;
 	}
@@ -2173,7 +2199,7 @@ public class CPPVisitor extends ASTQueries {
 		type = applyAttributes(type, declarator);
 		type = getPointerTypes(type, declarator);
 		if (declarator instanceof IASTArrayDeclarator)
-		    type = getArrayTypes(type, (IASTArrayDeclarator) declarator);
+		    type = getArrayType(type, (IASTArrayDeclarator) declarator);
 
 	    IASTDeclarator nested = declarator.getNestedDeclarator();
 	    if (nested != null) {
@@ -2273,7 +2299,7 @@ public class CPPVisitor extends ASTQueries {
 
 	public static IType getPointerDiffType(final IASTNode point) {
 		IType t= getStdType(point, PTRDIFF_T);
-		return t != null ? t : INT_TYPE;
+		return t != null ? t : LONG_TYPE;
 	}
 
 	private static IType getStdType(final IASTNode node, char[] name) {
@@ -2495,7 +2521,11 @@ public class CPPVisitor extends ASTQueries {
 				}
 				if (--i < 0)
 					break;
-				return bindingToOwner(qn[i].resolveBinding());
+				IBinding binding = qn[i].resolveBinding();
+				if (binding instanceof IIndexBinding && binding instanceof ICPPClassType) {
+					binding = ((CPPASTTranslationUnit) name.getTranslationUnit()).mapToAST((ICPPClassType) binding, name);
+				}
+				return bindingToOwner(binding);
 			}
 			name= (IASTName) node;
 			node= node.getParent();
@@ -2524,9 +2554,17 @@ public class CPPVisitor extends ASTQueries {
 	 * of the above constructs.
 	 */
 	public static IBinding findDeclarationOwner(IASTNode node, boolean allowFunction) {
+		IASTName name = findDeclarationOwnerDefinition(node, allowFunction);
+		if (name == null)
+			return null;
+
+		return name.resolveBinding();
+	}
+
+	public static IASTName findDeclarationOwnerDefinition(IASTNode node, boolean allowFunction) {
 		// Search for declaration
 		boolean isNonSimpleElabDecl= false;
-		while (!(node instanceof IASTDeclaration)) {
+		while (!(node instanceof IASTDeclaration) && !(node instanceof ICPPASTLambdaExpression)) {
 			if (node == null)
 				return null;
 			if (node instanceof IASTElaboratedTypeSpecifier) {
@@ -2552,7 +2590,7 @@ public class CPPVisitor extends ASTQueries {
 		for (; node != null; node= node.getParent()) {
 			if (node instanceof IASTFunctionDefinition) {
 				if (!allowFunction)
-					continue;
+					return null;
 
 				IASTDeclarator dtor= findInnermostDeclarator(((IASTFunctionDefinition) node).getDeclarator());
 				if (dtor != null) {
@@ -2575,10 +2613,7 @@ public class CPPVisitor extends ASTQueries {
 				break;
 			}
 		}
-		if (name == null)
-			return null;
-
-		return name.resolveBinding();
+		return name;
 	}
 
 	public static boolean doesNotSpecifyType(IASTDeclSpecifier declspec) {

@@ -21,9 +21,15 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeId;
  * @since 5.2
  */
 public interface ICPPASTTypeId extends IASTTypeId, ICPPASTPackExpandable {
+	/**
+	 * @since 5.5
+	 */
 	@Override
 	public ICPPASTTypeId copy();
 
+	/**
+	 * @since 5.5
+	 */
 	@Override
 	public ICPPASTTypeId copy(CopyStyle style);
 }

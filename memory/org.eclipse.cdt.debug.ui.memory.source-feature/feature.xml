@@ -17,10 +17,6 @@
       %license
    </license>
 
-   <url>
-      <update label="%updateSiteName" url="http://download.eclipse.org/tools/cdt/releases/indigo"/>
-   </url>
-
    <plugin
          id="org.eclipse.cdt.debug.ui.memory.search.source"
          download-size="0"
@@ -35,6 +31,13 @@
          version="0.0.0"
          unpack="false"/>
 
+    <plugin
+         id="org.eclipse.cdt.debug.ui.memory.floatingpoint.source"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+         
    <plugin
          id="org.eclipse.cdt.debug.ui.memory.transport.source"
          download-size="0"

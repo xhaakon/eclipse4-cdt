@@ -64,7 +64,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespaceScope;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameterPackType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
@@ -359,6 +358,15 @@ public class LookupData extends ScopeLookupData {
     	}
     	return fImpliedObjectType;
     }
+    
+    /**
+     * Explicitly set the implied object type.
+     * This is for use in cases where implied object type cannot
+     * be determined automatically because there is no lookup name.
+     */
+    public void setImpliedObjectType(IType impliedObjectType) {
+    	fImpliedObjectType = impliedObjectType;
+    }
 
 	private IType determineImpliedObjectType() {
 		IASTName tn = getLookupName();
@@ -464,12 +472,6 @@ public class LookupData extends ScopeLookupData {
 	public void setFunctionArguments(boolean containsImpliedObject, ICPPEvaluation... exprs) {
 		argsContainImpliedObject= containsImpliedObject;
 		functionArgs= exprs;
-		for (ICPPEvaluation e : exprs) {
-			if (e.isTypeDependent()) {
-				setIgnorePointOfDeclaration(true);
-				break;
-			}
-		}
 	}
 
 	public void setFunctionArguments(boolean containsImpliedObject, IASTInitializerClause... exprs) {
@@ -518,7 +520,7 @@ public class LookupData extends ScopeLookupData {
 		int count= 0;
 		if (functionArgs != null) {
 			for (ICPPEvaluation arg : functionArgs) {
-				if (arg instanceof EvalFixed && arg.getTypeOrFunctionSet(null) instanceof ICPPParameterPackType)
+				if (arg instanceof EvalParameterPack)
 					count++;
 			}
 		}
@@ -548,5 +550,16 @@ public class LookupData extends ScopeLookupData {
 			}
 		}
 		return IBinding.EMPTY_BINDING_ARRAY;
+	}
+	
+	public boolean ignoreRecursionResolvingBindings() {
+		// When name lookup is performed during template instantiation
+		// rather than for an AST name, infinite recursion can sometimes
+		// result when a binding with a given name uses the same name
+		// in its definition (e.g. "typedef C::name name" where C is
+		// the current (template) class). In such cases, we want to
+		// ignore the resulting IRecursionResolvingBindings and allow
+		// name lookup to proceed to outer (or base class) scopes.
+		return getLookupName() == null;
 	}
 }

@@ -15,6 +15,7 @@ import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.PRVALUE;
 
 import org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
@@ -28,10 +29,14 @@ import org.eclipse.core.runtime.CoreException;
 /**
  * Performs evaluation of an expression.
  */
-public class EvalInitList extends CPPEvaluation {
+public class EvalInitList extends CPPDependentEvaluation {
 	private final ICPPEvaluation[] fClauses;
 
-	public EvalInitList(ICPPEvaluation[] clauses) {
+	public EvalInitList(ICPPEvaluation[] clauses, IASTNode pointOfDefinition) {
+		this(clauses, findEnclosingTemplate(pointOfDefinition));
+	}
+	public EvalInitList(ICPPEvaluation[] clauses, IBinding templateDefinition) {
+		super(templateDefinition);
 		fClauses= clauses;
 	}
 
@@ -86,39 +91,32 @@ public class EvalInitList extends CPPEvaluation {
 
 	@Override
 	public void marshal(ITypeMarshalBuffer buffer, boolean includeValue) throws CoreException {
-		buffer.putByte(ITypeMarshalBuffer.EVAL_INIT_LIST);
+		buffer.putShort(ITypeMarshalBuffer.EVAL_INIT_LIST);
 		buffer.putInt(fClauses.length);
 		for (ICPPEvaluation arg : fClauses) {
 			buffer.marshalEvaluation(arg, includeValue);
 		}
+		marshalTemplateDefinition(buffer);
 	}
 
-	public static ISerializableEvaluation unmarshal(int firstByte, ITypeMarshalBuffer buffer) throws CoreException {
+	public static ISerializableEvaluation unmarshal(short firstBytes, ITypeMarshalBuffer buffer) throws CoreException {
 		int len= buffer.getInt();
 		ICPPEvaluation[] args = new ICPPEvaluation[len];
 		for (int i = 0; i < args.length; i++) {
 			args[i]= (ICPPEvaluation) buffer.unmarshalEvaluation();
 		}
-		return new EvalInitList(args);
+		IBinding templateDefinition= buffer.unmarshalBinding();
+		return new EvalInitList(args, templateDefinition);
 	}
 
 	@Override
 	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
 			ICPPClassSpecialization within, int maxdepth, IASTNode point) {
-		ICPPEvaluation[] clauses = fClauses;
-		for (int i = 0; i < fClauses.length; i++) {
-			ICPPEvaluation clause = fClauses[i].instantiate(tpMap, packOffset, within, maxdepth, point);
-			if (clause != fClauses[i]) {
-				if (clauses == fClauses) {
-					clauses = new ICPPEvaluation[fClauses.length];
-					System.arraycopy(fClauses, 0, clauses, 0, fClauses.length);
-				}
-				clauses[i] = clause;
-			}
-		}
+		ICPPEvaluation[] clauses = instantiateCommaSeparatedSubexpressions(fClauses, tpMap, 
+				packOffset, within, maxdepth, point);
 		if (clauses == fClauses)
 			return this;
-		return new EvalInitList(clauses);
+		return new EvalInitList(clauses, getTemplateDefinition());
 	}
 
 	@Override
@@ -137,7 +135,7 @@ public class EvalInitList extends CPPEvaluation {
 		}
 		if (clauses == fClauses)
 			return this;
-		return new EvalInitList(clauses);
+		return new EvalInitList(clauses, getTemplateDefinition());
 	}
 
 	@Override

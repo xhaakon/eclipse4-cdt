@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Intel Corporation and others.
+ * Copyright (c) 2007, 2013 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -52,7 +52,6 @@ import javax.xml.transform.stream.StreamResult;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvidersKeeper;
-import org.eclipse.cdt.core.language.settings.providers.ScannerDiscoveryLegacySupport;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementDelta;
@@ -843,7 +842,15 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	ThreadLocal<Boolean> settingProjectDescription = new ThreadLocal<Boolean>(){@Override protected Boolean initialValue() {return false;}};
 	@Override
 	public void setProjectDescription(IProject project, ICProjectDescription des, int flags, IProgressMonitor monitor) throws CoreException {
+		boolean originalState = isCurrentThreadSetProjectDescription();
 		try {
+			if (originalState) { 
+				// Technically this is not critical problem since the recursive setProjectDescription() gets scheduled in background thread.
+				// But it is quite likely to be an error on part of the caller unaware that their listener can be called from inside setProjectDescription().
+				// To avoid the log entry the callers should check CProjectDescriptionManager.isCurrentThreadSetProjectDescription()
+				// and schedule the update in background thread themselves.
+				CCorePlugin.logStackTrace(IStatus.INFO, "Recursive setProjectDescription from event listener, project=" + project); //$NON-NLS-1$
+			}
 			settingProjectDescription.set(true);
 			if(des != null){
 				if (!project.isAccessible())
@@ -865,7 +872,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			}
 			CProjectDescriptionStorageManager.getInstance().setProjectDescription(project, des, flags, monitor);
 		} finally {
-			settingProjectDescription.set(false);
+			settingProjectDescription.set(originalState);
 		}
 	}
 
@@ -1137,31 +1144,6 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 	}
 
-	CConfigurationData loadData(ICConfigurationDescription des, IProgressMonitor monitor) throws CoreException{
-		if(monitor == null)
-			monitor = new NullProgressMonitor();
-
-		CConfigurationDataProvider provider = getProvider(des);
-		CConfigurationData data = provider.loadConfiguration(des, monitor);
-
-		if (des instanceof ILanguageSettingsProvidersKeeper && ! des.isPreferenceConfiguration()) {
-			String[] defaultIds = ((ILanguageSettingsProvidersKeeper) des).getDefaultLanguageSettingsProvidersIds();
-			if (defaultIds == null) {
-				((ILanguageSettingsProvidersKeeper) des).setDefaultLanguageSettingsProvidersIds(ScannerDiscoveryLegacySupport.getDefaultProviderIdsLegacy(des));
-			}
-		}
-		return data;
-	}
-
-	CConfigurationData applyData(CConfigurationDescriptionCache des, ICConfigurationDescription baseDescription, CConfigurationData base, SettingsContext context, IProgressMonitor monitor) throws CoreException {
-		if(monitor == null)
-			monitor = new NullProgressMonitor();
-
-		CConfigurationDataProvider provider = getProvider(des);
-		context.init(des);
-		return provider.applyConfiguration(des, baseDescription, base, context, monitor);
-	}
-
 	void notifyCached(ICConfigurationDescription des, CConfigurationData data, IProgressMonitor monitor) {
 		if(monitor == null)
 			monitor = new NullProgressMonitor();
@@ -1190,7 +1172,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return provider.createConfiguration(des, baseDescription, base, clone, monitor);
 	}
 
-	private CConfigurationDataProvider getProvider(ICConfigurationDescription des) throws CoreException{
+	CConfigurationDataProvider getProvider(ICConfigurationDescription des) throws CoreException{
 		CConfigurationDataProviderDescriptor providerDes = getCfgProviderDescriptor(des);
 		if(providerDes == null)
 			throw ExceptionFactory.createCoreException(SettingsModelMessages.getString("CProjectDescriptionManager.1")); //$NON-NLS-1$

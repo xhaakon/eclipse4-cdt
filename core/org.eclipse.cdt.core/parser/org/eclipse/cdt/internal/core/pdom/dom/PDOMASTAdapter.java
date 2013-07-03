@@ -621,6 +621,11 @@ public class PDOMASTAdapter {
 		public boolean isFinal() {
 			return false;
 		}
+
+		@Override
+		public int getVisibility(IBinding member) {
+			return ((ICPPClassType) fDelegate).getVisibility(member);
+		}
 	}
 
 
@@ -659,6 +664,18 @@ public class PDOMASTAdapter {
 				}
 				return null;
 			}
+		}
+		return binding;
+	}
+
+	/**
+	 * Retrieves the original binding from an adapter previously returned by
+	 * {@link #getAdapterForAnonymousASTBinding(IBinding)}. If the parameter binding is not
+	 * an adapter, returns the binding itself. 
+	 */
+	public static IBinding getOriginalForAdaptedBinding(IBinding binding) {
+		if (binding instanceof AnonymousCPPBinding) {
+			return ((AnonymousCPPBinding) binding).fDelegate;
 		}
 		return binding;
 	}
