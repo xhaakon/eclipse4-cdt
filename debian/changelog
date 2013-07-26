@@ -1,4 +1,4 @@
-eclipse-cdt (8.2.0-1) UNRELEASED; urgency=low
+eclipse-cdt (8.2.0-1) unstable; urgency=low
 
   * New upstream release.
   * Updated automake documentation sources.
