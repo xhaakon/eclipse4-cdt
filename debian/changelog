@@ -1,3 +1,9 @@
+eclipse-cdt (8.2.1-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Thu, 03 Oct 2013 20:30:16 +0200
+
 eclipse-cdt (8.2.0-2) unstable; urgency=low
 
   * Fix FTBFS with make 3.82 (Closes: #720832).
