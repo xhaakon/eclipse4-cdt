@@ -1292,4 +1292,43 @@ public class CompletionTests extends AbstractContentAssistTest {
 		final String[] expected = { "Cat", "meow(void)" };
 		assertContentAssistResults(fCursorOffset, expected, true, COMPARE_ID_STRINGS);
 	}
+
+	//	struct Cat {
+	//	    void meow();
+	//	};
+	//
+	//	struct Waldo {
+	//	    void bar() {
+	//	        c./*cursor*/
+	//	    }
+	//
+	//	    Cat c;
+	//	};
+	//
+	//	void foo() {
+	//	    __LINE__;
+	//	}
+	public void testPreprocessorProvidedMacro_Bug412463() throws Exception {
+		final String[] expected = { "Cat", "meow(void)" };
+		assertContentAssistResults(fCursorOffset, expected, true, COMPARE_ID_STRINGS);
+	}
+	
+	//	struct Cat {
+	//	    void meow();
+	//	};
+	//
+	//	struct Waldo {
+	//	    void bar() {
+	//	        c./*cursor*/
+	//	    }
+	//
+	//	    Cat c;
+	//	};
+	//
+	//	int x = __CDT_PARSER__;
+	public void testPredefinedMacro_Bug412463() throws Exception {
+		final String[] expected = { "Cat", "meow(void)" };
+		assertContentAssistResults(fCursorOffset, expected, true, COMPARE_ID_STRINGS);
+	}
+
 }

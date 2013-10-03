@@ -15,6 +15,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.eclipse.ui.IMemento;
@@ -226,8 +227,7 @@ public class IncludeGroupStyle implements Comparable<IncludeGroupStyle> {
 			memento.putInteger(TAG_ORDER, order);
 	}
 
-	@Override
-	public String toString() {
+	public String toXmlString() {
 		XMLMemento memento = XMLMemento.createWriteRoot(TAG_STYLE);
 		saveToMemento(memento);
 		StringWriter writer = new StringWriter();
@@ -239,7 +239,7 @@ public class IncludeGroupStyle implements Comparable<IncludeGroupStyle> {
 		return writer.toString();
 	}
 
-	public static IncludeGroupStyle fromString(String str, IncludeKind includeKind) {
+	public static IncludeGroupStyle fromXmlString(String str, IncludeKind includeKind) {
 		StringReader reader = new StringReader(str);
 		XMLMemento memento;
 		try {
@@ -248,6 +248,12 @@ public class IncludeGroupStyle implements Comparable<IncludeGroupStyle> {
 			return null;
 		}
 		return fromMemento(memento, includeKind);
+	}
+
+	/** For debugging only */
+	@Override
+	public String toString() {
+		return includeKind.toString();
 	}
 
 	/**
@@ -261,5 +267,36 @@ public class IncludeGroupStyle implements Comparable<IncludeGroupStyle> {
 		if (c != 0)
 			return c;
 		return includeKind.ordinal() - other.includeKind.ordinal();
+	}
+
+	public IncludeGroupStyle getGroupingStyle(Map<IncludeKind, IncludeGroupStyle> stylesMap) {
+		if (keepTogether)
+			return this;
+		IncludeGroupStyle parent = getParentStyle(stylesMap);
+		if (parent != null && (parent.keepTogether || parent.includeKind == IncludeKind.OTHER))
+			return parent;
+		return stylesMap.get(IncludeKind.OTHER);
+	}
+
+	private IncludeGroupStyle getParentStyle(Map<IncludeKind, IncludeGroupStyle> stylesMap) {
+		IncludeKind kind = includeKind.parent;
+		if (kind == null)
+			return null;
+		return stylesMap.get(kind);
+	}
+
+	public boolean isBlankLineNeededAfter(IncludeGroupStyle previousIncludeStyle,
+			Map<IncludeKind, IncludeGroupStyle> stylesMap) {
+		if (previousIncludeStyle == null)
+			return false;
+		IncludeGroupStyle groupingStyle = getGroupingStyle(stylesMap);
+		IncludeGroupStyle previousGroupingStyle = previousIncludeStyle.getGroupingStyle(stylesMap);
+		if (groupingStyle != previousGroupingStyle && groupingStyle.isBlankLineBefore())
+			return true;
+		IncludeGroupStyle parentStyle = groupingStyle.getParentStyle(stylesMap);
+		IncludeGroupStyle previousParentStyle = previousGroupingStyle.getParentStyle(stylesMap);
+		return parentStyle != null && previousParentStyle != null &&
+				parentStyle != previousParentStyle && parentStyle.isKeepTogether() &&
+				parentStyle.isBlankLineBefore();
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2013 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,9 +14,9 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
 import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.LVALUE;
 import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.PRVALUE;
-import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
-import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.REF;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.CVTYPE;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.REF;
+import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getNestedType;
 
 import org.eclipse.cdt.core.dom.ast.DOMException;
@@ -68,6 +68,7 @@ public class EvalID extends CPPDependentEvaluation {
 			boolean qualified, ICPPTemplateArgument[] templateArgs, IASTNode pointOfDefinition) {
 		this(fieldOwner, nameOwner, simpleID, addressOf, qualified, templateArgs, findEnclosingTemplate(pointOfDefinition));
 	}
+
 	public EvalID(ICPPEvaluation fieldOwner, IBinding nameOwner, char[] simpleID, boolean addressOf,
 			boolean qualified, ICPPTemplateArgument[] templateArgs, IBinding templateDefinition) {
 		super(templateDefinition);
@@ -315,8 +316,13 @@ public class EvalID extends CPPDependentEvaluation {
 					tpMap, packOffset, within, point);
 		} else if (nameOwner instanceof IType) {
 			IType type = CPPTemplates.instantiateType((IType) nameOwner, tpMap, packOffset, within, point);
-			if (type instanceof IBinding)
-				nameOwner = (IBinding) getNestedType(type, TDEF);
+			if (type instanceof IBinding) {
+				type = getNestedType(type, TDEF);
+			}
+
+			if (!(type instanceof IBinding))
+				return EvalFixed.INCOMPLETE;
+			nameOwner = (IBinding)type;
 		}
 
 		if (fieldOwner instanceof IProblemBinding || nameOwner instanceof IProblemBinding)

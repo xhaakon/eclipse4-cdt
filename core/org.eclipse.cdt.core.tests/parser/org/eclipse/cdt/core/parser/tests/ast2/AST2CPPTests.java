@@ -127,6 +127,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPPointerToMemberType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPReferenceType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
+import org.eclipse.cdt.core.dom.ast.cpp.SemanticQueries;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.SizeofCalculator;
@@ -9579,7 +9580,7 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testRecursiveClassInheritance_Bug357256() throws Exception {
 		BindingAssertionHelper bh= getAssertionHelper();
 		ICPPClassType c= bh.assertNonProblem("A", 1);
-		assertEquals(0, ClassTypeHelper.getPureVirtualMethods(c, null).length);
+		assertEquals(0, SemanticQueries.getPureVirtualMethods(c, null).length);
 	}
 
 	//	template <typename T> struct CT1 {};
@@ -9798,6 +9799,19 @@ public class AST2CPPTests extends AST2TestBase {
 	//     friend P;
 	// };
 	public void testFriendTemplateParameter() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	struct foo {
+	//	    foo();
+	//	    ~foo();
+	//	};
+	//
+	//	class bar {
+	//	    friend foo::foo();
+	//	    friend foo::~foo();
+	//	};
+	public void testFriendConstructorDestructor_400940() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -10311,5 +10325,15 @@ public class AST2CPPTests extends AST2TestBase {
 		assertVisibility(ICPPClassType.v_private, aClass.getVisibility(privateMemberFunction));
 		ICPPClassType privateNestedClass = bh.assertNonProblem("privateNestedClass");
 		assertVisibility(ICPPClassType.v_private, aClass.getVisibility(privateNestedClass));
+	}
+	
+	//	int main() {
+	//		int i = 0;
+	//		__sync_bool_compare_and_swap(& i, 0, 1);
+	//		__sync_val_compare_and_swap(&i, 1, 2);
+	//		__sync_synchronize();
+	//	}
+	public void testGNUSyncBuiltins_bug389578() throws Exception {
+		parseAndCheckBindings(getAboveComment(), CPP, true);
 	}
 }

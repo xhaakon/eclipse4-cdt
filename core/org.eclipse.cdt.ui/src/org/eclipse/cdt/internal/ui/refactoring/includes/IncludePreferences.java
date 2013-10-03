@@ -12,6 +12,7 @@ package org.eclipse.cdt.internal.ui.refactoring.includes;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,13 +22,41 @@ import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.ui.PreferenceConstants;
 
+import org.eclipse.cdt.internal.corext.codemanipulation.StyledInclude;
+
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeGroupStyle.IncludeKind;
 
 /**
  * Preferences for managing of includes.
  */
-public class IncludePreferences {
+public class IncludePreferences implements Comparator<StyledInclude> {
 	private static final String DEFAULT_PARTNER_FILE_SUFFIXES = "test,unittest"; //$NON-NLS-1$
+
+	/**
+	 * Whether indirect inclusion through a partner header file is allowed.
+	 */
+	public static final String INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION = "organizeIncludes.allowPartnerIndirectInclusion"; //$NON-NLS-1$
+	/**
+	 * Header file substitution rules.
+	 * The value of the preference is an XML representation of one or more
+	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.HeaderSubstitutionMap}s.
+	 */
+	public static final String INCLUDES_HEADER_SUBSTITUTION = "organizeIncludes.headerSubstitution"; //$NON-NLS-1$
+	/**
+	 * Symbol exporting rules.
+	 * The value of the preference is an XML representation of one or more
+	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.SymbolExportMap}s.
+	 */
+	public static final String INCLUDES_SYMBOL_EXPORTING_HEADERS = "organizeIncludes.symbolExportingHeaders"; //$NON-NLS-1$
+	/**
+	 * Whether external variables should be forward declared if possible.
+	 *
+	 * Example:
+	 *  extern int errno;
+	 *
+	 * @since 5.7
+	 */
+	public static final String FORWARD_DECLARE_EXTERNAL_VARIABLES = "forwardDeclare.externalVariables"; //$NON-NLS-1$
 
 	public static enum UnusedStatementDisposition { REMOVE, COMMENT_OUT, KEEP }
 
@@ -35,11 +64,11 @@ public class IncludePreferences {
 	public final boolean allowReordering;
 	public final boolean heuristicHeaderSubstitution;
 	public final boolean allowPartnerIndirectInclusion;
+	public final boolean allowIndirectInclusion;
 	public final boolean forwardDeclareCompositeTypes;
 	public final boolean forwardDeclareEnums;
 	public final boolean forwardDeclareFunctions;
-	// TODO(sprigogin): Create a preference for this.
-	public final boolean forwardDeclareExternalVariables = false;
+	public final boolean forwardDeclareExternalVariables;
 	public final boolean forwardDeclareTemplates;
 	public final boolean forwardDeclareNamespaceElements;
 	public final UnusedStatementDisposition unusedStatementsDisposition;
@@ -74,6 +103,8 @@ public class IncludePreferences {
 				PreferenceConstants.FORWARD_DECLARE_ENUMS, project, false);
 		forwardDeclareFunctions = PreferenceConstants.getPreference(
 				PreferenceConstants.FORWARD_DECLARE_FUNCTIONS, project, false);
+		forwardDeclareExternalVariables = PreferenceConstants.getPreference(
+				FORWARD_DECLARE_EXTERNAL_VARIABLES, project, false);
 		forwardDeclareTemplates = PreferenceConstants.getPreference(
 				PreferenceConstants.FORWARD_DECLARE_TEMPLATES, project, false);
 		forwardDeclareNamespaceElements = PreferenceConstants.getPreference(
@@ -89,8 +120,11 @@ public class IncludePreferences {
 		allowReordering = PreferenceConstants.getPreference(
 				PreferenceConstants.INCLUDES_ALLOW_REORDERING, project, true);
 
-		// TODO(sprigogin): Create a preference for this. 
-		allowPartnerIndirectInclusion = false;
+		// TODO(sprigogin): Create a preference for this.
+		allowIndirectInclusion = false;
+
+		allowPartnerIndirectInclusion = PreferenceConstants.getPreference(
+				INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION, project, true);
 
 		// Unused include handling preferences
 		value = PreferenceConstants.getPreference(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION, project, null);
@@ -106,7 +140,7 @@ public class IncludePreferences {
 		String value = PreferenceConstants.getPreference(preferenceKey, project, null);
 		IncludeGroupStyle style = null;
 		if (value != null)
-			style = IncludeGroupStyle.fromString(value, includeKind);
+			style = IncludeGroupStyle.fromXmlString(value, includeKind);
 		if (style == null)
 			style = new IncludeGroupStyle(includeKind);
 		includeStyles.put(includeKind, style);
@@ -119,51 +153,67 @@ public class IncludePreferences {
 	 */
 	public static void initializeDefaultValues(IPreferenceStore store) {
 		IncludeGroupStyle style = new IncludeGroupStyle(IncludeKind.RELATED);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_RELATED, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_RELATED, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.PARTNER);
 		style.setKeepTogether(true);
 		style.setBlankLineBefore(true);
 		style.setOrder(0);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_PARTNER, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_PARTNER, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.IN_SAME_FOLDER);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SAME_FOLDER, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SAME_FOLDER, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.IN_SUBFOLDER);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SUBFOLDER, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SUBFOLDER, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.SYSTEM);
 		style.setKeepTogether(true);
 		style.setBlankLineBefore(true);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SYSTEM, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SYSTEM, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.SYSTEM_WITH_EXTENSION);
 		style.setKeepTogether(true);
 		style.setAngleBrackets(true);
 		style.setOrder(1);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SYSTEM_WITH_EXTENSION, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SYSTEM_WITH_EXTENSION, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.SYSTEM_WITHOUT_EXTENSION);
 		style.setKeepTogether(true);
 		style.setAngleBrackets(true);
 		style.setOrder(2);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SYSTEM_WITHOUT_EXTENSION, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SYSTEM_WITHOUT_EXTENSION, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.OTHER);
 		style.setKeepTogether(true);
 		style.setBlankLineBefore(true);
 		style.setOrder(3);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_OTHER, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_OTHER, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.IN_SAME_PROJECT);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SAME_PROJECT, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_SAME_PROJECT, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.IN_OTHER_PROJECT);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_OTHER_PROJECT, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_OTHER_PROJECT, style.toXmlString());
 		style = new IncludeGroupStyle(IncludeKind.EXTERNAL);
-		store.setDefault(PreferenceConstants.INCLUDE_STYLE_EXTERNAL, style.toString());
+		store.setDefault(PreferenceConstants.INCLUDE_STYLE_EXTERNAL, style.toXmlString());
 		store.setDefault(PreferenceConstants.INCLUDE_STYLE_MATCHING_PATTERN, ""); //$NON-NLS-1$
 
 		store.setDefault(PreferenceConstants.INCLUDES_PARTNER_FILE_SUFFIXES, DEFAULT_PARTNER_FILE_SUFFIXES);
 		store.setDefault(PreferenceConstants.INCLUDES_HEURISTIC_HEADER_SUBSTITUTION, true);
 		store.setDefault(PreferenceConstants.INCLUDES_ALLOW_REORDERING, true);
+		store.setDefault(INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION, true);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_COMPOSITE_TYPES, true);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_ENUMS, false);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS, false);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_TEMPLATES, false);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_NAMESPACE_ELEMENTS, true);
-		store.setDefault(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION, UnusedStatementDisposition.COMMENT_OUT.toString());
+		store.setDefault(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
+				UnusedStatementDisposition.COMMENT_OUT.toString());
+
+		store.setDefault(INCLUDES_HEADER_SUBSTITUTION,
+				HeaderSubstitutionMap.serializeMaps(GCCHeaderSubstitutionMaps.getDefaultMaps()));
+		store.setDefault(INCLUDES_SYMBOL_EXPORTING_HEADERS,
+				SymbolExportMap.serializeMaps(Collections.singletonList(GCCHeaderSubstitutionMaps.getSymbolExportMap())));
+	}
+
+	@Override
+	public int compare(StyledInclude include1, StyledInclude include2) {
+		int c = include1.getStyle().getGroupingStyle(includeStyles).getOrder() -
+				include2.getStyle().getGroupingStyle(includeStyles).getOrder();
+		if (c != 0)
+			return c;
+		return include1.getIncludeInfo().compareTo(include2.getIncludeInfo());
 	}
 }

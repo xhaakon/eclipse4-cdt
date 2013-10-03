@@ -10,13 +10,13 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>8.2.0-SNAPSHOT</version>
+	<version>8.2.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
 	<properties>
-		<tycho-version>0.17.0</tycho-version>
-		<tycho-extras-version>0.17.0</tycho-extras-version>
+		<tycho-version>0.18.1</tycho-version>
+		<tycho-extras-version>0.18.1</tycho-extras-version>
 		<download-site>http://download.eclipse.org</download-site>
 		<platform-version>3.8</platform-version>
 		<platform-site>${download-site}/eclipse/updates/${platform-version}</platform-site>

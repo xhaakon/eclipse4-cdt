@@ -2632,7 +2632,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     	SHORT= 0x20, UNSIGNED= 0x40, SIGNED= 0x80, COMPLEX= 0x100, IMAGINARY= 0x200,
     	VIRTUAL= 0x400, EXPLICIT= 0x800, FRIEND= 0x1000, THREAD_LOCAL= 0x2000;
 	private static final int FORBID_IN_EMPTY_DECLSPEC =
-		CONST | RESTRICT | VOLATILE | SHORT | UNSIGNED | SIGNED | COMPLEX | IMAGINARY | FRIEND | THREAD_LOCAL;
+		CONST | RESTRICT | VOLATILE | SHORT | UNSIGNED | SIGNED | COMPLEX | IMAGINARY | THREAD_LOCAL;
 
     /**
      * This function parses a declaration specifier sequence, as according to
@@ -3282,6 +3282,10 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 						if (CharArrayUtils.equals(nchars, start, nchars.length-start, currentClassName))
 							return;
 					}
+					
+					// Accept constructors and destructors of other classes as friends
+					if (declspec instanceof ICPPASTDeclSpecifier && ((ICPPASTDeclSpecifier) declspec).isFriend())
+						return;
 				} else if (isQualified) {
 					// Accept qualified constructor or destructor outside of class body
 					return;
@@ -3546,7 +3550,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 	 */
 	private List<IASTInitializerClause> initializerList(boolean allowSkipping) throws EndOfFileException,
 			BacktrackException {
-		List<IASTInitializerClause> result= null;
+		List<IASTInitializerClause> result= new ArrayList<IASTInitializerClause>();
 		// List of initializer clauses
 		loop: while (true) {
 			// Clause may be null, add to initializer anyways, such that the size can be computed.
@@ -3563,9 +3567,6 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 					clause= setRange(packExpansion, clause, endOffset);
 				}
 			}
-			if (result == null) {
-				result= new ArrayList<IASTInitializerClause>();
-			}
 			result.add(clause);
 			if (LT(1) != IToken.tCOMMA)
 				break;
@@ -3577,10 +3578,6 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 			}
 			consume(IToken.tCOMMA);
 		}
-
-		if (result == null)
-			return Collections.emptyList();
-
 		return result;
 	}
 

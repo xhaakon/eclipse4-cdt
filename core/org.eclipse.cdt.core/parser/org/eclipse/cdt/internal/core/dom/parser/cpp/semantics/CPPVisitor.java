@@ -22,6 +22,13 @@ import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUti
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getNestedType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getUltimateTypeUptoPointers;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.eclipse.cdt.core.dom.ast.ASTGenericVisitor;
 import org.eclipse.cdt.core.dom.ast.ASTNodeProperty;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
@@ -207,13 +214,6 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownType;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 /**
  * Collection of methods to extract information from a C++ translation unit.
  */
@@ -225,7 +225,7 @@ public class CPPVisitor extends ASTQueries {
 	public static final String BEGIN_STR = "begin"; //$NON-NLS-1$
 	public static final char[] BEGIN = BEGIN_STR.toCharArray();
 	public static final char[] END = "end".toCharArray();  //$NON-NLS-1$
-	static final String STD = "std"; //$NON-NLS-1$
+	public static final String STD = "std"; //$NON-NLS-1$
 	private static final char[] SIZE_T = "size_t".toCharArray(); //$NON-NLS-1$
 	private static final char[] PTRDIFF_T = "ptrdiff_t".toCharArray(); //$NON-NLS-1$
 	private static final char[] TYPE_INFO = "type_info".toCharArray(); //$NON-NLS-1$
@@ -848,7 +848,16 @@ public class CPPVisitor extends ASTQueries {
         if (isFunction) {
 			if (binding instanceof ICPPInternalBinding && binding instanceof ICPPFunction && name.isActive()) {
 				ICPPFunction function = (ICPPFunction) binding;
-			    if (CPPSemantics.isSameFunction(function, typeRelevantDtor)) {
+				boolean sameFunction = CPPSemantics.isSameFunction(function, typeRelevantDtor);
+				if (function.getOwner() instanceof ICPPClassType) {
+					// Don't consider a function brought into scope from a base class scope
+					// to be the same as a function declared in a derived class scope.
+					IScope bindingScope = ((ICPPClassType) function.getOwner()).getCompositeScope();
+					if (bindingScope == null || !bindingScope.equals(scope)) {
+						sameFunction = false;
+					}
+				}
+			    if (sameFunction) {
 			    	binding= CPPSemantics.checkDeclSpecifier(binding, name, parent);
 			    	if (binding instanceof IProblemBinding)
 			    		return binding;
@@ -2009,11 +2018,12 @@ public class CPPVisitor extends ASTQueries {
 
 	private static IType createAutoType(final IASTDeclSpecifier declSpec, IASTDeclarator declarator) {
 		Set<IASTDeclSpecifier> recursionProtectionSet = autoTypeDeclSpecs.get();
+		if (!recursionProtectionSet.add(declSpec)) {
+			// Detected a self referring auto type, e.g.: auto x = x;
+			return new ProblemType(ISemanticProblem.TYPE_CANNOT_DEDUCE_AUTO_TYPE);
+		}
+
 		try {
-			if (!recursionProtectionSet.add(declSpec)) {
-				// Detected a self referring auto type, e.g.: auto x = x;
-				return new ProblemType(ISemanticProblem.TYPE_CANNOT_DEDUCE_AUTO_TYPE);
-			}
 			if (declarator instanceof ICPPASTFunctionDeclarator) {
 				return createAutoFunctionType(declSpec, (ICPPASTFunctionDeclarator) declarator);
 			}

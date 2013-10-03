@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 IBM Corporation and others.
+ * Copyright (c) 2007, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,7 @@
  *     Anton Leherbauer (Wind River Systems) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
  *     Mike Kucera (IBM)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.parser;
 
@@ -26,6 +27,7 @@ import org.eclipse.cdt.core.model.AbstractLanguage;
 import org.eclipse.cdt.core.model.ICLanguageKeywords;
 import org.eclipse.cdt.core.model.IContributedModelBuilder;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.FileContent;
 import org.eclipse.cdt.core.parser.IParserLogService;
 import org.eclipse.cdt.core.parser.IScanner;
@@ -44,7 +46,7 @@ import org.eclipse.core.runtime.CoreException;
  * for the DOM parser framework.
  * 
  * This class uses the template method pattern, derived classes need only implement
- * {@link AbstractCLikeLanguage#getScannerExtensionConfiguration()},
+ * {@link AbstractCLikeLanguage#getScannerExtensionConfiguration(IScannerInfo info)},
  * {@link AbstractCLikeLanguage#getParserLanguage()} and
  * {@link AbstractCLikeLanguage#createParser(IScanner scanner, ParserMode parserMode,
  *                                           IParserLogService logService, IIndex index)}.
@@ -54,7 +56,9 @@ import org.eclipse.core.runtime.CoreException;
  * @since 5.0
  */
 public abstract class AbstractCLikeLanguage extends AbstractLanguage implements ICLanguageKeywords {
-	
+	private static final AbstractScannerExtensionConfiguration DUMMY_SCANNER_EXTENSION_CONFIGURATION =
+			new AbstractScannerExtensionConfiguration() {};
+
 	static class NameCollector extends ASTVisitor {
 		{
 			shouldVisitNames= true;
@@ -74,14 +78,17 @@ public abstract class AbstractCLikeLanguage extends AbstractLanguage implements 
 	}
 	
 	/**
-	 * @return the scanner extension configuration for this language, may not
-	 *         return <code>null</code>
+	 * @nooverride This method is not intended to be re-implemented or extended by clients.
+	 * @deprecated Do not override this method.
+	 *     Override {@link #getScannerExtensionConfiguration(IScannerInfo)} instead.
 	 */
-	protected abstract IScannerExtensionConfiguration getScannerExtensionConfiguration();
+	@Deprecated
+	protected IScannerExtensionConfiguration getScannerExtensionConfiguration() {
+		return DUMMY_SCANNER_EXTENSION_CONFIGURATION;
+	}
 
 	/**
-	 * @return the scanner extension configuration for this language, may not
-	 *         return <code>null</code>
+	 * @return the scanner extension configuration for this language. May not return {@code null}.
 	 * @since 5.4
 	 */
 	protected IScannerExtensionConfiguration getScannerExtensionConfiguration(IScannerInfo info) {
@@ -181,7 +188,8 @@ public abstract class AbstractCLikeLanguage extends AbstractLanguage implements 
 	 * @param log  the parser log service
 	 * @param index  the index to help resolve bindings
 	 * @param forCompletion  whether the parser is used for code completion
-	 * @param options for valid options see {@link AbstractLanguage#getASTTranslationUnit(FileContent, IScannerInfo, IncludeFileContentProvider, IIndex, int, IParserLogService)}
+	 * @param options for valid options see
+	 *     {@link AbstractLanguage#getASTTranslationUnit(FileContent, IScannerInfo, IncludeFileContentProvider, IIndex, int, IParserLogService)}
 	 * @return  an instance of ISourceCodeParser
 	 */
 	protected ISourceCodeParser createParser(IScanner scanner, IParserLogService log, IIndex index, boolean forCompletion, int options) {
@@ -249,13 +257,15 @@ public abstract class AbstractCLikeLanguage extends AbstractLanguage implements 
 	}
 
 	private ICLanguageKeywords cLanguageKeywords;
-	
+
 	private synchronized ICLanguageKeywords getCLanguageKeywords() {
-		if (cLanguageKeywords == null)
-			cLanguageKeywords = new CLanguageKeywords(getParserLanguage(), getScannerExtensionConfiguration());
+		if (cLanguageKeywords == null) {
+			cLanguageKeywords = new CLanguageKeywords(getParserLanguage(),
+					getScannerExtensionConfiguration(new ExtendedScannerInfo()));
+		}
 		return cLanguageKeywords;
 	}
-	
+
 	@Override
 	@SuppressWarnings("rawtypes")
 	public Object getAdapter(Class adapter) {

@@ -23,6 +23,7 @@ import java.util.Map;
 import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.model.IConnectHandler;
+import org.eclipse.cdt.debug.internal.core.DebugStringVariableSubstitutor;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
@@ -294,11 +295,14 @@ public class FinalLaunchSequence extends ReflectionSequence {
 	@Execute
 	public void stepSourceGDBInitFile(final RequestMonitor requestMonitor) {
 		try {
-			final String gdbinitFile = fGDBBackend.getGDBInitFile();
+			String gdbinitFile = fGDBBackend.getGDBInitFile();
 
 			if (gdbinitFile != null && gdbinitFile.length() > 0) {
+				String projectName = (String) fAttributes.get(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME);
+				final String expandedGDBInitFile = new DebugStringVariableSubstitutor(projectName).performStringSubstitution(gdbinitFile);
+
 				fCommandControl.queueCommand(
-						fCommandFactory.createCLISource(fCommandControl.getContext(), gdbinitFile), 
+						fCommandFactory.createCLISource(fCommandControl.getContext(), expandedGDBInitFile), 
 						new DataRequestMonitor<MIInfo>(getExecutor(), requestMonitor) {
 							@Override
 							protected void handleCompleted() {
@@ -306,7 +310,7 @@ public class FinalLaunchSequence extends ReflectionSequence {
 								// should not consider this an error.
 								// If it is not the default, then the user must have specified it and
 								// we want to warn the user if we can't find it.
-								if (!gdbinitFile.equals(IGDBLaunchConfigurationConstants.DEBUGGER_GDB_INIT_DEFAULT )) {
+								if (!expandedGDBInitFile.equals(IGDBLaunchConfigurationConstants.DEBUGGER_GDB_INIT_DEFAULT)) {
 									requestMonitor.setStatus(getStatus());
 								}
 								requestMonitor.done();

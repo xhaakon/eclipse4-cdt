@@ -76,7 +76,7 @@ public class ResourceLookup {
 	 * 			NB the returned IFile may not exist
 	 */
 	public static IFile selectFileForLocationURI(URI location, IProject preferredProject) {
-		return selectFile(findFilesForLocationURI(location), preferredProject);
+		return selectFile(findFilesForLocationURI(location), preferredProject, location);
 	}
 
 	/**
@@ -89,7 +89,7 @@ public class ResourceLookup {
 	 * 			NB the returned IFile may not exist
 	 */
 	public static IFile selectFileForLocation(IPath location, IProject preferredProject) {
-		return selectFile(findFilesForLocation(location), preferredProject);
+		return selectFile(findFilesForLocation(location), preferredProject, location);
 	}
 
 	/**
@@ -102,7 +102,7 @@ public class ResourceLookup {
 	 * one that's most relevant, then first try to find it directly - before getting to the more expensive 
 	 * loop of computing the "relevance scores" for all the files.
 	 */
-	private static IFile selectFile(IFile[] files, IProject preferredProject) {
+	private static IFile selectFile(IFile[] files, IProject preferredProject, Object originalLocation) {
 		if (files.length == 0)
 			return null;
 
@@ -115,28 +115,29 @@ public class ResourceLookup {
 		 * reaching the next for-loop - that loop is expensive as it might cause the loading of unnecessary 
 		 * project-descriptions.
 		 */
-		if(preferredProject != null) {
-			for (int i = 0; i < files.length; i++) {
-				IFile file = files[i];
-				if (file.getProject().equals(preferredProject) && file.isAccessible() &&
-						(best == null || best.getFullPath().toString().compareTo(file.getFullPath().toString()) > 0)) {
+		int filesInPreferredProject= 0;
+		if (preferredProject != null) {
+			for (IFile file : files) {
+				if (file.getProject().equals(preferredProject) && file.isAccessible()) {
+					filesInPreferredProject++;
 					best= file;
 				}
 			}
 		}
-		if(best != null)
+		// One accessible file in preferred project.
+		if (filesInPreferredProject == 1)
 			return best;
 		
 		int bestRelevance= -1;
-
-		for (int i = 0; i < files.length; i++) {
-			IFile file = files[i];
-			int relevance= FileRelevance.getRelevance(file, preferredProject);
-			if (best == null || relevance > bestRelevance ||
-					(relevance == bestRelevance &&
-							best.getFullPath().toString().compareTo(file.getFullPath().toString()) > 0)) {
-				bestRelevance= relevance;
-				best= file;
+		for (IFile file : files) {
+			if (filesInPreferredProject==0 || file.getProject().equals(preferredProject)) {
+				int relevance= FileRelevance.getRelevance(file, preferredProject, PathCanonicalizationStrategy.resolvesSymbolicLinks(), originalLocation);
+				if (best == null || relevance > bestRelevance ||
+						(relevance == bestRelevance &&
+						best.getFullPath().toString().compareTo(file.getFullPath().toString()) > 0)) {
+					bestRelevance= relevance;
+					best= file;
+				}
 			}
 		}
 		return best;

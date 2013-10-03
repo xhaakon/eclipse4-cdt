@@ -25,7 +25,6 @@ import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
@@ -203,11 +202,8 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 
 	@Override
 	public ICPPMethod[] getImplicitMethods(IASTNode point) {
-		ICPPClassScope origClassScope= (ICPPClassScope) specialClass.getSpecializedBinding().getCompositeScope();
-		if (origClassScope == null) {
-			return ICPPMethod.EMPTY_CPPMETHOD_ARRAY;
-		}
-		ICPPMethod[] methods= origClassScope.getImplicitMethods();
+		ICPPClassType origClass = specialClass.getSpecializedBinding();
+		ICPPMethod[] methods= ClassTypeHelper.getImplicitMethods(origClass, point);
 		return specializeMembers(methods, point);
 	}
 
@@ -274,5 +270,24 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 	@Override
 	public EScopeKind getKind() {
 		return EScopeKind.eClassType;
+	}
+
+	// Note: equals() and hashCode() are overridden because multiple instances
+	//       of this class representing the same class specialization scope
+	//       may be created, but scopes are sometimes stored in hash maps
+	//       under the assumption that two objects representing the same
+	//       scope will compare equal().
+	
+	@Override
+	public boolean equals(Object other) {
+		if (other instanceof ICPPClassSpecializationScope) {
+			return getClassType().equals(((ICPPClassSpecializationScope) other).getClassType());
+		}
+		return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		return specialClass.hashCode();
 	}
 }

@@ -421,7 +421,7 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 		PDOMBinding pdomBinding= null;
 		PDOMNode parent2= null;
 
-		// template parameters are created directly by their owners.
+		// Template parameters are created directly by their owners.
 		if (binding instanceof ICPPTemplateParameter)
 			return null;
 		if (binding instanceof ICPPUnknownBinding)
@@ -540,9 +540,14 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 		if (parent instanceof IPDOMCPPClassType) {
 			if (originalBinding instanceof IEnumerator)
 				originalBinding = originalBinding.getOwner();
-			int visibility = getVisibility(originalBinding);
-			if (visibility >= 0) {
-				((IPDOMCPPClassType) parent).addMember(binding, visibility);
+			try {
+				int visibility = getVisibility(originalBinding);
+				if (visibility >= 0) {
+					((IPDOMCPPClassType) parent).addMember(binding, visibility);
+					return;
+				}
+			} catch (IllegalArgumentException e) {
+				CCorePlugin.log(e);
 				return;
 			}
 		}
@@ -862,15 +867,6 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			// Don't adapt file local bindings from other fragments to this one.
 			if (ib.isFileLocal()) {
 				return null;
-			}
-		} else {
-			// Skip unnamed namespaces.
-			while (owner instanceof ICPPNamespace) {
-				char[] name= owner.getNameCharArray();
-				if (name.length > 0) {
-					break;
-				}
-				owner= owner.getOwner();
 			}
 		}
 

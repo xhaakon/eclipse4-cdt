@@ -72,7 +72,7 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 	protected static final long[] FILE_LOCAL_REC_DUMMY = new long[]{0};
 
 	// Node types
-	protected static final int LINKAGE= 0; // special one for myself
+	protected static final int LINKAGE= 0; // Special one for myself
 
 	private BTree fMacroIndex= null;  // No need for volatile, all fields of BTree are final.
 	private final PDOM fPDOM;
@@ -394,7 +394,7 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 	 */
 	public PDOMBinding[] getBindingsViaCache(char[] name, IProgressMonitor monitor) throws CoreException {
 		CharArrayMap<PDOMBinding[]> map = getBindingMap();
-		synchronized(map) {
+		synchronized (map) {
 			PDOMBinding[] result= map.get(name);
 			if (result != null)
 				return result;
@@ -404,7 +404,7 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 		visitor.setMonitor(monitor);
 		getIndex().accept(visitor);
 		PDOMBinding[] result= visitor.getBindings();
-		synchronized(map) {
+		synchronized (map) {
 			map.put(name, result);
 		}
 		return result;

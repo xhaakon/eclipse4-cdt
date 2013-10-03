@@ -1121,7 +1121,7 @@ public class Conversions {
 		return false;
 	}
 
-	private static boolean isNullPointerConstant(IType s) {
+	public static boolean isNullPointerConstant(IType s) {
 		if (s instanceof CPPBasicType) {
 			final CPPBasicType basicType = (CPPBasicType) s;
 			if (basicType.getKind() == Kind.eNullPtr)
@@ -1154,8 +1154,8 @@ public class Conversions {
 	}
 
 	/**
-	 * Composite pointer type computed as described in 5.9-2 except that if the conversion to the
-	 * pointer is not possible, we return null.
+	 * Composite pointer type computed as described in 5.9-2 except that if the conversion to
+	 * the pointer is not possible, the method returns {@code null}.
 	 */
 	public static IType compositePointerType(IType t1, IType t2) {
 		final boolean isPtr1 = t1 instanceof IPointerType;

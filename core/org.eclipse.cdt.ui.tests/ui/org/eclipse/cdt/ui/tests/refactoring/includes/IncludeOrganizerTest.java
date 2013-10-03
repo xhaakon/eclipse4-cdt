@@ -10,20 +10,25 @@
  *******************************************************************************/
 package org.eclipse.cdt.ui.tests.refactoring.includes;
 
-import java.util.List;
+import java.util.Collections;
 
 import junit.framework.Test;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.text.edits.MultiTextEdit;
-import org.eclipse.text.edits.TextEdit;
 
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.ui.PreferenceConstants;
 
+import org.eclipse.cdt.internal.ui.refactoring.includes.HeaderSubstitutionMap;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IHeaderChooser;
+import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeMap;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeOrganizer;
+import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences;
+import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences.UnusedStatementDisposition;
+import org.eclipse.cdt.internal.ui.refactoring.includes.SymbolExportMap;
 
 /**
  * Tests for {@link IncludeOrganizer}.
@@ -45,13 +50,16 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	@Override
 	protected void resetPreferences() {
 		super.resetPreferences();
-		getPreferenceStore().setToDefault(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION);
-		getPreferenceStore().setToDefault(PreferenceConstants.FORWARD_DECLARE_COMPOSITE_TYPES);
-		getPreferenceStore().setToDefault(PreferenceConstants.FORWARD_DECLARE_ENUMS);
-		getPreferenceStore().setToDefault(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS);
-		getPreferenceStore().setToDefault(PreferenceConstants.FORWARD_DECLARE_TEMPLATES);
-		getPreferenceStore().setToDefault(PreferenceConstants.FORWARD_DECLARE_NAMESPACE_ELEMENTS);
-		getPreferenceStore().setToDefault(PreferenceConstants.INCLUDES_ALLOW_REORDERING);
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		preferenceStore.setToDefault(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION);
+		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_COMPOSITE_TYPES);
+		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_ENUMS);
+		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS);
+		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_TEMPLATES);
+		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_NAMESPACE_ELEMENTS);
+		preferenceStore.setToDefault(PreferenceConstants.INCLUDES_ALLOW_REORDERING);
+		preferenceStore.setToDefault(IncludePreferences.INCLUDES_HEADER_SUBSTITUTION);
+		preferenceStore.setToDefault(IncludePreferences.INCLUDES_SYMBOL_EXPORTING_HEADERS);
 	}
 
 	private void assertExpectedResults() throws Exception {
@@ -65,14 +73,9 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	private String organizeIncludes(ITranslationUnit tu) throws Exception {
 		IHeaderChooser headerChooser = new FirstHeaderChooser();
 		IncludeOrganizer organizer = new IncludeOrganizer(tu, index, LINE_DELIMITER, headerChooser);
-		List<TextEdit> edits = organizer.organizeIncludes(ast);
+		MultiTextEdit edit = organizer.organizeIncludes(ast);
 		IDocument document = new Document(new String(tu.getContents()));
-		if (!edits.isEmpty()) {
-			// Apply text edits.
-			MultiTextEdit edit = new MultiTextEdit();
-			edit.addChildren(edits.toArray(new TextEdit[edits.size()]));
-			edit.apply(document);
-		}
+		edit.apply(document);
 		return document.get();
 	}
 
@@ -296,6 +299,26 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 		assertExpectedResults();
 	}
 
+	//f.h
+	//void f(int p);
+
+	//f.cpp
+	//#include "f.h"
+	//void f(int p) {
+	//}
+	//====================
+	//#include "f.h"
+	//
+	//void f(int p) {
+	//}
+	public void testExistingPartnerIncludeIsNotRemoved() throws Exception {
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		preferenceStore.setValue(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
+				UnusedStatementDisposition.REMOVE.toString());
+		preferenceStore.setValue(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS, true);
+		assertExpectedResults();
+	}
+
 	//h1.h
 	//class A {};
 
@@ -327,6 +350,172 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//C c;
 	//D d;
 	public void testHeaderExport() throws Exception {
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//class A {};
+
+	//h2.h
+	//#include "h1.h"	// IWYU pragma: export
+	//class B {};
+
+	//h3.h
+	//#include "h2.h"
+
+	//source.cpp
+	//A a;
+	//B b;
+	//====================
+	//#include "h3.h"
+	//
+	//A a;
+	//B b;
+	public void testIndirectHeaderExport() throws Exception {
+		HeaderSubstitutionMap headerMap = new HeaderSubstitutionMap("Test", false,
+				new IncludeMap(true, new String[] { "h2.h", "h3.h"}),
+				new IncludeMap(false));
+		getPreferenceStore().setValue(IncludePreferences.INCLUDES_HEADER_SUBSTITUTION,
+				HeaderSubstitutionMap.serializeMaps(Collections.singletonList(headerMap)));
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//#define M2(t, p) t p
+
+	//h2.h
+	//#include "h1.h"
+	//#define M1(x, y) M2(int, x) = y
+
+	//h3.h
+	//#include "h2.h"
+
+	//source.cpp
+	//#include "h3.h"
+	//M1(a, 1);
+	//====================
+	//#include "h2.h"
+	//
+	//M1(a, 1);
+	public void testMacro() throws Exception {
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		preferenceStore.setValue(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
+				UnusedStatementDisposition.REMOVE.toString());
+		assertExpectedResults();
+	}
+
+	//string.h
+	//#include "stddef.h"
+	//extern char* strchr(char* s, int c);
+
+	//stddef.h
+	//#define NULL 0
+
+	//source.cpp
+	//#include "stddef.h"
+	//char* test() {
+	//  int* p = NULL;
+	//  return strchr("aaa", '*');
+	//}
+	//====================
+	//#include "string.h"
+	//
+	//char* test() {
+	//  int* p = NULL;
+	//  return strchr("aaa", '*');
+	//}
+	public void testExportedSymbol() throws Exception {
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		preferenceStore.setValue(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
+				UnusedStatementDisposition.REMOVE.toString());
+		SymbolExportMap symbolExportMap = new SymbolExportMap(new String[] { "NULL", "string.h" });
+		preferenceStore.setValue(IncludePreferences.INCLUDES_SYMBOL_EXPORTING_HEADERS,
+				SymbolExportMap.serializeMaps(Collections.singletonList(symbolExportMap)));
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//class A {};
+	//class B;
+
+	//h2.h
+	//class C {};
+
+	//source.cpp
+	//A a;
+	//B* b;
+	//C* c;
+	//====================
+	//#include "h1.h"
+	//
+	//class C;
+	//
+	//A a;
+	//B* b;
+	//C* c;
+	public void testSymbolToDeclareIsDefinedInIncludedHeader() throws Exception {
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//typedef int int32;
+
+	//h2.h
+	//#include "h1.h"
+	//extern int32 var;
+
+	//source.cpp
+	//int a = var;
+	//====================
+	//#include "h2.h"
+	//
+	//int a = var;
+	public void testVariableReference() throws Exception {
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//namespace ns3 {
+	//class C {};
+	//namespace ns2 {
+	//class A {};
+	//class B {};
+	//namespace ns1 {
+	//C* f(const A& a, B* b) { return nullptr; }
+	//} // ns1
+	//} // ns2
+	//} // ns3
+
+	//source.cpp
+	//#include "h1.h"
+	//void test(ns3::ns2::A& a) {
+	//  ns3::C* c = ns3::ns2::ns1::f(a, nullptr);
+	//}
+	//====================
+	//namespace ns3 {
+	//class C;
+	//namespace ns2 {
+	//class A;
+	//class B;
+	//} /* namespace ns2 */
+	//} /* namespace ns3 */
+	//namespace ns3 {
+	//namespace ns2 {
+	//namespace ns1 {
+	//C * f(const A &a, B *b);
+	//} /* namespace ns1 */
+	//} /* namespace ns2 */
+	//} /* namespace ns3 */
+	//
+	//void test(ns3::ns2::A& a) {
+	//  ns3::C* c = ns3::ns2::ns1::f(a, nullptr);
+	//}
+	public void testForwardDeclarations() throws Exception {
+		// TODO(sprigogin): Move ns1 outside of other namespaces after IncludeOrganizer starts using ASTWriter.
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		preferenceStore.setValue(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
+				UnusedStatementDisposition.REMOVE.toString());
+		preferenceStore.setValue(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS, true);
 		assertExpectedResults();
 	}
 }

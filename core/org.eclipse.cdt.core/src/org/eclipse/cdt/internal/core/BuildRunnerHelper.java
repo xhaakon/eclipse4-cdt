@@ -227,14 +227,14 @@ public class BuildRunnerHelper implements Closeable {
 			if (workingDirectoryURI != null) {
 				pathFromURI = EFSExtensionManager.getDefault().getPathFromURI(workingDirectoryURI);
 			}
-			if(pathFromURI == null) {
+			if (pathFromURI == null) {
 				// fallback to CWD
 				pathFromURI = System.getProperty("user.dir"); //$NON-NLS-1$
 			}
 			IPath workingDirectory = new Path(pathFromURI);
 
 			String errMsg = null;
-			monitor.subTask(CCorePlugin.getFormattedString("BuildRunnerHelper.invokingCommand", launcher.getCommandLine())); //$NON-NLS-1$
+			monitor.subTask(CCorePlugin.getFormattedString("BuildRunnerHelper.invokingCommand", guessCommandLine(buildCommand.toString(), args))); //$NON-NLS-1$
 			Process p = launcher.execute(buildCommand, args, envp, workingDirectory, monitor);
 			monitor.worked(TICKS_EXECUTE_PROGRAM);
 			if (p != null) {
@@ -323,7 +323,8 @@ public class BuildRunnerHelper implements Closeable {
 			monitor = new NullProgressMonitor();
 		}
 		try {
-			monitor.beginTask(CCorePlugin.getResourceString("BuildRunnerHelper.updatingProject"), IProgressMonitor.UNKNOWN); //$NON-NLS-1$
+			monitor.beginTask(CCorePlugin.getFormattedString("BuildRunnerHelper.refreshingProject", project.getName()), IProgressMonitor.UNKNOWN); //$NON-NLS-1$
+			monitor.subTask(""); //$NON-NLS-1$
 
 			// Do not allow the cancel of the refresh, since the builder is external
 			// to Eclipse, files may have been created/modified and we will be out-of-sync.
@@ -453,6 +454,19 @@ public class BuildRunnerHelper implements Closeable {
 		errorParserManager.processLine(msg);
 	}
 
+	/**
+	 * Compose command line that presumably will be run by launcher.
+	 */
+	private static String guessCommandLine(String command, String[] args) {
+		StringBuffer buf = new StringBuffer(command + ' ');
+		if (args != null) {
+			for (String arg : args) {
+				buf.append(arg);
+				buf.append(' ');
+			}
+		}
+		return buf.toString().trim();
+	}
 	/**
 	 * Print a message to the console info output. Note that this message is colored
 	 * with the color assigned to "Info" stream.
