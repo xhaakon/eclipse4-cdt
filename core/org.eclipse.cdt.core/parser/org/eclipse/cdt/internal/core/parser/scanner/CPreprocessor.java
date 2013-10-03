@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IFileNomination;
@@ -977,12 +976,17 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
         			++pos;
         			break;
         		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
-        			isOctal = true;
+        			if (!isFloat)
+        				isOctal = true;
         			++pos;
         			break;
         		case '8': case '9':
-        			handleProblem(IProblem.SCANNER_BAD_OCTAL_FORMAT, image, number.getOffset(), number.getEndOffset());
-        			return;
+        			if (!isFloat) {
+        				handleProblem(IProblem.SCANNER_BAD_OCTAL_FORMAT, image, number.getOffset(), number.getEndOffset());
+        				return;
+        			}
+        			++pos;
+        			break;
         		}
         	}
         }
@@ -1200,8 +1204,7 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
     		} else {
     			PreprocessorMacro result= MacroDefinitionParser.parseMacroDefinition(
     					macro.getNameCharArray(), macro.getParameterList(), expansionImage);
-    			final IASTFileLocation loc= macro.getFileLocation();
-    			fLocationMap.registerMacroFromIndex(result, loc, -1);
+    			fLocationMap.registerMacroFromIndex(result, macro.getDefinition(), -1);
     			fMacroDictionary.put(result.getNameCharArray(), result);
     		}
     	} catch (Exception e) {
@@ -1928,10 +1931,10 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
     			return false;
     		}
         }
-        final boolean contentAssist = fContentAssistLimit>=0 && fCurrentContext == fRootContext;
+        final boolean contentAssist = fContentAssistLimit >= 0 && fCurrentContext == fRootContext;
         final ITokenSequence input= stopAtNewline ? fLineInputToMacroExpansion : fInputToMacroExpansion;
-		final MacroExpander expander = withinExpansion ? new MacroExpander(this, fMacroDictionary,
-				fLocationMap, fLexOptions) : fMacroExpander;
+		final MacroExpander expander = withinExpansion ?
+				new MacroExpander(this, fMacroDictionary, fLocationMap, fLexOptions) : fMacroExpander;
         TokenList replacement= expander.expand(input, options, macro, identifier, contentAssist, fCurrentContext);
     	final IASTName[] expansions= expander.clearImplicitExpansions();
     	final ImageLocationInfo[] ili= expander.clearImageLocationInfos();
@@ -1951,5 +1954,16 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
 			return fMacroExpander;
 		}
 		return null;
-	}	
+	}
+
+	/**
+	 * Return whether 'name' is a macro whose definition is provided by the
+	 * preprocessor, like __LINE__, __FILE__, __DATE__ or __TIME__.
+	 */
+	public static boolean isPreprocessorProvidedMacro(char[] name) {
+		return CharArrayUtils.equals(__LINE__.getNameCharArray(), name)
+			|| CharArrayUtils.equals(__FILE__.getNameCharArray(), name)
+			|| CharArrayUtils.equals(__DATE__.getNameCharArray(), name)
+			|| CharArrayUtils.equals(__TIME__.getNameCharArray(), name);
+	}
 }

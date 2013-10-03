@@ -680,11 +680,12 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 				final StringBuilder buffer = new StringBuilder(3);
 				buffer.append(character);
 				buffer.append(closingCharacter);
-				if (closingCharacter == '>' && nextToken != Symbols.TokenEOF
-						&& document.getChar(offset + length) == '>') {
-					// Insert a space to avoid two consecutive closing angular brackets.
-					buffer.append(' ');
-				}
+				// No longer necessary since consecutive closing angular brackets are allowed in C++11.
+//				if (closingCharacter == '>' && nextToken != Symbols.TokenEOF
+//						&& document.getChar(offset + length) == '>') {
+//					// Insert a space to avoid two consecutive closing angular brackets.
+//					buffer.append(' ');
+//				}
 
 				document.replace(offset, length, buffer.toString());
 
@@ -699,10 +700,7 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 				model.addGroup(group);
 				model.forceInstall();
 
-//				level.fOffset = offset;
-//				level.fLength = 2;
-
-				// set up position tracking for our magic peers
+				// Set up position tracking for our magic peers
 				if (fBracketLevelStack.size() == 1) {
 					document.addPositionCategory(CATEGORY);
 					document.addPositionUpdater(fUpdater);
@@ -3578,13 +3576,17 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		};
 		SelectionListenerWithASTManager.getDefault().addListener(this, fPostSelectionListenerWithAST);
 		if (forceUpdate && getSelectionProvider() != null) {
-			fForcedMarkOccurrencesSelection= getSelectionProvider().getSelection();
-			ASTProvider.getASTProvider().runOnAST(getInputCElement(), ASTProvider.WAIT_NO, getProgressMonitor(), new ASTRunnable() {
-				@Override
-				public IStatus runOnAST(ILanguage lang, IASTTranslationUnit ast) throws CoreException {
-					updateOccurrenceAnnotations((ITextSelection) fForcedMarkOccurrencesSelection, ast);
-					return Status.OK_STATUS;
-				}});
+			ICElement inputCElement = getInputCElement();
+			if (inputCElement instanceof ITranslationUnit) {
+				fForcedMarkOccurrencesSelection= getSelectionProvider().getSelection();
+				ASTProvider.getASTProvider().runOnAST(inputCElement, ASTProvider.WAIT_NO, getProgressMonitor(), new ASTRunnable() {
+					@Override
+					public IStatus runOnAST(ILanguage lang, IASTTranslationUnit ast) throws CoreException {
+						updateOccurrenceAnnotations((ITextSelection) fForcedMarkOccurrencesSelection, ast);
+						return Status.OK_STATUS;
+					}
+				});
+			}
 		}
 
 		if (fOccurrencesFinderJobCanceler == null) {

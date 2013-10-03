@@ -1620,16 +1620,16 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
     	} catch (BacktrackException e) {
 			if (acceptEmpty) {
 				backup(dtorMark1);
-				return result.set(declspec1, null, null);
+				dtor1= null;
+			} else {
+				// try second variant, if possible
+				if (dtorMark2 == null)
+					throw e;
+	
+				backup(dtorMark2);
+				dtor2= initDeclarator(declspec2, option);
+				return result.set(declspec2, dtor2, dtorMark2);
 			}
-
-			// try second variant, if possible
-			if (dtorMark2 == null)
-				throw e;
-
-			backup(dtorMark2);
-			dtor2= initDeclarator(declspec2, option);
-			return result.set(declspec2, dtor2, dtorMark2);
 		}
 
     	// first variant was a success. If possible, try second one.
@@ -2413,7 +2413,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 		while ((t = LA(1)).getType() != endType) {
 			consume();
 			IASTToken token;
-			switch (LT(1)) {
+			switch (t.getType()) {
 			case IToken.tLPAREN:
 				token = balancedTokenSeq(t.getOffset(), IToken.tRPAREN);
 				break;

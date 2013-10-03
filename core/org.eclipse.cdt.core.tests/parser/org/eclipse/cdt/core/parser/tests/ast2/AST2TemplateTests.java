@@ -14,14 +14,15 @@
  *     Thomas Corbat (IFS)
  *     Nathan Ridge
  *     Danny Ferreira
+ *     Marc-Andre Laperle (Ericsson)
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
 import static org.eclipse.cdt.core.parser.ParserLanguage.CPP;
+import static org.eclipse.cdt.core.parser.tests.VisibilityAsserts.assertVisibility;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getNestedType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.getUltimateType;
-import static org.eclipse.cdt.core.parser.tests.VisibilityAsserts.assertVisibility;
 
 import java.io.IOException;
 
@@ -125,7 +126,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	private IASTTranslationUnit parseAndCheckBindings(final String code) throws Exception {
 		return parseAndCheckBindings(code, CPP);
 	}
-	
+
 	protected IASTTranslationUnit parseAndCheckImplicitNameBindings() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP, false, true, false);
 		NameCollector col = new NameCollector(true /* visit implicit names */);
@@ -1977,7 +1978,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		ITypedef myType = (ITypedef) col.getName(31).resolveBinding();
 		ICPPClassType A = (ICPPClassType) myType.getType();
 
-		ICPPClassTemplatePartialSpecialization Aspec = 
+		ICPPClassTemplatePartialSpecialization Aspec =
 				(ICPPClassTemplatePartialSpecialization) col.getName(10).resolveBinding();
 
 		assertTrue(A instanceof ICPPTemplateInstance);
@@ -3234,7 +3235,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper ba= new BindingAssertionHelper(getAboveComment(), CPP);
 		ba.assertNonProblem("foo(s", 3);
 	}
-	
+
 	//	template<typename U>
 	//	struct result : U {
 	//	    typedef typename result::result_type type;
@@ -3250,12 +3251,12 @@ public class AST2TemplateTests extends AST2TestBase {
 		ITypedef waldo = bh.assertNonProblem("waldo");
 		assertSameType(waldo.getType(), CommonTypes.int_);
 	}
-	
+
 	//	template <typename T>
 	//	struct A {
 	//		template <typename U>
-	//		struct result; 
-	//	
+	//		struct result;
+	//
 	//		template <typename V>
 	//		struct result<V*> : T {
 	//	    	typedef typename result::result_type type;
@@ -3276,8 +3277,8 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	template <typename T>
 	//	struct A {
 	//		template <typename U>
-	//		struct result; 
-	//	
+	//		struct result;
+	//
 	//		template <typename V>
 	//		struct result<V*> : T {
 	//	    	typedef typename result::result_type type;
@@ -3294,7 +3295,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		ITypedef waldo = bh.assertNonProblem("waldo");
 		assertSameType(waldo.getType(), CommonTypes.int_);
 	}
-	
+
 	//	template <class T>
 	//	class A {
 	//	public:
@@ -4506,7 +4507,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testFunctionTemplateOrdering_388805() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	template <typename T>
 	//	struct identity {
 	//	    typedef T type;
@@ -4526,8 +4527,8 @@ public class AST2TemplateTests extends AST2TestBase {
 	}
 
 	//	template <typename T>
-	//	struct identity { 
-	//	    typedef T type; 
+	//	struct identity {
+	//	    typedef T type;
 	//	};
 	//
 	//	template <typename> struct W;
@@ -4553,7 +4554,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testFunctionTemplateOrdering_409094b() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	template<typename T> class CT {};
 	//	template<int I> class CTI {};
 	//
@@ -6215,9 +6216,9 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	template <typename T>
 	//	struct B {
 	//	    struct base : id<id<T>> {};
-	//	      
+	//
 	//	    typedef typename base::type base2;
-	//	    
+	//
 	//	    struct result : base2 {};
 	//	};
 	//
@@ -6407,6 +6408,34 @@ public class AST2TemplateTests extends AST2TestBase {
 	//
 	//	typedef C<&B::x> T;
 	public void testPointerToMemberOfTemplateClass_402861() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	struct N {
+	//	    int node;
+	//	};
+	//
+	//	template <typename T>
+	//	struct List {
+	//	    template <int T::*>
+	//	    struct Base {};
+	//	};
+	//
+	//	List<N>::Base<&N::node> base;
+	public void testDependentTemplateParameterInNestedTemplate_407497() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template <typename T>
+	//	struct enclosing {
+	//	    template <typename U = T>
+	//	    struct nested {
+	//	        typedef U type;
+	//	    };
+	//	};
+	//
+	//	typedef enclosing<int>::nested<>::type waldo;
+	public void testDependentTemplateParameterInNestedTemplate_399454() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -7053,6 +7082,38 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	template<typename T>
+	//	struct A {};
+	//
+	//	template<typename T>
+	//	using B = A<T>;
+	//
+	//	template<typename T>
+	//	void f(B<T>* p);
+	//
+	//	void test(A<int>* c) {
+	//	  f(c);
+	//	}
+	public void testAliasTemplate_416280_1() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename T>
+	//	struct C {};
+	//
+	//	template<typename U>
+	//	struct A {
+	//	  template<typename V>
+	//	  using B = C<V>;
+	//	};
+	//
+	//	struct D : public A<char> {
+	//	  B<int> b;
+	//	};
+	public void testAliasTemplate_416280_2() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	template<typename U>
 	//	struct A {
 	//	  typedef U type1;
@@ -7206,7 +7267,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		assertNotNull(val);
 		assertEquals(0 /* false */, val.longValue());
 	}
-	
+
 	//	struct S {
 	//	    S(int);
 	//	};
@@ -7218,7 +7279,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	struct meta<S> {
 	//	    typedef void type;
 	//	};
-	//	    
+	//
 	//	struct B {
 	//	    template <typename T, typename = typename meta<T>::type>
 	//	    operator T() const;
@@ -7472,9 +7533,9 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	template <typename F>
 	//	struct W {
 	//	    F f;
-	//	    
-	//	    auto operator()() const -> decltype(f()) {                                               
-	//	        return f();                         
+	//
+	//	    auto operator()() const -> decltype(f()) {
+	//	        return f();
 	//	    }
 	//	};
 	//
@@ -7484,7 +7545,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		IType waldo = bh.assertNonProblem("waldo");
 		assertSameType(waldo, CommonTypes.int_);
 	}
-	
+
 	//    template <typename _Tp>
 	//    struct remove_reference {
 	//        typedef _Tp type;
@@ -7954,5 +8015,77 @@ public class AST2TemplateTests extends AST2TestBase {
 
 		ICPPField privateMemberVariable = bh.assertNonProblemOnFirstIdentifier("privateMemberVariable =");
 		assertVisibility(ICPPClassType.v_private, aTemplate.getVisibility(privateMemberVariable));
+	}
+
+	//	template<bool B, class T = void>
+	//	struct enable_if_c {
+	//	  typedef T type;
+	//	};
+	//
+	//	template<class T>
+	//	struct enable_if_c<false, T> {
+	//	};
+	//
+	//	template<class Cond, class T = void>
+	//	struct enable_if: public enable_if_c<Cond::value, T> {
+	//	};
+	//
+	//	template<typename T, typename = void>
+	//	struct some_trait {
+	//	  static const bool value = true;
+	//	};
+	//
+	//	template<typename T>
+	//	struct some_trait<T, typename enable_if_c<T::some_trait_value>::type> {
+	//	  static const bool value = true;
+	//	};
+	//
+	//	template<typename T>
+	//	inline typename enable_if_c<some_trait<T>::value>::type foo() {
+	//	}
+	//
+	//	typedef int myInt;
+	//	int main() {
+	//	  foo<myInt>();
+	//	}
+	public void testInstantiationOfTypedef_412555() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <class T>
+	//	struct B {};
+	//
+	//	template <class Abstract, class T>
+	//	struct A;
+	//
+	//	template <class T>
+	//	struct A<B<T>, T> {
+	//	    void method();
+	//	};
+	//
+	//	template <class T>
+	//	void A<B<T>, T>::method() {}
+	public void testOutOfLineMethodOfPartialSpecialization_401152() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	namespace N {
+	//	    template <typename>
+	//	    struct C;
+	//
+	//	    template <typename T>
+	//	    struct C<T*> {
+	//	        C();
+	//	        void waldo();
+	//	    };
+	//
+	//	    template <typename T>
+	//	    C<T*>::C() {}
+	//
+	//	    template <typename T>
+	//	    void C<T*>::waldo() {}
+	//	}
+	public void testMemberOfPartialSpecialization_416788() throws Exception {
+		parseAndCheckBindings();
 	}
 }

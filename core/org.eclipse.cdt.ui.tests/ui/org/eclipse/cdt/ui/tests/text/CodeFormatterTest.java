@@ -818,6 +818,17 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//#include "header.h"  // comment
+	//
+	//class C;
+
+	//#include "header.h"  // comment
+	//
+	//class C;
+	public void testPreserveBlankLineAfterInclude() throws Exception {
+		assertFormatterResult();
+	}
+
 	//void f() { throw 42; }
 
 	//void f() {
@@ -2963,6 +2974,29 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//	}
 	//}
 	public void testDoWhileInMacro_Bug359658() throws Exception {
+		assertFormatterResult();
+	}
+	
+	//#define macro(x) NS::convert(x)
+	//namespace NS {
+	//int convert(int arg) {
+	//return arg;
+	//}
+	//}
+	//int main() {
+	//int i = macro(42);
+	//}
+	
+	//#define macro(x) NS::convert(x)
+	//namespace NS {
+	//int convert(int arg) {
+	//	return arg;
+	//}
+	//}
+	//int main() {
+	//	int i = macro(42);
+	//}
+	public void testFunctionMacroInInitializerExpression() throws Exception {
 		assertFormatterResult();
 	}
 }

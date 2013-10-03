@@ -7452,4 +7452,18 @@ public class AST2Tests extends AST2TestBase {
 		}
 		return count;
 	}
+	
+	//	typedef struct { int x; } A;
+	//
+	//	void (*function(A *a))(void) {
+	//	    a->x;
+	//	}
+	public void testFunctionReturningFunctionPointer_413204() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	double d = 00.9;
+	public void testOctalFloatingPointLiteral_394048() throws Exception {
+		parseAndCheckBindings();
+	}
 }
