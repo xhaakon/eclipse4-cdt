@@ -1,2 +1,0 @@
-eclipse-cdt: codeless-jar usr/share/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt.doc.user_*.dist.jar
-eclipse-cdt: codeless-jar usr/share/eclipse/dropins/cdt/eclipse/plugins/org.eclipse.cdt_*.dist.jar
