@@ -1,4 +1,4 @@
-eclipse-cdt (8.3.0-1) UNRELEASED; urgency=medium
+eclipse-cdt (8.3.0-1) unstable; urgency=medium
 
   * New upstream release.
   * Updated autotools documentation sources.
