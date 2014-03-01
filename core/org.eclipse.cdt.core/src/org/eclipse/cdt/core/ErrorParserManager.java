@@ -12,6 +12,7 @@
  *     Andrew Gvozdev (Quoin Inc)
  *     Dmitry Kozlov (CodeSourcery) - Build error highlighting and navigation
  *     Alex Ruiz (Google)
+ *     Serge Beauchamp (Freescale Semiconductor) - Bug 417926
  *******************************************************************************/
 package org.eclipse.cdt.core;
 
@@ -29,6 +30,7 @@ import org.eclipse.cdt.core.language.settings.providers.IWorkingDirectoryTracker
 import org.eclipse.cdt.core.resources.ACBuilder;
 import org.eclipse.cdt.internal.core.Cygwin;
 import org.eclipse.cdt.internal.core.IErrorMarkeredOutputStream;
+import org.eclipse.cdt.internal.core.ProblemMarkerFilterManager;
 import org.eclipse.cdt.internal.core.resources.ResourceLookup;
 import org.eclipse.cdt.internal.errorparsers.ErrorParserExtensionManager;
 import org.eclipse.cdt.utils.EFSExtensionManager;
@@ -574,6 +576,8 @@ outer:
 	 * @param externalPath - external path pointing to a file outside the workspace.
 	 */
 	public void generateExternalMarker(IResource file, int lineNumber, String desc, int severity, String varName, IPath externalPath) {
+		if (file == null)
+			file = fProject;
 		ProblemMarkerInfo problemMarkerInfo = new ProblemMarkerInfo(file, lineNumber, desc, severity, varName, externalPath);
 		this.addProblemMarker(problemMarkerInfo);
 	}
@@ -585,6 +589,8 @@ outer:
 	 * @since 5.4
 	 */
 	public void addProblemMarker(ProblemMarkerInfo problemMarkerInfo){
+		if ( ! ProblemMarkerFilterManager.getInstance().acceptMarker(problemMarkerInfo) )
+			return;
 		fErrors.add(problemMarkerInfo);
 		fMarkerGenerator.addMarker(problemMarkerInfo);
 		if (problemMarkerInfo.severity == IMarkerGenerator.SEVERITY_ERROR_RESOURCE) {

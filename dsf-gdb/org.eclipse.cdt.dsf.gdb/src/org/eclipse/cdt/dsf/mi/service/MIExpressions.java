@@ -238,8 +238,9 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 		/**
 		 * @return if this expression is part of the memory space or not.
 		 *         If it not part of the memory space, it won't have an address.
+		 * @since 4.3
 		 */
-		private boolean inMemory() {
+		public boolean inMemory() {
 			// Registers and convenience variables which both start with $
 			// are not part of memory.  We care about the top-most parent
 			// as it is the only one that can be a register or convenience var.
@@ -256,8 +257,10 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	
     /**
      * This class represents an expression.
+     * @noextend This class is not intended to be subclassed by clients.
+     * @since 4.3
      */
-    protected static class MIExpressionDMC extends AbstractDMContext implements IExpressionDMContext {
+    public static class MIExpressionDMC extends AbstractDMContext implements IExpressionDMContext {
         /**
          * This field holds an expression to be evaluated.
          */
@@ -336,9 +339,9 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
         }
 
         /**
-		 * @since 4.0
+		 * @since 4.3
 		 */
-        private MIExpressionDMC(String sessionId, ExpressionInfo info, IDMContext parent) {
+        public MIExpressionDMC(String sessionId, ExpressionInfo info, IDMContext parent) {
             super(sessionId, new IDMContext[] { parent });
             exprInfo = info;
         }
@@ -812,10 +815,14 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
         }
     }
 
-	private CommandCache fExpressionCache;
-	private MIVariableManager varManager;
+	/**
+	 * @since 4.3
+	 */
+	protected CommandCache fExpressionCache;
+
 	private CommandFactory fCommandFactory;
-	
+	private MIVariableManager varManager;
+
 	/** 
 	 * Indicates that we are currently visualizing trace data.
 	 * In this case, some errors should not be reported.

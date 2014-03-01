@@ -16,14 +16,14 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
 import java.util.StringTokenizer;
 
 import org.eclipse.cdt.make.core.MakeCorePlugin;
+import org.eclipse.cdt.make.core.makefile.IAutomaticVariable;
+import org.eclipse.cdt.make.core.makefile.IBuiltinFunction;
 import org.eclipse.cdt.make.core.makefile.IDirective;
-import org.eclipse.cdt.make.core.makefile.IMakefile;
 import org.eclipse.cdt.make.core.makefile.IMakefileReaderProvider;
 import org.eclipse.cdt.make.core.makefile.gnu.IGNUMakefile;
 import org.eclipse.cdt.make.internal.core.makefile.AbstractMakefile;
@@ -76,8 +76,9 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 	public static String FILE_SEPARATOR = System.getProperty("file.separator", "/"); //$NON-NLS-1$ //$NON-NLS-2$
 
 	private String[] includeDirectories = new String[0];
+	private IDirective[] builtins = new IDirective[0];
 	@SuppressWarnings("nls")
-	private IDirective[] builtins = new IDirective[]{
+	private IAutomaticVariable[] autoVariables = new IAutomaticVariable[]{
 		new AutomaticVariable(this, "@", MakefileMessages.getString("GNUMakefile.automaticVariable.at")),
 		new AutomaticVariable(this, "%", MakefileMessages.getString("GNUMakefile.automaticVariable.percent")),
 		new AutomaticVariable(this, "<", MakefileMessages.getString("GNUMakefile.automaticVariable.less")),
@@ -87,6 +88,59 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 		new AutomaticVariable(this, "|", MakefileMessages.getString("GNUMakefile.automaticVariable.pipe")),
 		new AutomaticVariable(this, "*", MakefileMessages.getString("GNUMakefile.automaticVariable.star")),
 	};
+
+	@SuppressWarnings("nls")
+	private final static String[] functions = {
+		"subst", "patsubst", "strip", "findstring",
+		"filter", "filter-out", "sort",
+		"word", "words", "wordlist", "firstword", "lastword",
+		"dir", "notdir",
+		"suffix", "basename", "addsuffix", "addprefix",
+		"join", "wildcard", "realpath", "abspath",
+		"if", "or", "and", "foreach",
+		"call", "value", "eval", "origin", "flavor",
+		"shell", "error", "warning", "info",
+	};
+
+	@SuppressWarnings("nls")
+	private IBuiltinFunction[] builtinFunctions = new IBuiltinFunction[]{
+		new BuiltinFunction(this, "$(subst from,to,text)"),
+		new BuiltinFunction(this, "$(patsubst pattern,replacement,text)"),
+		new BuiltinFunction(this, "$(strip string)"),
+		new BuiltinFunction(this, "$(findstring find,in)"),
+		new BuiltinFunction(this, "$(filter pattern,text)"),
+		new BuiltinFunction(this, "$(filter-out pattern,text)"),
+		new BuiltinFunction(this, "$(sort list)"),
+		new BuiltinFunction(this, "$(word n,text)"),
+		new BuiltinFunction(this, "$(words text)"),
+		new BuiltinFunction(this, "$(wordlist s,e,text)"),
+		new BuiltinFunction(this, "$(firstword names)"),
+		new BuiltinFunction(this, "$(lastword names)"),
+		new BuiltinFunction(this, "$(dir names)"),
+		new BuiltinFunction(this, "$(notdir names)"),
+		new BuiltinFunction(this, "$(suffix names)"),
+		new BuiltinFunction(this, "$(basename names)"),
+		new BuiltinFunction(this, "$(addsuffix suffix,names)"),
+		new BuiltinFunction(this, "$(addprefix prefix,names)"),
+		new BuiltinFunction(this, "$(join list1,list2)"),
+		new BuiltinFunction(this, "$(wildcard pattern)"),
+		new BuiltinFunction(this, "$(realpath names)"),
+		new BuiltinFunction(this, "$(abspath names)"),
+		new BuiltinFunction(this, "$(if condition,then-part,else-part)"),
+		new BuiltinFunction(this, "$(or condition1,condition2,...)"),
+		new BuiltinFunction(this, "$(and condition1,condition2,...)"),
+		new BuiltinFunction(this, "$(foreach var,list,text)"),
+		new BuiltinFunction(this, "$(call variable,param,...)"),
+		new BuiltinFunction(this, "$(value variable)"),
+		new BuiltinFunction(this, "$(eval expression)"),
+		new BuiltinFunction(this, "$(origin variable)"),
+		new BuiltinFunction(this, "$(flavor variable)"),
+		new BuiltinFunction(this, "$(shell command)"),
+		new BuiltinFunction(this, "$(error error: text)"),
+		new BuiltinFunction(this, "$(warning warning: text)"),
+		new BuiltinFunction(this, "$(info info: text)"),
+	};
+
 	private IMakefileReaderProvider makefileReaderProvider;
 
 	public GNUMakefile() {
@@ -525,7 +579,7 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 					// ignore the "include" keyword.
 					continue;
 				}
-				filenames[i - 1] = st.nextToken();
+				filenames[i - 1] = expandString(st.nextToken(), true);
 			}
 		} else {
 			filenames = new String[0];
@@ -796,28 +850,20 @@ public class GNUMakefile extends AbstractMakefile implements IGNUMakefile {
 	}
 
 	@Override
-	public IDirective[] getDirectives(boolean expand) {
-		if (!expand) {
-			return getDirectives();
-		}
-		IDirective[] dirs = getDirectives();
-		ArrayList<IDirective> list = new ArrayList<IDirective>(Arrays.asList(dirs));
-		for (IDirective dir : dirs) {
-			if (dir instanceof Include) {
-				IDirective[] includedMakefiles = ((Include)dir).getDirectives();
-				for (IDirective includedMakefile : includedMakefiles) {
-					list.addAll(Arrays.asList(((IMakefile)includedMakefile).getDirectives()));
-				}
-			}
-		}
-		return list.toArray(new IDirective[list.size()]);
-	}
-
-	@Override
 	public IDirective[] getBuiltins() {
 		return builtins;
 	}
 
+	@Override
+	public IAutomaticVariable[] getAutomaticVariables() {
+		return autoVariables;
+	}
+	
+	@Override
+	public IBuiltinFunction[] getBuiltinFunctions() {
+		return builtinFunctions;
+	}
+	
 	@Override
 	public void setIncludeDirectories(String[] dirs) {
 		includeDirectories = dirs;

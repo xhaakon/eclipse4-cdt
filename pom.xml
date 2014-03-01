@@ -10,20 +10,20 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>8.2.1-SNAPSHOT</version>
+	<version>8.3.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
 	<properties>
-		<tycho-version>0.18.1</tycho-version>
-		<tycho-extras-version>0.18.1</tycho-extras-version>
+		<tycho-version>0.19.0</tycho-version>
+		<tycho-extras-version>0.19.0</tycho-extras-version>
 		<download-site>http://download.eclipse.org</download-site>
-		<platform-version>3.8</platform-version>
 		<platform-site>${download-site}/eclipse/updates/${platform-version}</platform-site>
-		<orbit-version>R20110523182458</orbit-version>
 		<orbit-site>${download-site}/tools/orbit/downloads/drops/${orbit-version}/repository</orbit-site>
-		<tm-version>3.3</tm-version>
 		<tm-site>${download-site}/tm/updates/${tm-version}</tm-site>
+		<sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
+		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
+		<sonar.jacoco.reportPath>${project.basedir}/../../target/jacoco.exec</sonar.jacoco.reportPath>
 	</properties>
 
 	<licenses>
@@ -165,6 +165,7 @@
 		<module>build/org.eclipse.cdt.managedbuilder.core.tests</module>
 		<module>build/org.eclipse.cdt.managedbuilder.ui.tests</module>
 		<module>build/org.eclipse.cdt.make.core.tests</module>
+		<module>build/org.eclipse.cdt.make.ui.tests</module>
 		<module>dsf-gdb/org.eclipse.cdt.tests.dsf.gdb</module>
 		
 		<module>build/org.eclipse.cdt.autotools.core</module>
@@ -189,6 +190,7 @@
 		
 		<module>qt/org.eclipse.cdt.qt.core</module>
 		<module>qt/org.eclipse.cdt.qt.ui</module>
+		<module>qt/org.eclipse.cdt.qt.tests</module>
 		<module>qt/org.eclipse.cdt.qt-feature</module>
 
 		<module>xlc/org.eclipse.cdt.errorparsers.xlc.tests</module>
@@ -198,27 +200,162 @@
 		<module>xlc/org.eclipse.cdt.core.lrparser.xlc.tests</module>
 		<module>debug/org.eclipse.cdt.debug.ui.tests</module>
 -->
+		<module>releng/org.eclipse.cdt.testing</module>
+		<module>releng/org.eclipse.cdt.testing-feature</module>
+		<module>releng/org.eclipse.cdt.testing.repo</module>
 		
 		<module>releng/org.eclipse.cdt.repo</module>
 	</modules>
 
 	<repositories>
 		<repository>
-			<id>platform-${platform-version}</id>
+			<id>platform</id>
 			<url>${platform-site}</url>
 			<layout>p2</layout>
 		</repository>
 		<repository>
-			<id>orbit-${orbit-version}</id>
+			<id>orbit</id>
 			<url>${orbit-site}</url>
 			<layout>p2</layout>
 		</repository>
 		<repository>
-			<id>tm-${tm-version}</id>
+			<id>tm</id>
 			<url>${tm-site}</url>
 			<layout>p2</layout>
 		</repository>
 	</repositories>
+
+	<pluginRepositories>
+   		<pluginRepository>
+			<id>cbi</id>
+     		<url>https://repo.eclipse.org/content/repositories/cbi-releases/</url>
+    	</pluginRepository>
+  	</pluginRepositories>
+  	
+	<profiles>
+		<profile>
+			<id>platform-4.3</id>
+			<activation>
+				<property>
+					<name>!platform-3.8</name>
+				</property>
+			</activation>
+			<properties>
+				<platform-version>4.3</platform-version>
+				<orbit-version>R20130517111416</orbit-version>
+				<tm-version>3.5</tm-version>
+			</properties>
+		</profile>
+		<profile>
+			<id>platform-3.8</id>
+			<activation>
+				<property>
+					<name>platform-3.8</name>
+				</property>
+			</activation>
+			<properties>
+				<platform-version>3.8</platform-version>
+				<orbit-version>R20110523182458</orbit-version>
+				<tm-version>3.3</tm-version>
+			</properties>
+		</profile>
+		<profile>
+			<id>macosx</id>
+			<activation>
+				<os>
+					<family>mac</family>
+				</os>
+			</activation>
+			<properties>
+				<base.ui.test.vmargs>-XstartOnFirstThread</base.ui.test.vmargs>
+			</properties>
+		</profile>
+		<profile>
+			<id>other-os</id>
+			<activation>
+				<os>
+					<family>!mac</family>
+				</os>
+			</activation>
+			<properties>
+				<base.ui.test.vmargs></base.ui.test.vmargs>
+			</properties>
+		</profile>
+		<profile>
+			<id>production</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.eclipse.tycho</groupId>
+						<artifactId>target-platform-configuration</artifactId>
+						<version>${tycho-version}</version>
+						<configuration>
+							<includePackedArtifacts>false</includePackedArtifacts>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.eclipse.tycho.extras</groupId>
+						<artifactId>tycho-pack200a-plugin</artifactId>
+						<version>${tycho-version}</version>
+						<executions>
+							<execution>
+								<id>pack200-normalize</id>
+								<goals>
+									<goal>normalize</goal>
+								</goals>
+								<phase>verify</phase>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.eclipse.cbi.maven.plugins</groupId>
+						<artifactId>eclipse-jarsigner-plugin</artifactId>
+						<version>1.0.5</version>
+						<executions>
+							<execution>
+								<id>sign</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.eclipse.tycho.extras</groupId>
+						<artifactId>tycho-pack200b-plugin</artifactId>
+						<version>${tycho-version}</version>
+						<executions>
+							<execution>
+								<id>pack200-pack</id>
+								<goals>
+									<goal>pack</goal>
+								</goals>
+								<phase>verify</phase>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.eclipse.tycho</groupId>
+						<artifactId>tycho-p2-plugin</artifactId>
+						<version>${tycho-version}</version>
+						<executions>
+							<execution>
+								<id>p2-metadata</id>
+								<goals>
+									<goal>p2-metadata</goal>
+								</goals>
+								<phase>verify</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<defaultP2Metadata>false</defaultP2Metadata>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 	<build>
 		<plugins>
@@ -297,6 +434,27 @@
 						<goals>
 							<goal>plugin-source</goal>
 						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.6.2.201302030002</version>
+				<executions>
+					<execution>
+						<id>pre-test</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+						<configuration>
+						<!-- Where to put jacoco coverage report -->
+							<destFile>${sonar.jacoco.reportPath}</destFile>
+							<includes>
+								<include>org.eclipse.cdt.*</include>
+							</includes>
+							<append>true</append>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

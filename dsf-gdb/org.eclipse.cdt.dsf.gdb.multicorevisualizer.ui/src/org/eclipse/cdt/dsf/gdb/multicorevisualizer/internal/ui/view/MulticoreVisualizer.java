@@ -13,6 +13,9 @@
  *     Marc Dumais (Ericsson) - Bug 399419
  *     Marc Dumais (Ericsson) - Bug 405390
  *     Marc Dumais (Ericsson) - Bug 409006
+ *     Marc Dumais (Ericsson) - Bug 407321
+ *     Marc-Andre Laperle (Ericsson) - Bug 411634
+ *     Marc Dumais (Ericsson) - Bug 409965
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.view;
@@ -221,6 +224,7 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		removeDebugViewerListener();
 		disposeActions();
 		disposeLoadMeterTimer();
+		removeEventListener();
 	}
 	
 	
@@ -745,6 +749,12 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		}
 	}
 	
+	private void removeEventListener() {
+		if (m_sessionState != null) {
+			m_sessionState.removeServiceEventListener(fEventListener);
+		}
+	}
+
     /**
      * Invoked by VisualizerViewer when workbench selection changes.
      */
@@ -997,7 +1007,7 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	 */
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
 	public void getVisualizerModel() {
-		fDataModel = new VisualizerModel();
+		fDataModel = new VisualizerModel(m_sessionState.getSessionID());
 		DSFDebugModel.getCPUs(m_sessionState, this, fDataModel);
 	}
 	
@@ -1169,9 +1179,17 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		// add thread if not already there - there is a potential race condition where a 
 		// thread can be added twice to the model: once at model creation and once more 
 		// through the listener.   Checking at both places to prevent this.
-		if (model.getThread(tid) == null) {
+		VisualizerThread t = model.getThread(tid);
+		if (t == null) {
 			model.addThread(new VisualizerThread(core, pid, osTid, tid, state));
 		}
+		// if the thread is already in the model, update it's parameters.  
+		else {
+			t.setCore(core);
+			t.setTID(osTid);
+			t.setState(state);
+		}
+
 		
 		// keep track of threads visited
 		done(1, model);

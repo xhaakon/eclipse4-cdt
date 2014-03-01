@@ -32,32 +32,6 @@ import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeGroupStyle.Includ
 public class IncludePreferences implements Comparator<StyledInclude> {
 	private static final String DEFAULT_PARTNER_FILE_SUFFIXES = "test,unittest"; //$NON-NLS-1$
 
-	/**
-	 * Whether indirect inclusion through a partner header file is allowed.
-	 */
-	public static final String INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION = "organizeIncludes.allowPartnerIndirectInclusion"; //$NON-NLS-1$
-	/**
-	 * Header file substitution rules.
-	 * The value of the preference is an XML representation of one or more
-	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.HeaderSubstitutionMap}s.
-	 */
-	public static final String INCLUDES_HEADER_SUBSTITUTION = "organizeIncludes.headerSubstitution"; //$NON-NLS-1$
-	/**
-	 * Symbol exporting rules.
-	 * The value of the preference is an XML representation of one or more
-	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.SymbolExportMap}s.
-	 */
-	public static final String INCLUDES_SYMBOL_EXPORTING_HEADERS = "organizeIncludes.symbolExportingHeaders"; //$NON-NLS-1$
-	/**
-	 * Whether external variables should be forward declared if possible.
-	 *
-	 * Example:
-	 *  extern int errno;
-	 *
-	 * @since 5.7
-	 */
-	public static final String FORWARD_DECLARE_EXTERNAL_VARIABLES = "forwardDeclare.externalVariables"; //$NON-NLS-1$
-
 	public static enum UnusedStatementDisposition { REMOVE, COMMENT_OUT, KEEP }
 
 	public final Map<IncludeKind, IncludeGroupStyle> includeStyles;
@@ -71,6 +45,7 @@ public class IncludePreferences implements Comparator<StyledInclude> {
 	public final boolean forwardDeclareExternalVariables;
 	public final boolean forwardDeclareTemplates;
 	public final boolean forwardDeclareNamespaceElements;
+	public final boolean assumeTemplatesMayBeForwardDeclared;
 	public final UnusedStatementDisposition unusedStatementsDisposition;
 	public final String[] partnerFileSuffixes;
 
@@ -104,11 +79,16 @@ public class IncludePreferences implements Comparator<StyledInclude> {
 		forwardDeclareFunctions = PreferenceConstants.getPreference(
 				PreferenceConstants.FORWARD_DECLARE_FUNCTIONS, project, false);
 		forwardDeclareExternalVariables = PreferenceConstants.getPreference(
-				FORWARD_DECLARE_EXTERNAL_VARIABLES, project, false);
+				PreferenceConstants.FORWARD_DECLARE_EXTERNAL_VARIABLES, project, false);
 		forwardDeclareTemplates = PreferenceConstants.getPreference(
 				PreferenceConstants.FORWARD_DECLARE_TEMPLATES, project, false);
 		forwardDeclareNamespaceElements = PreferenceConstants.getPreference(
 				PreferenceConstants.FORWARD_DECLARE_NAMESPACE_ELEMENTS, project, true);
+
+		// Although templates may be forward declared, it is done so rarely that we assume that it
+		// never happens.
+		// TODO(sprigogin): Create a preference for this.
+		assumeTemplatesMayBeForwardDeclared = false;
 
 		String value = PreferenceConstants.getPreference(
 				PreferenceConstants.INCLUDES_PARTNER_FILE_SUFFIXES, project, DEFAULT_PARTNER_FILE_SUFFIXES);
@@ -124,7 +104,7 @@ public class IncludePreferences implements Comparator<StyledInclude> {
 		allowIndirectInclusion = false;
 
 		allowPartnerIndirectInclusion = PreferenceConstants.getPreference(
-				INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION, project, true);
+				PreferenceConstants.INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION, project, true);
 
 		// Unused include handling preferences
 		value = PreferenceConstants.getPreference(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION, project, null);
@@ -193,7 +173,7 @@ public class IncludePreferences implements Comparator<StyledInclude> {
 		store.setDefault(PreferenceConstants.INCLUDES_PARTNER_FILE_SUFFIXES, DEFAULT_PARTNER_FILE_SUFFIXES);
 		store.setDefault(PreferenceConstants.INCLUDES_HEURISTIC_HEADER_SUBSTITUTION, true);
 		store.setDefault(PreferenceConstants.INCLUDES_ALLOW_REORDERING, true);
-		store.setDefault(INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION, true);
+		store.setDefault(PreferenceConstants.INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION, true);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_COMPOSITE_TYPES, true);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_ENUMS, false);
 		store.setDefault(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS, false);
@@ -202,9 +182,9 @@ public class IncludePreferences implements Comparator<StyledInclude> {
 		store.setDefault(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
 				UnusedStatementDisposition.COMMENT_OUT.toString());
 
-		store.setDefault(INCLUDES_HEADER_SUBSTITUTION,
+		store.setDefault(PreferenceConstants.INCLUDES_HEADER_SUBSTITUTION,
 				HeaderSubstitutionMap.serializeMaps(GCCHeaderSubstitutionMaps.getDefaultMaps()));
-		store.setDefault(INCLUDES_SYMBOL_EXPORTING_HEADERS,
+		store.setDefault(PreferenceConstants.INCLUDES_SYMBOL_EXPORTING_HEADERS,
 				SymbolExportMap.serializeMaps(Collections.singletonList(GCCHeaderSubstitutionMaps.getSymbolExportMap())));
 	}
 

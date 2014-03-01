@@ -10,6 +10,7 @@
  *     Markus Schorn (Wind River Systems)
  *     Andrew Ferguson (Symbian)
  *     Sergey Prigogin (Google)
+ *     Thomas Corbat (IFS)
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
@@ -21,6 +22,7 @@ import java.io.IOException;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
+import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.EScopeKind;
 import org.eclipse.cdt.core.dom.ast.ExpansionOverlapsBoundaryException;
 import org.eclipse.cdt.core.dom.ast.IASTArrayDeclarator;
@@ -54,6 +56,7 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTImageLocation;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
+import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTInitializerList;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
@@ -2285,10 +2288,8 @@ public class AST2Tests extends AST2TestBase {
 			assertTrue(gt_2 instanceof IFunctionType);
 			IType gt_ret = ((IFunctionType) gt_2).getReturnType();
 			assertTrue(gt_ret instanceof IBasicType);
-			assertEquals(((IBasicType) gt_ret).getType(), IBasicType.t_int);
-			IType gt_parm = ((IFunctionType) gt_2).getParameterTypes()[0];
-			assertTrue(gt_parm instanceof IBasicType);
-			assertEquals(((IBasicType) gt_parm).getType(), IBasicType.t_void);
+			assertEquals(((IBasicType) gt_ret).getKind(), IBasicType.Kind.eInt);
+			assertEquals(0, ((IFunctionType) gt_2).getParameterTypes().length);
 
 			// test tu.getDeclarationsInAST(IBinding)
 			assertTrue(def.getDeclarator() instanceof IASTStandardFunctionDeclarator);
@@ -4967,31 +4968,24 @@ public class AST2Tests extends AST2TestBase {
     }
 
     //    typedef void VOID;
-    //    VOID func(VOID) {
+    //    VOID func(void) {
     //    }
     public void testTypedefVoid_221567() throws Exception {
     	String code= getAboveComment();
     	for (ParserLanguage lang: ParserLanguage.values()) {
     		BindingAssertionHelper ba= new BindingAssertionHelper(code, lang);
     		ITypedef td= ba.assertNonProblem("VOID;", 4, ITypedef.class);
-    		IBinding ref= ba.assertNonProblem("VOID)", 4);
-    		assertSame(td, ref);
 
     		IFunction func= ba.assertNonProblem("func", 4, IFunction.class);
     		IFunctionType ft= func.getType();
     		IType rt= ft.getReturnType();
     		IType[] pts= ft.getParameterTypes();
-    		assertEquals(1, pts.length);
-			IType pt = pts[0];
+    		assertEquals(0, pts.length);
 			assertInstance(rt, ITypedef.class);
-			assertInstance(pt, ITypedef.class);
 			rt= ((ITypedef) rt).getType();
-			pt= ((ITypedef) pt).getType();
 
 			assertTrue(rt instanceof IBasicType);
-    		assertEquals(IBasicType.t_void, ((IBasicType) rt).getType());
-    		assertTrue(pt instanceof IBasicType);
-    		assertEquals(IBasicType.t_void, ((IBasicType) pt).getType());
+    		assertEquals(IBasicType.Kind.eVoid, ((IBasicType) rt).getKind());
     	}
     }
 
@@ -5847,23 +5841,16 @@ public class AST2Tests extends AST2TestBase {
 
 	// };
 	public void testScalabilityOfLargeTrivialInitializer_253690() throws Exception {
-		sValidateCopy= false;
-		final int AMOUNT= 250000;
+		sValidateCopy = false;
+		final int AMOUNT = 250000;
 		final CharSequence[] input = getContents(3);
-		StringBuilder buf= new StringBuilder();
-		buf.append(input[0].toString());
-		final String line= input[1].toString();
-		for (int i = 0; i < AMOUNT/10; i++) {
-			buf.append(line);
-		}
-		buf.append(input[2].toString());
-		final String code= buf.toString();
+		final String code = concatInput(input, new int[] { 1, AMOUNT / 10, 1 });
 		for (ParserLanguage lang : ParserLanguage.values()) {
-			long mem= memoryUsed();
-			IASTTranslationUnit tu= parse(code, lang, false, true, true);
-			long diff= memoryUsed()-mem;
-			// allow a copy of the buffer + less than 2 bytes per initializer
-			final int expected = code.length()*2 + AMOUNT + AMOUNT/2;
+			long mem = memoryUsed();
+			IASTTranslationUnit tu = parse(code, lang, false, true, 0);
+			long diff = memoryUsed() - mem;
+			// Allow a copy of the buffer, plus less than 1.5 bytes per initializer.
+			final int expected = code.length() * 2 + AMOUNT + AMOUNT / 2;
 			assertTrue(String.valueOf(diff) + " expected < " + expected, diff < expected);
 			assertTrue(tu.isFrozen());
 		}
@@ -5880,26 +5867,73 @@ public class AST2Tests extends AST2TestBase {
 	//	   }
 	//	};
 	public void testLargeTrivialAggregateInitializer_253690() throws Exception {
-		sValidateCopy= false;
-		final int AMOUNT= 250000;
+		sValidateCopy = false;
+		final int AMOUNT = 250000;
 		final CharSequence[] input = getContents(3);
-		StringBuilder buf= new StringBuilder();
-		buf.append(input[0].toString());
-		final String line= input[1].toString();
-		for (int i = 0; i < AMOUNT/10; i++) {
-			buf.append(line);
-		}
-		buf.append(input[2].toString());
-		final String code= buf.toString();
+		final String code = concatInput(input, new int[] { 1, AMOUNT / 10, 1 });
 		for (ParserLanguage lang : ParserLanguage.values()) {
-			long mem= memoryUsed();
-			IASTTranslationUnit tu= parse(code, lang, false, true, true);
-			long diff= memoryUsed()-mem;
-			// allow a copy of the buffer + not even 1 byte per initializer
-			final int expected = code.length()*2 + AMOUNT + AMOUNT/2;
+			long mem = memoryUsed();
+			IASTTranslationUnit tu = parse(code, lang, false, true, 0);
+			long diff = memoryUsed() - mem;
+			// Allow a copy of the buffer, plus less than 1.5 bytes per initializer.
+			final int expected = code.length() * 2 + AMOUNT + AMOUNT / 2;
 			assertTrue(String.valueOf(diff) + " expected < " + expected, diff < expected);
 			assertTrue(tu.isFrozen());
 		}
+	}
+
+	// int a[]= {
+
+	// 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+	// };
+	public void testMaximumTrivialExpressionsInInitializers_412380() throws Exception {
+		sValidateCopy = false;
+		final int AMOUNT = 250000;
+		final int maximumTrivialExpressionsInInitializer = 1000;
+		final int additionalBytesPerInitializer = 90;
+		final CharSequence[] input = getContents(3);
+		final String code = concatInput(input, new int[] { 1, AMOUNT / 10, 1 });
+		for (ParserLanguage lang : ParserLanguage.values()) {
+			long mem = memoryUsed();
+			IASTTranslationUnit tu = parse(code, lang, false, true, maximumTrivialExpressionsInInitializer);
+			long diff = memoryUsed() - mem;
+			final int initializerSize = maximumTrivialExpressionsInInitializer * additionalBytesPerInitializer;
+			// Allow a copy of the buffer, plus less than 1.5 bytes per initializer.
+			final int expected = code.length() * 2 + AMOUNT + AMOUNT / 2 + initializerSize;
+			assertTrue(String.valueOf(diff) + " expected < " + expected, diff < expected);
+			assertTrue(tu.isFrozen());
+			tu.accept(new ASTVisitor() {
+				{
+					shouldVisitInitializers = true;
+				}
+
+				@Override
+				public int visit(IASTInitializer initializer) {
+					if (initializer instanceof IASTEqualsInitializer) {
+						IASTEqualsInitializer equalsInitializer = (IASTEqualsInitializer) initializer;
+						IASTInitializerClause initClause = equalsInitializer.getInitializerClause();
+						if (initClause instanceof IASTInitializerList) {
+							IASTInitializerList initList = (IASTInitializerList) initClause;
+							assertEquals(maximumTrivialExpressionsInInitializer, initList.getClauses().length);
+						}
+					}
+					return ASTVisitor.PROCESS_CONTINUE;
+				}
+			});
+		}
+	}
+
+	private String concatInput(CharSequence[] snippets, int[] snippetOccurences) {
+		final StringBuilder result = new StringBuilder();
+		final int snippetsToConcat = Math.min(snippets.length, snippetOccurences.length);
+		for (int i = 0; i < snippetsToConcat; i++) {
+			final CharSequence string = snippets[i];
+			for (int times = 0; times < snippetOccurences[i]; times++) {
+				result.append(string);
+			}
+		}
+		return result.toString();
 	}
 
 	private long memoryUsed() throws InterruptedException {
@@ -5921,7 +5955,7 @@ public class AST2Tests extends AST2TestBase {
 	public void testNonTrivialInitializer_253690() throws Exception {
 		final String code= getAboveComment();
 		for (ParserLanguage lang : ParserLanguage.values()) {
-			IASTTranslationUnit tu= parse(code, lang, false, true, true);
+			IASTTranslationUnit tu= parse(code, lang, false, true, 0);
 			IASTSimpleDeclaration d= getDeclaration(tu, 0);
 			IBinding b= d.getDeclarators()[0].getName().resolveBinding();
 			IASTName[] refs = tu.getReferences(b);
@@ -7148,7 +7182,23 @@ public class AST2Tests extends AST2TestBase {
 	//	static a[2]= {0,0};
 	public void testSkipAggregateInitializer_297550() throws Exception {
         final String code = getAboveComment();
-		parseAndCheckBindings(code, C, false, true);
+		IASTTranslationUnit tu = parseAndCheckBindings(code, C, false, 0);
+		assertTrue(tu.hasNodesOmitted());
+	}
+
+	//	static a[2]= {0,0};
+	public void testNoSkipTrivialAggregateInitializer_412380() throws Exception {
+		final String code = getAboveComment();
+		IASTTranslationUnit tu = parseAndCheckBindings(code, C, false);
+		assertFalse(tu.hasNodesOmitted());
+	}
+
+	//	static int i = 0;
+	//	static a[1]= {i};
+	public void testNoSkipNonTrivialAggregateInitializer_412380() throws Exception {
+		final String code = getAboveComment();
+		IASTTranslationUnit tu = parseAndCheckBindings(code, C, false, 0);
+		assertFalse(tu.hasNodesOmitted());
 	}
 
 	// typeof(b(1)) b(int);

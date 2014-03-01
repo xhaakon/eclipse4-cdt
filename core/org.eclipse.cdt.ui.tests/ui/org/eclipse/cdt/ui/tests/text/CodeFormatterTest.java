@@ -723,7 +723,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//};
 
 	//int
-	//foo()
+	//foo ()
 	//{
 	//  try
 	//    {
@@ -733,7 +733,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//    }
 	//}
 	//float*
-	//bar();
+	//bar ();
 	//template<typename _CharT, typename _Traits>
 	//  class basic_ios : public ios_base
 	//  {
@@ -1667,7 +1667,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//#define FOREVER for(;;)
 	//
 	//void
-	//foo()
+	//foo ()
 	//{
 	//  int i = 0;
 	//  if (true)
@@ -1683,8 +1683,8 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//      BLOCK
 	//  switch (i)
 	//    {
-	//  case 0:
-	//    BLOCK
+	//    case 0:
+	//      BLOCK
 	//    }
 	//}
 	public void testCompoundStatementAsMacroGNU_Bug244928() throws Exception {
@@ -2775,13 +2775,13 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//}
 
 	//void
-	//foo()
+	//foo ()
 	//{
 	//  int i;
 	//  for (i = 0; i < 10; i++)
 	//    {
 	//    }
-	//  foo();
+	//  foo ();
 	//}
 	public void testForLoopGNU_Bug351399() throws Exception {
 		fOptions.putAll(DefaultCodeFormatterOptions.getGNUSettings().getMap());

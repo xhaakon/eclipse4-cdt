@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2013 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,6 +24,7 @@ import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplate;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplate;
@@ -52,12 +53,14 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTypeParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPUnaryTypeTransformation;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.index.IIndexMacroContainer;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPAliasTemplateInstance;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPArrayType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunctionType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPParameterPackType;
@@ -65,6 +68,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerToMemberType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPQualifierType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPReferenceType;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPUnaryTypeTransformation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPClassSpecializationScope;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPDeferredClassInstance;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
@@ -105,9 +109,6 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 		super(index);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.index.composite.cpp.ICompositesFactory#getCompositeScope(org.eclipse.cdt.core.index.IIndex, org.eclipse.cdt.core.dom.ast.IScope)
-	 */
 	@Override
 	public IIndexScope getCompositeScope(IIndexScope rscope) {
 		try {
@@ -124,7 +125,7 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 			if (rscope instanceof ICPPNamespaceScope) {
 				ICPPNamespace[] namespaces;
 				if (rscope instanceof CompositeCPPNamespace) {
-					// avoid duplicating the search
+					// Avoid duplicating the search.
 					namespaces = ((CompositeCPPNamespace) rscope).namespaces;
 				} else {
 					namespaces = getNamespaces(rscope.getScopeBinding());
@@ -138,9 +139,6 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 		} 
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.index.composite.cpp.ICompositesFactory#getCompositeType(org.eclipse.cdt.core.index.IIndex, org.eclipse.cdt.core.dom.ast.IType)
-	 */
 	@Override
 	public IType getCompositeType(IType rtype) {
 		if (rtype instanceof IIndexFragmentBinding) {
@@ -215,13 +213,26 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 			}
 			return at;
 		}
+		if (rtype instanceof ICPPAliasTemplateInstance) {
+			ICPPAliasTemplateInstance instance = (ICPPAliasTemplateInstance) rtype;
+			ICPPAliasTemplate aliasTemplate = instance.getTemplateDefinition();
+			if (aliasTemplate instanceof IIndexFragmentBinding)
+				aliasTemplate = (ICPPAliasTemplate) getCompositeBinding((IIndexFragmentBinding) aliasTemplate);
+			IType aliasedType = getCompositeType(instance.getType());
+			return new CPPAliasTemplateInstance(instance.getNameCharArray(), aliasTemplate, aliasedType);
+		}
 		if (rtype instanceof TypeOfDependentExpression) {
-			TypeOfDependentExpression tde= (TypeOfDependentExpression) rtype;
-			ICPPEvaluation e= tde.getEvaluation();
+			TypeOfDependentExpression type= (TypeOfDependentExpression) rtype;
+			ICPPEvaluation e= type.getEvaluation();
 			ICPPEvaluation e2= getCompositeEvaluation(e);
 			if (e != e2)
 				return new TypeOfDependentExpression(e2);
-			return tde;
+			return type;
+		}
+		if (rtype instanceof ICPPUnaryTypeTransformation) {
+			ICPPUnaryTypeTransformation typeTransformation= (ICPPUnaryTypeTransformation) rtype;
+			IType operand = getCompositeType(typeTransformation.getOperand());
+			return new CPPUnaryTypeTransformation(typeTransformation.getOperator(), operand);
 		}
 		if (rtype instanceof IBasicType || rtype == null || rtype instanceof ISemanticProblem) {
 			return rtype;
@@ -483,9 +494,6 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 		return findOneBinding(binding, false);
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.index.composite.cpp.ICompositesFactory#getCompositeBinding(org.eclipse.cdt.core.index.IIndex, org.eclipse.cdt.core.dom.ast.IBinding)
-	 */
 	@Override
 	public IIndexBinding getCompositeBinding(IIndexFragmentBinding binding) {
 		IIndexBinding result;
@@ -647,11 +655,13 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 		final long i;
 		final int j;
 		final long k;
+
 		public Key(long id1, int id2, long id3) {
 			i= id1;
 			j= id2;
 			k= id3;
 		}
+
 		@Override
 		public int hashCode() {
 			final int prime = 31;
@@ -661,6 +671,7 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 			result = prime * result + (int) k;
 			return result;
 		}
+
 		@Override
 		public boolean equals(Object obj) {
 			if (obj instanceof Key) {
@@ -674,6 +685,7 @@ public class CPPCompositesFactory extends AbstractCompositeFactory {
 	public static Object createInstanceCacheKey(ICompositesFactory cf, IIndexFragmentBinding rbinding) {
 		return new Key(Thread.currentThread().getId(), cf.hashCode(), rbinding.getBindingID());
 	}
+
 	public static Object createSpecializationKey(ICompositesFactory cf,IIndexFragmentBinding rbinding) {
 		return new Key(Thread.currentThread().getId(), cf.hashCode(), rbinding.getBindingID()+1);
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2012 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -43,7 +43,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerClause;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
@@ -73,7 +72,7 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
 
 	private static final int FULLY_RESOLVED         = 1;
 	private static final int RESOLUTION_IN_PROGRESS = 1 << 1;
-	private int bits = 0;
+	private int bits;
 
 	public CPPFunction(IASTDeclarator declarator) {
 	    if (declarator != null) {
@@ -100,7 +99,7 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
 	        } else if (declarations != null) {
 	            tu = declarations[0].getTranslationUnit();
 	        } else {
-	            //implicit binding
+	            // Implicit binding
 	            IScope scope = getScope();
                 IASTNode node = ASTInternal.getPhysicalNodeOfScope(scope);
 				if (node != null) {
@@ -185,10 +184,13 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
 				if (binding instanceof ICPPParameter) {
 					result[i]= (ICPPParameter) binding;
 				} else {
-					result[i] = new CPPParameter.CPPParameterProblem(p, IProblemBinding.SEMANTIC_INVALID_TYPE,
-							name.toCharArray());
+					result[i] = new CPPParameter.CPPParameterProblem(p,
+							IProblemBinding.SEMANTIC_INVALID_TYPE, name.toCharArray());
 				}
 			}
+
+			if (result.length == 1 && SemanticUtil.isVoidType(result[0].getType()))
+				return ICPPParameter.EMPTY_CPPPARAMETER_ARRAY; // f(void) is the same as f()
 		}
 		return result;
 	}
@@ -223,12 +225,7 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
 	protected IASTName getASTName() {
 		IASTDeclarator dtor = (definition != null) ? definition : declarations[0];
 		dtor= ASTQueries.findInnermostDeclarator(dtor);
-	    IASTName name= dtor.getName();
-	    if (name instanceof ICPPASTQualifiedName) {
-	        IASTName[] ns = ((ICPPASTQualifiedName)name).getNames();
-	        name = ns[ns.length - 1];
-	    }
-	    return name;
+	    return dtor.getName().getLastName();
 	}
 
 	@Override
@@ -470,22 +467,25 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
         do {
             if (dtor != null) {
                 IASTNode parent = dtor.getParent();
-	            while (!(parent instanceof IASTDeclaration))
+	            while (!(parent instanceof IASTDeclaration)) {
 	                parent = parent.getParent();
+	            }
 
 	            IASTDeclSpecifier declSpec = null;
-	            if (parent instanceof IASTSimpleDeclaration)
+	            if (parent instanceof IASTSimpleDeclaration) {
 	                declSpec = ((IASTSimpleDeclaration)parent).getDeclSpecifier();
-	            else if (parent instanceof IASTFunctionDefinition)
+	            } else if (parent instanceof IASTFunctionDefinition) {
 	                declSpec = ((IASTFunctionDefinition)parent).getDeclSpecifier();
+	            }
 
 	            if (declSpec != null && declSpec.isInline())
                     return true;
             }
-            if (ds != null && ++i < ds.length)
+            if (ds != null && ++i < ds.length) {
                 dtor = ds[i];
-            else
+            } else {
                 break;
+            }
         } while (dtor != null);
         return false;
     }
@@ -607,19 +607,18 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
 	}
 
 	public static int getRequiredArgumentCount(ICPPParameter[] pars) {
-		int result= pars.length;
-		while (result > 0) {
-			final ICPPParameter p = pars[result - 1];
+		int result = pars.length;
+		for (int i = pars.length; --i >= 0;) {
+			final ICPPParameter p = pars[i];
 			if (p.hasDefaultValue() || p.isParameterPack()) {
 				result--;
-			} else {
-				if (pars.length == 1 && SemanticUtil.isVoidType(p.getType())) {
-					return 0;
-				}
-				return result;
+//			} else {
+//				if (pars.length == 1 && SemanticUtil.isVoidType(p.getType())) {
+//					return 0;
+//				}
 			}
 		}
-		return 0;
+		return result;
 	}
 
 	@Override

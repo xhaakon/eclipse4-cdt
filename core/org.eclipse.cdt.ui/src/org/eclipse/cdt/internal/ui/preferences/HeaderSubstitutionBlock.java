@@ -35,7 +35,6 @@ import org.eclipse.cdt.ui.PreferenceConstants;
 import org.eclipse.cdt.internal.ui.dialogs.IStatusChangeListener;
 import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
 import org.eclipse.cdt.internal.ui.refactoring.includes.HeaderSubstitutionMap;
-import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.DialogField;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.IDialogFieldListener;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.IListAdapter;
@@ -46,7 +45,7 @@ import org.eclipse.cdt.internal.ui.wizards.dialogfields.ListDialogField;
  * The preference block for configuring header file substitution rules.
  */
 public class HeaderSubstitutionBlock extends OptionsConfigurationBlock {
-	static final Key KEY_HEADER_SUBSTITUTION = getCDTUIKey(IncludePreferences.INCLUDES_HEADER_SUBSTITUTION);
+	static final Key KEY_HEADER_SUBSTITUTION = getCDTUIKey(PreferenceConstants.INCLUDES_HEADER_SUBSTITUTION);
 
 	private static Key[] ALL_KEYS = {
 		KEY_HEADER_SUBSTITUTION

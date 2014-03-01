@@ -174,7 +174,7 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 		function("bool",	"__atomic_is_lock_free", "size_t", "void*");
 
 		// GCC 4.8, Section 6.55 (incomplete)
-		function("void", 		"__builtin_abort", "void");
+		function("void", 		"__builtin_abort");
 		function("int", 		"__builtin_abs", "int");
 		function("double", 		"__builtin_acos", "double");
 		function("float", 		"__builtin_acosf", "float");
@@ -278,9 +278,9 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 		function("double", 		"__builtin_frexp", "double", "int*");
 		function("float", 		"__builtin_frexpf", "float", "int*");
 		function("long double", "__builtin_frexpl", "long double", "int*");
-		function("double", 		"__builtin_huge_val", "void");
-		function("float", 		"__builtin_huge_valf", "void");
-		function("long double", "__builtin_huge_vall", "void");
+		function("double", 		"__builtin_huge_val");
+		function("float", 		"__builtin_huge_valf");
+		function("long double", "__builtin_huge_vall");
 		function("double", 		"__builtin_fhypot", "double");
 		function("float", 		"__builtin_fhypotf", "float");
 		function("long double", "__builtin_fhypotl", "long double");
@@ -288,9 +288,9 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 		function("int", 		"__builtin_ilogbf", "float");
 		function("int",			"__builtin_ilogbl", "long double");
 		function("long long", 	"__builtin_imaxabs", "long long");
-		function("double", 		"__builtin_inf", "void");
-		function("float", 		"__builtin_inff", "void");
-		function("long double", "__builtin_infl", "void");
+		function("double", 		"__builtin_inf");
+		function("float", 		"__builtin_inff");
+		function("long double", "__builtin_infl");
 		function("bool", 		"__builtin_isfinite", "double");
 		function("bool", 		"__builtin_isgreater", "float", "float");
 		function("bool", 		"__builtin_isgreaterequal", "float", "float");
@@ -459,7 +459,7 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 
 	private void function(String returnType, String name, String... parameterTypes) {
 		int len = parameterTypes.length;
-		boolean varargs= len > 0 && parameterTypes[len-1].equals("...");
+		boolean varargs= len > 0 && parameterTypes[len - 1].equals("...");
 		if (varargs)
 			len--;
 
@@ -473,9 +473,10 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 		IType rt = toType(returnType);
 		IFunctionType ft = fCpp ? new CPPFunctionType(rt, pTypes) : new CFunctionType(rt, pTypes);
 
-		IBinding b = fCpp ? new CPPImplicitFunction(toCharArray(name), fScope,
-				(ICPPFunctionType) ft, (ICPPParameter[]) theParms, varargs)
-				: new CImplicitFunction(toCharArray(name), fScope, ft, theParms, varargs);
+		IBinding b = fCpp ?
+				new CPPImplicitFunction(toCharArray(name), fScope, (ICPPFunctionType) ft,
+						(ICPPParameter[]) theParms, varargs) :
+				new CImplicitFunction(toCharArray(name), fScope, ft, theParms, varargs);
 		fBindingList.add(b);
 	}
 

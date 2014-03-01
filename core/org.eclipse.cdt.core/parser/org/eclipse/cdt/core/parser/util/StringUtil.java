@@ -14,8 +14,8 @@ import java.util.Collection;
 
 /**
  * Static methods for working with strings.
- *
- * @noreference This class is not intended to be referenced by clients.
+ * 
+ * @since 5.6
  */
 public class StringUtil {
 

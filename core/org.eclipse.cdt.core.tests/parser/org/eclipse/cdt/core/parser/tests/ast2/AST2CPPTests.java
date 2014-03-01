@@ -97,6 +97,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
@@ -340,9 +341,16 @@ public class AST2CPPTests extends AST2TestBase {
 		parseAndCheckBindings(getAboveComment(), CPP, true);
 	}
 
+	//	class A {
+	//		int m;
+	//	};
+	//	A* a;
+	//	int A::*pm;
+	//	int f(){}
+	//	int f(int);
+	//	int x = f(a->*pm);
 	public void testBug43579() throws Exception {
-		parseAndCheckBindings("class A { int m; }; \n A * a; int A::*pm; \n int f(){} \n int f(int); \n int x = f(a->*pm);");
-		parseAndCheckBindings("class A { int m; }; \n A * a; int A::*pm; \n int f(){} \n int f(int); \n int x = f(a->*pm);");
+		parseAndCheckBindings();
 	}
 
 	// class A { int m(int); };
@@ -555,10 +563,10 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPMethod f1 = (ICPPMethod) name_f1.resolveBinding();
 		ICPPMethod f2 = (ICPPMethod) name_f2.resolveBinding();
 
-		IASTName[] names = name_f2.getNames();
-		assertEquals(names.length, 2);
-		IASTName qn1 = names[0];
-		IASTName qn2 = names[1];
+		ICPPASTNameSpecifier[] qualifier = name_f2.getQualifier();
+		assertEquals(qualifier.length, 1);
+		IASTName qn1 = (IASTName) qualifier[0];
+		IASTName qn2 = name_f2.getLastName();
 
 		ICPPClassType A2 = (ICPPClassType) qn1.resolveBinding();
 		ICPPMethod f3 = (ICPPMethod) qn2.resolveBinding();
@@ -603,10 +611,10 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPField i1 = (ICPPField) name_i.resolveBinding();
 		ICPPField i2 = (ICPPField) name_i2.resolveBinding();
 
-		IASTName[] names = name_f2.getNames();
-		assertEquals(names.length, 2);
-		IASTName qn1 = names[0];
-		IASTName qn2 = names[1];
+		ICPPASTNameSpecifier[] qualifier = name_f2.getQualifier();
+		assertEquals(qualifier.length, 1);
+		IASTName qn1 = (IASTName) qualifier[0];
+		IASTName qn2 = name_f2.getLastName();
 
 		ICPPClassType A2 = (ICPPClassType) qn1.resolveBinding();
 		ICPPMethod f3 = (ICPPMethod) qn2.resolveBinding();
@@ -645,8 +653,8 @@ public class AST2CPPTests extends AST2TestBase {
 
 		IASTFunctionDefinition def = (IASTFunctionDefinition) tu.getDeclarations()[2];
 		ICPPASTQualifiedName name_f2 = (ICPPASTQualifiedName) def.getDeclarator().getName();
-		IASTName name_B2 = name_f2.getNames()[0];
-		IASTName name_f3 = name_f2.getNames()[1];
+		IASTName name_B2 = (IASTName) name_f2.getQualifier()[0];
+		IASTName name_f3 = name_f2.getLastName();
 
 		IASTCompoundStatement compound = (IASTCompoundStatement) def.getBody();
 		IASTExpressionStatement statement = (IASTExpressionStatement) compound.getStatements()[0];
@@ -1267,17 +1275,13 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPConstructor[] ctors = A.getConstructors();
 
 		assertNotNull(ctors);
-		assertEquals(ctors.length, 2);
+		assertEquals(2, ctors.length);
 
-		assertEquals(ctors[0].getParameters().length, 1);
+		assertEquals(0, ctors[0].getParameters().length);
 
-		IType t = ctors[0].getParameters()[0].getType();
-		assertTrue(t instanceof IBasicType);
-		assertEquals(((IBasicType) t).getType(), IBasicType.t_void);
+		assertEquals(1, ctors[1].getParameters().length);
 
-		assertEquals(ctors[1].getParameters().length, 1);
-
-		t = ctors[1].getParameters()[0].getType();
+		IType t = ctors[1].getParameters()[0].getType();
 		assertTrue(t instanceof ICPPReferenceType);
 		assertTrue(((ICPPReferenceType) t).getType() instanceof IQualifierType);
 		IQualifierType qt = (IQualifierType) ((ICPPReferenceType) t).getType();
@@ -1297,8 +1301,8 @@ public class AST2CPPTests extends AST2TestBase {
 		assertNotNull(ctors);
 		assertEquals(ctors.length, 2);
 
-		assertEquals(ctors[0].getParameters().length, 1);
-		assertEquals(ctors[1].getParameters().length, 1);
+		assertEquals(0, ctors[0].getParameters().length);
+		assertEquals(1, ctors[1].getParameters().length);
 
 		IType t = ctors[1].getParameters()[0].getType();
 		assertTrue(t instanceof ICPPReferenceType);
@@ -1729,10 +1733,10 @@ public class AST2CPPTests extends AST2TestBase {
 		IASTIdExpression id = (IASTIdExpression) e.getInitializerClause();
 		ICPPASTQualifiedName name = (ICPPASTQualifiedName) id.getName();
 		assertTrue(name.isFullyQualified());
-		assertEquals(name.getNames().length, 3);
-		assertEquals(name.getNames()[0].toString(), "ABC");
-		assertEquals(name.getNames()[1].toString(), "DEF");
-		assertEquals(name.getNames()[2].toString(), "ghi");
+		assertEquals(name.getQualifier().length, 2);
+		assertEquals(name.getQualifier()[0].toString(), "ABC");
+		assertEquals(name.getQualifier()[1].toString(), "DEF");
+		assertEquals(name.getLastName().toString(), "ghi");
 	}
 
 	// namespace Y { void f(float); }
@@ -9801,7 +9805,7 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testFriendTemplateParameter() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	struct foo {
 	//	    foo();
 	//	    ~foo();
@@ -10168,7 +10172,7 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testIsBaseOf_399353() throws Exception {
 		parseAndCheckBindings(getAboveComment(), CPP, true);
 	}
-	
+
 	//	struct base {};
 	//	struct derived : base {};
 	//	typedef derived derived2;
@@ -10326,7 +10330,7 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPClassType privateNestedClass = bh.assertNonProblem("privateNestedClass");
 		assertVisibility(ICPPClassType.v_private, aClass.getVisibility(privateNestedClass));
 	}
-	
+
 	//	int main() {
 	//		int i = 0;
 	//		__sync_bool_compare_and_swap(& i, 0, 1);
@@ -10335,5 +10339,153 @@ public class AST2CPPTests extends AST2TestBase {
 	//	}
 	public void testGNUSyncBuiltins_bug389578() throws Exception {
 		parseAndCheckBindings(getAboveComment(), CPP, true);
+	}
+
+	//	class Waldo {
+	//		typedef int type;
+	//		static int value;
+	//	};
+	//
+	//	int main() {
+	//		Waldo w;
+	//		decltype(w)::type i;
+	//		int x = decltype(w)::value;
+	//	}
+	public void testDecltypeInNameQualifier_bug380751() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template <typename T>
+	//	struct underlying_type {
+	//	    typedef __underlying_type(T) type;
+	//	};
+	//
+	//	enum class e_fixed_short1 : short;
+	//	enum class e_fixed_short2 : short { a = 1, b = 2 };
+	//
+	//	enum class e_scoped { a = 1, b = 2 };
+	//
+	//	enum e_unsigned { a1 = 1, b1 = 2 };
+	//	enum e_int { a2 = -1, b2 = 1 };
+	//	enum e_ulong { a3 = 5000000000, b3 };
+	//	enum e_long { a4 = -5000000000, b4 = 5000000000 };
+	//
+	//	typedef underlying_type<e_fixed_short1>::type short1_type;
+	//	typedef underlying_type<e_fixed_short2>::type short2_type;
+	//
+	//	typedef underlying_type<e_scoped>::type scoped_type;
+	//
+	//	typedef underlying_type<e_unsigned>::type unsigned_type;
+	//	typedef underlying_type<e_int>::type int_type;
+	//	typedef underlying_type<e_ulong>::type ulong_type;
+	//	typedef underlying_type<e_long>::type loong_type;
+	public void testUnderlyingTypeBuiltin_bug411196() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+
+		assertSameType((ITypedef) helper.assertNonProblem("short1_type"), CPPVisitor.SHORT_TYPE);
+		assertSameType((ITypedef) helper.assertNonProblem("short2_type"), CPPVisitor.SHORT_TYPE);
+
+		assertSameType((ITypedef) helper.assertNonProblem("scoped_type"), CPPVisitor.INT_TYPE);
+
+		assertSameType((ITypedef) helper.assertNonProblem("unsigned_type"), CPPVisitor.UNSIGNED_INT);
+		assertSameType((ITypedef) helper.assertNonProblem("int_type"), CPPVisitor.INT_TYPE);
+		assertSameType((ITypedef) helper.assertNonProblem("ulong_type"), CPPVisitor.UNSIGNED_LONG);
+		assertSameType((ITypedef) helper.assertNonProblem("loong_type"), CPPVisitor.LONG_TYPE);
+	}
+
+	// namespace A {
+	//   int a;
+	//   namespace B {
+	//     int b;
+	//     namespace C {
+	//       int c;
+	//     }
+	//     namespace A {
+	//       int a;
+	//     }
+	//   }
+	// }
+	public void testQualifiedNameLookup() throws Exception {
+		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
+
+		IScope scope = tu.getScope();
+		assertNotNull(scope);
+
+		IBinding[] bindings = CPPSemantics.findBindingsForQualifiedName(scope, "  A::a");
+		assertNotNull(bindings);
+		assertEquals(1, bindings.length);
+		IBinding a = bindings[0];
+		assertEquals("a", a.getName());
+
+		bindings = CPPSemantics.findBindingsForQualifiedName(scope, "A::B::b	");
+		assertNotNull(bindings);
+		assertEquals(1, bindings.length);
+		IBinding b = bindings[0];
+		assertEquals("b", b.getName());
+
+		bindings = CPPSemantics.findBindingsForQualifiedName(scope, "A::	B  ::C::c");
+		assertNotNull(bindings);
+		assertEquals(1, bindings.length);
+		IBinding c = bindings[0];
+		assertEquals("c", c.getName());
+
+		// From the level of c, there should be two A::a (::A::a and ::A::B::A::a).
+		IScope scopeC = c.getScope();
+		assertNotNull(scopeC);
+		bindings = CPPSemantics.findBindingsForQualifiedName(scopeC, "A::a");
+		assertNotNull(bindings);
+		assertEquals(2, bindings.length);
+
+		// From the level of c, there should be only one ::A::a.
+		assertNotNull(scopeC);
+		bindings = CPPSemantics.findBindingsForQualifiedName(scopeC, "::A::a");
+		assertNotNull(bindings);
+		assertEquals(1, bindings.length);
+	}
+
+	//	struct Test {
+	//		operator char* &();
+	//
+	//		void test(char) {
+	//			Test a;
+	//			test(*a);
+	//		}
+	//	};
+	public void testBuiltInOperator_423396() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	struct Test {
+	//		typedef void (*TypeFunc)(char);
+	//		operator TypeFunc* &();
+	//
+	//		void test(TypeFunc) {
+	//			Test a;
+	//			test(*a);
+	//		}
+	//	};
+	public void testBuiltInOperatorFunctionType_423396() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	struct S {
+	//	  int S;
+	//	};
+	//	void tint(int);
+	//	void test() {
+	//	  S s;
+	//	  tint(s.S);
+	//	}
+	public void testFieldWithSameNameAsClass_326750() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	void waldo(void(*)());
+	//
+	//	int main() {
+	//	    waldo([](){});
+	//	}
+	public void testConversionFromLambdaToFunctionPointer_424765() throws Exception {
+		parseAndCheckBindings();
 	}
 }

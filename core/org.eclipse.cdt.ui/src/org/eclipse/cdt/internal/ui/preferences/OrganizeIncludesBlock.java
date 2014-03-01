@@ -21,7 +21,6 @@ import org.eclipse.cdt.ui.PreferenceConstants;
 
 import org.eclipse.cdt.internal.ui.dialogs.IStatusChangeListener;
 import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
-import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences.UnusedStatementDisposition;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.LayoutUtil;
 
@@ -30,13 +29,13 @@ import org.eclipse.cdt.internal.ui.wizards.dialogfields.LayoutUtil;
  */
 public class OrganizeIncludesBlock extends OptionsConfigurationBlock {
 	private static final Key KEY_HEURISTIC_HEADER_SUBSTITUTION = getCDTUIKey(PreferenceConstants.INCLUDES_HEURISTIC_HEADER_SUBSTITUTION);
-	private static final Key KEY_PARTNER_INDIRECT_INCLUSION = getCDTUIKey(IncludePreferences.INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION);
+	private static final Key KEY_PARTNER_INDIRECT_INCLUSION = getCDTUIKey(PreferenceConstants.INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION);
 	private static final Key KEY_INCLUDES_REORDERING = getCDTUIKey(PreferenceConstants.INCLUDES_ALLOW_REORDERING);
 	private static final Key KEY_UNUSED_STATEMENTS_DISPOSITION = getCDTUIKey(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION);
 	private static final Key KEY_FORWARD_DECLARE_COMPOSITE_TYPES = getCDTUIKey(PreferenceConstants.FORWARD_DECLARE_COMPOSITE_TYPES);
 	private static final Key KEY_FORWARD_DECLARE_ENUMS = getCDTUIKey(PreferenceConstants.FORWARD_DECLARE_ENUMS);
 	private static final Key KEY_FORWARD_DECLARE_FUNCTIONS = getCDTUIKey(PreferenceConstants.FORWARD_DECLARE_FUNCTIONS);
-	private static final Key KEY_FORWARD_DECLARE_EXTERNAL_VARIABLES = getCDTUIKey(IncludePreferences.FORWARD_DECLARE_EXTERNAL_VARIABLES);
+	private static final Key KEY_FORWARD_DECLARE_EXTERNAL_VARIABLES = getCDTUIKey(PreferenceConstants.FORWARD_DECLARE_EXTERNAL_VARIABLES);
 	private static final Key KEY_FORWARD_DECLARE_TEMPLATES = getCDTUIKey(PreferenceConstants.FORWARD_DECLARE_TEMPLATES);
 	private static final Key KEY_FORWARD_DECLARE_NAMESPACE_ELEMENTS = getCDTUIKey(PreferenceConstants.FORWARD_DECLARE_NAMESPACE_ELEMENTS);
 

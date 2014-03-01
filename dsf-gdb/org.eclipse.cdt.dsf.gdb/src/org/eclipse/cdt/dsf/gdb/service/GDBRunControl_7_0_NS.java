@@ -11,6 +11,7 @@
  *     Indel AG           - [369622] fixed moveToLine using MinGW
  *     Marc Khouzam (Ericsson) - Support for operations on multiple execution contexts (bug 330974)
  *     Alvaro Sanchez-Leon (Ericsson AB) - Support for Step into selection (bug 244865)
+ *     Alvaro Sanchez-Leon (Ericsson AB) - Bug 415362
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.gdb.service;
@@ -1528,7 +1529,18 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 			return;
 		}
 
-        getSession().dispatchEvent(new ResumedEvent(e.getDMContext(), e), getProperties());
+		if (fRunToLineActiveOperation == null && fStepInToSelectionActiveOperation == null) {
+			// No special case here, i.e. send notification
+			getSession().dispatchEvent(new ResumedEvent(e.getDMContext(), e), getProperties());
+		} else {
+			// Either RunToLine or StepIntoSelection operations are active
+			MIThreadRunState threadState = fThreadRunStates.get(e.getDMContext());
+			if (threadState == null || threadState.fLatestEvent instanceof ISuspendedDMEvent) {
+				// Need to send out Running event notification, only once per operation, then a stop event is expected
+				// at the end of the operation
+				getSession().dispatchEvent(new ResumedEvent(e.getDMContext(), e), getProperties());
+			}
+		}
 	}
 
     /**
@@ -1537,6 +1549,16 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
      */
 	@DsfServiceEventHandler
 	public void eventDispatched(final MIStoppedEvent e) {
+    	// A disabled signal event is due to interrupting the target
+    	// to set a breakpoint.  This can happen during a run-to-line
+    	// or step-into operation, so we need to check it first.
+		IMIExecutionDMContext threadDmc = DMContexts.getAncestorOfType(e.getDMContext(), IMIExecutionDMContext.class);
+		if (e instanceof MISignalEvent && fDisableNextSignalEventDmcSet.remove(threadDmc)) {
+			fSilencedSignalEventMap.put(threadDmc, e);
+			// Don't broadcast the stopped event
+			return;
+		}
+
 		if (processRunToLineStoppedEvent(e)) {
 			// If RunToLine is not completed
 			return;
@@ -1549,13 +1571,6 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 	}
 
 	private void broadcastStop(final MIStoppedEvent e) {
-		IMIExecutionDMContext threadDmc = DMContexts.getAncestorOfType(e.getDMContext(), IMIExecutionDMContext.class);
-		if (e instanceof MISignalEvent && fDisableNextSignalEventDmcSet.remove(threadDmc)) {
-			fSilencedSignalEventMap.put(threadDmc, e);
-			// Don't broadcast the stopped event
-			return;
-		}
-
 		IDMEvent<?> event = null;
 		MIBreakpointDMContext bp = null;
 		if (e instanceof MIBreakpointHitEvent) {
