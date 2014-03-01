@@ -24,7 +24,7 @@ index 5755bfb..5496bc3 100644
  	public static final String LATEST_AC_VERSION = fACVersions[fACVersions.length - 1];
  	
 -	public static final String[] fAMVersions = {"1.4-p6", "1.9.5", "1.9.6", "1.11.1"}; // $NON-NLS-1$
-+	public static final String[] fAMVersions = {"1.4-p6", "1.9.5", "1.9.6", "1.11.1", "1.11.5", "1.13.3", "1.14"}; // $NON-NLS-1$
++	public static final String[] fAMVersions = {"1.4-p6", "1.9.5", "1.9.6", "1.11.1", "1.11.5", "1.13.3", "1.14", "1.14.1"}; // $NON-NLS-1$
  	public static final String LATEST_AM_VERSION = fAMVersions[fAMVersions.length - 1];
  	
  	public static final String CLEAN_MAKE_TARGET_DEFAULT = "distclean"; // $NON-NLS-1$
@@ -41,7 +41,7 @@ index 3fda416..b65a848 100644
  	public static final String LATEST_AC_VERSION = fACVersions[fACVersions.length - 1];
  	
 -	private static String[] fAMVersions = {"1.4-p6", "1.9.5", "1.9.6", "1.11.1"};
-+	private static String[] fAMVersions = {"1.4-p6", "1.9.5", "1.9.6", "1.11.1", "1.11.5", "1.13.3", "1.14"};
++	private static String[] fAMVersions = {"1.4-p6", "1.9.5", "1.9.6", "1.11.1", "1.11.5", "1.13.3", "1.14", "1.14.1"};
  	public static final String LATEST_AM_VERSION = fAMVersions[fAMVersions.length - 1];
  	
  	/** The keys of the overlay store. */
