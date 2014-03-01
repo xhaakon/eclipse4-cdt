@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -25,6 +25,7 @@ import org.eclipse.cdt.core.dom.ast.IASTPreprocessorStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.index.IIndexFile;
 import org.eclipse.cdt.core.index.IIndexFileLocation;
+import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexLocationConverter;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.parser.ISignificantMacros;
@@ -171,6 +172,12 @@ public class WritablePDOM extends PDOM implements IWritableIndexFragment {
 		IIndexFileLocation location = file.getLocation();
 		PDOMFile pdomFile = (PDOMFile) file;
 		pdomFile.clear();
+		IIndexInclude include = pdomFile.getParsedInContext();
+		if (include != null) {
+			PDOMFile includedBy = (PDOMFile) include.getIncludedBy();
+			if (includedBy.getTimestamp() > 0)
+				getIndexOfFilesWithUnresolvedIncludes().insert(includedBy.getRecord());
+		}
 
 		fEvent.fClearedFiles.add(location);
 	}
@@ -355,9 +362,6 @@ public class WritablePDOM extends PDOM implements IWritableIndexFragment {
 				uncommittedFile.getRecord() != name.getFileRecord();
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.index.IWritableIndexFragment#getDatabaseSizeBytes()
-	 */
 	@Override
 	public long getDatabaseSizeBytes() {
 		return getDB().getSizeBytes();

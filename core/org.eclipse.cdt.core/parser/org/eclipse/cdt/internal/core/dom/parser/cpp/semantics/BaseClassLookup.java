@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2009, 2013 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,10 +20,14 @@ import java.util.List;
 
 import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNameSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
@@ -160,8 +165,8 @@ class BaseClassLookup {
 				return info;
 			}
 		}
-	
-		// this is the first time to handle the class
+
+		// This is the first time to handle the class.
 		BaseClassLookup result;
 		IBinding[] matches= IBinding.EMPTY_BINDING_ARRAY;
 		if (baseClassScope == null) {
@@ -171,13 +176,31 @@ class BaseClassLookup {
 			result= new BaseClassLookup(baseClassScope.getClassType(), data.getLookupPoint());
 			infoMap.put(baseClassScope, result);
 			try {
-				IBinding[] members= CPPSemantics.getBindingsFromScope(baseClassScope, data);
-				if (members != null && members.length > 0 && members[0] != null) {
-					if (data.isPrefixLookup()) {
-						matches= members;
-					} else {
-						result.setResult(members);
-						return result;
+				// Determine the name qualifier if the lookup name is a definition.
+		    	ICPPASTNameSpecifier nameQualifier = null;
+				if (data.qualified) {
+					// Check if the name qualifier is in agreement with the base class name.
+					IASTName lookupName = data.getLookupName();
+					if (lookupName != null && lookupName.getPropertyInParent() == ICPPASTQualifiedName.SEGMENT_NAME &&
+							lookupName.getRoleOfName(false) == IASTNameOwner.r_definition) {
+			        	ICPPASTQualifiedName qName = (ICPPASTQualifiedName) lookupName.getParent();
+			        	ICPPASTNameSpecifier[] qualifiers = qName.getQualifier();
+						for (int i = 0; i < qualifiers.length && lookupName != qualifiers[i]; i++) {
+							nameQualifier = qualifiers[i];
+						}
+					}
+				}
+
+				IName baseClassScopeName = baseClassScope.getScopeName();
+				if (nameQualifier == null || (baseClassScopeName != null && Arrays.equals(baseClassScopeName.getSimpleID(), nameQualifier.toCharArray()))) {
+					IBinding[] members= CPPSemantics.getBindingsFromScope(baseClassScope, data);
+					if (members != null && members.length > 0 && members[0] != null) {
+						if (data.isPrefixLookup()) {
+							matches= members;
+						} else {
+							result.setResult(members);
+							return result;
+						}
 					}
 				}
 			} catch (DOMException e) {

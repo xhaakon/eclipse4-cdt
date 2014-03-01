@@ -43,6 +43,7 @@
    <extension-point id="CIndex" name="%CIndex.name" schema="schema/CIndex.exsd"/>
    <extension-point id="externalSettingsProvider" name="%externalSettingsProvider.name" schema="schema/externalSettingsProvider.exsd"/>
    <extension-point id="tagger" name="%tagger.name" schema="schema/tagger.exsd"/>
+   <extension-point id="PDOMASTProcessor" name="%PDOMASTProcessor.name" schema="schema/PDOMASTProcessor.exsd"/>
 <!-- =================================================================================== -->
 <!-- CProjectDescriptionStorage provides addition types of project description storage      -->
 <!-- =================================================================================== -->
@@ -674,6 +675,7 @@
    <extension-point id="RefreshExclusionFactory" name="%refreshExclusionFactory.name" schema="schema/RefreshExclusionFactory.exsd"/>
    <extension-point id="LanguageSettingsProvider" name="%LanguageSettingsProvider.name" schema="schema/LanguageSettingsProvider.exsd"/>
    <extension-point id="UNCPathConverter" name="%uncPathConverter.name" schema="schema/UNCPathConverter.exsd"/>
+   <extension-point id="ProblemMarkerFilter" name="%problemMarkerFilter.name" schema="schema/ProblemMarkerFilter.exsd"/>
 
    <extension
          point="org.eclipse.cdt.core.templateProcessTypes">
@@ -782,6 +784,17 @@
                name="natureId">
          </simple>
       </processType>
+        <processType
+            name="SetEnvironmentVariable"
+            processRunner="org.eclipse.cdt.core.templateengine.process.processes.SetEnvironmentVariable">
+            <simple name="projectName"/>
+            <complexArray name="variables">
+                <baseType>
+                    <simple name="name"/>
+                    <simple name="value"/>
+                </baseType>
+            </complexArray>
+        </processType>
    </extension>
    <extension
          point="org.eclipse.cdt.core.CProjectDescriptionStorage">
@@ -818,6 +831,11 @@
             class="org.eclipse.cdt.internal.core.language.settings.providers.PathEntryScannerInfoLanguageSettingsProvider"
             id="org.eclipse.cdt.core.PathEntryScannerInfoLanguageSettingsProvider"
             name="%PathEntryScannerInfoLanguageSettingsProvider.name">
+      </provider>
+      <provider
+            class="org.eclipse.cdt.internal.core.language.settings.providers.ReferencedProjectsLanguageSettingsProvider"
+            id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider"
+            name="%ReferencedProjectsLanguageSettingsProvider.name">
       </provider>
    </extension>
 

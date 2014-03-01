@@ -45,7 +45,7 @@ public class HeaderSubstitutor {
 		IPreferencesService preferences = Platform.getPreferencesService();
 		IScopeContext[] scopes = PreferenceConstants.getPreferenceScopes(context.getProject());
 		String str = preferences.getString(CUIPlugin.PLUGIN_ID,
-				IncludePreferences.INCLUDES_HEADER_SUBSTITUTION, null, scopes);
+				PreferenceConstants.INCLUDES_HEADER_SUBSTITUTION, null, scopes);
 		if (str != null) {
 			List<HeaderSubstitutionMap> maps = HeaderSubstitutionMap.deserializeMaps(str);
 			for (HeaderSubstitutionMap map : maps) {
@@ -60,7 +60,7 @@ public class HeaderSubstitutor {
 
 		fSymbolExportMap = new SymbolExportMap();
 		str = preferences.getString(CUIPlugin.PLUGIN_ID,
-				IncludePreferences.INCLUDES_SYMBOL_EXPORTING_HEADERS, null, scopes);
+				PreferenceConstants.INCLUDES_SYMBOL_EXPORTING_HEADERS, null, scopes);
 		if (str != null) {
 			List<SymbolExportMap> maps = SymbolExportMap.deserializeMaps(str);
 			for (SymbolExportMap map : maps) {

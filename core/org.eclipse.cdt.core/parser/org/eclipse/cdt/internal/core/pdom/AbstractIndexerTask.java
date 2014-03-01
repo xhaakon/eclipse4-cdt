@@ -9,6 +9,8 @@
  *     Markus Schorn - initial API and implementation
  *     IBM Corporation
  *     Sergey Prigogin (Google)
+ *     Thomas Corbat (IFS)
+ *     Marc-Andre Laperle (Ericsson)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom;
 
@@ -27,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.IPDOMIndexerTask;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIncludeStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -38,6 +41,7 @@ import org.eclipse.cdt.core.index.IIndexFileLocation;
 import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexMacro;
 import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.index.IPDOMASTProcessor;
 import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.core.model.AbstractLanguage;
 import org.eclipse.cdt.core.model.ILanguage;
@@ -45,10 +49,12 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.FileContent;
 import org.eclipse.cdt.core.parser.IParserLogService;
+import org.eclipse.cdt.core.parser.IParserSettings;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.ISignificantMacros;
 import org.eclipse.cdt.core.parser.IncludeExportPatterns;
 import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
+import org.eclipse.cdt.core.parser.ParserSettings;
 import org.eclipse.cdt.core.parser.ParserUtil;
 import org.eclipse.cdt.internal.core.dom.IIncludeFileResolutionHeuristics;
 import org.eclipse.cdt.internal.core.dom.parser.ASTTranslationUnit;
@@ -290,6 +296,8 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	private int fUpdateFlags= IIndexManager.UPDATE_ALL;
 	private UnusedHeaderStrategy fIndexHeadersWithoutContext= UnusedHeaderStrategy.useDefaultLanguage;
 	private boolean fIndexFilesWithoutConfiguration= true;
+	private boolean fIndexAllHeaderVersions = false;
+	private Set<String> fHeadersToIndexAllVersions = Collections.emptySet();
 	private List<LinkageTask> fRequestsPerLinkage= new ArrayList<LinkageTask>();
 	private Map<IIndexFile, IndexFileContent> fIndexContentCache= new LRUCache<IIndexFile, IndexFileContent>(500);
 	private Map<IIndexFileLocation, IIndexFragmentFile[]> fIndexFilesCache= new LRUCache<IIndexFileLocation, IIndexFragmentFile[]>(5000);
@@ -352,6 +360,14 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		fFileSizeLimit= limit;
 	}
 
+	public void setIndexAllHeaderVersions(boolean indexAllHeaderVersions) {
+		fIndexAllHeaderVersions = indexAllHeaderVersions;
+	}
+
+	public void setHeadersToIndexAllVersions(Set<String> headers) {
+		fHeadersToIndexAllVersions = headers;
+	}
+
 	/**
 	 * @see IPDOMIndexerTask#acceptUrgentTask(IPDOMIndexerTask)
 	 */
@@ -398,6 +414,10 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 
 	protected IncludeExportPatterns getIncludeExportPatterns() {
 		return null;
+	}
+
+	protected IParserSettings createParserSettings() {
+		return new ParserSettings();
 	}
 
 	/**
@@ -950,7 +970,9 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	private IScannerInfo getScannerInfo(int linkageID, Object contextTu) {
 		final IScannerInfo scannerInfo= fResolver.getBuildConfiguration(linkageID, contextTu);
 		if (scannerInfo instanceof ExtendedScannerInfo) {
-			((ExtendedScannerInfo) scannerInfo).setIncludeExportPatterns(getIncludeExportPatterns());
+			ExtendedScannerInfo extendedScannerInfo = (ExtendedScannerInfo) scannerInfo;
+			extendedScannerInfo.setIncludeExportPatterns(getIncludeExportPatterns());
+			extendedScannerInfo.setParserSettings(createParserSettings());
 		}
 		return scannerInfo;
 	}
@@ -1006,6 +1028,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	private DependsOnOutdatedFileException parseFile(Object tu, AbstractLanguage lang,
 			IIndexFileLocation ifl, IScannerInfo scanInfo, FileContext ctx, IProgressMonitor pm)
 			throws CoreException, InterruptedException {
+		boolean resultCacheCleared = false;
 		IPath path= getLabel(ifl);
 		Throwable th= null;
 		try {
@@ -1025,6 +1048,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 				// to the index.
 				((ASTTranslationUnit) ast).setOriginatingTranslationUnit((ITranslationUnit) tu);
 				writeToIndex(lang.getLinkageID(), ast, codeReader, ctx, pm);
+				resultCacheCleared = true;  // The cache was cleared while writing to the index.
 			}
 		} catch (CoreException e) {
 			th= e;
@@ -1044,6 +1068,17 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		}
 		if (th != null) {
 			swallowError(path, th);
+		}
+
+		if (!resultCacheCleared) {
+			// If the result cache has not been cleared, clear it under a write lock to reduce
+			// interference with index readers.
+			fIndex.acquireWriteLock();
+			try {
+				fIndex.clearResultCache();
+			} finally {
+				fIndex.releaseWriteLock();
+			}
 		}
 		return null;
 	}
@@ -1135,6 +1170,8 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 						language.getLinkageID(), fileContentProvider, this);
 				ibfcp.setContextToHeaderGap(ctx2header);
 				ibfcp.setFileSizeLimit(fFileSizeLimit);
+				ibfcp.setHeadersToIndexAllVersions(fHeadersToIndexAllVersions);
+				ibfcp.setIndexAllHeaderVersions(fIndexAllHeaderVersions);
 				fCodeReaderFactory= ibfcp;
 			} else {
 				fCodeReaderFactory= fileContentProvider;
@@ -1187,7 +1224,19 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 
 		FileInAST[] fileKeys= orderedFileKeys.toArray(new FileInAST[orderedFileKeys.size()]);
 		try {
-			addSymbols(ast, fileKeys, fIndex, false, ctx, fTodoTaskUpdater, pm);
+			// The default processing is handled by the indexer task.
+			PDOMWriter.Data data = new PDOMWriter.Data(ast, fileKeys, fIndex);
+			int storageLinkageID = process(ast, data);
+			if (storageLinkageID != ILinkage.NO_LINKAGE_ID)
+				addSymbols(data, storageLinkageID, ctx, fTodoTaskUpdater, pm);
+
+			// Contributed processors now have an opportunity to examine the AST.
+			for(IPDOMASTProcessor processor : PDOMASTProcessorManager.getProcessors(ast)) {
+				data = new PDOMWriter.Data(ast, fileKeys, fIndex);
+				storageLinkageID = processor.process(ast, data);
+				if (storageLinkageID != ILinkage.NO_LINKAGE_ID)
+					addSymbols(data, storageLinkageID, ctx, fTodoTaskUpdater, pm);
+			}
 		} catch (CoreException e) {
 			// Avoid parsing files again, that caused an exception to be thrown.
 			withdrawRequests(linkageID, fileKeys);

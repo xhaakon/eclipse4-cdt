@@ -10,6 +10,7 @@
  *     Anton Leherbauer (Wind River Systems)
  *     Markus Schorn (Wind River Systems)
  *     Sergey Prigogin (Google)
+ *     Marc-Andre Laperle (Ericsson)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.parser.scanner;
 
@@ -90,7 +91,8 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
 
     // Standard built-ins
     private static final ObjectStyleMacro __CDT_PARSER__= new ObjectStyleMacro("__CDT_PARSER__".toCharArray(), ONE);   //$NON-NLS-1$
-    private static final ObjectStyleMacro __cplusplus = new ObjectStyleMacro("__cplusplus".toCharArray(), ONE);   //$NON-NLS-1$
+    private static final ObjectStyleMacro __cplusplus =
+    		new ObjectStyleMacro("__cplusplus".toCharArray(), "201103L".toCharArray());   //$NON-NLS-1$ //$NON-NLS-2$
     private static final ObjectStyleMacro __STDC__ = new ObjectStyleMacro("__STDC__".toCharArray(), ONE);  //$NON-NLS-1$
     private static final ObjectStyleMacro __STDC_HOSTED__ = new ObjectStyleMacro("__STDC_HOSTED__".toCharArray(), ONE);  //$NON-NLS-1$
     private static final ObjectStyleMacro __STDC_VERSION__ =
@@ -321,16 +323,19 @@ public class CPreprocessor implements ILexerLog, IScanner, IAdaptable {
     }
     
 	private char[] detectIncludeGuard(String filePath, AbstractCharArray source, ScannerContext ctx) {
-		final char[] guard = IncludeGuardDetection.detectIncludeGuard(source, fLexOptions, fPPKeywords);
-		if (guard != null) {
-			IFileNomination nom= fLocationMap.reportPragmaOnceSemantics(ctx.getLocationCtx());
- 			fFileContentProvider.reportPragmaOnceSemantics(filePath, nom);
-			ctx.internalModification(guard);
-			ctx.setPragmaOnce(true);
-			return guard;
-		} else {
-			ctx.trackSignificantMacros();
+		if (!fFileContentProvider.shouldIndexAllHeaderVersions(filePath)) {
+			final char[] guard = IncludeGuardDetection.detectIncludeGuard(source, fLexOptions, fPPKeywords);
+			if (guard != null) {
+				IFileNomination nom= fLocationMap.reportPragmaOnceSemantics(ctx.getLocationCtx());
+				fFileContentProvider.reportPragmaOnceSemantics(filePath, nom);
+				ctx.internalModification(guard);
+				ctx.setPragmaOnce(true);
+				return guard;
+			}
 		}
+
+		ctx.trackSignificantMacros();
+
 		if (ctx != fRootContext) {
 			if (fLog.isTracing(TRACE_NO_GUARD)) {
 				if (fTracedGuards == null)

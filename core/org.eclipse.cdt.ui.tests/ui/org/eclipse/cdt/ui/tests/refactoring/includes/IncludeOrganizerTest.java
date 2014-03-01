@@ -26,7 +26,6 @@ import org.eclipse.cdt.internal.ui.refactoring.includes.HeaderSubstitutionMap;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IHeaderChooser;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeMap;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeOrganizer;
-import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences.UnusedStatementDisposition;
 import org.eclipse.cdt.internal.ui.refactoring.includes.SymbolExportMap;
 
@@ -58,8 +57,8 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_TEMPLATES);
 		preferenceStore.setToDefault(PreferenceConstants.FORWARD_DECLARE_NAMESPACE_ELEMENTS);
 		preferenceStore.setToDefault(PreferenceConstants.INCLUDES_ALLOW_REORDERING);
-		preferenceStore.setToDefault(IncludePreferences.INCLUDES_HEADER_SUBSTITUTION);
-		preferenceStore.setToDefault(IncludePreferences.INCLUDES_SYMBOL_EXPORTING_HEADERS);
+		preferenceStore.setToDefault(PreferenceConstants.INCLUDES_HEADER_SUBSTITUTION);
+		preferenceStore.setToDefault(PreferenceConstants.INCLUDES_SYMBOL_EXPORTING_HEADERS);
 	}
 
 	private void assertExpectedResults() throws Exception {
@@ -375,7 +374,7 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 		HeaderSubstitutionMap headerMap = new HeaderSubstitutionMap("Test", false,
 				new IncludeMap(true, new String[] { "h2.h", "h3.h"}),
 				new IncludeMap(false));
-		getPreferenceStore().setValue(IncludePreferences.INCLUDES_HEADER_SUBSTITUTION,
+		getPreferenceStore().setValue(PreferenceConstants.INCLUDES_HEADER_SUBSTITUTION,
 				HeaderSubstitutionMap.serializeMaps(Collections.singletonList(headerMap)));
 		assertExpectedResults();
 	}
@@ -429,7 +428,7 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 		preferenceStore.setValue(PreferenceConstants.INCLUDES_UNUSED_STATEMENTS_DISPOSITION,
 				UnusedStatementDisposition.REMOVE.toString());
 		SymbolExportMap symbolExportMap = new SymbolExportMap(new String[] { "NULL", "string.h" });
-		preferenceStore.setValue(IncludePreferences.INCLUDES_SYMBOL_EXPORTING_HEADERS,
+		preferenceStore.setValue(PreferenceConstants.INCLUDES_SYMBOL_EXPORTING_HEADERS,
 				SymbolExportMap.serializeMaps(Collections.singletonList(symbolExportMap)));
 		assertExpectedResults();
 	}

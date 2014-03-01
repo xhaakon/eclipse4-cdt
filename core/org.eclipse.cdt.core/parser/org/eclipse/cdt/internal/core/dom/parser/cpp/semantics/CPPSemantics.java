@@ -32,12 +32,16 @@ import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUti
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.ASTNodeProperty;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
@@ -176,7 +180,9 @@ import org.eclipse.cdt.core.index.IIndexName;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.CharArrayObjectMap;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
+import org.eclipse.cdt.core.parser.util.CollectionUtils;
 import org.eclipse.cdt.core.parser.util.DebugUtil;
+import org.eclipse.cdt.core.parser.util.IUnaryPredicate;
 import org.eclipse.cdt.core.parser.util.ObjectSet;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 import org.eclipse.cdt.internal.core.dom.parser.ASTInternal;
@@ -248,6 +254,22 @@ public class CPPSemantics {
 
 	// special return value for costForFunctionCall
 	private static final FunctionCost CONTAINS_DEPENDENT_TYPES = new FunctionCost(null, 0, null);
+
+	// A regular expression for matching qualified names.  This allows for optional global qualification
+	// (leading ::) and then separates the first part of the name from the rest (if present).  There are
+	// three capture groups:
+	//   (1) If the input name specifies the global namespace (leading ::) then capture group 1 will
+	//       be ::.  Group 1 will be null otherwise.
+	//   (2) The text of the first component of the qualified name, including leading :: if present in
+	//       the input string.  Leading and trailing whitespace is trimmed.  There is no effort to check
+	//       that the name contains valid C++ identifier characters.
+	//   (3) The text of everything after the first component of the qualified name.
+	//
+	// E.g., -- Input Name --   ---- Capture Groups ----
+	//       "::nsA::nsB::b" => { "::", "nsA", "nsB::b" }
+	//       "a"             => { null, "a",   null     }
+	//       "::  i"         => { "::", "i",   null     }
+	private static final Pattern QUALNAME_REGEX = Pattern.compile("^\\s*(::)?\\s*([^\\s:]+)\\s*(?:::(.*))?$"); //$NON-NLS-1$
 
 	static protected IBinding resolveBinding(IASTName name) {
 		if (traceBindingResolution) {
@@ -528,7 +550,7 @@ public class CPPSemantics {
 				binding = CPPDeferredFunction.createForName(lookupName.getSimpleID());
 			}
 		}
-		
+
 		// If we're still null...
 		if (binding == null) {
 			if (name instanceof ICPPASTQualifiedName && declaration != null) {
@@ -577,10 +599,26 @@ public class CPPSemantics {
 				lookup(data, scope);
 			}
 		}
-		mergeResults(data, friendFns.toArray(), false);
+		Object[] matchingFriendFns = CollectionUtils.filter(
+				friendFns, 
+				new NameMatcherPredicate(data.getLookupKey())).toArray();
+		mergeResults(data, matchingFriendFns, false);
 		data.qualified = originalQualified;
 	}
-
+	
+	private static class NameMatcherPredicate implements IUnaryPredicate<ICPPFunction> {
+		private char[] fKey;
+		
+		public NameMatcherPredicate(char[] key) {
+			fKey = key;
+		}
+		
+		@Override
+		public boolean apply(ICPPFunction argument) {
+			return Arrays.equals(argument.getNameCharArray(), fKey);
+		}
+	}
+	
 	static IBinding checkDeclSpecifier(IBinding binding, IASTName name, IASTNode decl) {
 		// Check for empty declaration specifiers.
 		if (!isCtorOrConversionOperator(binding)) {
@@ -807,7 +845,7 @@ public class CPPSemantics {
     	    ICPPASTCompositeTypeSpecifier compSpec = (ICPPASTCompositeTypeSpecifier) parent.getParent();
     	    IASTName n = compSpec.getName();
     	    if (n instanceof ICPPASTQualifiedName) {
-    	        n = ((ICPPASTQualifiedName) n).getLastName();
+    	        n = n.getLastName();
     	    }
 	        scope = CPPVisitor.getContainingScope(n);
 	    } else {
@@ -1240,33 +1278,21 @@ public class CPPSemantics {
 				}
 			}
 		}
-		
+
 		if (data.ignoreRecursionResolvingBindings()) {
-			bindings = filterOutRecursionResovingBindings(bindings);
+			bindings = ArrayUtil.filter(bindings, new RecursionResolvingBindingFilter());
 		}
-		
+
 		return expandUsingDeclarationsAndRemoveObjects(bindings, data);
 	}
 
-	private static IBinding[] filterOutRecursionResovingBindings(IBinding[] bindings) {
-		IBinding[] result = bindings;
-		int resultIndex = 0;
-		for (int i = 0; i < bindings.length; ++i) {
-			if (bindings[i] instanceof IRecursionResolvingBinding) {
-				if (result == bindings) {
-					result = new IBinding[bindings.length - 1];
-					System.arraycopy(bindings, 0, result, 0, i);
-				}
-			} else {
-				if (result != bindings) {
-					result[resultIndex] = bindings[i];
-				}
-				++resultIndex;
-			}
+	private static class RecursionResolvingBindingFilter implements IUnaryPredicate<IBinding> {
+		@Override
+		public boolean apply(IBinding argument) {
+			return !(argument instanceof IRecursionResolvingBinding);
 		}
-		return ArrayUtil.trim(result);
 	}
-
+	
 	private static IBinding[] expandUsingDeclarationsAndRemoveObjects(final IBinding[] bindings,
 			LookupData data) {
 		if (bindings == null || bindings.length == 0)
@@ -1319,7 +1345,7 @@ public class CPPSemantics {
 			}
 			if (parent instanceof ICPPASTQualifiedName) {
 				ICPPASTQualifiedName qname= (ICPPASTQualifiedName) parent;
-				if (qname.isFullyQualified() || qname.getNames()[0] != node)
+				if (qname.isFullyQualified() || qname.getQualifier()[0] != node)
 					return null;
 			}
 		}
@@ -1700,7 +1726,7 @@ public class CPPSemantics {
 			ICPPASTUsingDeclaration using = (ICPPASTUsingDeclaration) declaration;
 			IASTName name = using.getName();
 			if (name instanceof ICPPASTQualifiedName) {
-				name = ((ICPPASTQualifiedName) name).getLastName();
+				name = name.getLastName();
 			}
 			ASTInternal.addName(scope, name);
 		} else if (declaration instanceof ICPPASTNamespaceDefinition) {
@@ -2298,8 +2324,8 @@ public class CPPSemantics {
 		}
 		IIndexFileSet indexFileSet = ast.getIndexFileSet();
 		IIndexFileSet astFileSet = ast.getASTFileSet();
-		return indexFileSet != null && 
-				(indexFileSet.containsDeclaration(indexBinding) || 
+		return indexFileSet != null &&
+				(indexFileSet.containsDeclaration(indexBinding) ||
 				 astFileSet.containsDeclaration(indexBinding));
 	}
 
@@ -2353,7 +2379,7 @@ public class CPPSemantics {
 					numArgs--;
 
 				boolean ok;
-				if (numArgs-packExpansionCount > numPars) {
+				if (numArgs - packExpansionCount > numPars) {
 					// More arguments than parameters --> need ellipsis or parameter pack
 					ok= fn.takesVarArgs() || fn.hasParameterPack();
 				} else {
@@ -2437,8 +2463,8 @@ public class CPPSemantics {
 			return CPPDeferredFunction.createForCandidates(fns);
 		}
 
-		IFunction[] ambiguousFunctions= null;   // ambiguity, 2 functions are equally good
-		FunctionCost bestFnCost = null;		    // the cost of the best function
+		IFunction[] ambiguousFunctions= null;   // Ambiguity, 2 functions are equally good.
+		FunctionCost bestFnCost = null;		    // The cost of the best function.
 
 		// Loop over all functions
 		List<FunctionCost> potentialCosts= null;
@@ -2628,6 +2654,12 @@ public class CPPSemantics {
 		for (ICPPFunction fn : fns) {
 			if (fn instanceof ICPPFunctionTemplate
 					&& !(fn instanceof IProblemBinding) && !(fn instanceof ICPPUnknownBinding)) {
+				// If the declared function type is dependent, there is no point trying to use it
+				// to instantiate the template, so return a deferred function instead.
+				// Note that CPPTemplates.instantiateForFunctionCall() behaves similarly.
+				if (CPPTemplates.isDependentType(ft)) {
+					return CPPDeferredFunction.createForCandidates(fns);
+				}
 				ICPPFunctionTemplate template= (ICPPFunctionTemplate) fn;
 				ICPPFunction inst= CPPTemplates.instantiateForFunctionDeclaration(template, tmplArgs, ft, data.getLookupPoint());
 				if (inst != null) {
@@ -2961,7 +2993,7 @@ public class CPPSemantics {
     			}
     		}
 		}
-    	if (targetType == null && parent instanceof IASTExpression
+    	if (targetType == null && parent instanceof ICPPASTExpression
     			&& parent instanceof IASTImplicitNameOwner) {
 			// Trigger resolution of overloaded operator, which may resolve the
 			// function set.
@@ -2969,6 +3001,12 @@ public class CPPSemantics {
 			final IBinding newBinding = name.getPreBinding();
 			if (!(newBinding instanceof CPPFunctionSet))
 				return newBinding;
+
+			// If we're in a dependent context, we don't have enough information
+			// to resolve the function set.
+			if (((ICPPASTExpression) parent).getEvaluation().isTypeDependent()) {
+				return CPPDeferredFunction.createForCandidates(functionSet.getBindings());
+			}
 		}
 
     	ICPPFunction function = resolveTargetedFunction(targetType, functionSet, name);
@@ -3028,7 +3066,7 @@ public class CPPSemantics {
     	return result;
 	}
 
-    public static ICPPFunction findOverloadedBinaryOperator(IASTNode pointOfInstantiation, IScope pointOfDefinition, 
+    public static ICPPFunction findOverloadedBinaryOperator(IASTNode pointOfInstantiation, IScope pointOfDefinition,
     		OverloadableOperator op, ICPPEvaluation arg1, ICPPEvaluation arg2) {
 		if (op == null || arg1 == null || arg2 == null)
 			return null;
@@ -3150,7 +3188,7 @@ public class CPPSemantics {
 
     	return findImplicitlyCalledConstructor((ICPPClassType) type, initializer, name);
     }
-    
+
 	public static IBinding findImplicitlyCalledConstructor(ICPPASTNewExpression expr) {
 		IType type = getNestedType(expr.getExpressionType(), TDEF | REF | CVTYPE);
 		if (!(type instanceof IPointerType))
@@ -3279,7 +3317,7 @@ public class CPPSemantics {
     /**
      * For simplicity returns an operator of form RT (T, T) rather than RT (boolean, T, T)
      */
-    public static ICPPFunction findOverloadedConditionalOperator(IASTNode pointOfInstantiation, IScope pointOfDefinition, 
+    public static ICPPFunction findOverloadedConditionalOperator(IASTNode pointOfInstantiation, IScope pointOfDefinition,
     		ICPPEvaluation positive, ICPPEvaluation negative) {
 		final ICPPEvaluation[] args = new ICPPEvaluation[] {positive, negative};
 		return findOverloadedOperator(pointOfInstantiation, pointOfDefinition, args, null,
@@ -3290,7 +3328,7 @@ public class CPPSemantics {
      * Returns the operator,() function that would apply to the two given arguments.
      * The lookup type of the class where the operator,() might be found must also be provided.
      */
-    public static ICPPFunction findOverloadedOperatorComma(IASTNode pointOfInstantiation, IScope pointOfDefinition, 
+    public static ICPPFunction findOverloadedOperatorComma(IASTNode pointOfInstantiation, IScope pointOfDefinition,
     		ICPPEvaluation arg1, ICPPEvaluation arg2) {
 		IType op1type = getNestedType(arg1.getTypeOrFunctionSet(pointOfInstantiation), TDEF | REF | CVTYPE);
 		IType op2type = getNestedType(arg2.getTypeOrFunctionSet(pointOfInstantiation), TDEF | REF | CVTYPE);
@@ -3298,13 +3336,13 @@ public class CPPSemantics {
 			return null;
 
 		ICPPEvaluation[] args = { arg1 , arg2 };
-    	return findOverloadedOperator(pointOfInstantiation, pointOfDefinition, args, op1type, 
+    	return findOverloadedOperator(pointOfInstantiation, pointOfDefinition, args, op1type,
     			OverloadableOperator.COMMA, LookupMode.LIMITED_GLOBALS);
     }
 
 
     static enum LookupMode {NO_GLOBALS, GLOBALS_IF_NO_MEMBERS, LIMITED_GLOBALS, ALL_GLOBALS}
-    static ICPPFunction findOverloadedOperator(IASTNode pointOfInstantiation, IScope pointOfDefinition, 
+    static ICPPFunction findOverloadedOperator(IASTNode pointOfInstantiation, IScope pointOfDefinition,
     		ICPPEvaluation[] args, IType methodLookupType, OverloadableOperator operator, LookupMode mode) {
     	while (pointOfInstantiation instanceof IASTName)
     		pointOfInstantiation= pointOfInstantiation.getParent();
@@ -3366,7 +3404,7 @@ public class CPPSemantics {
 					doKoenigLookup(funcData);
 				} catch (DOMException e) {
 				}
-				
+
 				// Also do a lookup at the point of definition.
 				if (pointOfDefinition != null) {
 					LookupData funcData2 = new LookupData(operator.toCharArray(), null, pointOfInstantiation);
@@ -3572,6 +3610,114 @@ public class CPPSemantics {
 			}
 		}
 		return contentAssistLookup(data, nsScopes);
+	}
+
+	private static IScope getLookupScope(IASTNode node) {
+		if (node == null)
+			return null;
+
+		if (node instanceof IASTCompositeTypeSpecifier)
+			return ((IASTCompositeTypeSpecifier) node).getScope();
+
+		if (node instanceof ICPPASTNamespaceDefinition)
+			return ((ICPPASTNamespaceDefinition) node).getScope();
+
+		if (!(node instanceof ICPPInternalBinding))
+			return null;
+
+		IASTNode defn = ((ICPPInternalBinding) node).getDefinition();
+		if (defn == null)
+			return null;
+
+		return getLookupScope(defn.getParent());
+	}
+
+	private static IScope getLookupScope(IBinding binding) {
+		if (binding == null)
+			return null;
+
+		if (binding instanceof IASTCompositeTypeSpecifier)
+			return ((IASTCompositeTypeSpecifier) binding).getScope();
+
+		if (!(binding instanceof ICPPInternalBinding))
+			return null;
+
+		IASTNode defn = ((ICPPInternalBinding) binding).getDefinition();
+		if (defn == null)
+			return null;
+
+		return getLookupScope(defn.getParent());
+	}
+
+	/**
+	 * Uses C++ lookup semantics to find the possible bindings for the given qualified name starting
+	 * in the given scope.
+	 */
+	public static IBinding[] findBindingsForQualifiedName(IScope scope, String qualifiedName) {
+		// Return immediately if the qualifiedName does not match a known format.
+		Matcher m = QUALNAME_REGEX.matcher(qualifiedName);
+		if (!m.matches())
+			return IBinding.EMPTY_BINDING_ARRAY;
+
+		// If the qualified name is rooted in the global namespace, then navigate to that scope.
+		boolean isGlobal = m.group(1) != null;
+		if (isGlobal) {
+			IScope global = scope;
+			try {
+				while (global.getParent() != null) {
+					global = global.getParent();
+				}
+			} catch (DOMException e) {
+				CCorePlugin.log(e);
+			}
+			scope = global;
+		}
+
+		Set<IBinding> bindings = new HashSet<IBinding>();
+
+		// Look for the name in the given scope.
+		findBindingsForQualifiedName(scope, qualifiedName, bindings);
+
+		// If the qualified name is not rooted in the global namespace (with a leading ::), then
+		// look at all parent scopes.
+		if (!isGlobal) {
+			try {
+				while (scope != null) {
+					scope = scope.getParent();
+					if (scope != null)
+						findBindingsForQualifiedName(scope, qualifiedName, bindings);
+				}
+			} catch (DOMException e) {
+				CCorePlugin.log(e);
+			}
+		}
+
+		return bindings.size() == 0 ? IBinding.EMPTY_BINDING_ARRAY : bindings.toArray(new IBinding[bindings.size()]);
+	}
+
+	private static void findBindingsForQualifiedName(IScope scope, String qualifiedName, Collection<IBinding> bindings) {
+		// Split the qualified name into the first part (before the first :: qualifier) and the rest. All
+		// bindings for the first part are found and their scope is used to find the rest of the name.  When
+		// the call tree gets to a leaf (non-qualified name) then a simple lookup happens and all matching
+		// bindings are added to the result.
+		Matcher m = QUALNAME_REGEX.matcher(qualifiedName);
+		if (!m.matches())
+			return;
+
+		String part1 = m.group(2);
+		String part2 = m.group(3);
+
+		// When we're down to a single component name, then use the normal lookup method.
+		if (part2 == null || part2.isEmpty()) {
+			bindings.addAll(Arrays.asList(findBindings(scope, part1, false)));
+			return;
+		}
+
+		// Find all bindings that match the first part of the name.  For each such binding,
+		// lookup the second part of the name.
+		for (IBinding binding : CPPSemantics.findBindings(scope, part1, false)) {
+			findBindingsForQualifiedName(getLookupScope(binding), part2, bindings);
+		}
 	}
 
 	private static ICPPScope getNamespaceScope(CPPASTTranslationUnit tu, String[] namespaceParts, IASTNode point)

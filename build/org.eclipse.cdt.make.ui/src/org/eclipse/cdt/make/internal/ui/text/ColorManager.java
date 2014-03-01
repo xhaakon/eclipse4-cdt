@@ -12,7 +12,6 @@
 package org.eclipse.cdt.make.internal.ui.text;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import org.eclipse.jface.text.source.ISharedTextColors;
@@ -21,7 +20,6 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
 public class ColorManager implements ISharedTextColors {
-
 	public static final String MAKE_COMMENT_COLOR ="org.eclipse.cdt.make.ui.editor.comment"; //$NON-NLS-1$
 	public static final String MAKE_KEYWORD_COLOR = "org.eclipse.cdt.make.ui.editor.keyword"; //$NON-NLS-1$
 	public static final String MAKE_FUNCTION_COLOR = "org.eclipse.cdt.make.ui.editor.function"; //$NON-NLS-1$
@@ -30,13 +28,13 @@ public class ColorManager implements ISharedTextColors {
 	public static final String MAKE_DEFAULT_COLOR = "org.eclipse.cdt.make.ui.editor.default"; //$NON-NLS-1$
 	public static final String MAKE_MATCHING_BRACKETS_COLOR = "org.eclipse.cdt.make.ui.editor.matching.brackets.color"; //$NON-NLS-1$
 
-	public static final RGB MAKE_COMMENT_RGB = new RGB(128, 0, 0);
-	public static final RGB MAKE_KEYWORD_RGB = new RGB(128, 255, 0);
-	public static final RGB MAKE_FUNCTION_RGB = new RGB(128, 0, 128);
-	public static final RGB MAKE_MACRO_DEF_RGB = new RGB(0, 0, 128);
-	public static final RGB MAKE_MACRO_REF_RGB = new RGB(0, 128, 0);
+	public static final RGB MAKE_COMMENT_RGB = new RGB(63, 127, 95);
+	public static final RGB MAKE_KEYWORD_RGB = new RGB(127, 0, 85);
+	public static final RGB MAKE_FUNCTION_RGB = new RGB(208, 15, 63);
+	public static final RGB MAKE_MACRO_DEF_RGB = new RGB(78,118,214);
+	public static final RGB MAKE_MACRO_REF_RGB = new RGB(0, 0, 192);
 	public static final RGB MAKE_DEFAULT_RGB = new RGB(0, 0, 0);
-	public static final RGB MAKE_MATCHING_BRACKETS_RGB = new RGB(170,170,170);
+	public static final RGB MAKE_MATCHING_BRACKETS_RGB = new RGB(170, 170, 170);
 
 	private static ColorManager fgColorManager;
 
@@ -52,19 +50,13 @@ public class ColorManager implements ISharedTextColors {
 
 	protected Map<RGB, Color> fColorTable = new HashMap<RGB, Color>(10);
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.text.source.ISharedTextColors#dispose()
-	 */
 	@Override
 	public void dispose() {
-		Iterator<Color> e = fColorTable.values().iterator();
-		while (e.hasNext())
-			(e.next()).dispose();
+		for (Color color : fColorTable.values()) {
+			color.dispose();
+		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.text.source.ISharedTextColors#getColor(org.eclipse.swt.graphics.RGB)
-	 */
 	@Override
 	public Color getColor(RGB rgb) {
 		Color color = fColorTable.get(rgb);

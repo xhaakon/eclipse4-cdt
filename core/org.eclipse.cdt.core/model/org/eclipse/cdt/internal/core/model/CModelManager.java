@@ -166,10 +166,11 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 	/**
 	 * Map of the binary parser for each project.
 	 */
-	private final Map<IProject, BinaryParserConfig[]> binaryParsersMap = Collections.synchronizedMap(new HashMap<IProject, BinaryParserConfig[]>());
+	private final Map<IProject, BinaryParserConfig[]> binaryParsersMap =
+			Collections.synchronizedMap(new HashMap<IProject, BinaryParserConfig[]>());
 
 	/**
-	 * The lis of the SourceMappers on projects.
+	 * The list of the SourceMappers on projects.
 	 */
 	private HashMap<ICProject, SourceMapper> sourceMappers = new HashMap<ICProject, SourceMapper>();
 
@@ -626,8 +627,8 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			if (parsers == null) {
 				try {
 					BinaryParserConfig config = new BinaryParserConfig(CCorePlugin.getDefault().getDefaultBinaryParser(), CCorePlugin.DEFAULT_BINARY_PARSER_UNIQ_ID);
-					parsers = new BinaryParserConfig[]{config};
-				} catch (CoreException e1) {
+					parsers = new BinaryParserConfig[] { config };
+				} catch (CoreException e) {
 				}
 			}
 		}
@@ -675,6 +676,9 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		}
 
 		URI fileUri = file.getLocationURI();
+		if (fileUri == null)
+			return null;
+		
 		// Avoid name special devices, empty files and the like
 		if (!Util.isNonZeroLengthFile(fileUri)) {
 			// PR:xxx the EFS does not seem to work for newly created file
@@ -782,15 +786,16 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			runner = binaryRunners.get(project);
 		}
 		if (runner == null) {
-			// Creation of BinaryRunner must occur outside the synchronized block
+			// Creation of BinaryRunner must occur outside the synchronized block.
 			runner = new BinaryRunner(project);
 			synchronized (binaryRunners) {
-				if (binaryRunners.get(project) == null) {
+				BinaryRunner existing = binaryRunners.get(project);
+				if (existing == null) {
 					binaryRunners.put(project, runner);
 					runner.start();
 				} else {
-					// Another thread was faster
-					runner = binaryRunners.get(project);
+					// Another thread was faster.
+					runner = existing;
 				}
 			}
 		}
@@ -998,14 +1003,16 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 			// If inside CProjectDescriptionManager.setProjectDescription() just send notifications
 			fire(delta, ElementChangedEvent.POST_CHANGE);
 		} else {
-			// If not inside CProjectDescriptionManager.setProjectDescription() recalculate cached settings
+			// If not inside CProjectDescriptionManager.setProjectDescription() recalculate cached
+			// settings
 			try {
 				CoreModel.getDefault().updateProjectDescriptions(new IProject[] {project}, null);
 			} catch (CoreException e) {
 				CCorePlugin.log(e);
 			}
-			// Fire notifications in a job with workspace rule to ensure running after the updateProjectDescriptions(...)
-			// which is run in separate thread with workspace rule
+			// Fire notifications in a job with workspace rule to ensure running after
+			// the updateProjectDescriptions(...), which is run in separate thread with workspace
+			// rule.
 			ISchedulingRule rule = ResourcesPlugin.getWorkspace().getRoot();
 			Job job = new Job(CoreModelMessages.getFormattedString("CModelManager.LanguageSettingsChangeEventNotifications")) { //$NON-NLS-1$
 				@Override
@@ -1145,7 +1152,8 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 					System.out.print("Listener #" + (i + 1) + "=" + listener.toString());//$NON-NLS-1$//$NON-NLS-2$
 					start = System.currentTimeMillis();
 				}
-				// Wrap callbacks with Safe runnable for subsequent listeners to be called when some are causing grief
+				// Wrap callbacks with Safe runnable for subsequent listeners to be called when some
+				// are causing grief.
 				SafeRunner.run(new ISafeRunnable() {
 					@Override
 					public void handleException(Throwable exception) {
@@ -1281,9 +1289,9 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		// remove children
 		Object existingInfo = this.cache.peekAtInfo(openedElement);
 		if (openedElement instanceof IParent && existingInfo instanceof CElementInfo) {
-			ICElement[] children = ((CElementInfo)existingInfo).getChildren();
+			ICElement[] children = ((CElementInfo) existingInfo).getChildren();
 			for (int i = 0, size = children.length; i < size; ++i) {
-				CElement child = (CElement)children[i];
+				CElement child = (CElement) children[i];
 				try {
 					child.close();
 				} catch (CModelException e) {
@@ -1300,7 +1308,7 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		this.cache.removeInfo(element);
 	}
 
-	/*
+	/**
 	 * Returns the temporary cache for newly opened elements for the current thread.
 	 * Creates it if not already created.
 	 */
@@ -1313,14 +1321,14 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		return result;
 	}
 
-	/*
+	/**
 	 * Returns whether there is a temporary cache for the current thread.
 	 */
 	public boolean hasTemporaryCache() {
 		return this.temporaryCache.get() != null;
 	}
 
-	/*
+	/**
 	 * Resets the temporary cache for newly created elements to null.
 	 */
 	public void resetTemporaryCache() {

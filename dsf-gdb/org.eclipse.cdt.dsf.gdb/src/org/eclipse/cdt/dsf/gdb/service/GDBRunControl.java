@@ -10,6 +10,7 @@
  *     Ericsson AB		  - Modified for additional functionality	
  *     Nokia - create and use backend service. 
  *     Alvaro Sanchez-Leon (Ericsson AB) - Support for Step into selection (bug 244865)
+ *     Alvaro Sanchez-Leon (Ericsson AB) - Bug 415362
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.gdb.service;
@@ -48,6 +49,8 @@ import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIBreakpointHitEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIInferiorExitEvent;
+import org.eclipse.cdt.dsf.mi.service.command.events.MIRunningEvent;
+import org.eclipse.cdt.dsf.mi.service.command.events.MISignalEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIStoppedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadExitEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakInsertInfo;
@@ -382,7 +385,17 @@ public class GDBRunControl extends MIRunControl {
     @Override
     @DsfServiceEventHandler
 	public void eventDispatched(final MIStoppedEvent e) {
-		if (processRunToLineStoppedEvent(e)) {
+    	// A disabled signal event is due to interrupting the target
+    	// to set a breakpoint.  This can happen during a run-to-line
+    	// or step-into operation, so we need to check it first.
+    	if (fDisableNextSignalEvent && e instanceof MISignalEvent) {
+    		fDisableNextSignalEvent = false;
+    		fSilencedSignalEvent = e;
+    		// We don't broadcast this stopped event
+    		return;
+    	}
+
+    	if (processRunToLineStoppedEvent(e)) {
 			// If RunToLine is not completed
 			return;
 		}
@@ -391,6 +404,34 @@ public class GDBRunControl extends MIRunControl {
 			//Step into Selection is not in progress broadcast the stop event
 	    	super.eventDispatched(e);
 		}
+	}
+    
+    /* (non-Javadoc)
+     * @see org.eclipse.cdt.dsf.mi.service.MIRunControl#eventDispatched(org.eclipse.cdt.dsf.mi.service.command.events.MIRunningEvent)
+     */
+    @Override
+    @DsfServiceEventHandler
+	public void eventDispatched(final MIRunningEvent e) {
+		if (fDisableNextRunningEvent) {
+			// Leave the action to the super class
+			super.eventDispatched(e);
+			return;
+		}
+
+		if (fRunToLineActiveOperation == null && fStepInToSelectionActiveOperation == null) {
+			// No special case here, i.e. send notification
+			super.eventDispatched(e);
+		} else {
+			// Either RuntoLine or StepIntoSelection operations are active
+			if (fLatestEvent instanceof ISuspendedDMEvent) {
+				// Need to send out Running event notification only once per operation, then a stop event is expected at
+				// the end of it
+				super.eventDispatched(e);
+			}
+		}
+
+		// No event dispatched if RuntoLine or StepIntoSelection operations are active and a previous event is not a
+		// Suspended event, i.e. only one Running event distributed per operation	
 	}
     
     private boolean processRunToLineStoppedEvent(final MIStoppedEvent e) {
@@ -467,10 +508,10 @@ public class GDBRunControl extends MIRunControl {
 		if (fStepInToSelectionActiveOperation.getThreadContext().equals(threadDmc)) {
 			final MIFrame frame = e.getFrame();
 
-			assert(fStepInToSelectionActiveOperation.getLine() == frame.getLine());
 			assert(fRunToLineActiveOperation == null);
 			
 			if (fStepInToSelectionActiveOperation.getRunToLineFrame() == null) {
+				assert(fStepInToSelectionActiveOperation.getLine() == frame.getLine());
 				// Shall now be at the runToline location
 				fStepInToSelectionActiveOperation.setRunToLineFrame(frame);
 			}

@@ -56,8 +56,12 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 
 /**
- * This class represents a collection of symbols that can be linked together at
- * link time. These are generally global symbols specific to a given language.
+ * The top-level node in the PDOM storage format.  A linkage is a collection of nodes
+ * that can be linked with references.  Several linkages can be created for an input
+ * AST.
+ *
+ * TODO Move this to a public interface and discuss the extension point (that already
+ *      exists).
  */
 public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage, IIndexBindingConstants {
 	// Record offsets.
@@ -71,9 +75,6 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 	protected static final int RECORD_SIZE = PDOMNamedNode.RECORD_SIZE + 20;
 	protected static final long[] FILE_LOCAL_REC_DUMMY = new long[]{0};
 
-	// Node types
-	protected static final int LINKAGE= 0; // Special one for myself
-
 	private BTree fMacroIndex= null;  // No need for volatile, all fields of BTree are final.
 	private final PDOM fPDOM;
 	private final Database fDatabase;
@@ -84,13 +85,13 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 		fDatabase= pdom.getDB();
 	}
 
-	protected PDOMLinkage(PDOM pdom, String languageId, char[] name) throws CoreException {
+	protected PDOMLinkage(PDOM pdom, String linkageID, char[] name) throws CoreException {
 		super(pdom.getDB(), name);
 		final Database db= pdom.getDB();
 
 		fPDOM= pdom;
 		fDatabase= db;
-		db.putRecPtr(record + ID_OFFSET, db.newString(languageId).getRecord());
+		db.putRecPtr(record + ID_OFFSET, db.newString(linkageID).getRecord());
 		pdom.insertLinkage(this);
 	}
 	
@@ -116,7 +117,7 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 
 	@Override
 	public int getNodeType() {
-		return LINKAGE;
+		return IIndexBindingConstants.LINKAGE;
 	}
 
 	public static IString getLinkageID(PDOM pdom, long record) throws CoreException {
@@ -157,7 +158,7 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 				}
 				@Override
 				public boolean visit(long record) throws CoreException {
-					PDOMNode node= getNode(record);
+					PDOMNode node= PDOMNode.load(fPDOM, record);
 					if (node != null) {
 						if (visitor.visit(node))
 							node.accept(visitor);
@@ -175,22 +176,10 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 	}
 	
 	public final PDOMBinding getBinding(long record) throws CoreException {
-		final PDOMNode node= getNode(record);
+		final PDOMNode node= PDOMNode.load(fPDOM, record);
 		if (node instanceof PDOMBinding)
 			return (PDOMBinding) node;
 		return null;
-	}
-
-	public final PDOMNode getNode(long record) throws CoreException {
-		if (record == 0) {
-			return null;
-		}
-		final int nodeType= PDOMNode.getNodeType(fDatabase, record);
-		switch (nodeType) {
-		case LINKAGE:
-			return null;
-		}
-		return getNode(record, nodeType);
 	}
 
 	abstract public PDOMNode getNode(long record, int nodeType) throws CoreException;
@@ -275,7 +264,21 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 		return null;
 	}
 
+	/**
+	 * Return an identifier that uniquely identifies the given binding within this linkage.  The
+	 * value cannot be used for global comparison because it does not include enough information
+	 * to globally identify the binding (across all linkages).
+	 */
 	public abstract int getBindingType(IBinding binding);
+
+	/**
+	 * Return an identifier that would globally identifies the given binding if it were to be
+	 * added to this linkage.  This value can be used for comparison with the result of
+	 * {@link PDOMNode#getNodeId(Database, long)}.
+	 */
+	public int getBindingId(IBinding binding) {
+		return PDOMNode.getNodeId(getLinkageID(), getBindingType(binding));
+	}
 
 	/**
 	 * Call-back informing the linkage that a name has been added. This is

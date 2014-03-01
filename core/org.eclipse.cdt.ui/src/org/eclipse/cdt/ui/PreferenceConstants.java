@@ -1986,6 +1986,16 @@ public class PreferenceConstants {
 	public static final String FORWARD_DECLARE_FUNCTIONS = "forwardDeclare.functions"; //$NON-NLS-1$
 
 	/**
+	 * Whether external variables should be forward declared if possible.
+	 *
+	 * Example:
+	 *  extern int errno;
+	 *
+	 * @since 5.7
+	 */
+	public static final String FORWARD_DECLARE_EXTERNAL_VARIABLES = "forwardDeclare.externalVariables"; //$NON-NLS-1$
+
+	/**
 	 * Whether C++ templates should be forward declared if possible.
 	 *
 	 * Examples:
@@ -2039,6 +2049,13 @@ public class PreferenceConstants {
 	public static final String INCLUDES_ALLOW_REORDERING = "organizeIncludes.allowReordering"; //$NON-NLS-1$
 
 	/**
+	 * Whether indirect inclusion through a partner header file is allowed.
+	 *
+	 * @since 5.7
+	 */
+	public static final String INCLUDES_ALLOW_PARTNER_INDIRECT_INCLUSION = "organizeIncludes.allowPartnerIndirectInclusion"; //$NON-NLS-1$
+
+	/**
 	 * Determines what should be done with any unused include directives and forward declarations.
 	 * This preference may have one of the three values defined by
 	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences.UnusedStatementDisposition}
@@ -2047,6 +2064,24 @@ public class PreferenceConstants {
 	 * @since 5.6
 	 */
 	public static final String INCLUDES_UNUSED_STATEMENTS_DISPOSITION = "organizeIncludes.unusedStatements"; //$NON-NLS-1$
+
+	/**
+	 * Header file substitution rules.
+	 * The value of the preference is an XML representation of one or more
+	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.HeaderSubstitutionMap}s.
+	 *
+	 * @since 5.7
+	 */
+	public static final String INCLUDES_HEADER_SUBSTITUTION = "organizeIncludes.headerSubstitution"; //$NON-NLS-1$
+
+	/**
+	 * Symbol exporting rules.
+	 * The value of the preference is an XML representation of one or more
+	 * {@link org.eclipse.cdt.internal.ui.refactoring.includes.SymbolExportMap}s.
+	 *
+	 * @since 5.7
+	 */
+	public static final String INCLUDES_SYMBOL_EXPORTING_HEADERS = "organizeIncludes.symbolExportingHeaders"; //$NON-NLS-1$
 
 	/**
 	 * Include style for headers closely related to the including file.
