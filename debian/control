@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 9.20120608~),
                javahelper (>= 0.32~),
                unzip,
                zip
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Vcs-Git: git://anonscm.debian.org/pkg-java/eclipse-cdt.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-java/eclipse-cdt.git
 Homepage: http://www.eclipse.org/cdt/

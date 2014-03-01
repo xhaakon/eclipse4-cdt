@@ -3,6 +3,7 @@ eclipse-cdt (8.3.0-1) UNRELEASED; urgency=medium
   * New upstream release.
   * Updated autotools documentation sources.
   * Removed unused Lintian overrides.
+  * Bump Standards-Version to 3.9.5.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Sat, 01 Mar 2014 10:10:30 +0100
 
