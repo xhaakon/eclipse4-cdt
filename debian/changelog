@@ -1,6 +1,7 @@
 eclipse-cdt (8.4.0-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * Build with javac target 1.7.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Sat, 26 Jul 2014 11:21:24 +0200
 
