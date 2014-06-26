@@ -14,6 +14,7 @@ codan/org.eclipse.cdt.codan.ui.cxx
 
 core/org.eclipse.cdt.core
 core/org.eclipse.cdt.core.linux
+core/org.eclipse.cdt.core.native
 core/org.eclipse.cdt.ui
 
 debug/org.eclipse.cdt.debug.core
@@ -25,6 +26,7 @@ dsf/org.eclipse.cdt.dsf
 dsf/org.eclipse.cdt.dsf.ui
 
 releng/org.eclipse.cdt
+releng/org.eclipse.cdt.native-feature
 releng/org.eclipse.cdt.platform-feature
 
 # Needed for feature org.eclipse.cdt.gnu.build

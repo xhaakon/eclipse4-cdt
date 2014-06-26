@@ -1,3 +1,4 @@
+org.eclipse.cdt.native
 org.eclipse.cdt.platform
 org.eclipse.cdt.gdb
 org.eclipse.cdt.gnu.build
