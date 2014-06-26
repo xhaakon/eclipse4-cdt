@@ -10,5 +10,6 @@ org.eclipse.cdt.launch.remote rse
 org.eclipse.cdt.visualizer
 org.eclipse.cdt.gnu.multicorevisualizer
 org.eclipse.cdt.testsrunner.feature
+org.eclipse.cdt.remote remote-services-api
 org.eclipse.cdt.autotools remote-services-api
 org.eclipse.cdt.qt
