@@ -1,0 +1,21 @@
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Thu, 26 Jun 2014 22:30:26 +0200
+Subject: build-without-e4
+
+---
+ core/org.eclipse.cdt.ui/META-INF/MANIFEST.MF | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/core/org.eclipse.cdt.ui/META-INF/MANIFEST.MF b/core/org.eclipse.cdt.ui/META-INF/MANIFEST.MF
+index 248fe7a..eb04f4a 100644
+--- a/core/org.eclipse.cdt.ui/META-INF/MANIFEST.MF
++++ b/core/org.eclipse.cdt.ui/META-INF/MANIFEST.MF
+@@ -120,7 +120,6 @@ Require-Bundle: org.eclipse.cdt.core;bundle-version="[5.2.0,6.0.0)",
+  org.eclipse.ui.navigator.resources;bundle-version="3.3.100",
+  org.eclipse.ui.views;bundle-version="[3.2.0,4.0.0)",
+  org.eclipse.ui.workbench.texteditor;bundle-version="[3.5.0,4.0.0)",
+- com.ibm.icu;bundle-version="4.4.2",
+- org.eclipse.e4.ui.css.swt.theme
++ com.ibm.icu;bundle-version="4.4.2"
+ Bundle-ActivationPolicy: lazy
+ Bundle-RequiredExecutionEnvironment: JavaSE-1.7
