@@ -17,9 +17,11 @@ package org.eclipse.cdt.core.dom.ast;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDesignator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCapture;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTClassVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 
 /**
@@ -139,6 +141,12 @@ public abstract class ASTVisitor {
 	public boolean shouldVisitCaptures= false;
 
 	/**
+	 * Set this flag to visit virt-specifiers.
+	 * @since 5.7
+	 */
+	public boolean shouldVisitVirtSpecifiers = false;
+	
+	/**
 	 * Per default inactive nodes are not visited. You can change that by setting
 	 * this flag to <code>true</code>.
 	 * @since 5.1
@@ -204,6 +212,7 @@ public abstract class ASTVisitor {
 		shouldVisitTemplateParameters= visitNodes;
 		shouldVisitTranslationUnit= visitNodes;
 		shouldVisitTypeIds= visitNodes;
+		shouldVisitVirtSpecifiers= visitNodes;
 	}
 
 	// visit methods
@@ -247,6 +256,11 @@ public abstract class ASTVisitor {
 
 	/** @since 5.4 */
 	public int visit(IASTAttribute attribute) {
+		return PROCESS_CONTINUE;
+	}
+
+	/** @since 5.7 */
+	public int visit(IASTAttributeSpecifier specifier) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -309,6 +323,20 @@ public abstract class ASTVisitor {
 	public int visit(ICASTDesignator designator) {
 		return PROCESS_CONTINUE;
 	}
+	
+	/**
+	 * @since 5.7
+	 */
+	public int visit(ICPPASTVirtSpecifier virtSpecifier) {
+		return PROCESS_CONTINUE;
+	}
+	
+	/**
+	 * @since 5.7
+	 */
+	public int visit(ICPPASTClassVirtSpecifier classVirtSpecifier) {
+		return PROCESS_CONTINUE;
+	}
 
 	// leave methods
 	public int leave(IASTTranslationUnit tu) {
@@ -351,6 +379,11 @@ public abstract class ASTVisitor {
 
 	/** @since 5.4 */
 	public int leave(IASTAttribute attribute) {
+		return PROCESS_CONTINUE;
+	}
+
+	/** @since 5.7 */
+	public int leave(IASTAttributeSpecifier specifier) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -413,7 +446,21 @@ public abstract class ASTVisitor {
 	public int leave(ICASTDesignator designator) {
 		return PROCESS_CONTINUE;
 	}
+	
+	/**
+	 * @since 5.7
+	 */
+	public int leave(ICPPASTVirtSpecifier virtSpecifier) {
+		return PROCESS_CONTINUE;
+	}
 
+	/**
+	 * @since 5.7
+	 */
+	public int leave(ICPPASTClassVirtSpecifier virtSpecifier) {
+		return PROCESS_CONTINUE;
+	}
+	
 	/**
 	 * @deprecated use {@link IASTTranslationUnit#getComments()}, instead.
 	 */

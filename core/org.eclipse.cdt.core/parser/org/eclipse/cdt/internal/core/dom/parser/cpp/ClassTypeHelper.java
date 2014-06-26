@@ -187,16 +187,17 @@ public class ClassTypeHelper {
 				return ICPPBase.EMPTY_BASE_ARRAY;
 			}
 		}
-		ICPPASTBaseSpecifier[] bases = host.getCompositeTypeSpecifier().getBaseSpecifiers();
-		if (bases.length == 0)
+
+		ICPPASTBaseSpecifier[] baseSpecifiers = host.getCompositeTypeSpecifier().getBaseSpecifiers();
+		if (baseSpecifiers.length == 0)
 			return ICPPBase.EMPTY_BASE_ARRAY;
 
-		ICPPBase[] bindings = new ICPPBase[bases.length];
-		for (int i = 0; i < bases.length; i++) {
-			bindings[i] = new CPPBaseClause(bases[i]);
+        ICPPBase[] bases = new ICPPBase[baseSpecifiers.length];
+		for (int i = 0; i < baseSpecifiers.length; i++) {
+			bases[i] = new CPPBaseClause(baseSpecifiers[i]);
 		}
 
-		return bindings;
+		return bases;
 	}
 
 	public static ICPPField[] getDeclaredFields(ICPPInternalClassTypeMixinHost host) {
@@ -211,7 +212,7 @@ public class ClassTypeHelper {
 			}
 		}
 		IBinding binding = null;
-		ICPPField[] result = null;
+		ICPPField[] result = ICPPField.EMPTY_CPPFIELD_ARRAY;
 
 		IASTDeclaration[] decls = host.getCompositeTypeSpecifier().getMembers();
 		for (IASTDeclaration decl : decls) {
@@ -220,7 +221,7 @@ public class ClassTypeHelper {
 				for (IASTDeclarator dtor : dtors) {
 					binding = ASTQueries.findInnermostDeclarator(dtor).getName().resolveBinding();
 					if (binding instanceof ICPPField)
-						result = ArrayUtil.append(ICPPField.class, result, (ICPPField) binding);
+						result = ArrayUtil.append(result, (ICPPField) binding);
 				}
 			} else if (decl instanceof ICPPASTUsingDeclaration) {
 				IASTName n = ((ICPPASTUsingDeclaration) decl).getName();
@@ -229,14 +230,14 @@ public class ClassTypeHelper {
 					IBinding[] bs = ((ICPPUsingDeclaration) binding).getDelegates();
 					for (IBinding element : bs) {
 						if (element instanceof ICPPField)
-							result = ArrayUtil.append(ICPPField.class, result, (ICPPField) element);
+							result = ArrayUtil.append(result, (ICPPField) element);
 					}
 				} else if (binding instanceof ICPPField) {
-					result = ArrayUtil.append(ICPPField.class, result, (ICPPField) binding);
+					result = ArrayUtil.append(result, (ICPPField) binding);
 				}
 			}
 		}
-		return ArrayUtil.trim(ICPPField.class, result);
+		return ArrayUtil.trim(result);
 	}
 
 	public static ICPPBase[] getBases(ICPPClassType classType, IASTNode point) {
@@ -354,7 +355,10 @@ public class ClassTypeHelper {
 	}
 
 	public static ICPPMethod[] getImplicitMethods(ICPPClassType classType, IASTNode point) {
-		IScope scope = classType.getCompositeScope();
+		return getImplicitMethods(classType.getCompositeScope(), point);
+	}
+	
+	public static ICPPMethod[] getImplicitMethods(IScope scope, IASTNode point) {
 		if (scope instanceof ICPPClassSpecializationScope) {
 			return ((ICPPClassSpecializationScope) scope).getImplicitMethods(point);
 		} else if (scope instanceof ICPPClassScope) {
@@ -375,7 +379,7 @@ public class ClassTypeHelper {
 			}
 		}
 		IBinding binding = null;
-		ICPPMethod[] result = null;
+		ICPPMethod[] result = ICPPMethod.EMPTY_CPPMETHOD_ARRAY;
 
 		IASTDeclaration[] decls = host.getCompositeTypeSpecifier().getMembers();
 		for (IASTDeclaration decl : decls) {
@@ -388,7 +392,7 @@ public class ClassTypeHelper {
 					for (IASTDeclarator dtor : dtors) {
 						binding = ASTQueries.findInnermostDeclarator(dtor).getName().resolveBinding();
 						if (binding instanceof ICPPMethod)
-							result = ArrayUtil.append(ICPPMethod.class, result, (ICPPMethod) binding);
+							result = ArrayUtil.append(result, (ICPPMethod) binding);
 					}
 				}
 			} else if (decl instanceof IASTFunctionDefinition) {
@@ -398,7 +402,7 @@ public class ClassTypeHelper {
 					dtor = ASTQueries.findInnermostDeclarator(dtor);
 					binding = dtor.getName().resolveBinding();
 					if (binding instanceof ICPPMethod) {
-						result = ArrayUtil.append(ICPPMethod.class, result, (ICPPMethod) binding);
+						result = ArrayUtil.append(result, (ICPPMethod) binding);
 					}
 				}
 			} else if (decl instanceof ICPPASTUsingDeclaration) {
@@ -408,14 +412,14 @@ public class ClassTypeHelper {
 					IBinding[] bs = ((ICPPUsingDeclaration) binding).getDelegates();
 					for (IBinding element : bs) {
 						if (element instanceof ICPPMethod)
-							result = ArrayUtil.append(ICPPMethod.class, result, (ICPPMethod) element);
+							result = ArrayUtil.append(result, (ICPPMethod) element);
 					}
 				} else if (binding instanceof ICPPMethod) {
-					result = ArrayUtil.append(ICPPMethod.class, result, (ICPPMethod) binding);
+					result = ArrayUtil.append(result, (ICPPMethod) binding);
 				}
 			}
 		}
-		return ArrayUtil.trim(ICPPMethod.class, result);
+		return ArrayUtil.trim(result);
 	}
 
 	/* (non-Javadoc)
@@ -441,7 +445,7 @@ public class ClassTypeHelper {
 			}
 		}
 
-		ICPPClassType[] result = null;
+		ICPPClassType[] result = ICPPClassType.EMPTY_CLASS_ARRAY;
 
 		IASTDeclaration[] decls = host.getCompositeTypeSpecifier().getMembers();
 		for (IASTDeclaration decl : decls) {
@@ -457,10 +461,10 @@ public class ClassTypeHelper {
 					binding = ((ICPPASTElaboratedTypeSpecifier) declSpec).getName().resolveBinding();
 				}
 				if (binding instanceof ICPPClassType)
-					result = ArrayUtil.append(ICPPClassType.class, result, (ICPPClassType) binding);
+					result = ArrayUtil.append(result, (ICPPClassType) binding);
 			}
 		}
-		return ArrayUtil.trim(ICPPClassType.class, result);
+		return ArrayUtil.trim(result);
 	}
 
 	public static IField[] getFields(ICPPClassType ct, IASTNode point) {
@@ -590,7 +594,8 @@ public class ClassTypeHelper {
 		for (ICPPBase base : bases) {
 			IBinding b= base.getBaseClass();
 			if (b instanceof ICPPClassType) {
-				findOverridden((ICPPClassType) b, point, mname, methodType, virtualInClass, result);
+				findOverridden((ICPPClassType) b, point, mname, methodType, virtualInClass, 
+						result, CPPSemantics.MAX_INHERITANCE_DEPTH);
 			}
 		}
 
@@ -608,7 +613,12 @@ public class ClassTypeHelper {
 	 */
 	private static boolean findOverridden(ICPPClassType classType, IASTNode point, char[] methodName,
 			ICPPFunctionType methodType, Map<ICPPClassType, Boolean> virtualInClass,
-			List<ICPPMethod> result) {
+			List<ICPPMethod> result, int maxdepth) {
+		// Prevent recursion due to a hierarchy of unbounded depth,
+		// e.g. A<I> deriving from A<I - 1>.
+		if (maxdepth <= 0)
+			return false;
+		
 		Boolean visitedBefore= virtualInClass.get(classType);
 		if (visitedBefore != null)
 			return visitedBefore;
@@ -626,13 +636,14 @@ public class ClassTypeHelper {
 			}
 		}
 
-		// Prevent recursion.
+		// Prevent recursion due to a class inheriting (directly or indirectly) from itself.
 		virtualInClass.put(classType, hasOverridden);
 		ICPPBase[] bases= getBases(classType, point);
 		for (ICPPBase base : bases) {
 			IBinding b= base.getBaseClass();
 			if (b instanceof ICPPClassType) {
-				if (findOverridden((ICPPClassType) b, point, methodName, methodType, virtualInClass, result)) {
+				if (findOverridden((ICPPClassType) b, point, methodName, methodType, virtualInClass, 
+						result, maxdepth - 1)) {
 					hasOverridden= true;
 				}
 			}
@@ -890,6 +901,13 @@ public class ClassTypeHelper {
 				return ICPPClassType.v_public; // Fallback visibility
 			}
 		}
+		
+		// The concept of visibility does not apply to a lambda, which can end
+		// up having a class as its owner if they are used in the initializer
+		// of a field or a member function parameter.
+		if (member instanceof CPPClosureType) {
+			return ICPPClassType.v_public;
+		}
 
 		ICPPASTCompositeTypeSpecifier classDeclSpec = classType.getCompositeTypeSpecifier();
 		int visibility = getVisibility(classDeclSpec, member);
@@ -952,10 +970,6 @@ public class ClassTypeHelper {
 					if (member.equals(memberBinding)) {
 						return visibility;
 					}
-					if (member instanceof IType && memberBinding instanceof IType &&
-							((IType) member).isSameType((IType) memberBinding)) {
-						return visibility;
-					}
 				} else if (declSpec instanceof ICPPASTElaboratedTypeSpecifier
 						&& memberDeclaration.getDeclarators().length == 0) {
 					IBinding memberBinding =
@@ -966,10 +980,6 @@ public class ClassTypeHelper {
 				} else if (declSpec instanceof ICPPASTEnumerationSpecifier) {
 					IBinding enumerationBinding = ((ICPPASTEnumerationSpecifier) declSpec).getName().resolveBinding();
 					if (member.equals(enumerationBinding)) {
-						return visibility;
-					}
-					if (member instanceof IType && enumerationBinding instanceof IType &&
-							((IType) member).isSameType((IType) enumerationBinding)) {
 						return visibility;
 					}
 				}

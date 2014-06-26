@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     IBM - Initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.ast.cpp;
 
@@ -35,16 +36,16 @@ public interface ICPPBase extends Cloneable {
 	 * In the case of typedefs, the target type will be returned instead of the typedef itself.
 	 */
 	public IBinding getBaseClass();
-	
+
 	/**
-	 * The base class.  Generally a ICPPClassType, but may be an {@link ICPPUnknownType}.
+	 * The base class. Generally a ICPPClassType, but may be an {@link ICPPUnknownType}.
 	 * In the case of typedefs, the target type will be returned instead of the typedef itself.
 	 * @since 5.5
 	 */
 	public IType getBaseClassType();
-	
+
 	/**
-	 * @deprecated don't use it, a base class may be specified without the use of a name.
+	 * @deprecated Don't use it, a base class may be specified without the use of a name.
 	 */
 	@Deprecated
 	public IName getBaseClassSpecifierName();
@@ -54,31 +55,36 @@ public interface ICPPBase extends Cloneable {
 	 * @since 5.5
 	 */
 	public IName getClassDefinitionName();
-	
+
 	/**
 	 * The visibility qualifier applied to the base class.
-	 * 
 	 */
 	public int getVisibility();
-
 
 	/**
 	 * Whether this is a virtual base class.
 	 */
 	public boolean isVirtual();
-	
+
+	/**
+	 * The base class is a source of inherited constructors if the class definition that declares
+	 * this base contains a using declaration naming the constructors of the base class.
+	 * @since 5.7
+	 */
+	public boolean isInheritedConstructorsSource();
+
 	/**
 	 * @since 5.1
 	 */
 	public ICPPBase clone();
-	
-	/** 
+
+	/**
 	 * Used internally to change cloned bases.
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	public void setBaseClass(IBinding baseClass);
 
-	/** 
+	/**
 	 * Used internally to change cloned bases.
 	 * @noreference This method is not intended to be referenced by clients.
 	 */

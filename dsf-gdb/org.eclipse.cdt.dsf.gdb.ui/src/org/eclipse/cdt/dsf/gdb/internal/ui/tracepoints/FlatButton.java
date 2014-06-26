@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Vladimir Prus (Mentor Graphics) - initial API and implementation
+ *     Dmitry Kozlov (Mentor Graphics) - extend to be inheritance-friendly
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.tracepoints;
 
@@ -28,9 +29,9 @@ import org.eclipse.swt.widgets.TypedListener;
 
 public class FlatButton extends Canvas {
 	
-	private String fText;
-	private int fMargin = 4;
-	private Cursor fHandCursor;
+	protected String fText;
+	protected int fMargin = 4;
+	protected Cursor fHandCursor;
 	
 	public FlatButton(Composite parent, int flags) {
 		super(parent, flags);
@@ -48,9 +49,7 @@ public class FlatButton extends Canvas {
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseDown(MouseEvent e) {
-				if (isEnabled()) {		
-					notifyListeners(SWT.Selection, null);
-				}
+				onSelection(e);
 			}
 		}); 					
 	}
@@ -94,7 +93,7 @@ public class FlatButton extends Canvas {
 		return new Point(e.x + fMargin*2, e.y + fMargin*2);
 	}
 	
-	private void onPaint(PaintEvent event) {
+	protected void onPaint(PaintEvent event) {
 		GC gc = event.gc;
 		Rectangle ca = getClientArea();
 
@@ -122,5 +121,11 @@ public class FlatButton extends Canvas {
 		
 		borderColor.dispose();
 		shadowColor.dispose();
+	}
+	
+	protected void onSelection(MouseEvent e) {
+		if (isEnabled()) {
+			notifyListeners(SWT.Selection, null);
+		}		
 	}
 }

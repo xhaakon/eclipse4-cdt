@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2013 QNX Software Systems and others.
+ * Copyright (c) 2000, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -67,9 +67,12 @@ public class CCorePreferenceInitializer extends AbstractPreferenceInitializer {
 		defaultPreferences.put(CCorePreferenceConstants.INCLUDE_EXPORT_PATTERN, CCorePreferenceConstants.DEFAULT_INCLUDE_EXPORT_PATTERN);
 		defaultPreferences.put(CCorePreferenceConstants.INCLUDE_BEGIN_EXPORTS_PATTERN, CCorePreferenceConstants.DEFAULT_INCLUDE_BEGIN_EXPORTS_PATTERN);
 		defaultPreferences.put(CCorePreferenceConstants.INCLUDE_END_EXPORTS_PATTERN, CCorePreferenceConstants.DEFAULT_INCLUDE_END_EXPORTS_PATTERN);
+		defaultPreferences.put(CCorePreferenceConstants.INCLUDE_PRIVATE_PATTERN, CCorePreferenceConstants.DEFAULT_INCLUDE_PRIVATE_PATTERN);
 
 		// Scalability defaults.
 		defaultPreferences.putBoolean(CCorePreferenceConstants.SCALABILITY_SKIP_TRIVIAL_EXPRESSIONS, CCorePreferenceConstants.DEFAULT_SCALABILITY_SKIP_TRIVIAL_EXPRESSIONS);
 		defaultPreferences.putInt(CCorePreferenceConstants.SCALABILITY_MAXIMUM_TRIVIAL_EXPRESSIONS, CCorePreferenceConstants.DEFAULT_SCALABILITY_MAXIMUM_TRIVIAL_EXPRESSIONS);
+		defaultPreferences.putBoolean(CCorePreferenceConstants.SCALABILITY_LIMIT_TOKENS_PER_TU, CCorePreferenceConstants.DEFAULT_SCALABILITY_LIMIT_TOKENS_PER_TU);
+		defaultPreferences.putInt(CCorePreferenceConstants.SCALABILITY_MAXIMUM_TOKENS, CCorePreferenceConstants.DEFAULT_SCALABILITY_MAXIMUM_TOKENS);
 	}
 }

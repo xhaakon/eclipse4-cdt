@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 IBM Corporation and others.
+ * Copyright (c) 2005, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,7 +18,9 @@
 package org.eclipse.cdt.internal.ui.editor;
 
 import java.text.CharacterIterator;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -26,11 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.Stack;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ProjectScope;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -40,8 +40,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
-import org.eclipse.core.runtime.preferences.IEclipsePreferences.PreferenceChangeEvent;
 import org.eclipse.help.IContext;
 import org.eclipse.help.IContextProvider;
 import org.eclipse.jface.action.GroupMarker;
@@ -176,7 +174,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.gnu.cpp.GPPLanguage;
 import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
-import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
@@ -184,6 +181,7 @@ import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.ISourceRange;
 import org.eclipse.cdt.core.model.ISourceReference;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.core.model.ITranslationUnitHolder;
 import org.eclipse.cdt.core.model.IWorkingCopy;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.ICEditor;
@@ -197,8 +195,6 @@ import org.eclipse.cdt.ui.text.ICPartitions;
 import org.eclipse.cdt.ui.text.folding.ICFoldingStructureProvider;
 
 import org.eclipse.cdt.internal.core.model.ASTCache.ASTRunnable;
-import org.eclipse.cdt.internal.core.pdom.indexer.IndexerPreferences;
-import org.eclipse.cdt.internal.corext.util.CModelUtil;
 import org.eclipse.cdt.internal.corext.util.CodeFormatterUtil;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
@@ -241,7 +237,7 @@ import org.eclipse.cdt.internal.ui.viewsupport.SelectionListenerWithASTManager;
 /**
  * C/C++ source editor.
  */
-public class CEditor extends TextEditor implements ICEditor, ISelectionChangedListener, ICReconcilingListener {
+public class CEditor extends TextEditor implements ICEditor, ISelectionChangedListener, ICReconcilingListener, ITranslationUnitHolder {
 	/** Marker used for synchronization from Problems View to the editor on double-click. */
 	private IMarker fSyncProblemsViewMarker;
 
@@ -404,10 +400,10 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 	private class ExitPolicy implements IExitPolicy {
 		final char fExitCharacter;
 		final char fEscapeCharacter;
-		final Stack<BracketLevel> fStack;
+		final Deque<BracketLevel> fStack;
 		final int fSize;
 
-		public ExitPolicy(char exitCharacter, char escapeCharacter, Stack<BracketLevel> stack) {
+		public ExitPolicy(char exitCharacter, char escapeCharacter, Deque<BracketLevel> stack) {
 			fExitCharacter = exitCharacter;
 			fEscapeCharacter = escapeCharacter;
 			fStack = stack;
@@ -539,9 +535,10 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		private boolean fCloseBrackets = true;
 		private boolean fCloseStrings = true;
 		private boolean fCloseAngularBrackets = true;
+		private boolean fCloseBraces = true;
 		private final String CATEGORY = toString();
 		private IPositionUpdater fUpdater = new ExclusivePositionUpdater(CATEGORY);
-		private Stack<BracketLevel> fBracketLevelStack = new Stack<BracketLevel>();
+		private Deque<BracketLevel> fBracketLevelStack = new ArrayDeque<>();
 
 		public void setCloseBracketsEnabled(boolean enabled) {
 			fCloseBrackets = enabled;
@@ -555,6 +552,10 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 			fCloseAngularBrackets = enabled;
 		}
 
+		public void setCloseBracesEnabled(boolean enabled) {
+			fCloseBraces = enabled;
+		}
+
 		private boolean isAngularIntroducer(String identifier) {
 			return identifier.length() > 0 && (Character.isUpperCase(identifier.charAt(0))
 					|| angularIntroducers.contains(identifier)
@@ -564,13 +565,14 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 
 		@Override
 		public void verifyKey(VerifyEvent event) {
-			// Early pruning to slow down normal typing as little as possible.
+			// Early pruning to minimize overhead for normal typing.
 			if (!event.doit || getInsertMode() != SMART_INSERT)
 				return;
 			switch (event.character) {
 				case '(':
 				case '<':
 				case '[':
+				case '{':
 				case '\'':
 				case '\"':
 					break;
@@ -625,6 +627,16 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 						if (!fCloseBrackets
 								|| nextToken == Symbols.TokenIDENT
 								|| next != null && next.length() > 1)
+							return;
+						break;
+
+					case '{':
+						// An opening brace inside parentheses probably starts an initializer list -
+						// close it.
+						if (!fCloseBraces
+								|| nextToken == Symbols.TokenIDENT
+								|| next != null && next.length() > 1
+								|| !isInsideParentheses(scanner, offset - 1))
 							return;
 						break;
 
@@ -691,6 +703,24 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 			}
 		}
 
+		private boolean isInsideParentheses(CHeuristicScanner scanner, int offset) {
+			int depth = 0;
+			// Limit the scanning distance to 100 tokens.
+			for (int i = 0; i < 100; i++) {
+				int token = scanner.previousToken(offset, 0);
+				if (token == Symbols.TokenLPAREN) {
+					if (--depth < 0)
+						return true;
+				} else if (token == Symbols.TokenRPAREN) {
+					++depth;
+				} else if (token == Symbols.TokenEOF) {
+					return false;
+				}
+				offset = scanner.getPosition();
+			}
+			return false;
+		}
+
 		private boolean isInsideStringInPreprocessorDirective(ITypedRegion partition, IDocument document, int offset) throws BadLocationException {
 			if (ICPartitions.C_PREPROCESSOR.equals(partition.getType()) && offset < document.getLength()) {
 				// Use temporary document to test whether offset is inside non-default partition.
@@ -710,7 +740,6 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 
 		@Override
 		public void left(LinkedModeModel environment, int flags) {
-
 			final BracketLevel level = fBracketLevelStack.pop();
 
 			if (flags != ILinkedModeListener.EXTERNAL_MODIFICATION)
@@ -1137,71 +1166,6 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		}
 	}
 
-	private class IndexerPreferenceListener implements IPreferenceChangeListener {
-		private IProject fProject;
-
-		@Override
-		public void preferenceChange(PreferenceChangeEvent event) {
-			if (IndexerPreferences.KEY_INDEX_ON_OPEN.equals(event.getKey())) {
-				ICElement element= getInputCElement();
-				ITranslationUnit tu = element != null ? (ITranslationUnit) element : null;
-				updateIndexInclusion(tu);
-			}
-		}
-
-		void registerFor(IProject project) {
-			if (fProject == project || fProject != null && fProject.equals(project)) {
-				return;
-			}
-			unregister();
-			fProject = project;
-			if (fProject != null) {
-				IndexerPreferences.addChangeListener(fProject, this);
-			}
-		}
-
-		void unregister() {
-			if (fProject != null) {
-				IndexerPreferences.removeChangeListener(fProject, this);
-				fProject = null;
-			}
-		}
-	}
-
-	private static class IndexUpdateRequestorJob extends Job {
-		private final ITranslationUnit tuToAdd;
-		private final ITranslationUnit tuToReset;
-
-		/**
-		 * @param tu The translation unit to add or to remove from the index.
-		 * @param add {@code true} to add, {@code false} to reset index inclusion.
-		 */
-		IndexUpdateRequestorJob(ITranslationUnit tuToAdd, ITranslationUnit tuToReset) {
-			super(CEditorMessages.CEditor_index_expander_job_name);
-			this.tuToAdd = tuToAdd;
-			this.tuToReset = tuToReset;
-			setSystem(true);
-			setPriority(Job.DECORATE);
-		}
-
-		@Override
-		protected IStatus run(IProgressMonitor monitor) {
-			try {
-				IIndexManager indexManager = CCorePlugin.getIndexManager();
-				if (tuToReset != null) {
-					indexManager.update(new ICElement[] { CModelUtil.toOriginal(tuToReset) },
-							IIndexManager.RESET_INDEX_INCLUSION | IIndexManager.UPDATE_CHECK_TIMESTAMPS);
-				}
-				if (tuToAdd != null) {
-					indexManager.update(new ICElement[] { CModelUtil.toOriginal(tuToAdd) },
-							IIndexManager.FORCE_INDEX_INCLUSION | IIndexManager.UPDATE_CHECK_TIMESTAMPS);
-				}
-			} catch (CoreException e) {
-			}
-			return Status.OK_STATUS;
-		}
-	}
-
 	/**
 	 * The editor selection changed listener.
 	 *
@@ -1266,6 +1230,8 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 	private static final String CLOSE_BRACKETS = PreferenceConstants.EDITOR_CLOSE_BRACKETS;
 	/** Preference key for automatically closing angular brackets */
 	private static final String CLOSE_ANGULAR_BRACKETS = PreferenceConstants.EDITOR_CLOSE_ANGULAR_BRACKETS;
+	/** Preference key for automatically closing curly braces */
+	private static final String CLOSE_BRACES = PreferenceConstants.EDITOR_CLOSE_BRACES;
 
     /** Preference key for compiler task tags */
     private static final String TODO_TASK_TAGS = CCorePreferenceConstants.TODO_TASK_TAGS;
@@ -1300,25 +1266,20 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 	 * True if editor is opening a large file.
 	 * @since 5.0
 	 */
-	private boolean fEnableScalablilityMode = false;
+	private boolean fEnableScalablilityMode;
 
-	/**
-	 * Flag indicating whether the reconciler is currently running.
-	 */
+	/** Flag indicating whether the reconciler is currently running. */
 	private volatile boolean fIsReconciling;
 
 	private CTemplatesPage fTemplatesPage;
 
 	private SelectionHistory fSelectionHistory;
 
-	/** The translation unit that was added by the editor to index, or <code>null</code>. */
-	private ITranslationUnit fTuAddedToIndex;
-
-	private final IndexerPreferenceListener fIndexerPreferenceListener;
+	private final IndexUpdateRequestor fIndexUpdateRequestor = new IndexUpdateRequestor();
 
 	private final ListenerList fPostSaveListeners;
 
-	private static final Set<String> angularIntroducers = new HashSet<String>();
+	private static final Set<String> angularIntroducers = new HashSet<>();
 	static {
 		angularIntroducers.add("template"); //$NON-NLS-1$
 		angularIntroducers.add("vector"); //$NON-NLS-1$
@@ -1353,7 +1314,6 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		setOutlinerContextMenuId("#CEditorOutlinerContext"); //$NON-NLS-1$
 
 		fCEditorErrorTickUpdater = new CEditorErrorTickUpdater(this);
-		fIndexerPreferenceListener = new IndexerPreferenceListener();
 		fPostSaveListeners = new ListenerList();
 	}
 
@@ -1401,8 +1361,6 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		if (cSourceViewer != null && isFoldingEnabled() && (store == null || !store.getBoolean(PreferenceConstants.EDITOR_SHOW_SEGMENTS)))
 			cSourceViewer.prepareDelayedProjection();
 
-		fIndexerPreferenceListener.unregister();
-
 		super.doSetInput(input);
 
 		setOutlinePageInput(fOutlinePage, input);
@@ -1414,32 +1372,13 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 			fCEditorErrorTickUpdater.updateEditorImage(getInputCElement());
 		}
 		ICElement element= getInputCElement();
-		if (element != null) {
-			IProject project = element.getCProject().getProject();
-			fIndexerPreferenceListener.registerFor(project);
-		}
-
 		if (element instanceof ITranslationUnit) {
 			ITranslationUnit tu = (ITranslationUnit) element;
-			updateIndexInclusion(tu);
+			fIndexUpdateRequestor.updateIndexInclusion(tu);
 			fBracketMatcher.configure(tu.getLanguage());
 		} else {
-			updateIndexInclusion(null);
+			fIndexUpdateRequestor.updateIndexInclusion(null);
 			fBracketMatcher.configure(null);
-		}
-	}
-
-	private void updateIndexInclusion(ITranslationUnit tu) {
-		if (tu != null) {
-			IProject project = tu.getCProject().getProject();
-			if (!String.valueOf(true).equals(IndexerPreferences.get(project, IndexerPreferences.KEY_INDEX_ON_OPEN, null))) {
-				tu = null;
-			}
-		}
-		if ((tu != null || fTuAddedToIndex != null) && tu != fTuAddedToIndex) {
-			IndexUpdateRequestorJob job = new IndexUpdateRequestorJob(tu, fTuAddedToIndex);
-			fTuAddedToIndex = tu;
-			job.schedule();
 		}
 	}
 
@@ -1514,6 +1453,11 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		return CUIPlugin.getDefault().getWorkingCopyManager().getWorkingCopy(getEditorInput());
 	}
 
+	@Override
+	public ITranslationUnit getTranslationUnit() {
+		return getInputCElement();
+	}
+
 	/**
      * @see org.eclipse.ui.ISaveablePart#isSaveAsAllowed()
 	 */
@@ -1575,7 +1519,8 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 				fTemplatesPage = new CTemplatesPage(this);
 			}
 			return fTemplatesPage;
-		}
+		} else if (adapterClass.isAssignableFrom(ITranslationUnitHolder.class))
+			return this;
 		return super.getAdapter(adapterClass);
 	}
 	
@@ -1619,6 +1564,11 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 
 				if (CLOSE_ANGULAR_BRACKETS.equals(property)) {
 					fBracketInserter.setCloseAngularBracketsEnabled(newBooleanValue);
+					return;
+				}
+
+				if (CLOSE_BRACES.equals(property)) {
+					fBracketInserter.setCloseBracesEnabled(newBooleanValue);
 					return;
 				}
 
@@ -2094,8 +2044,7 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
      */
     @Override
 	public void dispose() {
-		fIndexerPreferenceListener.unregister();
-    	updateIndexInclusion(null);
+    	fIndexUpdateRequestor.updateIndexInclusion(null);
 
 		ISourceViewer sourceViewer = getSourceViewer();
 		if (sourceViewer instanceof ITextViewerExtension)
@@ -2176,35 +2125,44 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 	@Override
 	protected boolean canHandleMove(IEditorInput originalElement, IEditorInput movedElement) {
 		String oldLanguage = ""; //$NON-NLS-1$
-		if (originalElement instanceof IFileEditorInput) {
-			IFile file = ((IFileEditorInput) originalElement).getFile();
-			if (file != null) {
-				IContentType type = CCorePlugin.getContentType(file.getProject(), file.getName());
-				if (type != null) {
-					oldLanguage = type.getId();
-				}
-				if (oldLanguage == null) {
-					return false;
-				}
+		IFile originalFile = getEditorInputFile(originalElement);
+		
+		if (originalFile != null) {
+			// If the project of the original input cannot be accessed, the project is being
+			// renamed - accept the move. See http://bugs.eclipse.org/434852
+			if (originalFile.getProject() != null && !originalFile.getProject().isAccessible()) {
+				return true;
+			}
+			IContentType type = CCorePlugin.getContentType(originalFile.getProject(), originalFile.getName());
+			if (type != null) {
+				oldLanguage = type.getId();
+			}
+			if (oldLanguage == null) {
+				return false;
 			}
 		}
 
 		String newLanguage = ""; //$NON-NLS-1$
-		if (movedElement instanceof IFileEditorInput) {
-			IFile file = ((IFileEditorInput) movedElement).getFile();
-			if (file != null) {
-				IContentType type = CCorePlugin.getContentType(file.getProject(), file.getName());
-				if (type != null) {
-					newLanguage = type.getId();
-				}
-				if (newLanguage == null) {
-					return false;
-				}
+		IFile movedFile = getEditorInputFile(movedElement);
+		if (movedFile != null) {
+			IContentType type = CCorePlugin.getContentType(movedFile.getProject(), movedFile.getName());
+			if (type != null) {
+				newLanguage = type.getId();
+			}
+			if (newLanguage == null) {
+				return false;
 			}
 		}
 		return oldLanguage.equals(newLanguage);
 	}
 
+	private IFile getEditorInputFile(IEditorInput editorInput) {
+		if (editorInput instanceof IFileEditorInput) {
+			return ((IFileEditorInput) editorInput).getFile();
+		}
+		return null;
+	}
+	
 	@Override
 	protected void createActions() {
 		super.createActions();
@@ -2485,11 +2443,13 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 		IPreferenceStore preferenceStore = getPreferenceStore();
 		boolean closeBrackets = preferenceStore.getBoolean(CLOSE_BRACKETS);
 		boolean closeAngularBrackets = preferenceStore.getBoolean(CLOSE_ANGULAR_BRACKETS);
+		boolean closeBraces = preferenceStore.getBoolean(CLOSE_BRACES);
 		boolean closeStrings = preferenceStore.getBoolean(CLOSE_STRINGS);
 
 		fBracketInserter.setCloseBracketsEnabled(closeBrackets);
-		fBracketInserter.setCloseStringsEnabled(closeStrings);
 		fBracketInserter.setCloseAngularBracketsEnabled(closeAngularBrackets);
+		fBracketInserter.setCloseAngularBracketsEnabled(closeBraces);
+		fBracketInserter.setCloseStringsEnabled(closeStrings);
 
 		ISourceViewer sourceViewer = getSourceViewer();
 		if (sourceViewer instanceof ITextViewerExtension)
@@ -2949,8 +2909,7 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 			return false;
 
 		try {
-			return isBracket(document.getChar(offset - 1)) &&
-					isBracket(document.getChar(offset));
+			return isBracket(document.getChar(offset - 1)) && isBracket(document.getChar(offset));
 		} catch (BadLocationException e) {
 			return false;
 		}
@@ -2985,6 +2944,12 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 
 			case ']':
 				return '[';
+
+			case '{':
+				return '}';
+
+			case '}':
+				return '{';
 
 			case '"':
 				return character;
@@ -3192,7 +3157,7 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 
 			// Add occurrence annotations
 			int length= fLocations.length;
-			Map<Annotation, Position> annotationMap= new HashMap<Annotation, Position>(length);
+			Map<Annotation, Position> annotationMap= new HashMap<>(length);
 			for (int i= 0; i < length; i++) {
 				if (isCanceled(progressMonitor))
 					return Status.CANCEL_STATUS;
@@ -3459,7 +3424,7 @@ public class CEditor extends TextEditor implements ICEditor, ISelectionChangedLi
 	 * @return the preference store for this editor
 	 */
 	private IPreferenceStore createCombinedPreferenceStore(IEditorInput input) {
-		List<IPreferenceStore> stores= new ArrayList<IPreferenceStore>(3);
+		List<IPreferenceStore> stores= new ArrayList<>(3);
 
 		ICProject project= EditorUtility.getCProject(input);
 		if (project != null) {

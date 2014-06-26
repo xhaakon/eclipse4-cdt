@@ -19,23 +19,25 @@ import java.util.List;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeleteExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalFixed;
 
 
-public class CPPASTDeleteExpression extends ASTNode implements ICPPASTDeleteExpression {
+public class CPPASTDeleteExpression extends ASTNode implements ICPPASTDeleteExpression, IASTAmbiguityParent {
     private static final ICPPEvaluation EVALUATION = new EvalFixed(CPPSemantics.VOID_TYPE, PRVALUE, Value.UNKNOWN);
 	
     private IASTExpression operand;
     private boolean isGlobal;
     private boolean isVectored;
 
-    private IASTImplicitName[] implicitNames = null;
+    private IASTImplicitName[] implicitNames;
 
     public CPPASTDeleteExpression() {
 	}
@@ -55,8 +57,8 @@ public class CPPASTDeleteExpression extends ASTNode implements ICPPASTDeleteExpr
 	
 	@Override
 	public CPPASTDeleteExpression copy(CopyStyle style) {
-		CPPASTDeleteExpression copy = new CPPASTDeleteExpression(operand == null ? null
-				: operand.copy(style));
+		CPPASTDeleteExpression copy =
+				new CPPASTDeleteExpression(operand == null ? null : operand.copy(style));
 		copy.isGlobal = isGlobal;
 		copy.isVectored = isVectored;
 		return copy(copy, style);
@@ -128,10 +130,11 @@ public class CPPASTDeleteExpression extends ASTNode implements ICPPASTDeleteExpr
 		    	}
 	    	}
 	    	
-	    	if (names.isEmpty())
+	    	if (names.isEmpty()) {
 	    		implicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
-	    	else
+	    	} else {
 	    		implicitNames = names.toArray(new IASTImplicitName[names.size()]);
+	    	}
     	}
     	
     	return implicitNames;    	
@@ -160,7 +163,7 @@ public class CPPASTDeleteExpression extends ASTNode implements ICPPASTDeleteExpr
         if (action.shouldVisitExpressions) {
 		    switch (action.leave(this)) {
 	            case ASTVisitor.PROCESS_ABORT: return false;
-	            case ASTVisitor.PROCESS_SKIP:  return true;
+	            case ASTVisitor.PROCESS_SKIP: return true;
 	            default: break;
 	        }
 		}
@@ -185,5 +188,14 @@ public class CPPASTDeleteExpression extends ASTNode implements ICPPASTDeleteExpr
 	@Override
 	public ValueCategory getValueCategory() {
 		return PRVALUE;
+	}
+	
+	@Override
+	public void replace(IASTNode child, IASTNode other) {
+		if (child == operand) {
+			other.setPropertyInParent(child.getPropertyInParent());
+			other.setParent(child.getParent());
+			operand = (IASTExpression) other;
+		}
 	}
 }

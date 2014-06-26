@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 QNX Software Systems and others.
+ * Copyright (c) 2004, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
  * ARM Limited - https://bugs.eclipse.org/bugs/show_bug.cgi?id=186981
  * Ken Ryall (Nokia) - Bug 201165 don't toss images on dispose.
  * Ericsson          - Bug 284286 support for tracepoints
+ * Marc Khouzam (Ericsson) - Added dynamic printf support (400628)
  *******************************************************************************/
 package org.eclipse.cdt.debug.internal.ui;
 
@@ -35,6 +36,7 @@ import org.eclipse.cdt.debug.core.cdi.model.ICDISignal;
 import org.eclipse.cdt.debug.core.model.CDebugElementState;
 import org.eclipse.cdt.debug.core.model.ICAddressBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpoint;
+import org.eclipse.cdt.debug.core.model.ICBreakpointType;
 import org.eclipse.cdt.debug.core.model.ICDebugElement;
 import org.eclipse.cdt.debug.core.model.ICDebugElementStatus;
 import org.eclipse.cdt.debug.core.model.ICDebugTarget;
@@ -43,6 +45,7 @@ import org.eclipse.cdt.debug.core.model.ICFunctionBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICGlobalVariable;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICModule;
+import org.eclipse.cdt.debug.core.model.ICDynamicPrintf;
 import org.eclipse.cdt.debug.core.model.ICSignal;
 import org.eclipse.cdt.debug.core.model.ICStackFrame;
 import org.eclipse.cdt.debug.core.model.ICThread;
@@ -355,7 +358,18 @@ public class CDebugModelPresentation extends LabelProvider implements IDebugMode
 			if ( breakpoint instanceof ICTracepoint ) {
 				return getTracepointImage( (ICTracepoint)breakpoint );
 			}
+			// Check for ICDynamicPrintf first because they are also ICLineBreakpoint
+			if ( breakpoint instanceof ICDynamicPrintf ) {
+				return getDynamicPrintfImage( (ICDynamicPrintf)breakpoint );
+			}
 			if ( breakpoint instanceof ICLineBreakpoint ) {
+				// checks if the breakpoint type is a hardware breakpoint,
+				// if so, return the hardware breakpoint image
+				if( breakpoint instanceof ICBreakpointType) {
+					ICBreakpointType breakpointType = (ICBreakpointType) breakpoint;
+					if( (breakpointType.getType() & ICBreakpointType.HARDWARE) != 0)
+						return getHWBreakpointImage( (ICLineBreakpoint) breakpoint);
+				}
 				return getLineBreakpointImage( (ICLineBreakpoint)breakpoint );
 			}
 			if ( breakpoint instanceof ICWatchpoint ) {
@@ -369,6 +383,28 @@ public class CDebugModelPresentation extends LabelProvider implements IDebugMode
 		catch( CoreException e ) {
 		}
 		return null;
+	}
+
+	protected Image getHWBreakpointImage(ICLineBreakpoint breakpoint) throws CoreException {
+		ImageDescriptor descriptor = null;
+		if ( breakpoint.isEnabled() ) {
+			descriptor = CDebugImages.DESC_OBJS_HWBREAKPOINT_ENABLED;
+		}
+		else {
+			descriptor = CDebugImages.DESC_OBJS_HWBREAKPOINT_DISABLED;
+		}
+		return getImageCache().getImageFor( new OverlayImageDescriptor( fDebugImageRegistry.get( descriptor ), computeOverlays( breakpoint ) ) );
+	}
+
+	protected Image getDynamicPrintfImage( ICDynamicPrintf dynamicPrintf ) throws CoreException {
+		ImageDescriptor descriptor = null;
+		if ( dynamicPrintf.isEnabled() ) {
+			descriptor = CDebugImages.DESC_OBJS_DYNAMICPRINTF_ENABLED;
+		}
+		else {
+			descriptor = CDebugImages.DESC_OBJS_DYNAMICPRINTF_DISABLED;
+		}
+		return getImageCache().getImageFor( new OverlayImageDescriptor( fDebugImageRegistry.get( descriptor ), computeOverlays( dynamicPrintf ) ) );
 	}
 
 	protected Image getTracepointImage( ICTracepoint tracepoint ) throws CoreException {

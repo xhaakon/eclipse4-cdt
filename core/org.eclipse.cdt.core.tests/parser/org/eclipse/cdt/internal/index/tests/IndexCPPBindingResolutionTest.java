@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2013 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2014 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -204,7 +204,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	//    B b;
 	//    b.p(E1);
 	//  }
-	public void testUsingTypeDirective_201177() {
+	public void testUsingTypeDeclaration_201177() {
 		IBinding b0= getBindingFromASTName("B::m", 4);
 		IBinding b1= getBindingFromASTName("B::n", 4);
 		IBinding b2= getBindingFromASTName("B::o", 4);
@@ -254,7 +254,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	// int g(int x) {return 4;}
 	// int g(char x) {return 2;}
 	// int nn= g(f(2));
-	public void testUsingTypeDirective_177917_1() {
+	public void testUsingTypeDeclaration_177917_1() {
 		IBinding b1= getBindingFromASTName("A a", 1);
 		IBinding b2= getBindingFromASTName("B b", 1);
 		IBinding b3= getBindingFromASTName("C c", 1);
@@ -271,7 +271,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	// #include "header.h"
 	// b::A aa;
 	// b::B bb;
-	public void testUsingTypeDirective_177917_2() {
+	public void testUsingTypeDeclaration_177917_2() {
 		IBinding b0= getBindingFromASTName("A aa", 1);
 		IBinding b1= getBindingFromASTName("B bb", 1);
 	}
@@ -319,7 +319,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	//		fs(1);
 	//		cls c2;
 	//	}
-	public void testUsingOverloadedFunctionDirective() {
+	public void testUsingOverloadedFunctionDeclaration() {
 		IBinding b;
 		b= getBindingFromASTName("fh()", 2);
 		b= getBindingFromASTName("fh(1)", 2);
@@ -767,6 +767,18 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 		IBinding b12 = getBindingFromASTName("Int i12;", 3);
 		assertQNEquals("n1::n2::Int", b12);
 	}
+
+	//	struct A {
+	//	  static struct {
+	//	  } waldo;
+	//	};
+	//	decltype(A::waldo) A::waldo;
+
+	//	A a;
+	public void testDecltype_434150() throws Exception {
+		checkBindings();
+	}
+
 
 	// // header content
 	// enum E { ER1, ER2 };
@@ -1758,6 +1770,84 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	//	}
 	//	}
 	public void testAnonymousNamespaces_418130() throws Exception {
+		checkBindings();
+	}
+	//	struct A {
+	//	  A(int);
+	//	};
+
+	//	struct B : public A {
+	//	  using A::A;
+	//	};
+	//
+	//	void foo(B);
+	//
+	//	int test() {
+	//	  foo(1);
+	//	}
+	public void testInheritedConstructor() throws Exception {
+		checkBindings();
+	}
+
+	//	template <class T>
+	//	struct A {
+	//	  A(T);
+	//	};
+
+	//	struct B : public A<int> {
+	//	  using A::A;
+	//	};
+	//
+	//	void foo(B);
+	//
+	//	int test() {
+	//	  foo(1);
+	//	}
+	public void testInheritedConstructorFromTemplateInstance() throws Exception {
+		checkBindings();
+	}
+
+	//	struct A {
+	//	  A(int);
+	//	};
+	//
+	//	template <class T>
+	//	struct B : public T {
+	//	  using T::T;
+	//	};
+
+	//	void foo(B<A>);
+	//
+	//	int test() {
+	//	  foo(1);
+	//	}
+	public void testInheritedConstructorFromUnknownClass() throws Exception {
+		checkBindings();
+	}
+	
+	//	constexpr int foo(int a = 42) {
+	//		return a;
+	//	}
+	
+	//	constexpr int waldo = foo();
+	public void testNameLookupInDefaultArgument_432701() throws Exception {
+		IVariable waldo = getBindingFromASTName("waldo", 5);
+		assertEquals(42, waldo.getInitialValue().numericalValue().longValue());
+	}
+	
+	//	struct function {
+	//	    template <typename T>
+	//	    function(T);
+	//	};
+	//
+	//	struct test {
+	//		// These lambdas have the class 'test' as their owner.
+	//	    test(function f = [](int c){ return c; });
+	//		function member = [](int c){ return c; };
+	//	};
+	
+	//	int z;
+	public void testLambdaOwnedByClass() throws Exception {
 		checkBindings();
 	}
 }

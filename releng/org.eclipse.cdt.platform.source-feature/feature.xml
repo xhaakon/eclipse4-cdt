@@ -2,8 +2,10 @@
 <feature
       id="org.eclipse.cdt.platform.source"
       label="%featureName"
-      version="8.3.0.qualifier"
-      provider-name="%providerName">
+      version="8.4.0.qualifier"
+      provider-name="%providerName"
+      license-feature="org.eclipse.license"
+      license-feature-version="0.0.0">
 
    <description>
       %description
@@ -17,57 +19,16 @@
       %license
    </license>
 
+   <includes
+         id="org.eclipse.cdt.native.source"
+         version="0.0.0"/>
+
    <plugin
          id="org.eclipse.cdt.core.source"
          download-size="0"
          install-size="0"
          version="0.0.0"
          unpack="false"/>
-
-   <plugin
-         id="org.eclipse.cdt.core.aix.source"
-         os="aix"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"
-         unpack="false"/>
-
-   <plugin
-         id="org.eclipse.cdt.core.linux.source"
-         os="linux"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"
-         unpack="false"/>
-
-   <plugin
-         id="org.eclipse.cdt.core.macosx.source"
-         os="macosx"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"
-         unpack="false"/>
-
-   <plugin
-         id="org.eclipse.cdt.core.solaris.source"
-         os="solaris"
-         arch="sparc"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"
-         unpack="false"/>
-
-   <plugin
-         id="org.eclipse.cdt.core.win32.source"
-         os="win32"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"/>
 
    <plugin
          id="org.eclipse.cdt.codan.core.source"

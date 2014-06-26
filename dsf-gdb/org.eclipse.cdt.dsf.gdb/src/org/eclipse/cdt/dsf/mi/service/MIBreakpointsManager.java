@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2011 Wind River and others.
+ * Copyright (c) 2007, 2014 Wind River and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,12 +12,14 @@
  *     Ericsson   - Re-factored the service and put a few comments
  *     Ericsson   - Added Action support
  *     Marc Khouzam (Ericsson) - Fix support for thread filter (Bug 355833)
+ *     Marc Khouzam (Ericsson) - Generalize thread filtering logic (Bug 431986)
+ *     Marc Khouzam (Ericsson) - Accept multiple calls to startTrackingBreakpoints (Bug 389945)
+ *     Marc Khouzam (Ericsson) - Support for dynamic printf (Bug 400628)
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.mi.service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -27,12 +29,14 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.eclipse.cdt.core.model.ICModelMarker;
 import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.breakpointactions.BreakpointActionManager;
 import org.eclipse.cdt.debug.core.model.ICAddressBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpointExtension;
 import org.eclipse.cdt.debug.core.model.ICBreakpointType;
+import org.eclipse.cdt.debug.core.model.ICDynamicPrintf;
 import org.eclipse.cdt.debug.core.model.ICEventBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICFunctionBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
@@ -42,6 +46,7 @@ import org.eclipse.cdt.debug.internal.core.breakpoints.BreakpointProblems;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
+import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -53,13 +58,16 @@ import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointDMData;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IDsfBreakpointExtension;
+import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IStartedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
-import org.eclipse.cdt.dsf.debug.service.command.ICommandControl;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpoints.BreakpointAddedEvent;
@@ -127,9 +135,10 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     private static final String ATTR_THREAD_ID     = GdbPlugin.PLUGIN_ID + ".threadID";       //$NON-NLS-1$
 
     // Services
-    ICommandControl    fConnection;
+    ICommandControlService fConnection;
     IRunControl        fRunControl;
     ISourceLookup      fSourceLookup;
+    IProcesses         fProcesses;
     IBreakpoints       fBreakpoints;
     IBreakpointManager fBreakpointManager;  // Platform breakpoint manager (not this!)
     BreakpointActionManager fBreakpointActionManager;
@@ -260,10 +269,11 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     private void doInitialize(RequestMonitor rm) {
         
         // Get the required services references from central repository
-        fConnection     = getServicesTracker().getService(ICommandControl.class);
+        fConnection     = getServicesTracker().getService(ICommandControlService.class);
         fRunControl     = getServicesTracker().getService(IRunControl.class);
         fSourceLookup   = getServicesTracker().getService(ISourceLookup.class);
         fBreakpoints    = getServicesTracker().getService(IBreakpoints.class);
+        fProcesses      = getServicesTracker().getService(IProcesses.class);
         fBreakpointManager = DebugPlugin.getDefault().getBreakpointManager();
         fBreakpointActionManager = CDebugCorePlugin.getDefault().getBreakpointActionManager();
 
@@ -360,13 +370,14 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             return;
         }
 
-        // Make sure a mapping for this execution context does not already exist
         Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformBPs.get(dmc);
         Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fBreakpointIDs.get(dmc);
         Map<IBreakpointDMContext, ICBreakpoint> targetIDs = fTargetBPs.get(dmc);
         Map<ICBreakpoint, Set<String>> threadIDs = fBreakpointThreads.get(dmc);
         if ((platformBPs != null) || (breakpointIDs != null) || (targetIDs != null) || (threadIDs != null)) {
-            rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, CONTEXT_ALREADY_INITIALIZED, null));
+        	// If the maps already contains this context we can simply ignore this request.
+        	// This happens when we start or attach to another process with GDB >= 7.4
+            assert platformBPs != null && breakpointIDs != null && targetIDs != null && threadIDs != null;
             rm.done();
             return;
         }
@@ -453,23 +464,6 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             determineDebuggerPath(dmc, attributes, new RequestMonitor(getExecutor(), countingRm) {
                 @Override
                 protected void handleSuccess() {                	
-                	// Before installing a breakpoint, set the target filter for that target.
-                	// Even if the breakpoint is disabled when we start, the target filter 
-                	// can be accessed by the user through the breakpoint properties UI, so
-                	// we must set it right now.
-                	// This is the reason we don't do this in 'installBreakpoint', which used to not
-                	// be called right away if the breakpoint was disabled (this is no longer the case).
-                	try {
-                		IContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IContainerDMContext.class);
-                		IDsfBreakpointExtension filterExt = getFilterExtension(breakpoint);
-                		if (filterExt.getThreadFilters(containerDmc) == null) {
-                			// Do this only if there wasn't already an entry, or else we would
-                			// erase the content of that previous entry.
-                			filterExt.setTargetFilter(containerDmc);
-                		}
-					} catch (CoreException e) {
-					}
-                	
                 	// Must install breakpoints right away, even if disabled, so that
                 	// we can find out if they apply to this target (Bug 389070)
                		installBreakpoint(dmc, breakpoint, attributes, countingRm);
@@ -585,11 +579,6 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         }
 
         // A back-end breakpoint needs to be installed for each specified thread
-        // Note: This is a bit academic since [1] thread info is not kept by the
-        // BreakpointManager (so it can not possibly be restored when a target is
-        // started), and [2] the standard GUI doesn't allow to specify thread at
-        // breakpoint creation. However, it is conceivable that an enhanced Editor
-        // would permit it.
         final Set<String> threads = getThreads(attributes);
 
         // Update the breakpoint state when all back-end breakpoints have been installed
@@ -658,7 +647,17 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
                     @Override
                     protected void handleError() {
-                    	String description = MessageFormat.format(Messages.Breakpoint_attribute_problem, new Object[] { Messages.Breakpoint_installation_failed });
+                    	String detailedMessage;
+                    	if (getStatus().getException() != null &&
+                    			getStatus().getException().getMessage() != null) {
+                    		detailedMessage = getStatus().getException().getMessage();
+                    	} else {
+                    		detailedMessage = getStatus().getMessage();
+                    	}
+                    	String description = (detailedMessage == null) ? 
+                    			Messages.Breakpoint_attribute_problem :
+                    			MessageFormat.format(Messages.Breakpoint_attribute_detailed_problem, new Object[] { detailedMessage});
+
                         addBreakpointProblemMarker(breakpoint, description, IMarker.SEVERITY_WARNING);
                         installRM.done();
                     }
@@ -699,10 +698,13 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
                         // Add a problem marker to the resource
                         IMarker problem_marker = resource.createMarker(BreakpointProblems.BREAKPOINT_PROBLEM_MARKER_ID);
                         int line_number = lineBreakpoint.getLineNumber();
+                        String sourceHandle = lineBreakpoint.getSourceHandle();
                         problem_marker.setAttribute(IMarker.LOCATION,    String.valueOf(line_number));
                         problem_marker.setAttribute(IMarker.MESSAGE,     description);
                         problem_marker.setAttribute(IMarker.SEVERITY,    severity);
                         problem_marker.setAttribute(IMarker.LINE_NUMBER, line_number);
+                        if (sourceHandle != null)
+                            problem_marker.setAttribute(ICModelMarker.C_MODEL_MARKER_EXTERNAL_LOCATION, sourceHandle);
 
                         // And save the baby
                         fBreakpointMarkerProblems.put(breakpoint, problem_marker);
@@ -764,14 +766,11 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         final Map<ICBreakpoint, Set<String>> threadsIDs = fBreakpointThreads.get(dmc);
         assert threadsIDs != null;
 
-        // Remove any target filter (if any)
-        try {
-        	IContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IContainerDMContext.class);
-        	getFilterExtension(breakpoint).removeTargetFilter(containerDmc);
-        }
-        catch( CoreException e ) {
-        }
-        
+        // Remove all relevant target filters
+        // Note that this call is important if a breakpoint is removed directly
+        // from the gdb console, or else we will try to re-install it (bug 433044)
+       	removeAllTargetFilters(dmc, breakpoint);
+
         // Remove breakpoint problem marker (if any)
         removeBreakpointProblemMarker(breakpoint);
 
@@ -1076,11 +1075,12 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             // Convert the breakpoint attributes for the back-end
             // Refresh the set of attributes at each iteration just in case...
             Map<String,Object> attrs = convertToTargetBreakpoint(breakpoint, attributes);
-            // Tracepoints are not affected by "skip-all"
-            if (!(breakpoint instanceof ICTracepoint) && !fBreakpointManager.isEnabled()) {
+            // Tracepoints and dynamic printf are not affected by "skip-all"
+            if (!(breakpoint instanceof ICTracepoint) && !(breakpoint instanceof ICDynamicPrintf)
+            		&& !fBreakpointManager.isEnabled()) {
                 attrs.put(MIBreakpoints.IS_ENABLED, false);
             }
-            // Add the secret ingredient..
+
             attrs.put(MIBreakpointDMData.THREAD_ID, thread);
 
             // Then install the spiked breakpoint
@@ -1138,8 +1138,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         for (IBreakpointsTargetDMContext context : fBreakpointIDs.keySet()) {
             for (ICBreakpoint breakpoint : fBreakpointIDs.get(context).keySet()) {
                 try {
-                    // Note that Tracepoints are not affected by "skip-all"
-                    if (!(breakpoint instanceof ICTracepoint) && breakpoint.isEnabled()) {
+                    // Note that Tracepoints and dynamic printf are not affected by "skip-all"
+                    if (!(breakpoint instanceof ICTracepoint) && !(breakpoint instanceof ICDynamicPrintf)
+                    		&& breakpoint.isEnabled()) {
                         for (IBreakpointDMContext ref : fBreakpointIDs.get(context).get(breakpoint)) {
                             Map<String,Object> delta = new HashMap<String,Object>();
                             delta.put(MIBreakpoints.IS_ENABLED, enabled);
@@ -1171,40 +1172,61 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
                 getExecutor().execute(new DsfRunnable() {
                 	@Override
                     public void run() {
-                        final CountingRequestMonitor countingRm = new CountingRequestMonitor(getExecutor(), null) {
-                            @Override
-                            protected void handleError() {
-                                if (getStatus().getSeverity() == IStatus.ERROR) {
-                                    GdbPlugin.getDefault().getLog().log(getStatus());
-                                }
-                            }
-                        };
-                        countingRm.setDoneCount(fPlatformBPs.size());
-
-                        // Install the breakpoint in all the execution contexts
-                        for (final IBreakpointsTargetDMContext dmc : fPlatformBPs.keySet()) {
-                            determineDebuggerPath(dmc, attrs,
-                                    new RequestMonitor(getExecutor(), countingRm) {
-                                    @Override
-                                    protected void handleSuccess() {
-                                    	// For a new breakpoint, set the target filter.
-                                    	try {
-                                    		IContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IContainerDMContext.class);
-                                    		IDsfBreakpointExtension filterExt = getFilterExtension((ICBreakpoint)breakpoint);
-                                    		if (filterExt.getThreadFilters(containerDmc) == null) {
+                        // For a new breakpoint, the first thing we do is set the target filter to all existing processes.
+                		// We will need this when it is time to install the breakpoint.
+                		// We fetch the processes from our IProcess service to be generic (bug 431986)
+                		fProcesses.getProcessesBeingDebugged(fConnection.getContext(), new ImmediateDataRequestMonitor<IDMContext[]>() {
+                			@Override
+                			protected void handleCompleted() {
+                				if (isSuccess()) {
+									try {
+										IDsfBreakpointExtension filterExtension = getFilterExtension((ICBreakpoint)breakpoint);
+										for (IDMContext dmc : getData()) {
+											IContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc, IContainerDMContext.class);
+											assert containerDmc != null;
+                                    		if (filterExtension.getThreadFilters(containerDmc) == null) {
                                     			// Do this only if there wasn't already an entry, or else we would
                                     			// erase the content of that previous entry.
-                                    			filterExt.setTargetFilter(containerDmc);
+                                    			// There can be an entry already when a thread-specific breakpoint is created
+                                    			// from the MIBreakpointsSynchronizer (through the gdb console).  In that case the
+                                    			// platform bp gets created, and the targetFilter gets set by MIBreakpointsSynchronizer
+                                    			// before the call to breakpointAdded() is made and we get to here.
+                                    			// Bug 433339
+                                    			filterExtension.setTargetFilter(containerDmc);
                                     		}
-                    					} catch (CoreException e) {
-                    					}
-                                    	
-                                        installBreakpoint(dmc, (ICBreakpoint) breakpoint,
-                                            attrs, countingRm);
-                                    }
-                                });
-                        }
-                    }
+										}
+									} catch (CoreException e1) {
+										// Error setting target filter, just skip altogether
+									}
+                				}
+
+                				// Now we can install the bp for all target contexts
+                				final CountingRequestMonitor countingRm = new CountingRequestMonitor(getExecutor(), null) {
+                					@Override
+                					protected void handleCompleted() {
+                						// Log any error when creating the breakpoint
+                						if (getStatus().getSeverity() == IStatus.ERROR) {
+                							GdbPlugin.getDefault().getLog().log(getStatus());
+                						}
+
+                					}
+                				};
+                				countingRm.setDoneCount(fPlatformBPs.size());
+
+                				for (final IBreakpointsTargetDMContext dmc : fPlatformBPs.keySet()) {
+                					determineDebuggerPath(dmc, attrs,
+                							new RequestMonitor(getExecutor(), countingRm) {
+                						@Override
+                						protected void handleSuccess() {
+                							installBreakpoint(dmc, (ICBreakpoint) breakpoint,
+                									attrs, countingRm);
+                						}
+                					});
+                				}
+
+                			}
+                		});
+                	}
                 });
             } catch (CoreException e) {
             } catch (RejectedExecutionException e) {
@@ -1232,8 +1254,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             try {
                 // Retrieve the breakpoint attributes
                 final Map<String, Object> attrs = breakpoint.getMarker().getAttributes();
-                // Tracepoints are not affected by "skip-all"
-                if (!(breakpoint instanceof ICTracepoint) && !fBreakpointManager.isEnabled()) {
+                // Tracepoints and dynamic printf are not affected by "skip-all"
+                if (!(breakpoint instanceof ICTracepoint) && !(breakpoint instanceof ICDynamicPrintf) 
+                		&& !fBreakpointManager.isEnabled()) {
                     attrs.put(ICBreakpoint.ENABLED, false);
                 }
 
@@ -1397,15 +1420,17 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         // Identify the platform breakpoint
         final ICBreakpoint breakpoint = findPlatformBreakpoint(number);
 
-        // Perform the actions asynchronously (otherwise we can have a deadlock...)
-        new Job("Breakpoint action") { //$NON-NLS-1$
-            { setSystem(true); }
-            @Override
-            protected IStatus run(IProgressMonitor monitor) {
-                fBreakpointActionManager.executeActions(breakpoint, new BreakpointActionAdapter(getExecutor(), getServicesTracker(), context));
-                return Status.OK_STATUS;
-            };
-        }.schedule();
+        if (breakpoint != null ) {
+        	// Perform the actions asynchronously (otherwise we can have a deadlock...)
+        	new Job("Breakpoint action") { //$NON-NLS-1$
+        		{ setSystem(true); }
+        		@Override
+        		protected IStatus run(IProgressMonitor monitor) {
+        			fBreakpointActionManager.executeActions(breakpoint, new BreakpointActionAdapter(getExecutor(), getServicesTracker(), context));
+        			return Status.OK_STATUS;
+        		};
+        	}.schedule();
+        }
     }
 
     // Helper function to locate the platform breakpoint corresponding
@@ -1447,6 +1472,83 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     }
     
     //-------------------------------------------------------------------------
+    // Process/thread start/exit
+    //-------------------------------------------------------------------------
+    /**
+     * @noreference This method is not intended to be referenced by clients.
+     * @since 4.4
+     */
+    @DsfServiceEventHandler
+    public void eventDispatched(IStartedDMEvent e) {
+    	if (e.getDMContext() instanceof IContainerDMContext) {
+        	// Process started, add it to the thread filtering of all breakpoints
+    		IBreakpoint[] allBreakpoints = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints(fDebugModelId);
+            for (IBreakpoint bp : allBreakpoints) {
+                if (supportsBreakpoint(bp)) {
+           			setTargetFilter((ICBreakpoint)bp, (IContainerDMContext)e.getDMContext());
+            	}
+            }
+    	}
+    }  
+    
+    
+    private void setTargetFilter(ICBreakpoint breakpoint, IContainerDMContext containerDmc) {
+    	try {
+    		IDsfBreakpointExtension filterExt = getFilterExtension(breakpoint);
+    		if (filterExt.getThreadFilters(containerDmc) == null) {
+    			// Do this only if there wasn't already an entry, or else we would
+    			// erase the content of that previous entry.
+    			// This could theoretically happen if the targetFilter is set by
+    			// someone else, before the IStartedDMEvent arrives indicating a new process.
+    			// Bug 433339
+    			filterExt.setTargetFilter(containerDmc);
+    		}
+
+    	} catch (CoreException e) {
+    	}
+    }
+    
+    /**
+     * @noreference This method is not intended to be referenced by clients.
+     * @since 4.4
+     */
+    @DsfServiceEventHandler
+    public void eventDispatched(IExitedDMEvent e) {
+    	if (e.getDMContext() instanceof IContainerDMContext) {
+        	// Process exited, remove it from the thread filtering of all breakpoints
+    		// We must get the list of breakpoints from the platform because our different
+    		// maps might already have been cleaned up
+    		IBreakpoint[] allBreakpoints = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints(fDebugModelId);
+            for (IBreakpoint bp : allBreakpoints) {
+                if (supportsBreakpoint(bp)) {
+           			removeTargetFilter((ICBreakpoint)bp, (IContainerDMContext)e.getDMContext());
+            	}
+            }
+    	}
+    }
+    
+    private void removeTargetFilter(ICBreakpoint breakpoint, IContainerDMContext containerDmc) {
+    	try {
+    		IDsfBreakpointExtension filterExt = getFilterExtension(breakpoint);
+   			filterExt.removeTargetFilter(containerDmc);
+    	} catch (CoreException e) {
+    	}
+    }
+
+    private void removeAllTargetFilters(IBreakpointsTargetDMContext bpTargetDmc, ICBreakpoint breakpoint) {
+    	try {
+    		IDsfBreakpointExtension filterExt = getFilterExtension(breakpoint);
+   			IContainerDMContext[] targets = filterExt.getTargetFilters();
+   			for (IContainerDMContext target : targets) {
+   				if (bpTargetDmc.equals(target) || DMContexts.isAncestorOf(target, bpTargetDmc)) {
+   					filterExt.removeTargetFilter(target);
+   				}
+   			}
+    	} catch (CoreException e) {
+    	}
+    }
+
+    //-------------------------------------------------------------------------
     // Session exit
     //-------------------------------------------------------------------------
 
@@ -1465,28 +1567,11 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     	for (IBreakpointsTargetDMContext ctx : fPlatformBPs.keySet()) {
     		Map<ICBreakpoint, Map<String, Object>> breakpoints = fPlatformBPs.get(ctx);
             clearBreakpointStatus(breakpoints.keySet().toArray(new ICBreakpoint[breakpoints.size()]), ctx);
-            
-            // Also clear any target filter since we will not be calling uninstallBreakpoint() which
-            // usually does that work.
-            IContainerDMContext dmc = DMContexts.getAncestorOfType(ctx, IContainerDMContext.class);
-            clearTargetFilter(dmc, breakpoints.keySet());
     	}
     	// This will prevent Shutdown() from trying to remove bps from a
     	// backend that has already shutdown
         fPlatformBPs.clear();
     }
-
-    private void clearTargetFilter(IContainerDMContext containerDmc, Set<ICBreakpoint> breakpoints) {
-        // Remove any target filter (if any)
-        try {
-        	for (ICBreakpoint bp : breakpoints) {
-        		getFilterExtension(bp).removeTargetFilter(containerDmc);
-        	}
-        }
-        catch( CoreException e ) {
-        }
-    }
-
 
     /**
      * @param bps
@@ -1713,6 +1798,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         if (cdt_attributes.containsKey(ICBreakpoint.ENABLED))
             result.put(MIBreakpoints.IS_ENABLED, cdt_attributes.get(ICBreakpoint.ENABLED));
 
+        if (cdt_attributes.containsKey(ICBreakpointType.TYPE))
+            result.put(MIBreakpoints.BREAKPOINT_TYPE, cdt_attributes.get(ICBreakpointType.TYPE));
+
         // ICWatchpoint attributes
         if (cdt_attributes.containsKey(ICWatchpoint.EXPRESSION))
             result.put(MIBreakpoints.EXPRESSION, cdt_attributes.get(ICWatchpoint.EXPRESSION));
@@ -1726,6 +1814,10 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         // Threads
         if (cdt_attributes.containsKey(ATTR_THREAD_FILTER))
             result.put(ATTR_THREAD_FILTER, cdt_attributes.get(ATTR_THREAD_FILTER));
+        
+        // For IDynamicPrintf
+        if (cdt_attributes.containsKey(ICDynamicPrintf.PRINTF_STRING))
+        	result.put(MIBreakpoints.PRINTF_STRING, cdt_attributes.get(ICDynamicPrintf.PRINTF_STRING));
 
         return result;
     }
@@ -1749,40 +1841,76 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     }
 
     /**
-     * Get the list of threads from the platform breakpoint attributes
+     * Get the list of threads from the breakpoint's thread filtering mechanism
      * 
      * @param breakpoint
      * @return
      */
-    private Set<String> extractThreads(IBreakpointsTargetDMContext context, ICBreakpoint breakpoint) {
-    	Set<String> results = new HashSet<String>();
-    	
-    	IExecutionDMContext[] threads = null;
-    	try {
-    		IContainerDMContext containerDmc = DMContexts.getAncestorOfType(context, IContainerDMContext.class);
-			threads = getFilterExtension(breakpoint).getThreadFilters(containerDmc);
-		} catch (CoreException e) {
-		}
+    private Set<String> extractThreads(IBreakpointsTargetDMContext bpTargetDmc, ICBreakpoint breakpoint) {
+        Set<String> results = new HashSet<String>();
 
-    	if (threads == null || threads.length == 0) {
-            results.add("0"); //$NON-NLS-1$    
-            return results;
-        }
-    	
         if (supportsThreads(breakpoint)) {
-            for (IExecutionDMContext thread : threads) {
-            	if (thread instanceof IMIExecutionDMContext) {
-            		results.add(Integer.toString(((IMIExecutionDMContext)thread).getThreadId()));
-                } else {
-                	// If any of the threads is not an IMIExecutionDMContext,
-                	// we don't support thread filters at all.
-                	results.clear();
-                    results.add("0"); //$NON-NLS-1$    
-                    break;
-                }
-            }
+        	List<IExecutionDMContext[]> threads = new ArrayList<IExecutionDMContext[]>(1);
+
+        	try {
+        		// Retrieve the targets
+        		IDsfBreakpointExtension filterExtension = getFilterExtension(breakpoint);
+        		IContainerDMContext[] procTargets = filterExtension.getTargetFilters();
+
+        		// If no target is present, breakpoint applies to all.
+        		if (procTargets.length == 0) {
+        			results.add("0"); //$NON-NLS-1$    
+        			return results;
+        		}
+
+        		// Extract the thread IDs (if there is none, we are covered)
+        		for (IContainerDMContext procDmc : procTargets) {
+        			if (procDmc.equals(bpTargetDmc) || DMContexts.isAncestorOf(procDmc, bpTargetDmc)) {
+        				IExecutionDMContext[] threadFilters = filterExtension.getThreadFilters(procDmc);
+        				if (threadFilters == null) {
+        					// The breakpoint applies to the entire process.
+        					// For GDB < 7.4, we set the thread to 0 to indicate that the breakpoint
+        					// is global for this process.
+        					// For GDB >= 7.4, things are more complicated.  There will be one bp for all
+        					// processes, so by setting the thread to 0, the breakpoint will apply
+        					// to all threads of all processes.  We don't have a choice as there is no 
+        					// way to tell GDB to apply to all threads (including any new ones that will
+        					// be created) for a single process.
+        					// So, in this case, if the bp applies to all threads of one process, it will 
+        					// automatically apply to all threads of all processes
+        					results.add("0"); //$NON-NLS-1$    
+        					return results;
+        				} else {
+        					threads.add(threadFilters);
+        				}
+        			}
+        		}
+        	} catch (CoreException e) {
+        		// Error with the thread filtering.  Default to all threads.
+        		results.add("0"); //$NON-NLS-1$    
+        		return results;
+        	}
+
+        	for (IExecutionDMContext[] targetThreads : threads) {
+        		if (targetThreads != null) {
+        			for (IExecutionDMContext thread : targetThreads) {
+        				if (thread instanceof IMIExecutionDMContext) {
+        					results.add(Integer.toString(((IMIExecutionDMContext)thread).getThreadId()));
+        				} else {
+        					// If any of the threads is not an IMIExecutionDMContext,
+        					// we don't support thread filters at all.
+        					results.clear();
+        					results.add("0"); //$NON-NLS-1$    
+                			return results;
+        				}
+        			}
+        		} else {
+        			// Should not happen
+        			assert false;
+         		}
+        	}
         } else {
-            results.add("0"); //$NON-NLS-1$
+        	results.add("0"); //$NON-NLS-1$
         }
 
         return results;
@@ -1829,8 +1957,11 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             	// A tracepoint is a LineBreakpoint, but needs its own type
                 properties.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.TRACEPOINT);
                 properties.put(MIBreakpoints.PASS_COUNT, attributes.get(ICTracepoint.PASS_COUNT));
+            } else if (breakpoint instanceof ICDynamicPrintf) {
+            	// A DynamicPrintf is a LineBreakpoint, but needs its own type
+            	properties.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.DYNAMICPRINTF);
+            	properties.put(MIBreakpoints.PRINTF_STRING, attributes.get(ICDynamicPrintf.PRINTF_STRING));
             }
-            
         }
         else if (breakpoint instanceof ICEventBreakpoint) {
         	properties.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.CATCHPOINT);
@@ -1869,8 +2000,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         }
 
         // Adjust for "skip-all"
-        // Tracepoints are not affected by "skip-all"
-        if (!(breakpoint instanceof ICTracepoint ) && !fBreakpointManager.isEnabled()) {
+        // Tracepoints and dynamic printf are not affected by "skip-all"
+        if (!(breakpoint instanceof ICTracepoint) && !(breakpoint instanceof ICDynamicPrintf) 
+        		&& !fBreakpointManager.isEnabled()) {
             properties.put(MIBreakpoints.IS_ENABLED, false);
         }
 
@@ -1893,12 +2025,14 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         // Check the "critical" attributes
         if (delta.containsKey(ATTR_DEBUGGER_PATH)            // File name
         ||  delta.containsKey(MIBreakpoints.LINE_NUMBER)     // Line number
+        ||  delta.containsKey(MIBreakpoints.BREAKPOINT_TYPE)     // breakpoint type
         ||  delta.containsKey(MIBreakpoints.FUNCTION)        // Function name
         ||  delta.containsKey(MIBreakpoints.ADDRESS)         // Absolute address
         ||  delta.containsKey(ATTR_THREAD_FILTER)            // Thread ID
         ||  delta.containsKey(MIBreakpoints.EXPRESSION)      // Watchpoint expression
         ||  delta.containsKey(MIBreakpoints.READ)            // Watchpoint type
-        ||  delta.containsKey(MIBreakpoints.WRITE)) {        // Watchpoint type
+        ||  delta.containsKey(MIBreakpoints.WRITE)           // Watchpoint type
+        ||  delta.containsKey(MIBreakpoints.PRINTF_STRING)) {// Dprintf string
             return true;
         }
 
@@ -1938,17 +2072,18 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     }
 
     /**
-     * Returns whether the breakpoint is filtered for given target.
+     * Returns whether the breakpoint is filtered for the given target.
      */
-    private boolean isBreakpointEntirelyFiltered(IBreakpointsTargetDMContext dmc, ICBreakpoint breakpoint) {
-		IContainerDMContext currentDmc = DMContexts.getAncestorOfType(dmc, IContainerDMContext.class);
+    private boolean isBreakpointEntirelyFiltered(IBreakpointsTargetDMContext bpTargetDmc, ICBreakpoint breakpoint) {    	
     	try {
-			IContainerDMContext[] targetDmcs = getFilterExtension(breakpoint).getTargetFilters();
-			if (Arrays.asList(targetDmcs).contains(currentDmc))
-				return false;
-		}
-		catch(CoreException e) {
-		}
+    		IContainerDMContext[] procTargets = getFilterExtension(breakpoint).getTargetFilters();
+    		for (IContainerDMContext procDmc : procTargets) {
+    			if (procDmc.equals(bpTargetDmc) || DMContexts.isAncestorOf(procDmc, bpTargetDmc)) {
+    				return false;
+    			}
+    		}
+    	} catch (CoreException e) {
+    	}
     	return true;
     }
 

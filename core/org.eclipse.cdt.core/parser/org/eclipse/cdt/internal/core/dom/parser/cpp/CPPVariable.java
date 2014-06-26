@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,7 @@
  *     Andrew Niefer (IBM Corporation) - Initial API and implementation 
  *     Markus Schorn (Wind River Systems)
  *     Ed Swartz (Nokia)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -17,23 +18,16 @@ import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTEqualsInitializer;
-import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
-import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IArrayType;
-import org.eclipse.cdt.core.dom.ast.IBasicType;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.IPointerType;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerList;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
@@ -64,7 +58,7 @@ public class CPPVariable extends PlatformObject implements ICPPVariable, ICPPInt
 	        fDeclarations = new IASTName[] { name };
 	    }
 	    
-	    // built-in variables supply a null
+	    // Built-in variables supply a null.
 	    if (name != null) {
 	    	name.setBinding(this);
 	    } else {
@@ -97,7 +91,7 @@ public class CPPVariable extends PlatformObject implements ICPPVariable, ICPPInt
 		} else if (fDeclarations == null) {
 			fDeclarations = new IASTName[] { name };
 		} else {
-			// keep the lowest offset declaration at the first position
+			// Keep the lowest offset declaration at the first position.
 			if (fDeclarations.length > 0
 					&& ((ASTNode) node).getOffset() < ((ASTNode) fDeclarations[0]).getOffset()) {
 				fDeclarations = ArrayUtil.prepend(IASTName.class, fDeclarations, name);
@@ -105,7 +99,7 @@ public class CPPVariable extends PlatformObject implements ICPPVariable, ICPPInt
 				fDeclarations = ArrayUtil.append(IASTName.class, fDeclarations, name);
 			}
 		}
-		// array types may be incomplete
+		// Array types may be incomplete.
 		if (fType instanceof IArrayType) {
 			fType = null;
 		}
@@ -126,11 +120,24 @@ public class CPPVariable extends PlatformObject implements ICPPVariable, ICPPInt
 		if (fType != null) {
 			return fType;
 		}
-		
+
+		boolean doneWithDefinition = false;
 		IArrayType firstCandidate= null;
 		final int length = fDeclarations == null ? 0 : fDeclarations.length;
-		for (int i = -1; i < length; i++) {
-			IASTName n = i == -1 ? fDefinition : fDeclarations[i];
+		for (int i = 0; i <= length; i++) {
+			IASTName n;
+			// Process the definition according to its relative position among the declarations.
+			// See http://bugs.eclipse.org/434150
+			if (fDefinition != null && !doneWithDefinition &&
+					(i == length || ((ASTNode) fDefinition).getOffset() < ((ASTNode) fDeclarations[i]).getOffset())) {
+				n = fDefinition;
+				doneWithDefinition = true;
+				--i;  // We still have to come back to the declaration at position i.
+			} else if (i < length) {
+				n = fDeclarations[i];
+			} else {
+				break;
+			}
 			if (n != null) {
 				while (n.getParent() instanceof IASTName)
 					n = (IASTName) n.getParent();
@@ -246,7 +253,7 @@ public class CPPVariable extends PlatformObject implements ICPPVariable, ICPPInt
 	
     @Override
 	public boolean isMutable() {
-        //7.1.1-8 the mutable specifier can only be applied to names of class data members
+        // 7.1.1-8 the mutable specifier can only be applied to names of class data members.
         return false;
     }
 
@@ -326,30 +333,7 @@ public class CPPVariable extends PlatformObject implements ICPPVariable, ICPPInt
 		if (dtor != null) {
 			IASTInitializer init= dtor.getInitializer();
 			if (init != null) {
-				IASTInitializerClause clause= null;
-				if (init instanceof IASTEqualsInitializer) {
-					clause= ((IASTEqualsInitializer) init).getInitializerClause();
-				} else if (init instanceof ICPPASTConstructorInitializer) {
-					IASTInitializerClause[] args= ((ICPPASTConstructorInitializer) init).getArguments();
-					if (args.length == 1 && args[0] instanceof IASTExpression) {
-						IType type= SemanticUtil.getUltimateTypeUptoPointers(getType());
-						if (type instanceof IPointerType || type instanceof IBasicType) {
-							clause= args[0];
-						}
-					}
-				} else if (init instanceof ICPPASTInitializerList) {
-					ICPPASTInitializerList list= (ICPPASTInitializerList) init;
-					switch (list.getSize()) {
-					case 0:
-						return Value.create(0);
-					case 1:
-						clause= list.getClauses()[0];
-					}
-				}
-				if (clause instanceof IASTExpression) {
-					return Value.create((IASTExpression) clause, maxDepth);
-				}
-				return Value.UNKNOWN;
+				return SemanticUtil.getValueOfInitializer(init, getType(), maxDepth);
 			}
 		}
 		return null;

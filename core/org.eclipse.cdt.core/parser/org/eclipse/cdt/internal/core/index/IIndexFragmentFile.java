@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -40,21 +40,29 @@ public interface IIndexFragmentFile extends IIndexFile {
 
 	/**
 	 * Returns the hash-code computed by combining the file size and the file encoding.
-	 * @return hashcode a hash-code or <code>0</code> if it is unknown.
+	 * @return a hash-code or {@code 0} if it is unknown.
 	 */
 	int getSizeAndEncodingHashcode() throws CoreException;
 
 	/**
 	 * Sets the hash-code computed by combining the file size and the file encoding.
-	 * @param hashcode a hash-code or <code>0</code> if it is unknown.
+	 * @param hashcode a hash-code or {@code 0} if it is unknown.
 	 */
 	void setSizeAndEncodingHashcode(int hashcode) throws CoreException;
 
 	/**
-	 * Sets the flag that determines whether the file is a header with #pragma once statement
-	 * or an include guard, or it is a source file and parsed only once because of that.
+	 * Sets the flag that determines whether the file is a header with {@code #pragma once}
+	 * statement or an include guard, or it is a source file and parsed only once because of that.
 	 */
 	void setPragmaOnceSemantics(boolean value) throws CoreException;
+
+	/**
+	 * Sets the name of the replacement header.
+	 * @param replacementHeader the name of the replacement header, may be {@code null} or an empty
+	 *     string
+	 * @since 5.7
+	 */
+	void setReplacementHeader(String replacementHeader) throws CoreException;
 
 	/**
 	 * Returns whether this file contains content in its
@@ -85,5 +93,4 @@ public interface IIndexFragmentFile extends IIndexFile {
 	 * The file 'source' must belong to the same fragment as this file.
 	 */
 	void transferContext(IIndexFragmentFile source) throws CoreException;
-
 }

@@ -166,7 +166,7 @@
       <renderingBindings
             defaultIds="org.eclipse.debug.ui.rendering.raw_memory"
             primaryId="org.eclipse.debug.ui.rendering.raw_memory"
-            renderingIds="org.eclipse.debug.ui.rendering.raw_memory,org.eclipse.debug.ui.rendering.ascii,org.eclipse.debug.ui.rendering.signedint,org.eclipse.debug.ui.rendering.unsignedint">
+            renderingIds="org.eclipse.debug.ui.rendering.raw_memory,org.eclipse.debug.ui.rendering.ascii,org.eclipse.debug.ui.rendering.signedint,org.eclipse.debug.ui.rendering.unsignedint,org.eclipse.debug.ui.rendering.hexint">
          <enablement>
             <instanceof value="org.eclipse.cdt.dsf.debug.model.DsfMemoryBlock"/>
          </enablement>
@@ -196,6 +196,19 @@
                <and>
                   <instanceof value="org.eclipse.cdt.debug.ui.breakpoints.ICBreakpointContext"/>
                   <test property="org.eclipse.cdt.debug.ui.createBreakpointAdapt" value="org.eclipse.cdt.debug.core.model.ICTracepoint"/>
+               </and>
+            </or>
+         </enabledWhen>
+      </page>
+      <page class="org.eclipse.cdt.dsf.gdb.internal.ui.breakpoints.GDBDynamicPrintfPropertyPage"
+            id="org.eclipse.cdt.dsf.gdb.dynamicprintf.common"
+            name="%dynamicPrintf.property.common">
+         <enabledWhen>
+            <or>
+               <adapt type="org.eclipse.cdt.debug.core.model.ICDynamicPrintf"/>
+               <and>
+                  <instanceof value="org.eclipse.cdt.debug.ui.breakpoints.ICBreakpointContext"/>
+                  <test property="org.eclipse.cdt.debug.ui.createBreakpointAdapt" value="org.eclipse.cdt.debug.core.model.ICDynamicPrintf"/>
                </and>
             </or>
          </enabledWhen>
@@ -282,9 +295,9 @@
       <perspectiveExtension
             targetID="org.eclipse.debug.ui.DebugPerspective">
          <view
-               relative="org.eclipse.ui.views.ContentOutline"
+               relative="org.eclipse.debug.ui.DebugView"
                visible="false"
-               relationship="stack"
+               relationship="right"
                id="org.eclipse.cdt.dsf.gdb.ui.tracecontrol.view">
          </view>
          <viewShortcut
@@ -344,16 +357,13 @@
                label="%toolbar.prevTraceRecord.label"
                style="push">
          </command>
+         <command
+               commandId="org.eclipse.cdt.debug.ui.command.saveTraceData"
+               icon="icons/full/obj16/savetrace.gif"
+               label="%toolbar.saveTracing.name"
+               style="push">
+         </command>
       </menuContribution>
-         <menuContribution
-               locationURI="menu:org.eclipse.cdt.dsf.gdb.ui.tracecontrol.view?after=additions">
-            <command
-                  commandId="org.eclipse.cdt.debug.ui.command.saveTraceData"
-                  icon="icons/full/obj16/savetrace.gif"
-                  label="%toolbar.saveTracing.name"
-                  style="push">
-            </command>
-         </menuContribution>
    </extension>
    <extension
          point="org.eclipse.cdt.debug.ui.BreakpointActionPage">
@@ -423,6 +433,16 @@
                menubarPath="renderGroup">
          </action>
       </objectContribution>
+      <viewerContribution
+            id="org.eclipse.cdt.dsf.debug.ui.disassemblyRulerActions"
+            targetID="#DisassemblyPartRulerContext">
+         <action
+               class="org.eclipse.cdt.dsf.gdb.internal.ui.disassembly.AddDynamicPrintfRulerActionDelegate"
+               id="org.eclipse.cdt.dsf.gdb.ui.actions.RulerAddDynamicPrintfAction"
+               label="%action.addDynamicPrintf.label"
+               menubarPath="debug">
+         </action>
+      </viewerContribution>
    </extension>   
    <extension point="org.eclipse.debug.ui.toggleBreakpointsTargetFactories">
       <toggleTargetFactory
@@ -439,12 +459,30 @@
             </and>  
          </enablement>
       </toggleTargetFactory>
+      <toggleTargetFactory
+            id="org.eclipse.cdt.dsf.gdb.ui.ToggleDynamicPrintfTargetFactory"
+            class="org.eclipse.cdt.dsf.gdb.internal.ui.breakpoints.ToggleDynamicPrintfTargetFactory">
+         <enablement>
+            <test
+                  property="org.eclipse.cdt.dsf.debug.ui.isDisassemblyViewSupportsCBreakpoint">
+            </test>
+         </enablement>
+      </toggleTargetFactory>
    </extension>
    <extension
          point="org.eclipse.debug.core.statusHandlers">
       <statusHandler
             class="org.eclipse.cdt.dsf.gdb.internal.ui.GdbStatusHandler"
             code="20001"
+            id="org.eclipse.cdt.dsf.gdb.ui.statusHandler"
+            plugin="org.eclipse.cdt.dsf.gdb">
+      </statusHandler>
+   </extension>
+   <extension
+         point="org.eclipse.debug.core.statusHandlers">
+      <statusHandler
+            class="org.eclipse.cdt.dsf.gdb.internal.ui.GdbStatusHandler"
+            code="10004"
             id="org.eclipse.cdt.dsf.gdb.ui.statusHandler"
             plugin="org.eclipse.cdt.dsf.gdb">
       </statusHandler>

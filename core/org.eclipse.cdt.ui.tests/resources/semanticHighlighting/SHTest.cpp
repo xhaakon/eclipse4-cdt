@@ -146,3 +146,16 @@ EMPTY int f();
 
 //http://bugs.eclipse.org/340492
 template< template<class> class U > class myClass {};
+
+//http://bugs.eclipse.org/372004
+void g() {
+    extern int globalVariable;  // declared as global near top
+}
+
+//http://bugs.eclipse.org/399149
+class C final {
+    void finalMethod() final;
+    void overrideMethod() override;
+
+    int final;  // ordinary field, happens to be named 'final'
+};

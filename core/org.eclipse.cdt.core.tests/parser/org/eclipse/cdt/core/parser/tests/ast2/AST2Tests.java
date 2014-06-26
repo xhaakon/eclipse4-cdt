@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -121,6 +121,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.parser.IToken;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
@@ -7514,6 +7515,37 @@ public class AST2Tests extends AST2TestBase {
 	
 	//	double d = 00.9;
 	public void testOctalFloatingPointLiteral_394048() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	public void testMacOS9LineEnding_151329a() throws Exception {
+		parseAndCheckBindings("int waldo;\r#define bar");
+	}
+	
+	public void testMaxOS9LineEnding_151329b() throws Exception {
+		// This tests that if there is an \r\n in a macro continuation,
+		// the \r is not treated as an extra newline. The code
+		// stringifies the macro expansion and arranges for the string
+		// length to show up in a template parameter, whose value is
+		// checked by the test.
+		String code = "#define MACRO foo\\\r\n"
+				    + "bar\r\n"
+				    + "#define STRINGIFY_(x) #x\r\n"
+				    + "#define STRINGIFY(x) STRINGIFY_(x)\r\n"
+				    + "template <int N> void f(const char (&)[N]);\r\n"
+				    + "int main() { f(STRINGIFY(MACRO)); }\r\n";
+		BindingAssertionHelper helper = new BindingAssertionHelper(code, true);
+		ICPPTemplateInstance f = helper.assertNonProblem("f(STRINGIFY", "f");
+		// 7 characters for "foobar" + the null terminator.
+		assertEquals(7, f.getTemplateArguments()[0].getNonTypeValue().numericalValue().longValue());
+	}
+
+	//	typedef unsigned char u8;
+	//
+	//	#ifndef X
+	//	u8 var;
+	//	#endif
+	public void testU8TokenAfterIfdef_429361() throws Exception {
 		parseAndCheckBindings();
 	}
 }

@@ -14,14 +14,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.db;
 
-import com.ibm.icu.text.MessageFormat;
-
-import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.osgi.util.NLS;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -31,6 +23,14 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+
+import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.osgi.util.NLS;
+
+import com.ibm.icu.text.MessageFormat;
 
 /**
  * Database encapsulates access to a flat binary format file with a memory-manager-like API for
@@ -50,17 +50,17 @@ import java.util.ArrayList;
  * 0                | version number
  * INT_SIZE         | pointer to head of linked list of blocks of size MIN_BLOCK_DELTAS*BLOCK_SIZE_DELTA
  * ..               | ...
- * INT_SIZE * m (1) | pointer to head of linked list of blocks of size (m+MIN_BLOCK_DELTAS) * BLOCK_SIZE_DELTA
+ * INT_SIZE * m (1) | pointer to head of linked list of blocks of size (m + MIN_BLOCK_DELTAS) * BLOCK_SIZE_DELTA
  * DATA_AREA        | undefined (PDOM stores its own house-keeping data in this area)
  *
- * (1) where 2 <= m <= CHUNK_SIZE/BLOCK_SIZE_DELTA - MIN_BLOCK_DELTAS + 1
+ * (1) where 2 <= m <= CHUNK_SIZE / BLOCK_SIZE_DELTA - MIN_BLOCK_DELTAS + 1
  *
  * ===== block structure
  *
  * offset            content
  * 	                 _____________________________
  * 0                | size of block (negative indicates in use, positive unused) (2 bytes)
- * PREV_OFFSET      | pointer to prev block (of same size) (only in free blocks)
+ * PREV_OFFSET      | pointer to previous block (of same size) (only in free blocks)
  * NEXT_OFFSET      | pointer to next block (of same size) (only in free blocks)
  *
  */
@@ -68,7 +68,7 @@ public class Database {
 	// Public for tests only, you shouldn't need these.
 	public static final int INT_SIZE = 4;
 	public static final int CHUNK_SIZE = 1024 * 4;
-	public static final int OFFSET_IN_CHUNK_MASK= CHUNK_SIZE-1;
+	public static final int OFFSET_IN_CHUNK_MASK= CHUNK_SIZE - 1;
 	public static final int BLOCK_HEADER_SIZE= 2;
 	public static final int BLOCK_SIZE_DELTA_BITS = 3;
 	public static final int BLOCK_SIZE_DELTA= 1 << BLOCK_SIZE_DELTA_BITS;
@@ -79,7 +79,7 @@ public class Database {
 	// The lower bound for TYPE_SIZE is 1 + PTR_SIZE, but a slightly larger space for types stored
 	// inline produces in a slightly smaller overall database size.
 	public static final int TYPE_SIZE = 2 + PTR_SIZE;  // size of a type in the database in bytes
-	public static final int VALUE_SIZE = TYPE_SIZE;  // size of a value in the database in bytes
+	public static final int VALUE_SIZE = 1 + PTR_SIZE;  // size of a value in the database in bytes
 	public static final int EVALUATION_SIZE = TYPE_SIZE;  // size of an evaluation in the database in bytes
 	public static final int ARGUMENT_SIZE = TYPE_SIZE;  // size of a template argument in the database in bytes
 	public static final long MAX_DB_SIZE= ((long) 1 << (Integer.SIZE + BLOCK_SIZE_DELTA_BITS));
@@ -406,12 +406,12 @@ public class Database {
 
 	private long getFirstBlock(int blocksize) throws CoreException {
 		assert fLocked;
-		return fHeaderChunk.getFreeRecPtr((blocksize/BLOCK_SIZE_DELTA - MIN_BLOCK_DELTAS + 1) * INT_SIZE);
+		return fHeaderChunk.getFreeRecPtr((blocksize / BLOCK_SIZE_DELTA - MIN_BLOCK_DELTAS + 1) * INT_SIZE);
 	}
 
 	private void setFirstBlock(int blocksize, long block) throws CoreException {
 		assert fExclusiveLock;
-		fHeaderChunk.putFreeRecPtr((blocksize/BLOCK_SIZE_DELTA - MIN_BLOCK_DELTAS + 1) * INT_SIZE, block);
+		fHeaderChunk.putFreeRecPtr((blocksize / BLOCK_SIZE_DELTA - MIN_BLOCK_DELTAS + 1) * INT_SIZE, block);
 	}
 
 	private void removeBlock(Chunk chunk, int blocksize, long block) throws CoreException {
@@ -668,7 +668,7 @@ public class Database {
 	public void giveUpExclusiveLock(final boolean flush) throws CoreException {
 		if (fExclusiveLock) {
 			try {
-				ArrayList<Chunk> dirtyChunks= new ArrayList<Chunk>();
+				ArrayList<Chunk> dirtyChunks= new ArrayList<>();
 				synchronized (fCache) {
 					for (int i= 1; i < fChunksUsed; i++) {
 						Chunk chunk= fChunks[i];
@@ -716,7 +716,7 @@ public class Database {
 		}
 
 		// Be careful as other readers may access chunks concurrently.
-		ArrayList<Chunk> dirtyChunks= new ArrayList<Chunk>();
+		ArrayList<Chunk> dirtyChunks= new ArrayList<>();
 		synchronized (fCache) {
 			for (int i= 1; i < fChunksUsed ; i++) {
 				Chunk chunk= fChunks[i];

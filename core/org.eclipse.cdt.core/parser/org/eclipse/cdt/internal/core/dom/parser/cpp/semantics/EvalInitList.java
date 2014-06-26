@@ -57,20 +57,17 @@ public class EvalInitList extends CPPDependentEvaluation {
 
 	@Override
 	public boolean isTypeDependent() {
-		for (ICPPEvaluation clause : fClauses) {
-			if (clause.isTypeDependent())
-				return true;
-		}
-		return false;
+		return containsDependentType(fClauses);
 	}
 
 	@Override
 	public boolean isValueDependent() {
-		for (ICPPEvaluation clause : fClauses) {
-			if (clause.isValueDependent())
-				return true;
-		}
-		return false;
+		return containsDependentValue(fClauses);
+	}
+	
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return areAllConstantExpressions(fClauses, point);
 	}
 
 	@Override
@@ -122,10 +119,10 @@ public class EvalInitList extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
+			ConstexprEvaluationContext context) {
 		ICPPEvaluation[] clauses = fClauses;
 		for (int i = 0; i < fClauses.length; i++) {
-			ICPPEvaluation clause = fClauses[i].computeForFunctionCall(parameterMap, maxdepth, point);
+			ICPPEvaluation clause = fClauses[i].computeForFunctionCall(parameterMap, context.recordStep());
 			if (clause != fClauses[i]) {
 				if (clauses == fClauses) {
 					clauses = new ICPPEvaluation[fClauses.length];

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 QNX Software Systems and others.
+ * Copyright (c) 2005, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -145,26 +145,26 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 		ILinkage.C_LINKAGE_ID, ILinkage.CPP_LINKAGE_ID, ILinkage.FORTRAN_LINKAGE_ID
 	};
 
-	private final ArrayDeque<ICProject> fProjectQueue= new ArrayDeque<ICProject>();
+	private final ArrayDeque<ICProject> fProjectQueue= new ArrayDeque<>();
 	private final PDOMSetupJob fSetupJob;
 	/**
 	 * Protects fIndexerJob, fCurrentTask and fTaskQueue.
 	 */
-	private final ArrayDeque<IPDOMIndexerTask> fTaskQueue = new ArrayDeque<IPDOMIndexerTask>();
+	private final ArrayDeque<IPDOMIndexerTask> fTaskQueue = new ArrayDeque<>();
     private final PDOMIndexerJob fIndexerJob;
 	private IPDOMIndexerTask fCurrentTask;
 	private int fSourceCount, fHeaderCount, fTickCount;
 
-	private final ArrayDeque<Runnable> fChangeEvents= new ArrayDeque<Runnable>();
+	private final ArrayDeque<Runnable> fChangeEvents= new ArrayDeque<>();
 	private final Job fNotificationJob;
 
-	private final AtomicMultiSet<IIndexFileLocation> fFilesIndexedUnconditionlly= new AtomicMultiSet<IIndexFileLocation>();
+	private final AtomicMultiSet<IIndexFileLocation> fFilesIndexedUnconditionlly= new AtomicMultiSet<>();
 
     /**
      * Stores mapping from pdom to project, used to serialize creation of new pdoms.
      */
-    private Map<IProject, IPDOM> fProjectToPDOM= new HashMap<IProject, IPDOM>();
-    private Map<File, ICProject> fFileToProject= new HashMap<File, ICProject>();
+    private Map<IProject, IPDOM> fProjectToPDOM= new HashMap<>();
+    private Map<File, ICProject> fFileToProject= new HashMap<>();
 	private ListenerList fChangeListeners= new ListenerList();
 	private ListenerList fStateListeners= new ListenerList();
 
@@ -185,12 +185,12 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 	 * Serializes creation of new indexer, when acquiring the lock you are
 	 * not allowed to hold a lock on fPDOMs.
 	 */
-	private Map<ICProject, IndexUpdatePolicy> fUpdatePolicies= new HashMap<ICProject, IndexUpdatePolicy>();
-	private Set<String> fClosingProjects= new HashSet<String>();
+	private Map<ICProject, IndexUpdatePolicy> fUpdatePolicies= new HashMap<>();
+	private Set<String> fClosingProjects= new HashSet<>();
 
-	private Map<IProject, PCL> fPrefListeners= new HashMap<IProject, PCL>();
-	private List<IndexerSetupParticipant> fSetupParticipants= new ArrayList<IndexerSetupParticipant>();
-	private Set<ICProject> fPostponedProjects= new HashSet<ICProject>();
+	private Map<IProject, PCL> fPrefListeners= new HashMap<>();
+	private List<IndexerSetupParticipant> fSetupParticipants= new ArrayList<>();
+	private Set<ICProject> fPostponedProjects= new HashSet<>();
 	private int fLastNotifiedState= IndexerStateEvent.STATE_IDLE;
 	private boolean fInShutDown;
 
@@ -280,7 +280,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 		if (jobToCancel != null) {
 			assert !Thread.holdsLock(fTaskQueue);
-			jobToCancel.cancelJobs(null, false);
+			jobToCancel.cancelJobs(null, true);
 		}
 		Job.getJobManager().removeJobChangeListener(fJobChangeListener);
 	}
@@ -344,7 +344,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 	 * case a pdom ready to use is returned.
 	 * @throws CoreException
 	 */
-	private WritablePDOM getOrCreatePDOM(ICProject project) throws CoreException {
+	private WritablePDOM getOrCreatePDOM(ICProject project, IProgressMonitor monitor) throws CoreException {
 		synchronized (fProjectToPDOM) {
 			IProject rproject = project.getProject();
 			IPDOM pdomProxy= fProjectToPDOM.get(rproject);
@@ -384,7 +384,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 			WritablePDOM pdom= new WritablePDOM(dbFile, new PDOMProjectIndexLocationConverter(rproject), getLinkageFactories());
 			if (!pdom.isSupportedVersion() || fromScratch) {
 				try {
-					pdom.acquireWriteLock();
+					pdom.acquireWriteLock(monitor);
 				} catch (InterruptedException e) {
 					throw new CoreException(CCorePlugin.createStatus(Messages.PDOMManager_creationOfIndexInterrupted, e));
 				}
@@ -569,7 +569,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 					return;
 				}
 
-				WritablePDOM pdom= getOrCreatePDOM(project);
+				WritablePDOM pdom= getOrCreatePDOM(project, pm);
 				Properties props= IndexerPreferences.getProperties(prj);
 				IPDOMIndexer indexer= newIndexer(getIndexerId(project), props);
 				IndexUpdatePolicy policy= createPolicy(project);
@@ -730,7 +730,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
     @Override
 	public boolean isIndexerIdle() {
     	synchronized (fTaskQueue) {
-        	return Job.getJobManager().find(this).length == 0;
+        	return fTaskQueue.isEmpty() && Job.getJobManager().find(this).length == 0;
 		}
     }
 
@@ -862,7 +862,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
     			@Override
 				protected IStatus run(IProgressMonitor monitor) {
         			try {
-        				finalpdom.acquireWriteLock();
+        				finalpdom.acquireWriteLock(monitor);
         				try {
         					finalpdom.close();
         					if (delete) {
@@ -1210,7 +1210,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 	@Override
 	public IIndex getIndex(ICProject project) throws CoreException {
-		return fIndexFactory.getIndex(new ICProject[] {project}, 0);
+		return fIndexFactory.getIndex(new ICProject[] { project }, 0);
 	}
 
 	@Override
@@ -1220,7 +1220,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 	@Override
 	public IIndex getIndex(ICProject project, int options) throws CoreException {
-		return fIndexFactory.getIndex(new ICProject[] {project}, options);
+		return fIndexFactory.getIndex(new ICProject[] { project }, options);
 	}
 
 	@Override
@@ -1235,21 +1235,22 @@ public class PDOMManager implements IWritableIndexManager, IListener {
      * Note. This will acquire a write lock while the pdom is exported
 	 * @param targetLocation a location that does not currently exist
 	 * @param newConverter
+	 * @param monitor 
 	 * @throws CoreException
 	 * @throws IllegalArgumentException if a file exists at targetLocation
 	 */
-	public void exportProjectPDOM(ICProject cproject, File targetLocation, final IIndexLocationConverter newConverter) throws CoreException {
+	public void exportProjectPDOM(ICProject cproject, File targetLocation,
+			final IIndexLocationConverter newConverter, IProgressMonitor monitor) throws CoreException {
 		if (targetLocation.exists()) {
 			boolean deleted= targetLocation.delete();
 			if (!deleted) {
 				throw new IllegalArgumentException(
-						MessageFormat.format(Messages.PDOMManager_ExistingFileCollides,
-								targetLocation ));
+						MessageFormat.format(Messages.PDOMManager_ExistingFileCollides, targetLocation));
 			}
 		}
 		try {
 			// Copy it.
-			PDOM pdom= getOrCreatePDOM(cproject);
+			PDOM pdom= getOrCreatePDOM(cproject, monitor);
 			pdom.acquireReadLock();
 			String oldID= null;
 			try {
@@ -1264,7 +1265,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 			// Overwrite internal location representations.
 			final WritablePDOM newPDOM = new WritablePDOM(targetLocation, pdom.getLocationConverter(), getLinkageFactories());
-			newPDOM.acquireWriteLock();
+			newPDOM.acquireWriteLock(null);
 			try {
 				newPDOM.rewriteLocations(newConverter);
 
@@ -1284,11 +1285,12 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 	/**
 	 * Resets the pdom for the project with the provided stream.
+	 * @param monitor 
 	 * @throws CoreException
 	 * @throws OperationCanceledException in case the thread was interrupted
 	 * @since 4.0
 	 */
-	public void importProjectPDOM(ICProject project, InputStream stream) throws CoreException, IOException {
+	public void importProjectPDOM(ICProject project, InputStream stream, IProgressMonitor monitor) throws CoreException, IOException {
 		// make a copy of the database
 		String newName= createNewDatabaseName(project);
 		File newFile= fileFromDatabaseName(newName);
@@ -1319,7 +1321,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 		WritablePDOM pdom= (WritablePDOM) getPDOM(project);
 		try {
-			pdom.acquireWriteLock();
+			pdom.acquireWriteLock(monitor);
 		} catch (InterruptedException e) {
 			throw new OperationCanceledException();
 		}
@@ -1380,17 +1382,17 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 	 * set of folders and files specifying the selection.
 	 */
 	private Map<ICProject, List<ICElement>> splitSelection(ICElement[] tuSelection) {
-		HashMap<ICProject, List<ICElement>> result= new HashMap<ICProject, List<ICElement>>();
+		HashMap<ICProject, List<ICElement>> result= new HashMap<>();
 		allElements: for (int i = 0; i < tuSelection.length; i++) {
 			ICElement element = tuSelection[i];
 			if (element instanceof ICProject || element instanceof ICContainer || element instanceof ITranslationUnit) {
 				ICProject project= element.getCProject();
 				List<ICElement> set= result.get(project);
 				if (set == null) {
-					set= new ArrayList<ICElement>();
+					set= new ArrayList<>();
 					result.put(project, set);
 				}
-				for (int j= 0; j<set.size(); j++) {
+				for (int j= 0; j < set.size(); j++) {
 					ICElement other= set.get(j);
 					if (contains(other, element)) {
 						continue allElements;
@@ -1555,7 +1557,7 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 		if (!"true".equals(IndexerPreferences.get(cproject.getProject(), IndexerPreferences.KEY_INDEX_ALL_FILES, null)))  //$NON-NLS-1$
 			return null; // No check is performed in this case
 
-		Set<ITranslationUnit> sources= new HashSet<ITranslationUnit>();
+		Set<ITranslationUnit> sources= new HashSet<>();
 		cproject.accept(new TranslationUnitCollector(sources, null, new NullProgressMonitor()));
 		IStatus syncStatus = null;
 
@@ -1648,5 +1650,9 @@ public class PDOMManager implements IWritableIndexManager, IListener {
 
 	public boolean isFileIndexedUnconditionally(IIndexFileLocation ifl) {
 		return fFilesIndexedUnconditionlly.contains(ifl);
+	}
+
+	public int getIndexingPriority(IIndexFileLocation ifl) {
+		return fFilesIndexedUnconditionlly.getCount(ifl);
 	}
 }

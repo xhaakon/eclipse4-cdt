@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2013 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,16 @@
  *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ILinkage;
@@ -43,6 +53,7 @@ import org.eclipse.cdt.core.index.IIndexFileLocation;
 import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexSymbols;
 import org.eclipse.cdt.core.index.IPDOMASTProcessor;
+import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.core.parser.FileContent;
 import org.eclipse.cdt.core.parser.IProblem;
 import org.eclipse.cdt.core.parser.ISignificantMacros;
@@ -63,19 +74,11 @@ import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.osgi.util.NLS;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 /**
  * Abstract class to write information from AST.
  * @since 4.0
  */
-abstract public class PDOMWriter implements IPDOMASTProcessor {
+public abstract class PDOMWriter implements IPDOMASTProcessor {
 	private static final boolean REPORT_UNKNOWN_BUILTINS = false;
 
 	public static class FileInAST {
@@ -133,26 +136,28 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 	public static int SKIP_NO_REFERENCES= 0;
 
 	private static class Symbols {
-		final ArrayList<IASTName[]> fNames= new ArrayList<IASTName[]>();
-		final ArrayList<IASTPreprocessorStatement> fMacros= new ArrayList<IASTPreprocessorStatement>();
-		final ArrayList<IASTPreprocessorIncludeStatement> fIncludes= new ArrayList<IASTPreprocessorIncludeStatement>();
+		final ArrayList<IASTName[]> fNames= new ArrayList<>();
+		final ArrayList<IASTPreprocessorStatement> fMacros= new ArrayList<>();
+		final ArrayList<IASTPreprocessorIncludeStatement> fIncludes= new ArrayList<>();
 	}
 
 	protected static class Data implements IIndexSymbols {
 		final IASTTranslationUnit fAST;
 		final FileInAST[] fSelectedFiles;
 		final IWritableIndex fIndex;
-		final Map<IASTPreprocessorIncludeStatement, Symbols> fSymbolMap = new HashMap<IASTPreprocessorIncludeStatement, Symbols>();
-		final Set<IASTPreprocessorIncludeStatement> fContextIncludes = new HashSet<IASTPreprocessorIncludeStatement>();
-		final List<IStatus> fStati= new ArrayList<IStatus>();
+		final Map<IASTPreprocessorIncludeStatement, Symbols> fSymbolMap = new HashMap<>();
+		final Set<IASTPreprocessorIncludeStatement> fContextIncludes = new HashSet<>();
+		final List<IStatus> fStatuses = new ArrayList<>();
+		Map<String, String> fReplacementHeaders;  // Replacement headers keyed by file paths. 
 
 		public Data(IASTTranslationUnit ast, FileInAST[] selectedFiles, IWritableIndex index) {
 			fAST= ast;
 			fSelectedFiles= selectedFiles;
 			fIndex= index;
 
-			for(FileInAST file : selectedFiles)
+			for (FileInAST file : selectedFiles) {
 				fSymbolMap.put(file.includeStatement, new Symbols());
+			}
 		}
 
 		@Override
@@ -173,7 +178,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 		public void add(IASTPreprocessorIncludeStatement owner, IASTName name, IASTName caller) {
 			Symbols lists= fSymbolMap.get(owner);
 			if (lists != null)
-				lists.fNames.add(new IASTName[]{ name, caller });
+				lists.fNames.add(new IASTName[] { name, caller });
 		}
 
 		@Override
@@ -191,7 +196,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 		}
 	}
 
-	private boolean fShowProblems;
+	protected boolean fShowProblems;
 	protected boolean fShowInclusionProblems;
 	private boolean fShowScannerProblems;
 	private boolean fShowSyntaxProblems;
@@ -251,8 +256,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 	 * the index after your last write operation.
 	 */
 	final protected void addSymbols(Data data, int storageLinkageID, FileContext ctx,
-			ITodoTaskUpdater taskUpdater, IProgressMonitor pm)
-			throws InterruptedException, CoreException {
+			IProgressMonitor pm) throws InterruptedException, CoreException {
 		if (data.isEmpty() || storageLinkageID == ILinkage.NO_LINKAGE_ID)
 			return;
 
@@ -268,16 +272,8 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 		// Index update.
 		storeSymbolsInIndex(data, storageLinkageID, ctx, pm);
 
-		// Tasks update.
-		if (taskUpdater != null) {
-			Set<IIndexFileLocation> locations= new HashSet<IIndexFileLocation>();
-			for (FileInAST file : data.fSelectedFiles) {
-				locations.add(file.fileContentKey.getLocation());
-			}
-			taskUpdater.updateTasks(data.fAST.getComments(), locations.toArray(new IIndexFileLocation[locations.size()]));
-		}
-		if (!data.fStati.isEmpty()) {
-			List<IStatus> stati = data.fStati;
+		if (!data.fStatuses.isEmpty()) {
+			List<IStatus> statuses = data.fStatuses;
 			String path= null;
 			if (data.fSelectedFiles.length > 0) {
 				path= data.fSelectedFiles[data.fSelectedFiles.length - 1].fileContentKey.getLocation().getURI().getPath();
@@ -285,8 +281,8 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 				path= data.fAST.getFilePath().toString();
 			}
 			String msg= NLS.bind(Messages.PDOMWriter_errorWhileParsing, path);
-			if (stati.size() == 1) {
-				IStatus status= stati.get(0);
+			if (statuses.size() == 1) {
+				IStatus status= statuses.get(0);
 				if (msg.equals(status.getMessage())) {
 					throw new CoreException(status);
 				}
@@ -294,7 +290,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 						msg + ':' + status.getMessage(), status.getException()));
 			}
 			throw new CoreException(new MultiStatus(CCorePlugin.PLUGIN_ID, 0,
-					stati.toArray(new IStatus[stati.size()]), msg, null));
+					statuses.toArray(new IStatus[statuses.size()]), msg, null));
 		}
 	}
 
@@ -311,7 +307,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 					trace("Indexer: adding " + fileInAST.fileContentKey.getLocation().getURI());  //$NON-NLS-1$
 				}
 				Throwable th= null;
-				YieldableIndexLock lock = new YieldableIndexLock(data.fIndex, false);
+				YieldableIndexLock lock = new YieldableIndexLock(data.fIndex, false, pm);
 				lock.acquire();
 				try {
 					final boolean isReplacement= ctx != null && fileInAST.includeStatement == null;
@@ -350,7 +346,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 					lock.release();
 				}
 				if (th != null) {
-					data.fStati.add(createStatus(NLS.bind(Messages.PDOMWriter_errorWhileParsing,
+					data.fStatuses.add(createStatus(NLS.bind(Messages.PDOMWriter_errorWhileParsing,
 							fileInAST.fileContentKey.getLocation().getURI().getPath()), th));
 				}
 				fStatistics.fAddToIndexTime += lock.getCumulativeLockTime();
@@ -412,7 +408,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 					}
 					if (th != null) {
 						if (!reported) {
-							data.fStati.add(CCorePlugin.createStatus(NLS.bind(Messages.PDOMWriter_errorResolvingName,
+							data.fStatuses.add(CCorePlugin.createStatus(NLS.bind(Messages.PDOMWriter_errorResolvingName,
 									name.toString(), file.fileContentKey.getLocation().getURI().getPath()), th));
 						}
 						reported= true;
@@ -580,6 +576,13 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 			boolean pragmaOnce= owner != null ? owner.hasPragmaOnceSemantics() : data.fAST.hasPragmaOnceSemantics();
 			file.setPragmaOnceSemantics(pragmaOnce);
 
+			if (data.fReplacementHeaders != null) {
+				String headerKey = IndexLocationFactory.getAbsolutePath(location).toOSString();
+				String replacementHeader = data.fReplacementHeaders.get(headerKey);
+				if (replacementHeader != null)
+					file.setReplacementHeader(replacementHeader);
+			}
+
 			Symbols lists= data.fSymbolMap.get(owner);
 			if (lists != null) {
 				IASTPreprocessorStatement[] macros= lists.fMacros.toArray(new IASTPreprocessorStatement[lists.fMacros.size()]);
@@ -591,7 +594,7 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 					}
 				}
 
-				List<IncludeInformation> includeInfos= new ArrayList<IncludeInformation>();
+				List<IncludeInformation> includeInfos= new ArrayList<>();
 				for (int i= 0; i < lists.fIncludes.size(); i++) {
 					final IASTPreprocessorIncludeStatement stmt = lists.fIncludes.get(i);
 					if (!stmt.isResolved()) {
@@ -661,6 +664,14 @@ abstract public class PDOMWriter implements IPDOMASTProcessor {
 
 	private void reportProblem(IASTProblem problem) {
 		String msg= "Indexer: " + problem.getMessageWithLocation(); //$NON-NLS-1$
+		trace(msg);
+	}
+	
+	protected void reportException(Throwable th) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		th.printStackTrace(pw);
+		String msg= "Indexer: exception: " + sw.toString();  //$NON-NLS-1$
 		trace(msg);
 	}
 

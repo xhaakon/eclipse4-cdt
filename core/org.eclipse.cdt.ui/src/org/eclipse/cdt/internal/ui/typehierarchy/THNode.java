@@ -14,12 +14,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import org.eclipse.core.runtime.IAdaptable;
 
 import org.eclipse.cdt.core.model.ICElement;
-
-import org.eclipse.cdt.internal.ui.util.CoreUtility;
 
 public class THNode implements IAdaptable {
 	private THNode fParent;
@@ -31,30 +30,19 @@ public class THNode implements IAdaptable {
     private boolean fIsImplementor;
 
     /**
-     * Creates a new node for the include browser
+     * Creates a new node for the type hierarchy browser.
      */
     public THNode(THNode parent, ICElement decl) {
         fParent= parent;
         fElement= decl;
-        fHashCode= computeHashCode();
+        fHashCode= Objects.hash(fParent, fElement);
     }
-    
-	private int computeHashCode() {
-        int hashCode= 0;
-        if (fParent != null) {
-            hashCode= fParent.hashCode() * 31;
-        }
-        if (fElement != null) {
-        	hashCode+= fElement.hashCode();
-        }
-        return hashCode;
-    }   
 
-    @Override
+	@Override
 	public int hashCode() {
         return fHashCode;
     }
-    
+
     @Override
 	public boolean equals(Object o) {
 		if (!(o instanceof THNode)) {
@@ -66,11 +54,11 @@ public class THNode implements IAdaptable {
 			return false;
 		}
 
-		return CoreUtility.safeEquals(fElement, rhs.fElement);
+		return Objects.equals(fElement, rhs.fElement);
     }
-    
+
 	/**
-     * Returns the parent node or <code>null</code> for the root node.
+     * Returns the parent node or {@code null} for the root node.
      */
     public THNode getParent() {
         return fParent;
@@ -99,7 +87,7 @@ public class THNode implements IAdaptable {
 
 	public void addChild(THNode childNode) {
 		if (fChildren.isEmpty()) {
-			fChildren= new ArrayList<THNode>();
+			fChildren= new ArrayList<>();
 		}			
 		fChildren.add(childNode);
 	}
@@ -120,20 +108,20 @@ public class THNode implements IAdaptable {
 		return fIsImplementor;
 	}
 
-	public void removeFilteredLeafs() {
+	public void removeFilteredLeaves() {
 		for (Iterator<THNode> iterator = fChildren.iterator(); iterator.hasNext();) {
 			THNode child = iterator.next();
-			child.removeFilteredLeafs();
+			child.removeFilteredLeaves();
 			if (child.isFiltered() && !child.hasChildren()) {
 				iterator.remove();
 			}
 		}
 	}
 
-	public void removeNonImplementorLeafs() {
+	public void removeNonImplementorLeaves() {
 		for (Iterator<THNode> iterator = fChildren.iterator(); iterator.hasNext();) {
 			THNode child = iterator.next();
-			child.removeNonImplementorLeafs();
+			child.removeNonImplementorLeaves();
 			if (!child.isImplementor() && !child.hasChildren()) {
 				iterator.remove();
 			}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,8 @@
  * 
  * Contributors:
  *     Ted R Williams (Wind River Systems, Inc.) - initial implementation
+ *     Alvaro Sanchez-Leon (Ericsson AB) - [Memory] Support 16 bit addressable size (Bug 426730)
+ *     Ling Wang (Silicon Laboratories) - Honor start address (Bug 414519)
  *******************************************************************************/
 
 package org.eclipse.cdt.debug.ui.memory.traditional;
@@ -175,12 +177,25 @@ public class Rendering extends Composite implements IDebugEventSetListener
         // initialize the viewport start
         if(fParent.getMemoryBlock() != null)
         {
+        	// This is base address from user.
+        	// Honor it if the block has no limits or the base is within the block limits.
+        	// Fix Bug 414519.  
+        	BigInteger base = fParent.getBigBaseAddress();
+        	
             fViewportAddress = fParent.getMemoryBlockStartAddress();
             
              // this will be null if memory may be retrieved at any address less than
              // this memory block's base.  if so use the base address.
              if (fViewportAddress == null)
-               	 fViewportAddress = fParent.getBigBaseAddress();
+               	 fViewportAddress = base;
+             else {
+            	 BigInteger blockEndAddr = fParent.getMemoryBlockEndAddress();
+            	 if (base.compareTo(fViewportAddress) > 0) {
+            		 if (blockEndAddr == null || base.compareTo(blockEndAddr) < 0)
+            			 fViewportAddress = base;
+            	 }
+             }
+
              fBaseAddress = fViewportAddress;
         }
         
@@ -917,8 +932,8 @@ public class Rendering extends Composite implements IDebugEventSetListener
             {
                 IMemoryBlockExtension memoryBlock = getMemoryBlock();
 
-                BigInteger lengthInBytes = endAddress.subtract(startAddress);
-                BigInteger addressableSize = BigInteger.valueOf(getAddressableSize());
+                final BigInteger addressableSize = BigInteger.valueOf(getAddressableSize());
+                BigInteger lengthInBytes = endAddress.subtract(startAddress).multiply(addressableSize);
                 
                 long units = lengthInBytes.divide(addressableSize).add(
                 		lengthInBytes.mod(addressableSize).compareTo(BigInteger.ZERO) > 0
@@ -984,15 +999,15 @@ public class Rendering extends Composite implements IDebugEventSetListener
 	                                    BigInteger.valueOf(1));
 	
 	                            BigInteger overlapLength = minEnd
-	                                .subtract(maxStart);
+	                                .subtract(maxStart).multiply(addressableSize);
 	                            if(overlapLength.compareTo(BigInteger.valueOf(0)) > 0)
 	                            {
 	                                // there is overlap
 	
-	                                int offsetIntoOld = maxStart.subtract(
-	                                    fHistoryCache[historyIndex].start).intValue();
+	                                int offsetIntoOld = (maxStart.subtract(
+	                                    fHistoryCache[historyIndex].start).multiply(addressableSize)).intValue();
 	                                int offsetIntoNew = maxStart.subtract(
-	                                    startAddress).intValue();
+	                                    startAddress).multiply(addressableSize).intValue();
 	
 	                                for(int i = overlapLength.intValue(); i >= 0; i--)
 	                                {
@@ -1035,6 +1050,10 @@ public class Rendering extends Composite implements IDebugEventSetListener
                 Display.getDefault().getThread()) : TraditionalRenderingMessages
                 .getString("TraditionalRendering.CALLED_ON_NON_DISPATCH_THREAD"); //$NON-NLS-1$
 
+            //calculate the number of units needed for the number of requested bytes
+            int rem = (bytesRequested % getAddressableSize()) > 0 ? 1 : 0;
+            int units = bytesRequested / getAddressableSize() + rem;
+            
             if(containsEditedCell(address)) // cell size cannot be switched during an edit
                 return getEditedMemory(address);
 
@@ -1042,7 +1061,7 @@ public class Rendering extends Composite implements IDebugEventSetListener
             if(fCache != null && fCache.start != null)
             {
             	// see if all of the data requested is in the cache
-            	BigInteger dataEnd = address.add(BigInteger.valueOf(bytesRequested));
+            	BigInteger dataEnd = address.add(BigInteger.valueOf(units));
 
                 if(fCache.start.compareTo(address) <= 0
                 	&& fCache.end.compareTo(dataEnd) >= 0
@@ -1052,7 +1071,7 @@ public class Rendering extends Composite implements IDebugEventSetListener
 
             if(contains)
             {
-                int offset = address.subtract(fCache.start).intValue();
+                int offset = address.subtract(fCache.start).multiply(BigInteger.valueOf(getAddressableSize())).intValue();
                 TraditionalMemoryByte bytes[] = new TraditionalMemoryByte[bytesRequested];
                 for(int i = 0; i < bytes.length; i++)
                 {

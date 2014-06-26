@@ -368,6 +368,17 @@ public class AST2TemplateTests extends AST2TestBase {
 
 		assertInstances(col, T1, 6);
 	}
+	
+	//	template<typename _A_>
+	//	struct A : public _A_::member_t {};
+	//
+	//	struct B : public A<B>{};
+	public void testStackOverflowInBaseComputation_418996() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPClassType B = helper.assertNonProblem("A<B>", 4);
+		// Check that this line does not cause a StackOverflowError.
+		ClassTypeHelper.getBases(B, null);
+	}
 
 	// template < class T > class A {
 	//    void f();
@@ -3216,6 +3227,20 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testChainInitializerLookupThroughDeferredClassBase() throws Exception {
 		BindingAssertionHelper ba= new BindingAssertionHelper(getAboveComment(), CPP);
 		ba.assertNonProblem("A(other", 1);
+	}
+
+	//	template<class T>
+	//	struct A {};
+	//
+	//	template <typename U>
+	//	A<int> waldo(U p);
+	//
+	//	void test() {
+	//	  typedef int INT;
+	//	  A<INT> x = waldo([](int data) { return false; });
+	//	}
+	public void testLambda_430428() throws Exception {
+		parseAndCheckBindings();
 	}
 
 	//	class A {};
@@ -6339,7 +6364,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	};
 	//
 	//	typedef A<C> type;
-	public void testSFINAE_a() throws Exception {
+	public void testSfinae_a() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -6371,7 +6396,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	  A<double>::get();
 	//	  A<int>::get();
 	//	}
-	public void testSFINAE_b() throws Exception {
+	public void testSfinae_b() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -7304,7 +7329,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	int main() {
 	//	    foo(S());
 	//	}
-	public void testSFINAEInDefaultArgument() throws Exception {
+	public void testSfinaeInDefaultArgument() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -7325,7 +7350,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	};
 	//
 	//	const bool B = has_type<int>::value;
-	public void testSFINAEInNestedTypeInTemplateArgument_402257() throws Exception {
+	public void testSfinaeInNestedTypeInTemplateArgument_402257() throws Exception {
 		BindingAssertionHelper helper = new BindingAssertionHelper(getAboveComment(), true);
 		ICPPVariable B = helper.assertNonProblem("B");
 		Long val = B.getInitialValue().numericalValue();
@@ -7354,8 +7379,151 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	    S waldo;
 	//	    A() : waldo(B{}) {}
 	//	};
-	public void testSFINAEInTemplatedConversionOperator_409056() throws Exception {
+	public void testSfinaeInTemplatedConversionOperator_409056() throws Exception {
 		parseAndCheckImplicitNameBindings();
+	}
+	
+	//	template<typename T>
+	//	struct A {
+	//	  static constexpr bool value = false;
+	//	};
+	//
+	//	template<bool, typename T = void>
+	//	struct enable_if {};
+	//
+	//	template<typename T>
+	//	struct enable_if<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <class U>
+	//	void waldo();
+	//
+	//	template <class U>
+	//	typename enable_if<A<U>::value>::type waldo();
+	//
+	//	auto x = waldo<int>;
+	public void testSfinaeWhenResolvingAddressOfFunction_429928() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename T>
+	//	struct A {};
+	//
+	//	template<bool, typename T = void>
+	//	struct enable_if {};
+	//
+	//	template<typename T>
+	//	struct enable_if<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <class U>
+	//	void waldo();
+	//
+	//	template <class U>
+	//	typename enable_if<A<U>::value>::type waldo();
+	//
+	//	auto x = waldo<int>;
+	public void testSfinaeInNonTypeTemplateParameter_429928() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename T, typename = decltype(T(0))>
+	//	static void test(int);
+	//
+	//	template<typename>
+	//	static int test(...);
+	//
+	//	struct A {};
+	//
+	//	int waldo(int p);
+	//
+	//	int x = waldo(test<A>(0));
+	public void testSfinaeInConstructorCall_430230() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename T, typename = decltype(new T(0))>
+	//	static void test(int);
+	//
+	//	template<typename>
+	//	static int test(...);
+	//
+	//	struct A {};
+	//
+	//	int waldo(int p);
+	//
+	//	int x = waldo(test<A>(0));
+	public void testSfinaeInNewExpression_430230a() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<bool __v>
+	//	struct bool_constant {
+	//	  static constexpr bool value = __v;
+	//	};
+	//
+	//	typedef bool_constant<true> true_type;
+	//	typedef bool_constant<false> false_type;
+	//
+	//	struct B {
+	//	  template<typename T, typename Arg, typename = decltype(::new T(Arg()))>
+	//	  static true_type test(int);
+	//
+	//	  template<typename, typename>
+	//	  static false_type test(...);
+	//	};
+	//
+	//	template<typename T, typename Arg>
+	//	struct C : public B {
+	//	  typedef decltype(test<T, Arg>(0)) type;
+	//	};
+	//
+	//	template<typename T, typename Arg>
+	//	struct D : public C<T, Arg>::type {};
+	//
+	//	template<typename T, typename Arg>
+	//	struct E : public bool_constant<D<T, Arg>::value> {};
+	//
+	//	template<bool, typename T = void>
+	//	struct enable_if {};
+	//
+	//	template<typename T>
+	//	struct enable_if<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	struct A {};
+	//
+	//	template <class F>
+	//	typename enable_if<true>::type
+	//	waldo();
+	//
+	//	template <class F>
+	//	typename enable_if<E<F, int>::value>::type
+	//	waldo();
+	//
+	//	auto x = waldo<A>;
+	public void testSfinaeInNewExpression_430230b() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename T, typename = decltype(new T)>
+	//	static void test(int);
+	//
+	//	template<typename>
+	//	static int test(...);
+	//
+	//	struct A {
+	//	  A() = delete; 
+	//	};
+	//
+	//	int waldo(int p);
+	//
+	//	int x = waldo(test<A>(0));
+	public void testSfinaeInNewExpressionWithDeletedConstructor_430230() throws Exception {
+		parseAndCheckBindings();
 	}
 
 	//	template <typename>
@@ -8173,6 +8341,21 @@ public class AST2TemplateTests extends AST2TestBase {
 		assertSameType((ITypedef) helper.assertNonProblem("U<S>::type"), CommonTypes.int_);
 	}
 
+	//	template <typename T>
+	//	struct A {
+	//	  typedef T type;
+	//	};
+	//
+	//	struct B {
+	//	  static const A<int> c;
+	//	};
+	//
+	//	decltype(B::c)::type x;
+	public void testDependentDecltypeInNameQualifier_429837() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		assertSameType((ITypedef) helper.assertNonProblem("decltype(B::c)::type"), CommonTypes.int_);
+	}
+
 	//	namespace N {
 	//	    template <typename>
 	//	    struct C;
@@ -8281,5 +8464,28 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper helper = getAssertionHelper();
 		ICPPVariable waldo = helper.assertNonProblem("waldo");
 		assertEquals(2, waldo.getInitialValue().numericalValue().longValue());
+	}
+	
+	//	struct Test {
+	//        static constexpr unsigned calc_sig(const char *s, unsigned n) {
+	//                return (n == 0 || *s == '\0' ? 0 :
+	//                                n > 1 && *s == '%' && s[1] == '%' ?
+	//                                                calc_sig(s + 2, n - 2) :
+	//                                                calc_sig(s + 1, n - 1));
+	//        }
+	//
+	//        template<unsigned sig, class ... T>
+	//        static void validate_sig();
+	//
+	//        template<class ... T>
+	//        static inline constexpr bool validate(const char *s, unsigned n) {
+	//                constexpr auto sig = calc_sig(s, n);
+	//                validate_sig<sig, T...>();
+	//                return true;
+	//        }
+	//
+	//	};
+	public void testConstexprFunctionCallWithNonConstexprArguments_429891() throws Exception {
+		parseAndCheckBindings();
 	}
 }
