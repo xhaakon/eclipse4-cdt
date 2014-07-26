@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,14 +8,12 @@
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
  *     Anton Leherbauer (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.StyleRange;
 
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.text.BadLocationException;
@@ -25,13 +23,14 @@ import org.eclipse.jface.text.TextPresentation;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.eclipse.jface.text.contentassist.IContextInformationPresenter;
 import org.eclipse.jface.text.contentassist.IContextInformationValidator;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyleRange;
 
 /**
- * This class provides the function parameter parsing for the C/C++ Editor hover
- * It is based heavily on the Java class JavaParameterListValidator
+ * This class provides the function parameter parsing for the C/C++ Editor hover.
+ * It is based heavily on the Java class JavaParameterListValidator.
  * 
  * @author thomasf
- *
  */
 public class CParameterListValidator implements IContextInformationValidator, IContextInformationPresenter {
 	private int fPosition;
@@ -49,7 +48,6 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 	 */
 	@Override
 	public void install(IContextInformation info, ITextViewer viewer, int documentPosition) {
-		
 		fPosition= documentPosition;
 		fViewer= viewer;
 		fInformation= info;
@@ -75,7 +73,7 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 			char curr= d.getChar(pos);
 			pos++;
 			if (curr == '\\') {
-				// ignore escaped characters
+				// Ignore escaped characters.
 				pos++;
 			} else if (curr == ch) {
 				return pos;
@@ -84,64 +82,75 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 		return end;
 	}
 	
-	private int getCharCount(IDocument document, int start, int end, 
-							 char increment, char decrement, boolean considerNesting) throws BadLocationException {
-		
+	private int getCharCount(IDocument document, int start, int end, char increment, char decrement,
+			boolean considerNesting) throws BadLocationException {
 		Assert.isTrue((increment != 0 || decrement != 0) && increment != decrement);
 		
-		int nestingLevel = 0;
+		int parenNestingLevel = 0;
+		int braceNestingLevel = 0;
 		int charCount = 0;
 		while (start < end) {
 			char curr = document.getChar(start++);
 			switch (curr) {
-				case '/':
-					if (start < end) {
-						char next= document.getChar(start);
-						if (next == '*') {
-							// a comment starts, advance to the comment end
-							start= getCommentEnd(document, start + 1, end);
-						} else if (next == '/') {
-							// '//'-comment: nothing to do anymore on this line 
-							start= end;
-						}
+			case '/':
+				if (start < end) {
+					char next= document.getChar(start);
+					if (next == '*') {
+						// A comment starts, advance to the comment end.
+						start= getCommentEnd(document, start + 1, end);
+					} else if (next == '/') {
+						// '//'-comment: nothing to do anymore on this line 
+						start= end;
 					}
-					break;
-				case '*':
-					if (start < end) {
-						char next= document.getChar(start);
-						if (next == '/') {
-							// we have been in a comment: forget what we read before
-							charCount= 0;
-							++ start;
-						}
+				}
+				break;
+
+			case '*':
+				if (start < end) {
+					char next= document.getChar(start);
+					if (next == '/') {
+						// We have been in a comment: forget what we read before.
+						charCount= 0;
+						++ start;
 					}
-					break;
-				case '"':
-				case '\'':
-					start= getStringEnd(document, start, end, curr);
-					break;
-				default:
-					
-					if (considerNesting) {
+				}
+				break;
+
+			case '"':
+			case '\'':
+				start= getStringEnd(document, start, end, curr);
+				break;
+
+			default:
+				if (considerNesting) {
+					if ('(' == curr) {
+						++parenNestingLevel;
+					} else if (')' == curr) {
+						--parenNestingLevel;
+					}
 						
-						if ('(' == curr)
-							++ nestingLevel;
-						else if (')' == curr)
-							-- nestingLevel;
-							
-						if (nestingLevel != 0)
-							break;
+					if (parenNestingLevel != 0)
+						break;
+
+					if ('{' == curr) {
+						++braceNestingLevel;
+					} else if ('}' == curr) {
+						--braceNestingLevel;
 					}
-					
-					if (increment != 0) {
-						if (curr == increment)
-							++ charCount;
-					}
-					
-					if (decrement != 0) {
-						if (curr == decrement)
-							-- charCount;
-					}
+						
+					if (braceNestingLevel != 0)
+						break;
+				}
+				
+				if (increment != 0) {
+					if (curr == increment)
+						++charCount;
+				}
+				
+				if (decrement != 0) {
+					if (curr == decrement)
+						--charCount;
+				}
 			}
 		}
 		
@@ -153,26 +162,19 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 	 */
 	@Override
 	public boolean isContextInformationValid(int position) {		
-		
 		try {
 			if (position < fPosition)
 				return false;
 				
 			IDocument document= fViewer.getDocument();
-				
-			return (getCharCount(document, fPosition, position, '(', ')', false) >= 0);
-			
+			return getCharCount(document, fPosition, position, '(', ')', false) >= 0;
 		} catch (BadLocationException x) {
 			return false;
 		}
 	}
 	
-	/**
-	 * @see IContextInformationPresenter#updatePresentation(int, TextPresentation)
-	 */
 	@Override
 	public boolean updatePresentation(int position, TextPresentation presentation) {
-
 		int currentParameter= -1;
 		
 		try {
@@ -189,7 +191,7 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 		presentation.clear();
 		fCurrentParameter= currentParameter;
 		
-		//Don't presume what has been done to the string, rather use as is
+		// Don't presume what has been done to the string, rather use as is.
 		String s= fInformation.getInformationDisplayString();
 		
 		int[] commas= computeCommaPositions(s);
@@ -215,7 +217,7 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 	private int[] computeCommaPositions(String code) {
 		final int length= code.length();
 	    int pos= 0;
-		List<Integer> positions= new ArrayList<Integer>();
+		List<Integer> positions= new ArrayList<>();
 		positions.add(new Integer(-1));
 		while (pos < length && pos != -1) {
 			char ch= code.charAt(pos);
@@ -231,6 +233,9 @@ public class CParameterListValidator implements IContextInformationValidator, IC
 	            	break;
 	            case '[':
 	            	pos= indexOfClosingPeer(code, '[', ']', pos);
+	            	break;
+	            case '{':
+	            	pos= indexOfClosingPeer(code, '{', '}', pos);
 	            	break;
 	            default:
 	            	break;

@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>org.eclipse.cdt</groupId>
 		<artifactId>cdt-parent</artifactId>
-		<version>8.3.0-SNAPSHOT</version>
+		<version>8.4.0-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
@@ -23,7 +23,7 @@
 		<profile>
 			<id>production</id>
 			<properties>
-			    <cdt-download-dir>/home/data/httpd/download.eclipse.org/tools/cdt/builds/8.3/nightly</cdt-download-dir>
+			    <cdt-download-dir>/home/data/httpd/download.eclipse.org/tools/cdt/builds/8.4/nightly</cdt-download-dir>
 			</properties>
 			<build>
 				<plugins>

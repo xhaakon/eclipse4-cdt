@@ -186,6 +186,13 @@ public class EvalBinary extends CPPDependentEvaluation {
 	public boolean isValueDependent() {
 		return fArg1.isValueDependent() || fArg2.isValueDependent();
 	}
+	
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return fArg1.isConstantExpression(point)
+			&& fArg2.isConstantExpression(point)
+			&& isNullOrConstexprFunc(getOverload(point));
+	}
 
 	@Override
 	public ValueCategory getValueCategory(IASTNode point) {
@@ -359,9 +366,9 @@ public class EvalBinary extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
-		ICPPEvaluation arg1 = fArg1.computeForFunctionCall(parameterMap, maxdepth, point);
-		ICPPEvaluation arg2 = fArg2.computeForFunctionCall(parameterMap, maxdepth, point);
+			ConstexprEvaluationContext context) {
+		ICPPEvaluation arg1 = fArg1.computeForFunctionCall(parameterMap, context.recordStep());
+		ICPPEvaluation arg2 = fArg2.computeForFunctionCall(parameterMap, context.recordStep());
 		if (arg1 == fArg1 && arg2 == fArg2)
 			return this;
 		return new EvalBinary(fOperator, arg1, arg2, getTemplateDefinition());

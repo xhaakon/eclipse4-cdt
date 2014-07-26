@@ -40,7 +40,9 @@ import org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroExpansion;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTClassVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.ui.CUIPlugin;
@@ -75,6 +77,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			shouldVisitStatements= true;
 			shouldVisitDeclarators= true;
 			shouldVisitNamespaces= true;
+			shouldVisitVirtSpecifiers= true;
 			shouldVisitImplicitNames = visitImplicitNames;
 			shouldVisitImplicitNameAlternates = visitImplicitNames;
 		}
@@ -159,6 +162,18 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			if (visitNode(name)) {
 				return PROCESS_SKIP;
 			}
+			return PROCESS_CONTINUE;
+		}
+		
+		@Override
+		public int visit(ICPPASTVirtSpecifier virtSpecifier) {
+			visitNode(virtSpecifier);
+			return PROCESS_CONTINUE;
+		}
+		
+		@Override
+		public int visit(ICPPASTClassVirtSpecifier classVirtSpecifier) {
+			visitNode(classVirtSpecifier);
 			return PROCESS_CONTINUE;
 		}
 		

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,7 @@
  *	   Bryan Wilkinson (QNX)
  *     Markus Schorn (Wind River Systems)
  *     Nathan Ridge
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -30,6 +31,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 public class CPPBaseClause implements ICPPBase, ICPPInternalBase {
     private final ICPPASTBaseSpecifier base;
 	private IType baseClass;
+	private boolean inheritedConstructorsSource;
     
     public CPPBaseClause(ICPPASTBaseSpecifier base) {
         this.base = base;
@@ -63,41 +65,25 @@ public class CPPBaseClause implements ICPPBase, ICPPInternalBase {
 		return baseClass;
     }
     
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPBase#getVisibility()
-     */
     @Override
 	public int getVisibility() {
 		int vis = base.getVisibility();
 		
 		if (vis == 0) {
 			ICPPASTCompositeTypeSpecifier compSpec = (ICPPASTCompositeTypeSpecifier) base.getParent();
-			int key = compSpec.getKey();
-			if (key == ICPPClassType.k_class)
-				vis = ICPPBase.v_private;
-			else
-				vis = ICPPBase.v_public;
+			vis = compSpec.getKey() == ICPPClassType.k_class ? ICPPBase.v_private : ICPPBase.v_public;
 		}
         return vis;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPBase#isVirtual()
-     */
     @Override
 	public boolean isVirtual() {
         return base.isVirtual();
     }
 
 	@Override
-	public void setBaseClass(IBinding cls) {
-		if (cls instanceof IType)
-			baseClass = (IType) cls;
-	}
-
-	@Override
-	public void setBaseClass(IType cls) {
-		baseClass = cls;
+	public boolean isInheritedConstructorsSource() {
+		return inheritedConstructorsSource;
 	}
 
 	@Override
@@ -105,9 +91,6 @@ public class CPPBaseClause implements ICPPBase, ICPPInternalBase {
 		return base.getName();
 	}
 
-    /* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPBase#getClassDefinitionName()
-	 */
 	@Override
 	public IName getClassDefinitionName() {
 		IASTNode parent = base.getParent();
@@ -123,8 +106,23 @@ public class CPPBaseClause implements ICPPBase, ICPPInternalBase {
    		try {
             t = (ICPPBase) super.clone();
         } catch (CloneNotSupportedException e) {
-            //not going to happen
+            // Not going to happen.
         }
         return t;
     }
+
+	@Override
+	public void setBaseClass(IBinding cls) {
+		if (cls instanceof IType)
+			baseClass = (IType) cls;
+	}
+
+	@Override
+	public void setBaseClass(IType cls) {
+		baseClass = cls;
+	}
+
+	public void setInheritedConstructorsSource(boolean value) {
+		inheritedConstructorsSource = value;
+	}
 }

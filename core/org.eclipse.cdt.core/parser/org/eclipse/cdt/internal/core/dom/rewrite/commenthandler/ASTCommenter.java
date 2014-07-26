@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2013 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2008, 2014 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -38,54 +38,56 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
-import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 
 /**
  * This is the starting point of the entire comment handling  process. The creation of the 
- * NodeCommentMap is based on the IASTTranslationUnit. From this TranslationUnit the comments 
- * are extracted and skipped if they belong not to the same workspace. An ASTCommenterVisitor 
- * is initialized with this collection of comments. And the visit process can start. 
+ * {@link NodeCommentMap} is based on the {@link IASTTranslationUnit}. From this translation unit
+ * the comments are extracted and skipped if they belong not to the same workspace.
+ * An {@link ASTCommenterVisitor} is initialized with this collection of comments. And the visit
+ * process can start. 
  * 
- * @see org.eclipse.cdt.internal.core.dom.rewrite.commenthandler.NodeCommenter
- * @see org.eclipse.cdt.internal.core.dom.rewrite.commenthandler.NodeCommentMap
+ * @see NodeCommenter
+ * @see NodeCommentMap
  *  
  * @author Guido Zgraggen IFS 
  */
 public class ASTCommenter {
-	
+
 	private static final class PreprocessorRangeChecker extends ASTVisitor {
-		int statementOffset;
-		IASTFileLocation commentNodeLocation;
-		boolean isPreStatementComment = true;
-		
-		private PreprocessorRangeChecker(int statementOffset, IASTFileLocation commentNodeLocation) {
+		int ppStmtOffset;
+		IASTFileLocation commentLocation;
+		boolean isPrePpStmtComment = true;
+
+		private PreprocessorRangeChecker(int statementOffset, IASTFileLocation commentLocation) {
 			super(true);
-			this.statementOffset = statementOffset;
-			this.commentNodeLocation = commentNodeLocation;
+			this.ppStmtOffset = statementOffset;
+			this.commentLocation = commentLocation;
 		}
 
 		private int checkOffsets(IASTNode node) {
-			int offset = ((ASTNode) node).getOffset();
-			int status = PROCESS_CONTINUE;
-			
-			if (isCommentOnSameLine(node) 
-					|| offset > commentNodeLocation.getNodeOffset()
-					&& offset < statementOffset) {
-				isPreStatementComment = false;
-				status = PROCESS_ABORT;
-			} else if ((offset + ((ASTNode) node).getLength() < commentNodeLocation.getNodeOffset())) {
-				status = PROCESS_SKIP;
-			} else if (offset > statementOffset) {
-				status = PROCESS_ABORT;
+			IASTFileLocation nodeLocation = node.getFileLocation();
+			if (nodeLocation == null)
+				return PROCESS_SKIP;
+				
+			int nodeEndOffset = nodeLocation.getNodeOffset() + nodeLocation.getNodeLength();
+
+			boolean nodeInBetweenCommentAndPpStmt =
+					nodeEndOffset > commentLocation.getNodeOffset() && nodeEndOffset < ppStmtOffset;
+			if (isCommentOnSameLine(node) || nodeInBetweenCommentAndPpStmt) {
+				isPrePpStmtComment = false;
+				return PROCESS_ABORT;
+			} else if (nodeEndOffset < commentLocation.getNodeOffset()) {
+				return PROCESS_SKIP;
+			} else if (nodeLocation.getNodeOffset() > ppStmtOffset) {
+				return PROCESS_ABORT;
 			}
 			
-			return status;
+			return PROCESS_CONTINUE;
 		}
 
 		private boolean isCommentOnSameLine(IASTNode node) {
 			IASTFileLocation fileLocation = node.getFileLocation();
-			return fileLocation != null &&
-					commentNodeLocation.getStartingLineNumber() == fileLocation.getEndingLineNumber();
+			return fileLocation != null && commentLocation.getStartingLineNumber() == fileLocation.getEndingLineNumber();
 		}
 
 		@Override
@@ -181,8 +183,25 @@ public class ASTCommenter {
 		if (ast == null) {
 			return commentMap;
 		}
+		addCommentsToMap(ast, commentMap);
+		return commentMap;
+	}
+
+	/**
+	 * Adds all comments given in {@code ast} to the {@code commentMap}. Calling this twice has
+	 * no effect.
+	 * 
+	 * @param ast
+	 *            the AST which contains the comments to add
+	 * @param commentMap
+	 *            the comment map to which the comments are added to
+	 */
+	public static void addCommentsToMap(IASTTranslationUnit ast, NodeCommentMap commentMap) {
+		if (ast == null || commentMap.isASTCovered(ast)) {
+			return;
+		}
 		IASTComment[] commentsArray = ast.getComments();
-		List<IASTComment> comments = new ArrayList<IASTComment>(commentsArray.length);
+		List<IASTComment> comments = new ArrayList<>(commentsArray.length);
 		for (IASTComment comment : commentsArray) {
 			if (comment.isPartOfTranslationUnitFile()) {
 				comments.add(comment);
@@ -191,8 +210,8 @@ public class ASTCommenter {
 		assignPreprocessorComments(commentMap, comments, ast);
 		CommentHandler commentHandler = new CommentHandler(comments);
 		ASTCommenterVisitor commenter = new ASTCommenterVisitor(commentHandler, commentMap);
+		commentMap.setASTCovered(ast);
 		ast.accept(commenter);
-		return commentMap;
 	}
 
 	private static boolean isCommentDirectlyBeforePreprocessorStatement(IASTComment comment,
@@ -205,7 +224,7 @@ public class ASTCommenter {
 		if (preprocessorOffset > commentLocation.getNodeOffset()) {
 			PreprocessorRangeChecker visitor = new PreprocessorRangeChecker(preprocessorOffset, commentLocation);
 			tu.accept(visitor);
-			return visitor.isPreStatementComment;
+			return visitor.isPrePpStmtComment;
 		}
 		return false;
 	}
@@ -230,7 +249,7 @@ public class ASTCommenter {
 			return;
 		}
 
-		List<IASTComment> freestandingComments = new ArrayList<IASTComment>(comments.size());
+		List<IASTComment> freestandingComments = new ArrayList<>(comments.size());
 		Iterator<IASTPreprocessorStatement> statementsIter = preprocessorStatements.iterator();
 		Iterator<IASTComment> commentIter = comments.iterator();
 		IASTPreprocessorStatement curStatement = getNextNodeInTu(statementsIter);

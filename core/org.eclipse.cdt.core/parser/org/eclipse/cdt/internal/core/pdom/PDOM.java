@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2012 QNX Software Systems and others.
+ * Copyright (c) 2005, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -102,6 +102,7 @@ import org.eclipse.core.runtime.Status;
  * Database for storing semantic information for one project.
  */
 public class PDOM extends PlatformObject implements IPDOM {
+	private static final int CANCELLATION_CHECK_INTERVAL = 500;
 	private static final int BLOCKED_WRITE_LOCK_OUTPUT_INTERVAL = 30000;
 	private static final int LONG_WRITE_LOCK_REPORT_THRESHOLD = 1000;
 	private static final int LONG_READ_LOCK_WAIT_REPORT_THRESHOLD = 1000;
@@ -245,11 +246,16 @@ public class PDOM extends PlatformObject implements IPDOM {
 	 *  160.0 - Store specialized template parameters of class/function template specializations, bug 407497.
 	 *  161.0 - Allow reference to PDOMBinding from other PDOMLinkages, bug 422681.
 	 *  162.0 - PDOMNode now stores the factoryId for loading, bug 422681.
-	 *  163.0 - QtLinkage changed storage format of QObject to accommodate QGadget.
+	 *  #163.0# - QtLinkage changed storage format of QObject to accommodate QGadget. <<CDT 8.3>>
+	 *
+	 *  CDT 8.4 development (versions not supported on the 8.3.x branch)
+	 *  170.0 - Unconditionally store arguments of EvalTypeId, bug 430230.
+	 *  171.0 - Replacement headers for Organize Includes, bug 414692.
+	 *  172.0 - Store default values for function parameters, bug 432701.
 	 */
-	private static final int MIN_SUPPORTED_VERSION= version(163, 0);
-	private static final int MAX_SUPPORTED_VERSION= version(163, Short.MAX_VALUE);
-	private static final int DEFAULT_VERSION = version(163, 0);
+	private static final int MIN_SUPPORTED_VERSION= version(172, 0);
+	private static final int MAX_SUPPORTED_VERSION= version(172, Short.MAX_VALUE);
+	private static final int DEFAULT_VERSION = version(172, 0);
 
 	private static int version(int major, int minor) {
 		return (major << 16) + minor;
@@ -292,8 +298,8 @@ public class PDOM extends PlatformObject implements IPDOM {
 	}
 
 	public static class ChangeEvent {
-		public Set<IIndexFileLocation> fClearedFiles= new HashSet<IIndexFileLocation>();
-		public Set<IIndexFileLocation> fFilesWritten= new HashSet<IIndexFileLocation>();
+		public Set<IIndexFileLocation> fClearedFiles= new HashSet<>();
+		public Set<IIndexFileLocation> fFilesWritten= new HashSet<>();
 		private boolean fCleared;
 		private boolean fReloaded;
 		private boolean fNewFiles;
@@ -351,11 +357,11 @@ public class PDOM extends PlatformObject implements IPDOM {
 	private PDOMTagIndex tagIndex;
 	private BTree indexOfDefectiveFiles;
 	private BTree indexOfFiledWithUnresolvedIncludes;
-	private final Map<Integer, PDOMLinkage> fLinkageIDCache = new HashMap<Integer, PDOMLinkage>();
+	private final Map<Integer, PDOMLinkage> fLinkageIDCache = new HashMap<>();
 	private File fPath;
 	private final IIndexLocationConverter locationConverter;
 	private final Map<String, IPDOMLinkageFactory> fPDOMLinkageFactoryCache;
-	private final HashMap<Object, Object> fResultCache= new HashMap<Object, Object>();
+	private final HashMap<Object, Object> fResultCache= new HashMap<>();
 	private List<IListener> listeners;
 	protected ChangeEvent fEvent= new ChangeEvent();
 
@@ -370,7 +376,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 		loadDatabase(dbPath, cache);
 		this.locationConverter = locationConverter;
 		if (sDEBUG_LOCKS) {
-			fLockDebugging= new HashMap<Thread, DebugLockInfo>();
+			fLockDebugging= new HashMap<>();
 			System.out.println("Debugging PDOM Locks"); //$NON-NLS-1$
 		}
 	}
@@ -447,7 +453,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	@Override
 	public void addListener(IListener listener) {
 		if (listeners == null)
-			listeners = new LinkedList<IListener>();
+			listeners = new LinkedList<>();
 		listeners.add(listener);
 	}
 
@@ -557,7 +563,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	}
 
 	private IIndexFragmentFile[] getFiles(BTree index) throws CoreException {
-		final List<PDOMFile> files = new ArrayList<PDOMFile>();
+		final List<PDOMFile> files = new ArrayList<>();
 		index.accept(new IBTreeVisitor() {
 			@Override
 			public int compare(long record) throws CoreException {
@@ -642,9 +648,9 @@ public class PDOM extends PlatformObject implements IPDOM {
 		private final Pattern[] pattern;
 		private final IProgressMonitor monitor;
 
-		private final ArrayList<PDOMNamedNode> currentPath= new ArrayList<PDOMNamedNode>();
-		private final ArrayList<BitSet> matchStack= new ArrayList<BitSet>();
-		private final List<PDOMNamedNode> bindings = new ArrayList<PDOMNamedNode>();
+		private final ArrayList<PDOMNamedNode> currentPath= new ArrayList<>();
+		private final ArrayList<BitSet> matchStack= new ArrayList<>();
+		private final List<PDOMNamedNode> bindings = new ArrayList<>();
 		private final boolean isFullyQualified;
 		private BitSet matchesUpToLevel;
 		private final IndexFilter filter;
@@ -826,7 +832,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 			monitor= new NullProgressMonitor();
 		}
 
-		Pattern[] patterns= new Pattern[]{pattern};
+		Pattern[] patterns= new Pattern[] { pattern };
 		Boolean caseSensitive= getCaseSensitive(patterns);
 		if (caseSensitive != null) {
 			char[][] simpleNames= extractSimpleNames(patterns);
@@ -840,7 +846,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 			}
 		}
 
-		List<IIndexFragmentBinding> result= new ArrayList<IIndexFragmentBinding>();
+		List<IIndexFragmentBinding> result= new ArrayList<>();
 		for (PDOMLinkage linkage : getLinkageList()) {
 			if (filter.acceptLinkage(linkage)) {
 				try {
@@ -986,8 +992,8 @@ public class PDOM extends PlatformObject implements IPDOM {
 	 * @throws InterruptedException
 	 * @throws IllegalStateException if this PDOM is not writable
 	 */
-	public void acquireWriteLock() throws InterruptedException {
-		acquireWriteLock(0);
+	public void acquireWriteLock(IProgressMonitor monitor) throws InterruptedException {
+		acquireWriteLock(0, monitor);
 	}
 
 	/**
@@ -996,7 +1002,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	 * @throws InterruptedException
 	 * @throws IllegalStateException if this PDOM is not writable
 	 */
-	public void acquireWriteLock(int giveupReadLocks) throws InterruptedException {
+	public void acquireWriteLock(int giveupReadLocks, IProgressMonitor monitor) throws InterruptedException {
 		assert !isPermanentlyReadOnly();
 		synchronized (mutex) {
 			if (sDEBUG_LOCKS) {
@@ -1016,7 +1022,10 @@ public class PDOM extends PlatformObject implements IPDOM {
 			// Let the readers go first
 			long start= sDEBUG_LOCKS ? System.currentTimeMillis() : 0;
 			while (lockCount > giveupReadLocks || waitingReaders > 0) {
-				mutex.wait(BLOCKED_WRITE_LOCK_OUTPUT_INTERVAL);
+				mutex.wait(CANCELLATION_CHECK_INTERVAL);
+				if (monitor != null && monitor.isCanceled()) {
+					throw new OperationCanceledException();
+				}
 				if (sDEBUG_LOCKS) {
 					start = reportBlockedWriteLock(start, giveupReadLocks);
 				}
@@ -1085,9 +1094,22 @@ public class PDOM extends PlatformObject implements IPDOM {
 		return fLinkageIDCache.get(linkage.getLinkageID());
 	}
 
+	private ThreadLocal<IBinding> inProgress = new ThreadLocal<>();
+	
 	@Override
 	public IIndexFragmentBinding adaptBinding(IBinding binding) throws CoreException {
-		return adaptBinding(binding, true);
+		if (inProgress.get() == binding) {
+			// Detect if we're recursing during the adapt. That shouldn't happen and
+			// leads to stack overflow when it does.
+			return null;
+		}
+
+		inProgress.set(binding);
+		try {
+			return adaptBinding(binding, true);
+		} finally {
+			inProgress.set(null);
+		}
 	}
 
 	private IIndexFragmentBinding adaptBinding(IBinding binding, boolean includeLocal) throws CoreException {
@@ -1102,6 +1124,14 @@ public class PDOM extends PlatformObject implements IPDOM {
 		PDOMLinkage linkage= adaptLinkage(binding.getLinkage());
 		if (linkage != null) {
 			return findBindingInLinkage(linkage, binding, includeLocal);
+		}
+
+		if (binding instanceof IMacroBinding) {
+			for (PDOMLinkage linkage2 : fLinkageIDCache.values()) {
+				IIndexFragmentBinding pdomBinding = findBindingInLinkage(linkage2, binding, includeLocal);
+				if (pdomBinding != null)
+					return pdomBinding;
+			}
 		}
 		return null;
 	}
@@ -1123,7 +1153,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 
 	@Override
 	public IIndexFragmentName[] findNames(IBinding binding, int options) throws CoreException {
-		ArrayList<IIndexFragmentName> names= new ArrayList<IIndexFragmentName>();
+		ArrayList<IIndexFragmentName> names= new ArrayList<>();
 		IIndexFragmentBinding myBinding= adaptBinding(binding);
 		if (myBinding instanceof PDOMBinding) {
 			PDOMBinding pdomBinding = (PDOMBinding) myBinding;
@@ -1214,7 +1244,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	public IIndexFragmentInclude[] findIncludedBy(IIndexFragmentFile file) throws CoreException {
 		PDOMFile pdomFile= adaptFile(file);
 		if (pdomFile != null) {
-			List<PDOMInclude> result = new ArrayList<PDOMInclude>();
+			List<PDOMInclude> result = new ArrayList<>();
 			for (PDOMInclude i= pdomFile.getFirstIncludedBy(); i != null; i= i.getNextInIncludedBy()) {
 				if (i.getIncludedBy().getTimestamp() > 0) {
 					result.add(i);
@@ -1252,7 +1282,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	}
 
 	private IIndexFragmentBinding[] findBindingsForPrefixOrContentAssist(char[] prefix, boolean filescope, boolean isContentAssist, boolean caseSensitive, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
-		ArrayList<IIndexFragmentBinding> result= new ArrayList<IIndexFragmentBinding>();
+		ArrayList<IIndexFragmentBinding> result= new ArrayList<>();
 		for (PDOMLinkage linkage : getLinkageList()) {
 			if (filter.acceptLinkage(linkage)) {
 				PDOMBinding[] bindings;
@@ -1285,7 +1315,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 
 	public IIndexFragmentBinding[] findBindings(char[] name, boolean filescope,
 			boolean isCaseSensitive, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
-		ArrayList<IIndexFragmentBinding> result= new ArrayList<IIndexFragmentBinding>();
+		ArrayList<IIndexFragmentBinding> result= new ArrayList<>();
 		try {
 			for (PDOMLinkage linkage : getLinkageList()) {
 				if (filter.acceptLinkage(linkage)) {
@@ -1324,7 +1354,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	}
 
 	public IIndexFragmentBinding[] findMacroContainers(char[] prefix, boolean isPrefix, boolean isCaseSensitive, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
-		ArrayList<IIndexFragmentBinding> result= new ArrayList<IIndexFragmentBinding>();
+		ArrayList<IIndexFragmentBinding> result= new ArrayList<>();
 		try {
 			for (PDOMLinkage linkage : getLinkageList()) {
 				if (filter.acceptLinkage(linkage)) {
@@ -1342,7 +1372,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	@Override
 	public IIndexMacro[] findMacros(char[] prefix, boolean isPrefix, boolean isCaseSensitive,
 			IndexFilter filter, IProgressMonitor monitor) throws CoreException {
-		ArrayList<IIndexMacro> result= new ArrayList<IIndexMacro>();
+		ArrayList<IIndexMacro> result= new ArrayList<>();
 		try {
 			for (PDOMLinkage linkage : getLinkageList()) {
 				if (filter.acceptLinkage(linkage)) {
@@ -1475,7 +1505,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 					if (linkageID == ILinkage.C_LINKAGE_ID || linkageID == ILinkage.CPP_LINKAGE_ID) {
 						PDOMMacroContainer container= linkage.findMacroContainer(name);
 						if (container != null) {
-							return new PDOMMacroContainer[] {container};
+							return new PDOMMacroContainer[] { container };
 						}
 					}
 				}
@@ -1602,7 +1632,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 	static class DebugLockInfo {
 		int fReadLocks;
 		int fWriteLocks;
-		List<StackTraceElement[]> fTraces= new ArrayList<StackTraceElement[]>();
+		List<StackTraceElement[]> fTraces= new ArrayList<>();
 
 		public int addTrace() {
 			fTraces.add(Thread.currentThread().getStackTrace());

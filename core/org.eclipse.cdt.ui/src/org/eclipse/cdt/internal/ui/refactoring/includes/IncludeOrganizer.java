@@ -78,6 +78,7 @@ import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexName;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.parser.Keywords;
+import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.CharArrayIntMap;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.ui.CUIPlugin;
@@ -146,7 +147,7 @@ public class IncludeOrganizer {
 			this.name = name;
 			this.declaration = null;
 			this.type = DeclarationType.NAMESPACE;
-			this.children = new ArrayList<ForwardDeclarationNode>();
+			this.children = new ArrayList<>();
 		}
 
 		/**
@@ -199,7 +200,7 @@ public class IncludeOrganizer {
 		// Process the given translation unit with the inclusion resolver.
 		BindingClassifier bindingClassifier = new BindingClassifier(fContext);
 		bindingClassifier.classifyNodeContents(ast);
-		Set<IBinding> bindingsToDefine = bindingClassifier.getBindingsToDefine();
+		Set<IBinding> bindingsToInclude = bindingClassifier.getBindingsToDefine();
 
 		IASTPreprocessorIncludeStatement[] existingIncludes = ast.getIncludeDirectives();
 		fContext.addHeadersIncludedPreviously(existingIncludes);
@@ -209,13 +210,12 @@ public class IncludeOrganizer {
 		// bindings which have to be defined.
 		IIndexFileSet reachableHeaders = ast.getIndexFileSet();
 
-		List<InclusionRequest> requests = createInclusionRequests(ast, bindingsToDefine, false, reachableHeaders);
+		List<InclusionRequest> requests = createInclusionRequests(ast, bindingsToInclude, false, reachableHeaders);
 		processInclusionRequests(requests, headerSubstitutor);
 
 		// Use a map instead of a set to be able to retrieve existing elements using equal elements.
 		// Maps each element to itself. 
-		Map<IncludePrototype, IncludePrototype> includePrototypes =
-				new HashMap<IncludePrototype, IncludePrototype>();
+		Map<IncludePrototype, IncludePrototype> includePrototypes = new HashMap<>();
 		// Put the new includes into includePrototypes.
 		for (IPath header : fContext.getHeadersToInclude()) {
 			IncludeGroupStyle style = fContext.getIncludeStyle(header);
@@ -258,7 +258,7 @@ public class IncludeOrganizer {
 				int position = allowReordering ? groupingStyle.getOrder() : 0;
 				List<IncludePrototype> prototypes = groupedPrototypes[position];
 				if (prototypes == null) {
-					prototypes = new ArrayList<IncludePrototype>();
+					prototypes = new ArrayList<>();
 					groupedPrototypes[position] = prototypes;
 				}
 				prototypes.add(prototype);
@@ -280,7 +280,7 @@ public class IncludeOrganizer {
 			}
 		}
 
-		List<String> includeDirectives = new ArrayList<String>();
+		List<String> includeDirectives = new ArrayList<>();
 		IncludeGroupStyle previousStyle = null;
 		for (List<IncludePrototype> prototypes : groupedPrototypes) {
 			if (prototypes != null && !prototypes.isEmpty()) {
@@ -358,7 +358,7 @@ public class IncludeOrganizer {
 
 		IIndexFileSet reachableHeaders = ast.getIndexFileSet();
 		Set<IBinding> bindings =
-				removeBindingsDefinedInIncludedHeaders(ast, classifier.getBindingsToDeclare(), reachableHeaders);
+				removeBindingsDefinedInIncludedHeaders(ast, classifier.getBindingsToForwardDeclare(), reachableHeaders);
 		for (IBinding binding : bindings) {
 			// Create the text of the forward declaration of this binding.
 			StringBuilder declarationText = new StringBuilder();
@@ -469,7 +469,7 @@ public class IncludeOrganizer {
 			}
 
 			// Consider the namespace(s) of the binding.
-			List<String> namespaces = new ArrayList<String>();
+			List<String> namespaces = new ArrayList<>();
 			try {
 				IScope scope = binding.getScope();
 				while (scope != null && scope.getKind() == EScopeKind.eNamespace) {
@@ -693,7 +693,7 @@ public class IncludeOrganizer {
 
 	private static int skipStandaloneCommentBlock(String contents, int offset, int endOffset,
 			IASTComment[] comments, NodeCommentMap commentMap) {
-		Map<IASTComment, IASTNode> inverseLeadingMap = new HashMap<IASTComment, IASTNode>();
+		Map<IASTComment, IASTNode> inverseLeadingMap = new HashMap<>();
 		for (Map.Entry<IASTNode, List<IASTComment>> entry : commentMap.getLeadingMap().entrySet()) {
 			IASTNode node = entry.getKey();
 			if (getNodeOffset(node) <= endOffset) {
@@ -702,7 +702,7 @@ public class IncludeOrganizer {
 				}
 			}
 		}
-		Map<IASTComment, IASTNode> inverseFreestandingMap = new HashMap<IASTComment, IASTNode>();
+		Map<IASTComment, IASTNode> inverseFreestandingMap = new HashMap<>();
 		for (Map.Entry<IASTNode, List<IASTComment>> entry : commentMap.getFreestandingMap().entrySet()) {
 			IASTNode node = entry.getKey();
 			if (getNodeEndOffset(node) < endOffset) {
@@ -749,13 +749,12 @@ public class IncludeOrganizer {
 
 	private Set<IBinding> removeBindingsDefinedInIncludedHeaders(IASTTranslationUnit ast,
 			Set<IBinding> bindings, IIndexFileSet reachableHeaders) throws CoreException {
-		Set<IBinding> filteredBindings = new HashSet<IBinding>(bindings);
-
 		List<InclusionRequest> requests = createInclusionRequests(ast, bindings, true, reachableHeaders);
-		Set<IPath> allIncludedHeaders = new HashSet<IPath>();
+		Set<IPath> allIncludedHeaders = new HashSet<>();
 		allIncludedHeaders.addAll(fContext.getHeadersAlreadyIncluded());
 		allIncludedHeaders.addAll(fContext.getHeadersToInclude());
 
+		Set<IBinding> filteredBindings = new HashSet<>(bindings);
 		for (InclusionRequest request : requests) {
 			if (isSatisfiedByIncludedHeaders(request, allIncludedHeaders))
 				filteredBindings.remove(request.getBinding());
@@ -993,12 +992,12 @@ public class IncludeOrganizer {
 	}
 
 	private List<InclusionRequest> createInclusionRequests(IASTTranslationUnit ast,
-			Set<IBinding> bindingsToDefine, boolean allowDeclarations,
+			Set<IBinding> bindingsToInclude, boolean allowDeclarations,
 			IIndexFileSet reachableHeaders) throws CoreException {
-		List<InclusionRequest> requests = new ArrayList<InclusionRequest>(bindingsToDefine.size());
+		List<InclusionRequest> requests = new ArrayList<InclusionRequest>(bindingsToInclude.size());
 		IIndex index = fContext.getIndex();
 
-		binding_loop: for (IBinding binding : bindingsToDefine) {
+		binding_loop: for (IBinding binding : bindingsToInclude) {
 			IIndexName[] indexNames;
 			if (binding instanceof IMacroBinding) {
 				indexNames = IIndexName.EMPTY_ARRAY;
@@ -1013,12 +1012,30 @@ public class IncludeOrganizer {
 	    				}
 	    			}
 	    		}
-			} else if (allowDeclarations || binding instanceof IFunction || binding instanceof IVariable) {
-				// For functions and variables we need to include a declaration.
+			} else if (allowDeclarations || binding instanceof IVariable) {
+				// For a variable we need to include a declaration.
 				indexNames = index.findDeclarations(binding);
+			} else if (binding instanceof ICPPMethod) {
+				// Include the headers containing method definitions except the ones also containing
+				// the definition of the owner class. The headers defining the owner class are taken
+				// care of separately.
+				Set<IIndexFile> declarationFiles = new HashSet<>();
+				IIndexName[] declarations = index.findNames(binding, IIndex.FIND_DECLARATIONS);
+				for (IIndexName declaration : declarations) {
+					IIndexFile file = declaration.getFile();
+					if (file != null) {
+						declarationFiles.add(file);
+					}
+				}
+				IIndexName[] definitions = index.findDefinitions(binding);
+				indexNames = filterIncludableNotInBlacklistedFiles(definitions, declarationFiles);
 			} else {
-				// For all other bindings we need to include the definition.
 				indexNames = index.findDefinitions(binding);
+				if (binding instanceof IFunction) {
+					// If a function is defined in a header, include that header.
+					// Otherwise look for declarations.
+					indexNames = filterIncludableNotInBlacklistedFiles(indexNames, Collections.<IIndexFile>emptySet());
+				}
 				if (indexNames.length == 0) {
 					// If we could not find any definitions, there is still a chance that
 					// a declaration would be sufficient.
@@ -1036,12 +1053,11 @@ public class IncludeOrganizer {
 					}
 				}
 
-				Map<IIndexFile, IPath> declaringHeaders = new HashMap<IIndexFile, IPath>();
-				Map<IIndexFile, IPath> reachableDeclaringHeaders = new HashMap<IIndexFile, IPath>();
+				Map<IIndexFile, IPath> declaringHeaders = new HashMap<>();
+				Map<IIndexFile, IPath> reachableDeclaringHeaders = new HashMap<>();
 				for (IIndexName indexName : indexNames) {
 					IIndexFile indexFile = indexName.getFile();
-					if (IncludeUtil.isSource(indexFile, fContext.getProject()) &&
-							index.findIncludedBy(indexFile, 0).length == 0) {
+					if (!canBeIncluded(indexFile)) {
 						// The target is a source file which isn't included by any other files.
 						// Don't include it.
 						continue;
@@ -1063,6 +1079,23 @@ public class IncludeOrganizer {
 			}
 		}
 		return requests;
+	}
+
+	private IIndexName[] filterIncludableNotInBlacklistedFiles(IIndexName[] names, Set<IIndexFile> blacklist)
+			throws CoreException {
+		IIndexName[] includable = IIndexName.EMPTY_ARRAY;
+		int pos = 0;
+		for (IIndexName name : names) {
+			IIndexFile file = name.getFile();
+			if (file != null && !blacklist.contains(file) && canBeIncluded(file))
+				includable = ArrayUtil.appendAt(includable, pos++, name);
+		}
+		return ArrayUtil.trim(includable, pos);
+	}
+
+	private boolean canBeIncluded(IIndexFile indexFile) throws CoreException {
+		return !IncludeUtil.isSource(indexFile, fContext.getProject()) ||
+				fContext.getIndex().findIncludedBy(indexFile, 0).length != 0;
 	}
 
 	private String createIncludeDirective(IncludePrototype include, String lineComment) {

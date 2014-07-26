@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2013 Google, Inc and others.
+ * Copyright (c) 2013, 2014 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -221,7 +221,6 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//
 	//#include "A.h"
 	//
-	////#include "h1.h"  // Unused
 	//#include "h2.h" /* Required */  // another comment
 	//#include "h3.h"
 	//#include "h5.h"  // Unresolved includes are preserved
@@ -279,7 +278,6 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//// Comment
 	//
 	//#include "h2.h" /* Required */  // another comment
-	////#include "h1.h"  // Unused
 	//#include "h3.h"
 	//#include "h5.h"  // Unresolved includes are preserved
 	//#include "A.h"
@@ -349,6 +347,57 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//C c;
 	//D d;
 	public void testHeaderExport() throws Exception {
+		assertExpectedResults();
+	}
+
+	//dir1/private1.h
+	///** @file dir1/private1.h
+	// *  This is an internal header file, included by other library headers.
+	// *  Do not attempt to use it directly. @headername{dir1/public1.h}
+	// */
+	//class A {};
+
+	//dir1/public1.h
+	//#include "private1.h"
+
+	//dir1/private2.h
+	//// IWYU pragma: private,
+	//// include "dir1/public2.h"
+	//class B {};
+
+	//dir1/public2.h
+	//#include "private2.h"
+
+	//dir1/private3.h
+	//// IWYU pragma: private
+	//class C {};
+
+	//dir1/public3.h
+	//#include "private3.h"
+
+	//dir2/private4.h
+	//// IWYU pragma: private, include "dir2/public4.h"
+	//class D {};
+
+	//dir2/public4.h
+	//#include "private4.h"
+
+	//dir2/source.cpp
+	//A a;
+	//B b;
+	//C c;
+	//D d;
+	//====================
+	//#include "dir1/public1.h"
+	//#include "dir1/public2.h"
+	//#include "dir1/public3.h"
+	//#include "dir2/private4.h"
+	//
+	//A a;
+	//B b;
+	//C c;
+	//D d;
+	public void testPrivateHeaders() throws Exception {
 		assertExpectedResults();
 	}
 
@@ -470,6 +519,37 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//
 	//int a = var;
 	public void testVariableReference() throws Exception {
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//struct A {
+	//  template <typename T>
+	//  void m(const T& p);
+	//};
+
+	//h2.h
+	//#include "h1.h"
+	//template<typename T>
+	//void A::m(const T& p) {
+	//}
+
+	//h3.h
+	//#include "h1.h"
+	//typedef A B;
+
+	//source.cpp
+	//void test(B& b) {
+	//  b.m(1);
+	//}
+	//====================
+	//#include "h2.h"
+	//#include "h3.h"
+	//
+	//void test(B& b) {
+	//  b.m(1);
+	//}
+	public void testMethodDefinedInHeader() throws Exception {
 		assertExpectedResults();
 	}
 

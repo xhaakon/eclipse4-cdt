@@ -320,7 +320,7 @@ public abstract class ASTTranslationUnit extends ASTNode implements IASTTranslat
 		if (fLocationResolver != null) {
 			return fLocationResolver.getComments();
 		}
-		return new IASTComment[0];
+		return IASTComment.EMPTY_COMMENT_ARRAY;
 	}
 
 	@Override
@@ -425,12 +425,13 @@ public abstract class ASTTranslationUnit extends ASTNode implements IASTTranslat
 
 	protected <T extends ASTTranslationUnit> T copy(T copy, CopyStyle style) {
 		copy.setIndex(fIndex);
-		copy.fIsHeader = fIsHeader;
-		copy.fNodeFactory = fNodeFactory;
-		copy.setLocationResolver(fLocationResolver);
-		copy.fForContentAssist = fForContentAssist;
-		copy.fOriginatingTranslationUnit = fOriginatingTranslationUnit;
-		copy.fNodesOmitted = fNodesOmitted;
+		ASTTranslationUnit target = copy;
+		target.fIsHeader = fIsHeader;
+		target.fNodeFactory = fNodeFactory;
+		target.setLocationResolver(fLocationResolver);
+		target.fForContentAssist = fForContentAssist;
+		target.fOriginatingTranslationUnit = fOriginatingTranslationUnit;
+		target.fNodesOmitted = fNodesOmitted;
 		
 		for (IASTDeclaration declaration : getDeclarations()) {
 			copy.addDeclaration(declaration == null ? null : declaration.copy(style));

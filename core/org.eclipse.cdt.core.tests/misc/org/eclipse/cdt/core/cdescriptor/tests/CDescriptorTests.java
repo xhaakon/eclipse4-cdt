@@ -1,5 +1,5 @@
 /**********************************************************************
- * Copyright (c) 2004, 2012 QNX Software Systems Ltd and others.
+ * Copyright (c) 2004, 2014 QNX Software Systems Ltd and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,7 @@
  *     QNX Software Systems Ltd - initial API and implementation
  *     Anton Leherbauer (Wind River Systems)
  *     James Blackburn (Broadcom Corp.)
+ *     Marc-Andre Laperle (Ericsson)
  ***********************************************************************/
 package org.eclipse.cdt.core.cdescriptor.tests;
 
@@ -16,9 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.lang.reflect.Method;
 
-import junit.extensions.TestSetup;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -43,7 +42,6 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.Assert;
 
 public class CDescriptorTests extends BaseTestCase {
@@ -62,35 +60,43 @@ public class CDescriptorTests extends BaseTestCase {
 	}
 
 	public static Test suite() {
-		TestSuite suite = new TestSuite(CDescriptorTests.class.getName());
-
-		// Add all the tests in this class
-		for (Method m : CDescriptorTests.class.getMethods()) {
-			if (m.getName().startsWith("test"))
-				suite.addTest(new CDescriptorTests(m.getName()));
-		}
-
-		TestSetup wrapper = new TestSetup(suite) {
-			@Override
-			protected void setUp() throws Exception {
-				oneTimeSetUp();
-			}
-
-			@Override
-			protected void tearDown() throws Exception {
-				oneTimeTearDown();
-			}
-		};
-		return wrapper;
+		TestSuite suite = new TestSuite(CDescriptorTests.class);
+		return suite;
 	}
 
 	@Override
 	protected void setUp() throws Exception {
-		fProject.open(new NullProgressMonitor());
+		CTestPlugin.getWorkspace().run(new IWorkspaceRunnable() {
+			@Override
+			public void run(IProgressMonitor monitor) throws CoreException {
+				IWorkspaceRoot root = CTestPlugin.getWorkspace().getRoot();
+				IProject project = root.getProject("testDescriptorProject");
+				if (!project.exists()) {
+					project.create(null);
+				} else {
+					project.refreshLocal(IResource.DEPTH_INFINITE, null);
+				}
+				if (!project.isOpen()) {
+					project.open(null);
+				}
+				CCorePlugin.getDefault().getCDescriptorManager().addDescriptorListener(listener);
+				if (!project.hasNature(CProjectNature.C_NATURE_ID)) {
+					addNatureToProject(project, CProjectNature.C_NATURE_ID, null);
+				}
+				fProject = project;
+				CTestPlugin.getWorkspace().run(new IWorkspaceRunnable() {
+					@Override
+					public void run(IProgressMonitor monitor) throws CoreException {
+						CCorePlugin.getDefault().mapCProjectOwner(fProject, projectId, false);
+					}
+				}, null);
+			}
+		}, null);
 	}
 
 	@Override
 	protected void tearDown() throws Exception {
+		fProject.delete(true, true, null);
 	}
 
 	private static void addNatureToProject(IProject proj, String natureId, IProgressMonitor monitor) throws CoreException {
@@ -110,40 +116,7 @@ public class CDescriptorTests extends BaseTestCase {
 		}
 	}
 
-	static void oneTimeSetUp() throws Exception {
-		CTestPlugin.getWorkspace().run(new IWorkspaceRunnable() {
-			@Override
-			public void run(IProgressMonitor monitor) throws CoreException {
-				IWorkspaceRoot root = CTestPlugin.getWorkspace().getRoot();
-				IProject project = root.getProject("testDescriptorProject");
-				if (!project.exists()) {
-					project.create(null);
-				} else {
-					project.refreshLocal(IResource.DEPTH_INFINITE, null);
-				}
-				if (!project.isOpen()) {
-					project.open(null);
-				}
-				CCorePlugin.getDefault().getCDescriptorManager().addDescriptorListener(listener);
-				if (!project.hasNature(CProjectNature.C_NATURE_ID)) {
-					addNatureToProject(project, CProjectNature.C_NATURE_ID, null);
-				}
-				fProject = project;
-			}
-		}, null);
-	}
-
-	static void oneTimeTearDown() throws Exception {
-		fProject.delete(true, true, null);
-	}
-
 	public void testDescriptorCreation() throws Exception {
-		CTestPlugin.getWorkspace().run(new IWorkspaceRunnable() {
-			@Override
-			public void run(IProgressMonitor monitor) throws CoreException {
-				CCorePlugin.getDefault().mapCProjectOwner(fProject, projectId, false);
-			}
-		}, null);
 		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
 
 		Assert.assertNotNull(fLastEvent);
@@ -336,8 +309,8 @@ public class CDescriptorTests extends BaseTestCase {
 	 */
 	public void testDeadlockDuringProjectCreation() throws Exception {
 		for (int i= 0; i < 10; ++i) {
-			oneTimeTearDown();
-			oneTimeSetUp();
+			tearDown();
+			setUp();
 			Thread t= new Thread() {
 				@Override
 				public void run() {
@@ -384,6 +357,8 @@ public class CDescriptorTests extends BaseTestCase {
 
 	public void testExtensionGet() throws Exception {
 		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		desc.create("org.eclipse.cdt.testextension", "org.eclipse.cdt.testextensionID");
+
 		ICExtensionReference extRef[] = desc.get("org.eclipse.cdt.testextension");
 
 		Assert.assertEquals("org.eclipse.cdt.testextension", extRef[0].getExtension());
@@ -392,6 +367,8 @@ public class CDescriptorTests extends BaseTestCase {
 
 	public void testExtensionData() throws Exception {
 		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		desc.create("org.eclipse.cdt.testextension", "org.eclipse.cdt.testextensionID");
+
 		ICExtensionReference extRef[] = desc.get("org.eclipse.cdt.testextension");
 		extRef[0].setExtensionData("testKey", "testValue");
 
@@ -408,6 +385,8 @@ public class CDescriptorTests extends BaseTestCase {
 
 	public void testExtensionRemove() throws Exception {
 		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		desc.create("org.eclipse.cdt.testextension", "org.eclipse.cdt.testextensionID");
+
 		ICExtensionReference extRef[] = desc.get("org.eclipse.cdt.testextension");
 		desc.remove(extRef[0]);
 
@@ -434,6 +413,8 @@ public class CDescriptorTests extends BaseTestCase {
 	public void testProjectDataDelete() throws Exception {
 		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
 		ICStorageElement data = desc.getProjectStorageElement("testElement");
+		data.createChild("test");
+
 		ICStorageElement[] list = data.getChildrenByName("test");
 		Assert.assertEquals(1, list.length);
 		data.removeChild(list[0]);

@@ -1760,7 +1760,8 @@ public class CPPVisitor extends ASTQueries {
 	 * Generate a function type for an implicit function.
 	 * NOTE: This does not correctly handle parameters with typedef types.
 	 */
-	public static ICPPFunctionType createImplicitFunctionType(IType returnType, IParameter[] parameters, boolean isConst, boolean isVolatile) {
+	public static ICPPFunctionType createImplicitFunctionType(IType returnType, IParameter[] parameters,
+			boolean isConst, boolean isVolatile) {
 	    IType[] pTypes = new IType[parameters.length];
 	    IType pt = null;
 
@@ -2214,7 +2215,7 @@ public class CPPVisitor extends ASTQueries {
 	}
 
 	/**
-	 * Compute the type for decltype(expr) or typeof(expr)
+	 * Computes the type for decltype(expr) or typeof(expr).
 	 */
 	private static IType getDeclType(ICPPASTSimpleDeclSpecifier spec) {
 		IASTExpression expr = spec.getDeclTypeExpression();

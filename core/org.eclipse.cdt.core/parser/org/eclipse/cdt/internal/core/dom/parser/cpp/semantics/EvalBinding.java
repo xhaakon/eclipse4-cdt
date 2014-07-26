@@ -89,6 +89,7 @@ public class EvalBinding extends CPPDependentEvaluation {
 	public EvalBinding(ICPPFunction parameterOwner, int parameterPosition, IType type, IASTNode pointOfDefinition) {
 		this(parameterOwner, parameterPosition, type, findEnclosingTemplate(pointOfDefinition));
 	}
+
 	public EvalBinding(ICPPFunction parameterOwner, int parameterPosition, IType type, IBinding templateDefinition) {
 		super(templateDefinition);
 		fParameterOwner = parameterOwner;
@@ -236,6 +237,13 @@ public class EvalBinding extends CPPDependentEvaluation {
 			return false;
 		}
 		return false;
+	}
+ 	
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return fBinding instanceof IEnumerator
+			|| fBinding instanceof ICPPFunction
+			|| (fBinding instanceof IVariable && isConstexprValue(((IVariable) fBinding).getInitialValue(), point)); 
 	}
 
 	@Override
@@ -398,7 +406,7 @@ public class EvalBinding extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
+			ConstexprEvaluationContext context) {
 		int pos = getFunctionParameterPosition();
 		if (pos >= 0) {
 			ICPPEvaluation eval = parameterMap.getArgument(pos);

@@ -10,17 +10,13 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>8.3.0-SNAPSHOT</version>
+	<version>8.4.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
 	<properties>
-		<tycho-version>0.19.0</tycho-version>
-		<tycho-extras-version>0.19.0</tycho-extras-version>
-		<download-site>http://download.eclipse.org</download-site>
-		<platform-site>${download-site}/eclipse/updates/${platform-version}</platform-site>
-		<orbit-site>${download-site}/tools/orbit/downloads/drops/${orbit-version}/repository</orbit-site>
-		<tm-site>${download-site}/tm/updates/${tm-version}</tm-site>
+		<tycho-version>0.20.0</tycho-version>
+		<tycho-extras-version>0.20.0</tycho-extras-version>
 		<sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
 		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
 		<sonar.jacoco.reportPath>${project.basedir}/../../target/jacoco.exec</sonar.jacoco.reportPath>
@@ -41,8 +37,7 @@
 	</licenses>
 
 	<modules>
-		<module>releng/org.eclipse.cdt</module>
-		<module>core/org.eclipse.cdt.core</module>
+		<module>core/org.eclipse.cdt.core.native</module>
 		<module>core/org.eclipse.cdt.core.linux</module>
 		<module>core/org.eclipse.cdt.core.linux.x86</module>
 		<module>core/org.eclipse.cdt.core.linux.x86_64</module>
@@ -53,6 +48,11 @@
 		<module>core/org.eclipse.cdt.core.macosx</module>
 		<module>core/org.eclipse.cdt.core.aix</module>
 		<module>core/org.eclipse.cdt.core.solaris</module>
+		<module>releng/org.eclipse.cdt.native-feature</module>
+		<module>releng/org.eclipse.cdt.native.source-feature</module>
+
+		<module>releng/org.eclipse.cdt</module>
+		<module>core/org.eclipse.cdt.core</module>
 		<module>codan/org.eclipse.cdt.codan.core</module>
 		<module>codan/org.eclipse.cdt.codan.ui</module>
 		<module>codan/org.eclipse.cdt.codan.core.cxx</module>
@@ -86,6 +86,11 @@
 		<module>launch/org.eclipse.cdt.launch</module>
 		<module>debug/org.eclipse.cdt.gnu.debug-feature</module>
 		<module>debug/org.eclipse.cdt.gnu.debug.source-feature</module>
+
+		<module>debug/org.eclipse.cdt.debug.application</module>
+		<module>debug/org.eclipse.cdt.debug.application.doc</module>
+		<module>debug/org.eclipse.cdt.debug.standalone-feature</module>
+		<module>debug/org.eclipse.cdt.debug.standalone.source-feature</module>
 
 		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb</module>
 		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb.ui</module>
@@ -156,6 +161,7 @@
 		<module>dsf/org.eclipse.cdt.examples.dsf-feature</module>
 
 		<module>visualizer/org.eclipse.cdt.visualizer.core</module>
+		<module>visualizer/org.eclipse.cdt.visualizer.examples</module>
 		<module>visualizer/org.eclipse.cdt.visualizer.ui</module>
 		<module>visualizer/org.eclipse.cdt.visualizer-feature</module>
 
@@ -194,12 +200,17 @@
 		<module>qt/org.eclipse.cdt.qt-feature</module>
 
 		<module>xlc/org.eclipse.cdt.errorparsers.xlc.tests</module>
+		
+		<module>remote/org.eclipse.cdt.remote.core</module>
+		<module>remote/org.eclipse.cdt.remote-feature</module>
+		
 <!-- 
 		<module>lrparser/org.eclipse.cdt.core.lrparser.tests</module>
 		<module>upc/org.eclipse.cdt.core.parser.upc.tests</module>
 		<module>xlc/org.eclipse.cdt.core.lrparser.xlc.tests</module>
 		<module>debug/org.eclipse.cdt.debug.ui.tests</module>
 -->
+		<module>releng/org.eclipse.cdt.target</module>
 		<module>releng/org.eclipse.cdt.testing</module>
 		<module>releng/org.eclipse.cdt.testing-feature</module>
 		<module>releng/org.eclipse.cdt.testing.repo</module>
@@ -207,58 +218,14 @@
 		<module>releng/org.eclipse.cdt.repo</module>
 	</modules>
 
-	<repositories>
-		<repository>
-			<id>platform</id>
-			<url>${platform-site}</url>
-			<layout>p2</layout>
-		</repository>
-		<repository>
-			<id>orbit</id>
-			<url>${orbit-site}</url>
-			<layout>p2</layout>
-		</repository>
-		<repository>
-			<id>tm</id>
-			<url>${tm-site}</url>
-			<layout>p2</layout>
-		</repository>
-	</repositories>
-
 	<pluginRepositories>
    		<pluginRepository>
 			<id>cbi</id>
      		<url>https://repo.eclipse.org/content/repositories/cbi-releases/</url>
     	</pluginRepository>
   	</pluginRepositories>
-  	
+
 	<profiles>
-		<profile>
-			<id>platform-4.3</id>
-			<activation>
-				<property>
-					<name>!platform-3.8</name>
-				</property>
-			</activation>
-			<properties>
-				<platform-version>4.3</platform-version>
-				<orbit-version>R20130517111416</orbit-version>
-				<tm-version>3.5</tm-version>
-			</properties>
-		</profile>
-		<profile>
-			<id>platform-3.8</id>
-			<activation>
-				<property>
-					<name>platform-3.8</name>
-				</property>
-			</activation>
-			<properties>
-				<platform-version>3.8</platform-version>
-				<orbit-version>R20110523182458</orbit-version>
-				<tm-version>3.3</tm-version>
-			</properties>
-		</profile>
 		<profile>
 			<id>macosx</id>
 			<activation>
@@ -419,6 +386,13 @@
 							<arch>sparc</arch>
 						</environment>
 					</environments>
+					<target>
+						<artifact>
+							<groupId>org.eclipse.cdt</groupId>
+							<artifactId>cdt-e4.4</artifactId>
+							<version>1.0.0</version>
+						</artifact>
+					</target>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -551,11 +525,12 @@
 							<type>eclipse-plugin</type>
 						</dependency>
 					</dependencies>
+					<!-- This needs to be explicitely set now, see https://bugs.eclipse.org/bugs/show_bug.cgi?id=395281 -->
 					<repositories>
 						<repository>
 							<id>platform</id>
 							<layout>p2</layout>
-							<url>${platform-site}</url>
+							<url>http://download.eclipse.org/eclipse/updates/4.4milestones</url>
 						</repository>
 					</repositories>
 				</configuration>

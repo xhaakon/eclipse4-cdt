@@ -62,8 +62,7 @@ class PDOMCPPClassTemplatePartialSpecialization extends	PDOMCPPClassTemplate
 		linkage.new ConfigurePartialSpecialization(this, partial);
 	}
 	
-	public PDOMCPPClassTemplatePartialSpecialization(PDOMLinkage linkage,
-			long bindingRecord) {
+	public PDOMCPPClassTemplatePartialSpecialization(PDOMLinkage linkage, long bindingRecord) {
 		super(linkage, bindingRecord);
 	}
 	
@@ -97,7 +96,7 @@ class PDOMCPPClassTemplatePartialSpecialization extends	PDOMCPPClassTemplate
 		try {
 			return new PDOMCPPClassTemplate(getLinkage(), getDB().getRecPtr(record + PRIMARY));
 		} catch (CoreException e) {
-			CCorePlugin.log(e);
+			CCorePlugin.log("Failed to load primary template for " + getName(), e); //$NON-NLS-1$
 			return null;
 		}
 	}
@@ -119,7 +118,7 @@ class PDOMCPPClassTemplatePartialSpecialization extends	PDOMCPPClassTemplate
 			final long rec= getPDOM().getDB().getRecPtr(record + ARGUMENTS);
 			return PDOMCPPArgumentList.getArguments(this, rec);
 		} catch (CoreException e) {
-			CCorePlugin.log(e);
+			CCorePlugin.log("Failed to load template arguments for " + getName(), e); //$NON-NLS-1$
 			return ICPPTemplateArgument.EMPTY_ARGUMENTS;
 		}
 	}
@@ -133,18 +132,19 @@ class PDOMCPPClassTemplatePartialSpecialization extends	PDOMCPPClassTemplate
 	@Override
 	public int pdomCompareTo(PDOMBinding other) {
 		int cmp = super.pdomCompareTo(other);
-		if(cmp == 0) {
-			if(other instanceof PDOMCPPClassTemplatePartialSpecialization) {
+		if (cmp == 0) {
+			if (other instanceof PDOMCPPClassTemplatePartialSpecialization) {
 				try {
 					PDOMCPPClassTemplatePartialSpecialization otherSpec = (PDOMCPPClassTemplatePartialSpecialization) other;
 					int mySM = getSignatureHash();
 					int otherSM = otherSpec.getSignatureHash();
 					return mySM == otherSM ? 0 : mySM < otherSM ? -1 : 1;
-				} catch(CoreException ce) {
-					CCorePlugin.log(ce);
+				} catch (CoreException e) {
+					CCorePlugin.log("Comparison failure for " + getName(), e); //$NON-NLS-1$
 				}
 			} else {
 				assert false;
+				CCorePlugin.log(new AssertionError("Assertion failure for " + getName())); //$NON-NLS-1$
 			}
 		}
 		return cmp;
@@ -167,7 +167,7 @@ class PDOMCPPClassTemplatePartialSpecialization extends	PDOMCPPClassTemplate
 			return false;
 		}
 
-		final ICPPClassTemplatePartialSpecialization rhs = (ICPPClassTemplatePartialSpecialization)type;
+		final ICPPClassTemplatePartialSpecialization rhs = (ICPPClassTemplatePartialSpecialization) type;
 		return CPPClassTemplatePartialSpecialization.isSamePartialClassSpecialization(this, rhs);
 	}
 }

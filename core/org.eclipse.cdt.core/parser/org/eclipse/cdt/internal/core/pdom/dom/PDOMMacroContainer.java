@@ -10,6 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndexFile;
 import org.eclipse.cdt.core.index.IIndexMacro;
@@ -20,9 +23,6 @@ import org.eclipse.cdt.internal.core.index.IIndexFragment;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 import org.eclipse.cdt.internal.core.pdom.db.Database;
 import org.eclipse.core.runtime.CoreException;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A container collecting definitions and references for macros.
@@ -56,7 +56,7 @@ public class PDOMMacroContainer extends PDOMNamedNode implements IIndexMacroCont
 	public boolean isOrphaned() throws CoreException {
 		Database db = getDB();
 		return db.getRecPtr(record + FIRST_DEF_OFFSET) == 0
-			&& db.getRecPtr(record + FIRST_REF_OFFSET) == 0;
+				&& db.getRecPtr(record + FIRST_REF_OFFSET) == 0;
 	}
 
 	public void addDefinition(PDOMMacro name) throws CoreException {
@@ -98,9 +98,8 @@ public class PDOMMacroContainer extends PDOMNamedNode implements IIndexMacroCont
 	}
 
 	public IIndexMacro[] getDefinitions() throws CoreException {
-		PDOMMacro macro;
-		List<PDOMMacro> macros= new ArrayList<PDOMMacro>();
-		for (macro= getFirstDefinition(); macro != null; macro= macro.getNextInContainer()) {
+		List<PDOMMacro> macros= new ArrayList<>();
+		for (PDOMMacro macro= getFirstDefinition(); macro != null; macro= macro.getNextInContainer()) {
 			macros.add(macro);
 		}
 		return macros.toArray(new IIndexMacro[macros.size()]);
@@ -146,7 +145,7 @@ public class PDOMMacroContainer extends PDOMNamedNode implements IIndexMacroCont
 
 	@Override
 	public String[] getQualifiedName() {
-		return new String[]{getName()};
+		return new String[] { getName() };
 	}
 
 	@Override

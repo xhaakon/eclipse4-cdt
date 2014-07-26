@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Tilera Corporation and others.
+ * Copyright (c) 2012, 2014 Tilera Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     William R. Swanson (Tilera Corporation)
+ *     Xavier Raynaud (Kalray) - Bug 430804
  *******************************************************************************/
 
 package org.eclipse.cdt.visualizer.ui.canvas;
@@ -25,7 +26,7 @@ import org.eclipse.swt.graphics.Rectangle;
  * Base class for objects that can be displayed and manipulated on a GraphicCanvas.
  */
 public class GraphicObject
-	implements IGraphicObject
+	implements IGraphicObject, ITooltipProvider
 {
 	// --- members ---
 
@@ -274,5 +275,13 @@ public class GraphicObject
 	 *  on top of other items drawn on top of it.
 	 */
 	public void paintDecorations(GC gc) {
+	}
+
+	/**
+	 * @since 1.1
+	 */
+	@Override
+	public String getTooltip(int x, int y) {
+		return null;
 	}
 }

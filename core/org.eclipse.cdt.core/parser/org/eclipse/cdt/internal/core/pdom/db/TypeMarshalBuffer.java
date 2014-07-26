@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2009, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,11 +16,13 @@ import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableType;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
+import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPTemplateNonTypeArgument;
@@ -86,6 +88,17 @@ public final class TypeMarshalBuffer implements ITypeMarshalBuffer {
 			putShort(NULL_TYPE);
 		} else {
 			PDOMNode pb= fLinkage.addTypeBinding(binding);
+			if (pb == null && binding instanceof ITypedef) {
+				// Since typedef defined in a local scope cannot be stored in the index,
+				// store the target type instead.
+				IType type = ((ITypedef) binding).getType();
+				if (type instanceof ISerializableType) {
+					((ISerializableType) type).marshal(this);
+					return;
+				} else if (type instanceof IBinding) {
+					pb = fLinkage.addTypeBinding((IBinding) type);
+				}
+			}
 			if (pb == null) {
 				putShort(UNSTORABLE_TYPE);
 			} else {
@@ -105,7 +118,7 @@ public final class TypeMarshalBuffer implements ITypeMarshalBuffer {
 			long rec= getRecordPointer();
 			return (IBinding) PDOMNode.load(fLinkage.getPDOM(), rec);
 		} else if (firstBytes == NULL_TYPE || firstBytes == UNSTORABLE_TYPE) {
-			return null;
+			return new ProblemBinding(null, ISemanticProblem.TYPE_NOT_PERSISTED);
 		}
 
 		fPos = oldPos;  // fLinkage.unmarshalBinding() will read firstBytes again
@@ -202,7 +215,7 @@ public final class TypeMarshalBuffer implements ITypeMarshalBuffer {
 			fPos = oldPos;
 			IType type = unmarshalType();
 			IType originalType = unmarshalType();
-			if (originalType == null || originalType == UNSTORABLE_TYPE_PROBLEM)
+			if (originalType == null)
 				originalType= type;
 			return new CPPTemplateTypeArgument(type, originalType);
 		}

@@ -102,6 +102,11 @@ public class EvalBinaryTypeId extends CPPDependentEvaluation {
 		}
 		return fIsValueDependent;
 	}
+	
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return true;
+	}
 
 	@Override
 	public ValueCategory getValueCategory(IASTNode point) {
@@ -137,7 +142,7 @@ public class EvalBinaryTypeId extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
+			ConstexprEvaluationContext context) {
 		return this;
 	}
 

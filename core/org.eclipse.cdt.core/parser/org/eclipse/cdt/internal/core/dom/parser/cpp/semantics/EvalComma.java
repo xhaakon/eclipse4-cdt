@@ -65,20 +65,25 @@ public class EvalComma extends CPPDependentEvaluation {
 		if (fType != null)
 			return fType instanceof TypeOfDependentExpression;
 
-		for (ICPPEvaluation arg : fArguments) {
-			if (arg.isTypeDependent())
-				return true;
-		}
-		return false;
+		return containsDependentType(fArguments);
 	}
 
 	@Override
 	public boolean isValueDependent() {
-		for (ICPPEvaluation arg : fArguments) {
-			if (arg.isValueDependent())
-				return true;
+		return containsDependentValue(fArguments);
+	}
+	
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		if (!areAllConstantExpressions(fArguments, point)) {
+			return false;
 		}
-		return false;
+		for (ICPPFunction overload : fOverloads) {
+			if (!isNullOrConstexprFunc(overload)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public ICPPFunction[] getOverloads(IASTNode point) {
@@ -199,10 +204,10 @@ public class EvalComma extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
+			ConstexprEvaluationContext context) {
 		ICPPEvaluation[] args = fArguments;
 		for (int i = 0; i < fArguments.length; i++) {
-			ICPPEvaluation arg = fArguments[i].computeForFunctionCall(parameterMap, maxdepth, point);
+			ICPPEvaluation arg = fArguments[i].computeForFunctionCall(parameterMap, context.recordStep());
 			if (arg != fArguments[i]) {
 				if (args == fArguments) {
 					args = new ICPPEvaluation[fArguments.length];

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2013 QNX Software Systems and others.
+ * Copyright (c) 2000, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -181,7 +181,7 @@ public class CCorePreferenceConstants {
 
 	/**
 	 * Preference key for the regular expression pattern that, when appears in a comment on the same
-	 * line as include statement, indicates the the included header file is exported.
+	 * line as include statement, indicates that the included header file is exported.
 	 * @see "https://code.google.com/p/include-what-you-use/wiki/IWYUPragmas"
 	 *
 	 * @since 5.5
@@ -219,6 +219,22 @@ public class CCorePreferenceConstants {
 	public static final String INCLUDE_END_EXPORTS_PATTERN = "includes.endExportsPattern"; //$NON-NLS-1$
 
 	/**
+	 * Default value for {@link #INCLUDE_PRIVATE_PATTERN}.
+	 * @since 5.7
+	 */
+	public static final String DEFAULT_INCLUDE_PRIVATE_PATTERN = "IWYU\\s+(pragma:?\\s+)?private(,\\s+include\\s+(?<header>\\S+))?"; //$NON-NLS-1$
+	
+	/**
+	 * Preference key for the regular expression pattern that, when appears in a comment on the same
+	 * line as include statement, indicates that the included header file is private and that
+	 * another header file should be included instead.
+	 * @see "https://code.google.com/p/include-what-you-use/wiki/IWYUPragmas"
+	 *
+	 * @since 5.7
+	 */
+	public static final String INCLUDE_PRIVATE_PATTERN = "includes.privatePattern"; //$NON-NLS-1$
+
+	/**
 	 * A named preference that controls whether the parser should skip trivial expressions in initializer lists.
 	 * <p>
 	 * Value is of type <code>Boolean</code>.
@@ -249,6 +265,39 @@ public class CCorePreferenceConstants {
 	 * @since 5.6
 	 */
 	public static final int DEFAULT_SCALABILITY_MAXIMUM_TRIVIAL_EXPRESSIONS = 1000;
+
+	/**
+	 * A named preference that specifies whether the parser should abort when too many Tokens are created
+	 * during parse of a single TU.  This is a heuristic that is used to detect translation units that
+	 * are too complex to be handled the by the CDT parser.
+	 *
+	 * @since 5.7
+	 */
+	public static final String SCALABILITY_LIMIT_TOKENS_PER_TU = "scalability.limitTokensPerTU"; //$NON-NLS-1$
+
+	/**
+	 * Default value for {@link #SCALABILITY_LIMIT_TOKENS_PER_TU}.
+	 * @since 5.7
+	 */
+	public static final boolean DEFAULT_SCALABILITY_LIMIT_TOKENS_PER_TU = false;
+
+	/**
+	 * A named preference that specifies the parser's token limit.  Parsing will be aborted when a single
+	 * translation unit has produced a maximum number of tokens.  This is a heuristic that is used to
+	 * detect translation units that are too complex to be handled the by the CDT parser.
+	 *
+	 * @since 5.7
+	 */
+	public static final String SCALABILITY_MAXIMUM_TOKENS = "scalability.maximumTokens"; //$NON-NLS-1$
+
+	/**
+	 * Default value for {@link #SCALABILITY_MAXIMUM_TOKENS}.
+	 *
+	 * @since 5.7
+	 */
+	public static final int DEFAULT_SCALABILITY_MAXIMUM_TOKENS = 25 * 1000 * 1000;
+	// NOTE: This default came from measurements using a 1Gb heap on a 64-bit VM.  The test project was
+	//       boost-1.55.0.  This default will index all but 9 files without running out of memory.
 
     /**
      * Returns the node in the preference in the given context.

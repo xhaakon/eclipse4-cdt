@@ -133,6 +133,11 @@ public class EvalID extends CPPDependentEvaluation {
 	}
 
 	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return false;
+	}
+
+	@Override
 	public IType getTypeOrFunctionSet(IASTNode point) {
 		return new TypeOfDependentExpression(this);
 	}
@@ -324,7 +329,7 @@ public class EvalID extends CPPDependentEvaluation {
 
 			if (!(type instanceof IBinding))
 				return EvalFixed.INCOMPLETE;
-			nameOwner = (IBinding)type;
+			nameOwner = (IBinding) type;
 		}
 
 		if (fieldOwner instanceof IProblemBinding || nameOwner instanceof IProblemBinding)
@@ -337,6 +342,8 @@ public class EvalID extends CPPDependentEvaluation {
 			ICPPEvaluation eval = resolveName((ICPPClassType) nameOwner, templateArgs, null, point);
 			if (eval != null)
 				return eval;
+			if (!CPPTemplates.isDependentType((ICPPClassType) nameOwner))
+				return EvalFixed.INCOMPLETE;
 		}
 		
 		if (fieldOwner != null && !fieldOwner.isTypeDependent()) {
@@ -355,10 +362,10 @@ public class EvalID extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
+			ConstexprEvaluationContext context) {
 		if (fFieldOwner == null)
 			return this;
-		ICPPEvaluation fieldOwner = fFieldOwner.computeForFunctionCall(parameterMap, maxdepth, point);
+		ICPPEvaluation fieldOwner = fFieldOwner.computeForFunctionCall(parameterMap, context.recordStep());
 		if (fieldOwner == fFieldOwner)
 			return this;
 		return new EvalID(fieldOwner, fNameOwner, fName, fAddressOf, fQualified, fTemplateArgs, getTemplateDefinition());

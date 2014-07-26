@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2013 Monta Vista and others.
+ * Copyright (c) 2008, 2014 Monta Vista and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,9 +14,13 @@
  *     Jens Elmenthaler (Verigy) - Added Full GDB pretty-printing support (bug 302121)
  *     Axel Mueller - Workaround for GDB bug where -var-info-path-expression gives invalid result (Bug 320277)
  *     Anton Gorenkov - DSF-GDB should properly handle variable type change (based on RTTI) (Bug 376901)
+ *     Anders Dahlberg (Ericsson)  - Need additional API to extend support for memory spaces (Bug 431627)
+ *     Alvaro Sanchez-Leon (Ericsson)  - Need additional API to extend support for memory spaces (Bug 431627)
+ *     Martin Schreiber - Bug 435606 - write unsigned variables (UINT32 and UINT64) in the binary format
  *******************************************************************************/
 package org.eclipse.cdt.dsf.mi.service;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -586,7 +590,7 @@ public class MIVariableManager implements ICommandControl {
 		 */
 		public void setType(String newTypeName) {
 			type = newTypeName;
-			gdbType = fGDBTypeParser.parse(newTypeName);
+			gdbType = getGDBTypeParser().parse(newTypeName);
 		}
 
 		public void setValue(String format, String val) { valueMap.put(format, val); }
@@ -1540,6 +1544,27 @@ public class MIVariableManager implements ICommandControl {
 											else if (childVar.getRootToUpdate().isOutOfScope()) {
 												childVar.deleteInGdb();
 												childVar = null;
+											} else {
+												// The child already exists so we can re-use it.
+												childVar.hasCastToBaseClassWorkaround = childHasCastToBaseClassWorkaround;
+												if (fakeChild) {
+													// I don't think this should happen, but we put it just in case
+													addRealChildrenOfFake(childVar,	exprDmc, realChildren,
+															arrayPosition, countingRm);
+												} else {
+													// This is a real child, use it directly, however, we must
+													// make sure that its relative expression is expressed with respect
+													// to its parent, which may not be the case already, since that child
+													// might have been created directly (not through the parent).
+													// That is why we set the relative expression explicitly
+													// See bug 432888
+													ExpressionInfo oldInfo = childVar.getExpressionInfo();
+													realChildren[arrayPosition] = 
+															new ExpressionInfo[] { new ExpressionInfo(
+																	oldInfo.getFullExpr(), child.getExp(), oldInfo.isDynamic(), 
+																	oldInfo.getParent(), oldInfo.getIndexInParentExpression()) };
+													countingRm.done();
+												}
 											}
 										}
 
@@ -1892,7 +1917,7 @@ public class MIVariableManager implements ICommandControl {
 				// convert from binary to decimal
 				if (value.startsWith("0b")) value = value.substring(2, value.length());  //$NON-NLS-1$
 				try {
-	    			value = Integer.toString(Integer.parseInt(value, 2));
+	    			value = new BigInteger(value, 2).toString();
 				} catch (NumberFormatException e) {
 					rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, IDsfStatusConstants.INVALID_HANDLE, 
 							"Invalid binary number: " + value, e)); //$NON-NLS-1$
@@ -2521,10 +2546,7 @@ public class MIVariableManager implements ICommandControl {
 		}
 	}
 
-    /**
-     * @since 3.0
-     */
-    private static final GDBTypeParser fGDBTypeParser = new GDBTypeParser();
+    private GDBTypeParser fGDBTypeParser = null;
     
 	private final DsfSession fSession;
 	
@@ -2597,6 +2619,13 @@ public class MIVariableManager implements ICommandControl {
      */
 	protected Map<VariableObjectId, MIVariableObject> getLRUCache() {
 		return lruVariableList;
+	}
+	
+	private GDBTypeParser getGDBTypeParser() {
+		if (fGDBTypeParser == null) {
+			fGDBTypeParser = createGDBTypeParser();
+		}
+		return fGDBTypeParser;
 	}
 	
 	/** 
@@ -2677,10 +2706,16 @@ public class MIVariableManager implements ICommandControl {
 						MIExpressionDMC miExprCtx = (MIExpressionDMC) exprCtx;
 						ExpressionInfo ctxExprInfo = miExprCtx.getExpressionInfo();
 						ExpressionInfo varExprInfo = varObj.getExpressionInfo();
+						// Don't use equals() below because we are concerned with other fields
+						// of ExpressionInfo that are not considered when doing equals().
+						// Instead, only consider equal if both objects are the same one
 						if (ctxExprInfo != varExprInfo) {
 							// exprCtrx could just be created via IExpressions.createExpression,
 							// and thus the parent-child relationship is not yet set.
-							miExprCtx.setExpressionInfo(varExprInfo);
+							// Set that relationship while keeping the relative expression of
+							// the original context (see bug 393930)
+							miExprCtx.setExpressionInfo(new ExpressionInfo(miExprCtx.getExpression(), miExprCtx.getRelativeExpression(),
+									varExprInfo.isDynamic(), varExprInfo.getParent(), varExprInfo.getIndexInParentExpression()));
 						}
 						
 						rm.setData(varObj);
@@ -3145,4 +3180,12 @@ public class MIVariableManager implements ICommandControl {
     protected boolean needFixForGDBBug320277() {
     	return true;
     }
+    
+    /**
+	 * @since 4.4
+	 */
+    protected GDBTypeParser createGDBTypeParser() {
+		return new GDBTypeParser();
+    }
+    
 }

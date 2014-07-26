@@ -198,8 +198,9 @@ public abstract class ASTNode implements IASTNode {
 	public IASTFileLocation getFileLocation() {
         if (fileLocation != null)
             return fileLocation;
-        // TODO(sprigogin): The purpose of offset == 0 && length == 0 condition is not clear to me.
         final int offset = getOffset();
+        // Only an empty translation unit should have offset = 0 and length = 0.
+        // Otherwise these values mean the parser failed to set the offset and length.
 		if (offset < 0 || (offset == 0 && length == 0 && !(this instanceof IASTTranslationUnit))) {
         	return null;
         }
@@ -241,7 +242,11 @@ public abstract class ASTNode implements IASTNode {
 
     @Override
 	public IASTTranslationUnit getTranslationUnit() {
-       	return parent != null ? parent.getTranslationUnit() : null;
+    	IASTNode node = this;
+    	for (IASTNode p = parent; p != null; p = p.getParent()) {
+    		node = p;
+    	}
+       	return node instanceof IASTTranslationUnit ? (IASTTranslationUnit) node : null;
     }
 
     @Override
@@ -369,7 +374,7 @@ public abstract class ASTNode implements IASTNode {
 	protected <T extends ASTNode> T copy(T copy, CopyStyle style) {
 		copy.setOffsetAndLength(this);
 		if (style == CopyStyle.withLocations) {
-			copy.setCopyLocation(this);
+			((ASTNode) copy).setCopyLocation(this);
 		}
 		return copy;
 	}

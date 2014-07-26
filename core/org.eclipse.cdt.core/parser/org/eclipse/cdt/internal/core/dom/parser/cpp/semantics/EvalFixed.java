@@ -97,6 +97,11 @@ public class EvalFixed extends CPPEvaluation {
 		}
 		return fIsValueDependent;
 	}
+	
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return isConstexprValue(fValue, point);
+	}
 
 	@Override
 	public IType getTypeOrFunctionSet(IASTNode point) {
@@ -170,11 +175,11 @@ public class EvalFixed extends CPPEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
+			ConstexprEvaluationContext context) {
 		ICPPEvaluation eval = fValue.getEvaluation();
 		if (eval == null)
 			return this;
-		eval = eval.computeForFunctionCall(parameterMap, maxdepth, point);
+		eval = eval.computeForFunctionCall(parameterMap, context.recordStep());
 		if (eval == fValue.getEvaluation())
 			return this;
 		return new EvalFixed(fType, fValueCategory, Value.create(eval));

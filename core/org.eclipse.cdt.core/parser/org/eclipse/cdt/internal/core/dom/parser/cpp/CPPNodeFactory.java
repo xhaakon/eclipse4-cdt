@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2012 IBM Corporation and others.
+ * Copyright (c) 2006, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,12 +8,12 @@
  * Contributors:
  *     Mike Kucera (IBM) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Thomas Corbat (IFS)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.ast.IASTASMDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTArrayModifier;
-import org.eclipse.cdt.core.dom.ast.IASTAttribute;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTBreakStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
@@ -54,10 +54,12 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTAliasDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTArraySubscriptExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTAttribute;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCapture;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCatchHandler;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTClassVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -84,6 +86,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerList;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLambdaExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceAlias;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
@@ -112,14 +115,19 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTypeTransformationSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDirective;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier.SpecifierKind;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNodeFactory;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUnaryTypeTransformation;
+import org.eclipse.cdt.core.dom.ast.gnu.IGCCASTAttributeSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTCompoundStatementExpression;
+import org.eclipse.cdt.core.dom.parser.cpp.ICPPASTAttributeSpecifier;
 import org.eclipse.cdt.core.parser.IScanner;
 import org.eclipse.cdt.internal.core.dom.parser.ASTToken;
 import org.eclipse.cdt.internal.core.dom.parser.ASTTokenList;
+import org.eclipse.cdt.internal.core.dom.parser.GCCASTAttributeSpecifier;
 import org.eclipse.cdt.internal.core.dom.parser.NodeFactory;
 import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
 
@@ -160,8 +168,18 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 	}
 
 	@Override
-	public IASTAttribute newAttribute(char[] name, IASTToken argumentClause) {
-		return new CPPASTAttribute(name, argumentClause);
+	public ICPPASTAttribute newAttribute(char[] name, IASTToken argumentClause) {
+		return newAttribute(name, null, argumentClause, false);
+	}
+
+	@Override
+	public ICPPASTAttribute newAttribute(char[] name, char[] scope, IASTToken argumentClause, boolean packExpansion) {
+		return new CPPASTAttribute(name, scope, argumentClause, packExpansion);
+	}
+
+	@Override
+	public ICPPASTAttributeSpecifier newAttributeSpecifier() {
+		return new CPPASTAttributeSpecifier();
 	}
 
 	@Override
@@ -209,6 +227,13 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 		return new CPPASTCatchHandler(decl, body);
 	}
 
+	@Override
+	public ICPPASTClassVirtSpecifier newClassVirtSpecifier(ICPPASTClassVirtSpecifier.SpecifierKind kind) {
+		// Don't use the 'kind' argument as there is currently only one kind.
+		assert kind == ICPPASTClassVirtSpecifier.SpecifierKind.Final;
+		return new CPPASTClassVirtSpecifier();
+	}
+	
 	@Override
 	public ICPPASTCompositeTypeSpecifier newCompositeTypeSpecifier(int key, IASTName name) {
 		return new CPPASTCompositeTypeSpecifier(key, name);
@@ -393,7 +418,12 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 			IASTStatement bodyStatement) {
 		return new CPPASTFunctionWithTryBlock(declSpecifier, declarator, bodyStatement);
 	}
-	
+
+	@Override
+	public IGCCASTAttributeSpecifier newGCCAttributeSpecifier() {
+		return new GCCASTAttributeSpecifier();
+	}
+
 	@Override
 	public IGNUASTCompoundStatementExpression newGNUCompoundStatementExpression(IASTCompoundStatement compoundStatement) {
 		return new CPPASTCompoundStatementExpression(compoundStatement);
@@ -557,6 +587,12 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 	}
 
 	@Override
+	public ICPPASTQualifiedName newQualifiedName(ICPPASTName name) {
+		return new CPPASTQualifiedName(name);
+	}
+
+	@Override
+	@Deprecated
 	public ICPPASTQualifiedName newQualifiedName() {
 		return new CPPASTQualifiedName();
 	}
@@ -748,6 +784,11 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 		return new CPPASTVisibilityLabel(visibility);
 	}
 
+	@Override
+	public ICPPASTVirtSpecifier newVirtSpecifier(SpecifierKind kind) {
+		return new CPPASTVirtSpecifier(kind);
+	}
+	
 	@Override
 	public ICPPASTWhileStatement newWhileStatement() {
 		return new CPPASTWhileStatement();

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,6 +28,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTEqualsInitializer;
+import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTInitializer;
+import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IArrayType;
@@ -40,9 +44,12 @@ import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IPointerType;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IQualifierType;
+import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IValue;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerList;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
@@ -60,6 +67,7 @@ import org.eclipse.cdt.core.parser.util.CharArraySet;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.core.parser.util.ObjectSet;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeContainer;
+import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTranslationUnit;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPClosureType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunctionType;
@@ -102,6 +110,7 @@ public class SemanticUtil {
 	 * Returns an array of ICPPMethod objects representing all conversion operators
 	 * declared by the specified class, and the implicitly generated conversion
 	 * operator for a closure type. This does not include inherited methods.
+	 *
 	 * @param clazz
 	 * @return an array of conversion operators.
 	 */
@@ -134,7 +143,8 @@ public class SemanticUtil {
 	/**
 	 * Returns an array of ICPPMethod objects representing all conversion operators
 	 * declared by the specified class and its ancestors. This includes inherited
-	 * methods, and the implicitly generated conversion operator for a closure type. 
+	 * methods, and the implicitly generated conversion operator for a closure type.
+	 *
 	 * @param clazz
 	 * @return an array of conversion operators.
 	 */
@@ -450,6 +460,33 @@ public class SemanticUtil {
 		}
 	}
 
+	/**
+	 * Checks if the given type is problem-free.
+	 */
+	public static boolean isValidType(IType t) {
+		while (true) {
+			if (t instanceof ISemanticProblem) {
+				return false;
+			} else if (t instanceof IFunctionType) {
+				IFunctionType ft= (IFunctionType) t;
+				for (IType parameterType : ft.getParameterTypes()) {
+					if (!isValidType(parameterType))
+						return false;
+				}
+				t= ft.getReturnType();
+			} else if (t instanceof ICPPPointerToMemberType) {
+				ICPPPointerToMemberType mptr= (ICPPPointerToMemberType) t;
+				if (!isValidType(mptr.getMemberOfClass()))
+					return false;
+				t= mptr.getType();
+			} else if (t instanceof ITypeContainer) {
+				t= ((ITypeContainer) t).getType();
+			} else {
+				return true;
+			}
+		}
+	}
+
 	public static IType mapToAST(IType type, IASTNode node) {
 		if (node == null)
 			return type;
@@ -583,7 +620,7 @@ public class SemanticUtil {
 	}
 
 	/**
-	 * Returns <code>true</code> if two bindings have the same owner.
+	 * Returns {@code true} if two bindings have the same owner.
 	 */
 	public static boolean isSameOwner(IBinding owner1, IBinding owner2) {
 		// Ignore anonymous namespaces
@@ -633,12 +670,13 @@ public class SemanticUtil {
 	}
 
 	/**
-	 * Calculates the number of edges in the inheritance path of <code>type</code> to
-	 * <code>ancestorToFind</code>, returning -1 if no inheritance relationship is found.
+	 * Calculates the number of edges in the inheritance path of {@code type} to
+	 * {@code ancestorToFind}, returning -1 if no inheritance relationship is found.
+	 *
 	 * @param type the class to search upwards from
 	 * @param baseClass the class to find in the inheritance graph
 	 * @return the number of edges in the inheritance graph, or -1 if the specified classes have
-	 * no inheritance relation
+	 * 	   no inheritance relation
 	 */
 	public static final int calculateInheritanceDepth(IType type, IType baseClass, IASTNode point) {
 		return calculateInheritanceDepth(CPPSemantics.MAX_INHERITANCE_DEPTH, new HashSet<Object>(), type, baseClass, point);
@@ -718,5 +756,47 @@ public class SemanticUtil {
 			}
 		}
 		return minValue;
+	}
+
+	public static int findSameType(IType type, IType[] types) {
+		for (int i = 0; i < types.length; i++) {
+			if (type.isSameType(types[i]))
+				return i;
+		}
+		return -1;
+	}
+	
+	/**
+	 * Returns the value of the initializer of a variable.
+	 *
+	 * @param init the initializer's AST node
+	 * @param type the type of the variable
+	 * @param maxDepth maximum recursion depth
+	 */
+	public static IValue getValueOfInitializer(IASTInitializer init, IType type, int maxDepth) {
+		IASTInitializerClause clause= null;
+		if (init instanceof IASTEqualsInitializer) {
+			clause= ((IASTEqualsInitializer) init).getInitializerClause();
+		} else if (init instanceof ICPPASTConstructorInitializer) {
+			IASTInitializerClause[] args= ((ICPPASTConstructorInitializer) init).getArguments();
+			if (args.length == 1 && args[0] instanceof IASTExpression) {
+				IType typeUpToPointers= SemanticUtil.getUltimateTypeUptoPointers(type);
+				if (typeUpToPointers instanceof IPointerType || typeUpToPointers instanceof IBasicType) {
+					clause= args[0];
+				}
+			}
+		} else if (init instanceof ICPPASTInitializerList) {
+			ICPPASTInitializerList list= (ICPPASTInitializerList) init;
+			switch (list.getSize()) {
+			case 0:
+				return Value.create(0);
+			case 1:
+				clause= list.getClauses()[0];
+			}
+		}
+		if (clause instanceof IASTExpression) {
+			return Value.create((IASTExpression) clause, maxDepth);
+		}
+		return Value.UNKNOWN;
 	}
 }

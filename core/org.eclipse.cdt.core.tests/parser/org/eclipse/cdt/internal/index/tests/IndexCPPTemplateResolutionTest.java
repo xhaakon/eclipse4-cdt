@@ -464,6 +464,36 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		checkBindings();
 	}
 
+	//	template<class T>
+	//	struct A {
+	//	  typedef T t;
+	//	};
+	
+	//	template<typename T>
+	//	struct B {};
+	//
+	//	typedef B<int> C;
+	//
+	//	template <typename T>
+	//	struct D {
+	//	  typedef A<const T> t2;
+	//	};
+	//
+	//	template <typename U>
+	//	void waldo(const U& a, typename U::t2::t& b);
+	//	template <typename U>
+	//	void waldo(U& a, typename U::t2::t& b);
+	//
+	//	void test() {
+	//	  typedef A<C> E;
+	//	  D<E> x;
+	//	  E y;
+	//	  waldo(x, y);
+	//	}
+	public void testOverloadedFunctionTemplate_429624() throws Exception {
+		checkBindings();
+	}
+
 	//	template<typename T, template<typename U> class S>
 	//	class Foo {
 	//	public:
@@ -975,18 +1005,29 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	void func(U& u, const typename U::t& v) {
 	//	}
 
-	//	template <typename T> class A {
+	//	template <typename T> struct A {
 	//	  typedef T t;
 	//	};
 	//
-	//	void test() {
-	//	  const A<int>& a;
-	//	  int b;
+	//	void test(const A<int>& a, int b) {
 	//	  func(a, b);
 	//	}
 	public void testFunctionTemplate_319498() throws Exception {
 		ICPPFunction f= getBindingFromASTName("func(a, b)", 4, ICPPFunction.class);
 		assertInstance(f, ICPPTemplateInstance.class);
+	}
+
+	//	template <typename T>
+	//	bool waldo(T* dummy = nullptr);
+
+	//	struct A {};
+	//
+	//	void test() {
+	//	  typedef A a;
+	//	  waldo<a>();
+	//	}
+	public void testFunctionTemplateWithTypedef_431945() throws Exception {
+		checkBindings();
 	}
 
 	// template<typename T>
@@ -2025,7 +2066,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	};
 	//
 	//	typedef A<C> type;
-	public void testSFINAE_a() throws Exception {
+	public void testSfinae_a() throws Exception {
 		checkBindings();
 	}
 
@@ -2057,7 +2098,22 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	  A<double>::get();
 	//	  A<int>::get();
 	//	}
-	public void testSFINAE_b() throws Exception {
+	public void testSfinae_b() throws Exception {
+		checkBindings();
+	}
+
+	//	template<typename T, typename = decltype(new T(0))>
+	//	static void test(int);
+	//
+	//	template<typename>
+	//	static int test(...);
+
+	//	struct A {};
+	//
+	//	int waldo(int p);
+	//
+	//	int x = waldo(test<A>(0));
+	public void testSfinaeInNewExpression_430230() throws Exception {
 		checkBindings();
 	}
 
@@ -2467,6 +2523,32 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	
 	//	// empty source file
 	public void testSpecializationOfConstexprFunction_420995() throws Exception {
+		checkBindings();
+	}
+	
+	//	template <class TYPE>
+	//	class waldo {
+	//	    enum {
+	//	        X = sizeof(TYPE),
+	//	        Y = 1
+	//	    };
+	//
+	//	    int value = X && 1;
+	//	};
+	//
+	//	template <int> struct A {};
+	//
+	//	template <class TYPE>
+	//	struct impl : A<waldo<TYPE>::value> {};
+	//
+	//	template <class TYPE>
+	//	struct meta : impl<TYPE>::type {};
+	//
+	//	template <>
+	//	struct meta<int> {};
+	
+	//	int z;
+	public void testEnumerationWithMultipleEnumerators_434467() throws Exception {
 		checkBindings();
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     Markus Schorn - initial API and implementation
  *     Sergey Prigogin (Google)
+ *     Nathan Ridge
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
@@ -76,20 +77,18 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 
 	@Override
 	public boolean isTypeDependent() {
-		for (ICPPEvaluation arg : fArguments) {
-			if (arg.isTypeDependent())
-				return true;
-		}
-		return false;
+		return containsDependentType(fArguments);
 	}
 
 	@Override
 	public boolean isValueDependent() {
-		for (ICPPEvaluation arg : fArguments) {
-			if (arg.isValueDependent())
-				return true;
-		}
-		return false;
+		return containsDependentValue(fArguments);
+	}
+
+	@Override
+	public boolean isConstantExpression(IASTNode point) {
+		return areAllConstantExpressions(fArguments, point)
+			&& isNullOrConstexprFunc(getOverload(point));
 	}
 
 	public ICPPFunction getOverload(IASTNode point) {
@@ -147,7 +146,7 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 
 	@Override
 	public IValue getValue(IASTNode point) {
-		ICPPEvaluation eval = computeForFunctionCall(Value.MAX_RECURSION_DEPTH, point);
+		ICPPEvaluation eval = computeForFunctionCall(new ConstexprEvaluationContext(point));
 		if (eval == this) {
 			return Value.create(eval);
 		} 
@@ -207,13 +206,13 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation computeForFunctionCall(CPPFunctionParameterMap parameterMap,
-			int maxdepth, IASTNode point) {
-		if (maxdepth == 0)
+			ConstexprEvaluationContext context) {
+		if (context.getStepsPerformed() >= ConstexprEvaluationContext.MAX_CONSTEXPR_EVALUATION_STEPS)
 			return EvalFixed.INCOMPLETE;
 
 		ICPPEvaluation[] args = fArguments;
 		for (int i = 0; i < fArguments.length; i++) {
-			ICPPEvaluation arg = fArguments[i].computeForFunctionCall(parameterMap, maxdepth, point);
+			ICPPEvaluation arg = fArguments[i].computeForFunctionCall(parameterMap, context);
 			if (arg != fArguments[i]) {
 				if (args == fArguments) {
 					args = new ICPPEvaluation[fArguments.length];
@@ -225,13 +224,17 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 		EvalFunctionCall eval = this;
 		if (args != fArguments)
 			eval = new EvalFunctionCall(args, getTemplateDefinition());
-		return eval.computeForFunctionCall(maxdepth - 1, point);
+		return eval.computeForFunctionCall(context);
 	}
 
-	private ICPPEvaluation computeForFunctionCall(int maxdepth, IASTNode point) {
+	private ICPPEvaluation computeForFunctionCall(ConstexprEvaluationContext context) {
 		if (isValueDependent())
 			return this;
-		ICPPFunction function = getOverload(point);
+		// If the arguments are not all constant expressions, there is
+		// no point trying to substitute them into the return expression.
+		if (!areAllConstantExpressions(fArguments, context.getPoint()))
+			return this;
+		ICPPFunction function = getOverload(context.getPoint());
 		if (function == null) {
 			if (fArguments[0] instanceof EvalBinding) {
 				IBinding binding = ((EvalBinding) fArguments[0]).getBinding();
@@ -245,7 +248,7 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 		if (eval == null)
 			return EvalFixed.INCOMPLETE;
 		CPPFunctionParameterMap parameterMap = buildParameterMap(function);
-		return eval.computeForFunctionCall(parameterMap, maxdepth, point);
+		return eval.computeForFunctionCall(parameterMap, context.recordStep());
 	}
 
 	private CPPFunctionParameterMap buildParameterMap(ICPPFunction function) {
@@ -261,8 +264,12 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 				if (j < fArguments.length) {
 					map.put(i, fArguments[j++]);
 				} else if (param.hasDefaultValue()) {
-					IValue value = param.getInitialValue();
-					map.put(i, value.getEvaluation());
+					IValue value = param.getDefaultValue();
+					ICPPEvaluation eval = value.getEvaluation();
+					if (eval == null) {
+						eval = new EvalFixed(param.getType(), ValueCategory.PRVALUE, value);
+					}
+					map.put(i, eval);
 				}
 			}
 		}

@@ -520,11 +520,8 @@
           base-type="org.eclipse.core.runtime.text"
           file-extensions="S,s,asm,ASM"
           priority="high"/>
-      <content-type
-            id="binaryFile"
-            name="%binaryFileName"
-            priority="high">
-      </content-type>
+      <content-type id="binaryFile" name="%binaryFileName"
+          priority="high"/>
    </extension>
 
    <!-- The reserved filenames by the C++ standard (cinttypes is G++ specific) -->
@@ -562,6 +559,11 @@
       <file-association 
        content-type="org.eclipse.cdt.core.cxxHeader"
        file-names="typeindex,typeinfo,type_traits,unordered_map,unordered_set,utility,valarray,vector"/>
+   </extension> 
+   <extension point="org.eclipse.core.contenttype.contentTypes"> 
+      <file-association 
+       content-type="org.eclipse.cdt.core.cxxHeader"
+       file-names="condition_variable,ctgmath"/>
    </extension> 
  
 <!-- =================================================================================== -->
@@ -837,6 +839,17 @@
             id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider"
             name="%ReferencedProjectsLanguageSettingsProvider.name">
       </provider>
+   </extension>
+   <extension
+         point="org.eclipse.core.resources.filterMatchers">
+      <filterMatcher
+            argumentType="string"
+            class="org.eclipse.cdt.core.index.export.ExportIndexFileInfoMatcher"
+            description="FIle Info Matcher used by CDT&apos;s index exporter"
+            id="org.eclipse.cdt.core.exportIndexFileInfoMatcher"
+            name="Export Index File Info Matcher"
+            ordering="first">
+      </filterMatcher>
    </extension>
 
 </plugin>

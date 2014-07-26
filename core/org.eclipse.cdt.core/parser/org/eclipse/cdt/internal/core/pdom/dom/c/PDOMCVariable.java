@@ -6,9 +6,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Doug Schaefer (QNX) - Initial API and implementation
- *    IBM Corporation
- *    Markus Schorn (Wind River Systems)
+ *     Doug Schaefer (QNX) - Initial API and implementation
+ *     IBM Corporation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.c;
 
@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.IVariable;
+import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVariableReadWriteFlags;
 import org.eclipse.cdt.internal.core.index.IIndexCBindingConstants;
 import org.eclipse.cdt.internal.core.pdom.db.Database;
@@ -31,7 +32,6 @@ import org.eclipse.core.runtime.CoreException;
  * Database representation for c-variables
  */
 class PDOMCVariable extends PDOMBinding implements IVariable {
-
 	/**
 	 * Offset of pointer to type information for this variable
 	 * (relative to the beginning of the record).
@@ -106,7 +106,7 @@ class PDOMCVariable extends PDOMBinding implements IVariable {
 			return getLinkage().loadValue(record + VALUE_OFFSET);
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
-			return null;
+			return Value.UNKNOWN;
 		}
 	}
 

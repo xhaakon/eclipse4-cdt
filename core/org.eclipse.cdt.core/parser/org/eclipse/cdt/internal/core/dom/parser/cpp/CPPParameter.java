@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     Andrew Niefer (IBM Corporation) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Nathan Ridge
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -34,7 +35,9 @@ import org.eclipse.cdt.internal.core.dom.Linkage;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
+import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.core.runtime.PlatformObject;
 
 /**
@@ -85,7 +88,7 @@ public class CPPParameter extends PlatformObject implements ICPPParameter, ICPPI
 		if (fDeclarations == null || fDeclarations.length == 0) {
 	        fDeclarations = new IASTName[] { name };
 		} else {
-	        if (isDeclaredBefore((ASTNode)node, (ASTNode)fDeclarations[0])) {
+	        if (isDeclaredBefore((ASTNode) node, (ASTNode) fDeclarations[0])) {
 				fDeclarations = ArrayUtil.prepend(IASTName.class, fDeclarations, name);
 			} else {
 				fDeclarations = ArrayUtil.append(IASTName.class, fDeclarations, name);
@@ -220,14 +223,14 @@ public class CPPParameter extends PlatformObject implements ICPPParameter, ICPPI
 		return false;
 	}
 
-	public IASTInitializer getDefaultValue() {
+	public IASTInitializer getInitializer() {
 		if (fDeclarations == null)
 			return null;
 		for (int i = 0; i < fDeclarations.length && fDeclarations[i] != null; i++) {
 			IASTNode parent = fDeclarations[i].getParent();
 			while (parent.getPropertyInParent() == IASTDeclarator.NESTED_DECLARATOR)
 				parent = parent.getParent();
-			IASTInitializer init = ((IASTDeclarator)parent).getInitializer();
+			IASTInitializer init = ((IASTDeclarator) parent).getInitializer();
 			if (init != null)
 				return init;
 		}
@@ -236,7 +239,16 @@ public class CPPParameter extends PlatformObject implements ICPPParameter, ICPPI
 	
 	@Override
 	public boolean hasDefaultValue() {
-		return getDefaultValue() != null;
+		return getInitializer() != null;
+	}
+	
+	@Override
+	public IValue getDefaultValue() {
+		IASTInitializer init = getInitializer();
+		if (init != null) {
+			return SemanticUtil.getValueOfInitializer(init, getType(), Value.MAX_RECURSION_DEPTH);
+		}
+		return null;
 	}
 	
 	@Override
@@ -272,7 +284,7 @@ public class CPPParameter extends PlatformObject implements ICPPParameter, ICPPI
 
 	@Override
 	public IBinding resolveFinalBinding(CPPASTNameBase name) {
-		// check if the binding has been updated.
+		// Check if the binding has been updated.
 		IBinding current= name.getPreBinding();
 		if (current != this)
 			return current;

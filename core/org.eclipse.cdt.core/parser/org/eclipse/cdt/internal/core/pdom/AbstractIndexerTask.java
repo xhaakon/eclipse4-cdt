@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2013 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,9 +16,11 @@ package org.eclipse.cdt.internal.core.pdom;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -27,10 +29,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.IPDOMIndexerTask;
+import org.eclipse.cdt.core.dom.ast.IASTComment;
+import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIncludeStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit.IDependencyTree;
@@ -54,7 +60,6 @@ import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.ISignificantMacros;
 import org.eclipse.cdt.core.parser.IncludeExportPatterns;
 import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
-import org.eclipse.cdt.core.parser.ParserSettings;
 import org.eclipse.cdt.core.parser.ParserUtil;
 import org.eclipse.cdt.internal.core.dom.IIncludeFileResolutionHeuristics;
 import org.eclipse.cdt.internal.core.dom.parser.ASTTranslationUnit;
@@ -64,6 +69,7 @@ import org.eclipse.cdt.internal.core.index.IIndexFragmentFile;
 import org.eclipse.cdt.internal.core.index.IWritableIndex;
 import org.eclipse.cdt.internal.core.index.IndexBasedFileContentProvider;
 import org.eclipse.cdt.internal.core.parser.IMacroDictionary;
+import org.eclipse.cdt.internal.core.parser.ParserSettings2;
 import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContentProvider;
 import org.eclipse.cdt.internal.core.parser.scanner.InternalFileContentProvider.DependsOnOutdatedFileException;
 import org.eclipse.cdt.internal.core.parser.util.LRUCache;
@@ -87,13 +93,15 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	// Order of constants is important. Stronger update types have to precede the weaker ones.
 	private static enum UpdateKind { REQUIRED_SOURCE, REQUIRED_HEADER, ONE_LINKAGE_HEADER, OTHER_HEADER }
 
+	private static final Pattern HEADERNAME_PATTERN = Pattern.compile("@headername\\{(?<header>[^\\}]+)\\}");  //$NON-NLS-1$
+
 	private static class LinkageTask {
 		final int fLinkageID;
 		private final Map<IIndexFileLocation, LocationTask> fLocationTasks;
 
 		LinkageTask(int linkageID) {
 			fLinkageID= linkageID;
-			fLocationTasks= new HashMap<IIndexFileLocation, LocationTask>();
+			fLocationTasks= new HashMap<>();
 		}
 
 		boolean requestUpdate(IIndexFileLocation ifl, IIndexFragmentFile ifile, Object tu,
@@ -164,7 +172,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 				fVersionTasks= Collections.singletonList(fc);
 				break;
 			case 1:
-				List<FileVersionTask> newList= new ArrayList<FileVersionTask>(2);
+				List<FileVersionTask> newList= new ArrayList<>(2);
 				newList.add(fVersionTasks.get(0));
 				newList.add(fc);
 				fVersionTasks= newList;
@@ -298,29 +306,32 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	private boolean fIndexFilesWithoutConfiguration= true;
 	private boolean fIndexAllHeaderVersions = false;
 	private Set<String> fHeadersToIndexAllVersions = Collections.emptySet();
-	private List<LinkageTask> fRequestsPerLinkage= new ArrayList<LinkageTask>();
-	private Map<IIndexFile, IndexFileContent> fIndexContentCache= new LRUCache<IIndexFile, IndexFileContent>(500);
-	private Map<IIndexFileLocation, IIndexFragmentFile[]> fIndexFilesCache= new LRUCache<IIndexFileLocation, IIndexFragmentFile[]>(5000);
-	private Map<IIndexFileLocation, LocationTask> fOneLinkageTasks= new HashMap<IIndexFileLocation, AbstractIndexerTask.LocationTask>();
+	private Pattern fPragmaPrivatePattern;
+	private List<LinkageTask> fRequestsPerLinkage= new ArrayList<>();
+	private Map<IIndexFile, IndexFileContent> fIndexContentCache= new LRUCache<>(500);
+	private Map<IIndexFileLocation, IIndexFragmentFile[]> fIndexFilesCache= new LRUCache<>(5000);
+	private Map<IIndexFileLocation, LocationTask> fOneLinkageTasks= new HashMap<>();
 
 	private Object[] fFilesToUpdate;
-	private List<Object> fFilesToRemove = new ArrayList<Object>();
+	private List<Object> fFilesToRemove = new ArrayList<>();
 	private int fASTOptions;
-	private int fForceNumberFiles= 0;
+	private int fForceNumberFiles;
 
 	protected IWritableIndex fIndex;
 	private ITodoTaskUpdater fTodoTaskUpdater;
 	private final boolean fIsFastIndexer;
-	private long fFileSizeLimit= 0;
+	private long fTranslationUnitSizeLimit;
+	private long fIncludedFileSizeLimit;
 	private InternalFileContentProvider fCodeReaderFactory;
 	private int fSwallowOutOfMemoryError= 5;
 	/**
 	 * A queue of urgent indexing tasks that contribute additional files to this task.
 	 * The files from the urgent tasks are indexed before all not yet processed files.
 	 */
-	private final LinkedList<AbstractIndexerTask> fUrgentTasks;
+	private final Deque<AbstractIndexerTask> fUrgentTasks;
 	boolean fTaskCompleted;
 	private IndexerProgress fInfo= new IndexerProgress();
+	private IProgressMonitor fProgressMonitor;
 
 	public AbstractIndexerTask(Object[] filesToUpdate, Object[] filesToRemove,
 			IndexerInputAdapter resolver, boolean fastIndexer) {
@@ -329,7 +340,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		fFilesToUpdate= filesToUpdate;
 		Collections.addAll(fFilesToRemove, filesToRemove);
 		incrementRequestedFilesCount(fFilesToUpdate.length + fFilesToRemove.size());
-		fUrgentTasks = new LinkedList<AbstractIndexerTask>();
+		fUrgentTasks = new ArrayDeque<>();
 	}
 
 	public final void setIndexHeadersWithoutContext(UnusedHeaderStrategy mode) {
@@ -356,8 +367,9 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		fForceNumberFiles= number;
 	}
 
-	public final void setFileSizeLimit(long limit) {
-		fFileSizeLimit= limit;
+	public final void setFileSizeLimits(long translationUnitSizeLimit, long includedFileSizeLimit) {
+		fTranslationUnitSizeLimit= translationUnitSizeLimit;
+		fIncludedFileSizeLimit= includedFileSizeLimit;
 	}
 
 	public void setIndexAllHeaderVersions(boolean indexAllHeaderVersions) {
@@ -366,6 +378,10 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 
 	public void setHeadersToIndexAllVersions(Set<String> headers) {
 		fHeadersToIndexAllVersions = headers;
+	}
+
+	public void setPragmaPrivatePattern(Pattern pattern) {
+		fPragmaPrivatePattern = pattern;
 	}
 
 	/**
@@ -417,7 +433,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	}
 
 	protected IParserSettings createParserSettings() {
-		return new ParserSettings();
+		return new ParserSettings2();
 	}
 
 	/**
@@ -496,6 +512,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	}
 
 	public final void runTask(IProgressMonitor monitor) throws InterruptedException {
+		fProgressMonitor = monitor;
 		try {
 			if (!fIndexFilesWithoutConfiguration) {
 				fIndexHeadersWithoutContext= UnusedHeaderStrategy.skip;
@@ -520,8 +537,8 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 			try {
 				try {
 					// Split into sources and headers, remove excluded sources.
-					HashMap<Integer, List<IIndexFileLocation>> files= new HashMap<Integer, List<IIndexFileLocation>>();
-					final ArrayList<IIndexFragmentFile> indexFilesToRemove= new ArrayList<IIndexFragmentFile>();
+					HashMap<Integer, List<IIndexFileLocation>> files= new HashMap<>();
+					final ArrayList<IIndexFragmentFile> indexFilesToRemove= new ArrayList<>();
 					extractFiles(files, indexFilesToRemove, monitor);
 
 					setResume(true);
@@ -574,7 +591,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 								}
 							}
 							// Extract files from the urgent task.
-							files = new HashMap<Integer, List<IIndexFileLocation>>();
+							files = new HashMap<>();
 							fFilesToUpdate = urgentTask.fFilesToUpdate;
 							fForceNumberFiles = urgentTask.fForceNumberFiles;
 							fFilesToRemove = urgentTask.fFilesToRemove;
@@ -598,11 +615,12 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 			synchronized (this) {
 				fTaskCompleted = true;
 			}
+			fProgressMonitor = null;
 		}
 	}
 
 	private void setResume(boolean value) throws InterruptedException, CoreException {
-		fIndex.acquireWriteLock();
+		fIndex.acquireWriteLock(fProgressMonitor);
 		try {
 			fIndex.getWritableFragment().setProperty(IIndexFragment.PROPERTY_RESUME_INDEXER, String.valueOf(value));
 		} finally {
@@ -610,7 +628,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		}
 	}
 
-	private void extractFiles(HashMap<Integer, List<IIndexFileLocation>> files, List<IIndexFragmentFile> iFilesToRemove,
+	private void extractFiles(HashMap<Integer, List<IIndexFileLocation>> files, List<IIndexFragmentFile> filesToRemove,
 			IProgressMonitor monitor) throws CoreException {
 		final boolean forceAll= (fUpdateFlags & IIndexManager.UPDATE_ALL) != 0;
 		final boolean checkTimestamps= (fUpdateFlags & IIndexManager.UPDATE_CHECK_TIMESTAMPS) != 0;
@@ -635,7 +653,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 			final boolean regularContent = isRequiredInIndex(tu, ifl, isSourceUnit);
 			final boolean indexedUnconditionally = fResolver.isIndexedUnconditionally(ifl);
 			if (regularContent || indexedUnconditionally) {
-				// Headers or sources required with a specific linkage
+				// Headers or sources required with a specific linkage.
 				final UpdateKind updateKind = isSourceUnit ? UpdateKind.REQUIRED_SOURCE
 						: regularContent && both ? UpdateKind.REQUIRED_HEADER : UpdateKind.ONE_LINKAGE_HEADER;
 				if (regularContent || indexFiles.length == 0) {
@@ -670,7 +688,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 				if (ifile != null) {
 					IIndexInclude ctx= ifile.getParsedInContext();
 					if (ctx == null && !indexedUnconditionally && ifile.hasContent()) {
-						iFilesToRemove.add(ifile);
+						filesToRemove.add(ifile);
 						count++;
 					} else {
 						boolean update= force ||
@@ -697,7 +715,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	private void addPerLinkage(int linkageID, IIndexFileLocation ifl, HashMap<Integer, List<IIndexFileLocation>> files) {
 		List<IIndexFileLocation> list= files.get(linkageID);
 		if (list == null) {
-			list= new LinkedList<IIndexFileLocation>();
+			list= new ArrayList<>();
 			files.put(linkageID, list);
 		}
 		list.add(ifl);
@@ -808,7 +826,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 	private void removeFilesInIndex(List<Object> filesToRemove, List<IIndexFragmentFile> indexFilesToRemove,
 			IProgressMonitor monitor) throws InterruptedException, CoreException {
 		if (!filesToRemove.isEmpty() || !indexFilesToRemove.isEmpty()) {
-			fIndex.acquireWriteLock();
+			fIndex.acquireWriteLock(fProgressMonitor);
 			try {
 				for (Object tu : filesToRemove) {
 					if (monitor.isCanceled()) {
@@ -843,84 +861,108 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		if (map == null || files == null || files.isEmpty())
 			return;
 
-		// First parse the required sources
-		for (Iterator<IIndexFileLocation> it= files.iterator(); it.hasNext();) {
-			IIndexFileLocation ifl= it.next();
-			LocationTask locTask = map.find(ifl);
-			if (locTask == null || locTask.isCompleted()) {
-				it.remove();
-			} else if (locTask.fKind == UpdateKind.REQUIRED_SOURCE) {
-				if (monitor.isCanceled() || hasUrgentTasks())
-					return;
-				final Object tu = locTask.fTu;
-				final IScannerInfo scannerInfo = getScannerInfo(linkageID, tu);
-				parseFile(tu, getLanguage(tu, linkageID), ifl, scannerInfo, null, monitor);
+		int maxPriority = Integer.MIN_VALUE;
+		int minPriority = Integer.MAX_VALUE;
+		Map<Integer, List<IIndexFileLocation>> filesByPriority = new HashMap<>();
+		for (IIndexFileLocation file : files) {
+			int priority = fResolver.getIndexingPriority(file);
+			List<IIndexFileLocation> list = filesByPriority.get(priority);
+			if (list == null) {
+				list = new LinkedList<>();
+				filesByPriority.put(priority, list);
 			}
+			list.add(file);
+
+			if (maxPriority < priority)
+				maxPriority = priority;
+			if (minPriority > priority)
+				minPriority = priority;
 		}
 
-		// Files with context
-		for (Iterator<IIndexFileLocation> it= files.iterator(); it.hasNext();) {
-			IIndexFileLocation ifl= it.next();
-			LocationTask locTask = map.find(ifl);
-			if (locTask == null || locTask.isCompleted()) {
-				it.remove();
-			} else {
-				for (FileVersionTask versionTask : locTask.fVersionTasks) {
-					if (versionTask.fOutdated) {
-						if (monitor.isCanceled() || hasUrgentTasks())
-							return;
-						parseVersionInContext(linkageID, map, ifl, versionTask, locTask.fTu,
-								new LinkedHashSet<IIndexFile>(), monitor);
-					}
-				}
-			}
-		}
+		for (int priority = maxPriority; priority >= minPriority; priority--) {
+			List<IIndexFileLocation> filesAtPriority = filesByPriority.get(priority);
+			if (filesAtPriority == null)
+				continue;
 
-		// Files without context
-		for (Iterator<IIndexFileLocation> it= files.iterator(); it.hasNext();) {
-			IIndexFileLocation ifl= it.next();
-			LocationTask locTask = map.find(ifl);
-			if (locTask == null || locTask.isCompleted()) {
-				it.remove();
-			} else {
-				if (locTask.needsVersion()) {
+			// First parse the required sources.
+			for (Iterator<IIndexFileLocation> it= filesAtPriority.iterator(); it.hasNext();) {
+				IIndexFileLocation ifl= it.next();
+				LocationTask locTask = map.find(ifl);
+				if (locTask == null || locTask.isCompleted()) {
+					it.remove();
+				} else if (locTask.fKind == UpdateKind.REQUIRED_SOURCE) {
 					if (monitor.isCanceled() || hasUrgentTasks())
 						return;
 					final Object tu = locTask.fTu;
-					final IScannerInfo scannerInfo= getScannerInfo(linkageID, tu);
+					final IScannerInfo scannerInfo = getScannerInfo(linkageID, tu);
 					parseFile(tu, getLanguage(tu, linkageID), ifl, scannerInfo, null, monitor);
-					if (locTask.isCompleted())
-						it.remove();
-
 				}
 			}
-		}
-
-		// Delete remaining files.
-		fIndex.acquireWriteLock();
-		try {
-			for (IIndexFileLocation ifl : files) {
+	
+			// Files with context.
+			for (Iterator<IIndexFileLocation> it= filesAtPriority.iterator(); it.hasNext();) {
+				IIndexFileLocation ifl= it.next();
 				LocationTask locTask = map.find(ifl);
-				if (locTask != null && !locTask.isCompleted()) {
-					if (!locTask.needsVersion()) {
-						if (monitor.isCanceled() || hasUrgentTasks())
-							return;
-						Iterator<FileVersionTask> it= locTask.fVersionTasks.iterator();
-						while (it.hasNext()) {
-							FileVersionTask v = it.next();
-							if (v.fOutdated) {
-								fIndex.clearFile(v.fIndexFile);
-								reportFile(true, locTask.fKind);
-								locTask.removeVersionTask(it);
-								fIndexContentCache.remove(v.fIndexFile);
-								fIndexFilesCache.remove(ifl);
-							}
+				if (locTask == null || locTask.isCompleted()) {
+					it.remove();
+				} else {
+					for (FileVersionTask versionTask : locTask.fVersionTasks) {
+						if (versionTask.fOutdated) {
+							if (monitor.isCanceled() || hasUrgentTasks())
+								return;
+							parseVersionInContext(linkageID, map, ifl, versionTask, locTask.fTu,
+									new LinkedHashSet<IIndexFile>(), monitor);
 						}
 					}
 				}
 			}
-		} finally {
-			fIndex.releaseWriteLock();
+	
+			// Files without context.
+			for (Iterator<IIndexFileLocation> it= filesAtPriority.iterator(); it.hasNext();) {
+				IIndexFileLocation ifl= it.next();
+				LocationTask locTask = map.find(ifl);
+				if (locTask == null || locTask.isCompleted()) {
+					it.remove();
+				} else {
+					if (locTask.needsVersion()) {
+						if (monitor.isCanceled() || hasUrgentTasks())
+							return;
+						final Object tu = locTask.fTu;
+						final IScannerInfo scannerInfo= getScannerInfo(linkageID, tu);
+						parseFile(tu, getLanguage(tu, linkageID), ifl, scannerInfo, null, monitor);
+						if (locTask.isCompleted())
+							it.remove();
+	
+					}
+				}
+			}
+
+			// Delete remaining files.
+			fIndex.acquireWriteLock(fProgressMonitor);
+			try {
+				for (IIndexFileLocation ifl : filesAtPriority) {
+					LocationTask locTask = map.find(ifl);
+					if (locTask != null && !locTask.isCompleted()) {
+						if (!locTask.needsVersion()) {
+							if (monitor.isCanceled() || hasUrgentTasks())
+								return;
+							Iterator<FileVersionTask> it= locTask.fVersionTasks.iterator();
+							while (it.hasNext()) {
+								FileVersionTask v = it.next();
+								if (v.fOutdated) {
+									fIndex.clearFile(v.fIndexFile);
+									reportFile(true, locTask.fKind);
+									locTask.removeVersionTask(it);
+									fIndexContentCache.remove(v.fIndexFile);
+									fIndexFilesCache.remove(ifl);
+								}
+							}
+						}
+					}
+				}
+			} finally {
+				fIndex.releaseWriteLock();
+			}
 		}
 	}
 
@@ -952,7 +994,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 					// File was not parsed, because there is a dependency that needs to be
 					// handled before.
 					if (dependencies == null)
-						dependencies= new HashSet<IIndexFile>();
+						dependencies= new HashSet<>();
 					if (dependencies.add(d.fIndexFile)) {
 						if (parseFile(d.fTu, language, d.fIndexFile.getLocation(), scannerInfo, new FileContext(ctxFile, d.fIndexFile), monitor) == null)
 							done= false;
@@ -1043,23 +1085,21 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 			long start= System.currentTimeMillis();
 			IASTTranslationUnit ast= createAST(lang, codeReader, scanInfo, isSource, fASTOptions, ctx, pm);
 			fStatistics.fParsingTime += System.currentTimeMillis() - start;
-			if (ast != null) {
+			if (ast == null) {
+				++fStatistics.fTooManyTokensCount;
+			} else {
 				// Give the new AST a chance to recognize its translation unit before it is written
 				// to the index.
 				((ASTTranslationUnit) ast).setOriginatingTranslationUnit((ITranslationUnit) tu);
 				writeToIndex(lang.getLinkageID(), ast, codeReader, ctx, pm);
 				resultCacheCleared = true;  // The cache was cleared while writing to the index.
 			}
-		} catch (CoreException e) {
-			th= e;
 		} catch (RuntimeException e) {
 			final Throwable cause = e.getCause();
 			if (cause instanceof DependsOnOutdatedFileException)
 				return (DependsOnOutdatedFileException) cause;
 			th= e;
-		} catch (StackOverflowError e) {
-			th= e;
-		} catch (AssertionError e) {
+		} catch (StackOverflowError | CoreException | AssertionError e) {
 			th= e;
 		} catch (OutOfMemoryError e) {
 			if (--fSwallowOutOfMemoryError < 0)
@@ -1073,7 +1113,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		if (!resultCacheCleared) {
 			// If the result cache has not been cleared, clear it under a write lock to reduce
 			// interference with index readers.
-			fIndex.acquireWriteLock();
+			fIndex.acquireWriteLock(fProgressMonitor);
 			try {
 				fIndex.clearResultCache();
 			} finally {
@@ -1112,13 +1152,13 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		 * swallow this one.
 		 */
 		if (e instanceof CoreException) {
-			s=((CoreException) e).getStatus();
+			s= ((CoreException) e).getStatus();
 			if (s.getCode() == CCorePlugin.STATUS_PDOM_TOO_LARGE) {
 				if (CCorePlugin.PLUGIN_ID.equals(s.getPlugin()))
 					throw (CoreException) e;
 			}
 
-			// mask errors in order to avoid dialog from platform
+			// Mask errors in order to avoid dialog from platform
 			Throwable exception = s.getException();
 			if (exception != null) {
 				Throwable masked= getMaskedException(exception);
@@ -1135,6 +1175,9 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 			s= createStatus(getMessage(MessageKind.errorWhileParsing, file), e);
 		}
 		logError(s);
+		if (fShowProblems) {
+			reportException(e);
+		}
 		if (++fStatistics.fErrorCount > MAX_ERRORS) {
 			throw new CoreException(createStatus(getMessage(MessageKind.tooManyIndexProblems)));
 		}
@@ -1156,7 +1199,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 		if (isSource) {
 			options |= ILanguage.OPTION_IS_SOURCE_UNIT;
 		}
-		if (fFileSizeLimit > 0 && fResolver.getFileSize(codeReader.getFileLocation()) > fFileSizeLimit) {
+		if (fTranslationUnitSizeLimit > 0 && fResolver.getFileSize(codeReader.getFileLocation()) > fTranslationUnitSizeLimit) {
 			if (fShowActivity) {
 				trace("Indexer: Skipping large file " + codeReader.getFileLocation());  //$NON-NLS-1$
 			}
@@ -1169,7 +1212,7 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 				IndexBasedFileContentProvider ibfcp = new IndexBasedFileContentProvider(fIndex, fResolver,
 						language.getLinkageID(), fileContentProvider, this);
 				ibfcp.setContextToHeaderGap(ctx2header);
-				ibfcp.setFileSizeLimit(fFileSizeLimit);
+				ibfcp.setFileSizeLimit(fIncludedFileSizeLimit);
 				ibfcp.setHeadersToIndexAllVersions(fHeadersToIndexAllVersions);
 				ibfcp.setIndexAllHeaderVersions(fIndexAllHeaderVersions);
 				fCodeReaderFactory= ibfcp;
@@ -1201,8 +1244,8 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 
 	private void writeToIndex(final int linkageID, IASTTranslationUnit ast, FileContent codeReader,
 			FileContext ctx, IProgressMonitor pm) throws CoreException, InterruptedException {
-		HashSet<FileContentKey> enteredFiles= new HashSet<FileContentKey>();
-		ArrayList<FileInAST> orderedFileKeys= new ArrayList<FileInAST>();
+		HashSet<FileContentKey> enteredFiles= new HashSet<>();
+		ArrayList<FileInAST> orderedFileKeys= new ArrayList<>();
 
 		final IIndexFileLocation topIfl = fResolver.resolveASTPath(ast.getFilePath());
 		FileContentKey topKey = new FileContentKey(linkageID, topIfl, ast.getSignificantMacros());
@@ -1227,24 +1270,31 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 			// The default processing is handled by the indexer task.
 			PDOMWriter.Data data = new PDOMWriter.Data(ast, fileKeys, fIndex);
 			int storageLinkageID = process(ast, data);
-			if (storageLinkageID != ILinkage.NO_LINKAGE_ID)
-				addSymbols(data, storageLinkageID, ctx, fTodoTaskUpdater, pm);
+			if (storageLinkageID != ILinkage.NO_LINKAGE_ID) {
+				IASTComment[] comments = ast.getComments();
+				data.fReplacementHeaders = extractReplacementHeaders(comments, pm);
+
+				addSymbols(data, storageLinkageID, ctx, pm);
+
+				// Update task markers.
+				if (fTodoTaskUpdater != null) {
+					Set<IIndexFileLocation> locations= new HashSet<>();
+					for (FileInAST file : data.fSelectedFiles) {
+						locations.add(file.fileContentKey.getLocation());
+					}
+					fTodoTaskUpdater.updateTasks(comments, locations.toArray(new IIndexFileLocation[locations.size()]));
+				}
+			}
 
 			// Contributed processors now have an opportunity to examine the AST.
-			for(IPDOMASTProcessor processor : PDOMASTProcessorManager.getProcessors(ast)) {
+			for (IPDOMASTProcessor processor : PDOMASTProcessorManager.getProcessors(ast)) {
 				data = new PDOMWriter.Data(ast, fileKeys, fIndex);
 				storageLinkageID = processor.process(ast, data);
 				if (storageLinkageID != ILinkage.NO_LINKAGE_ID)
-					addSymbols(data, storageLinkageID, ctx, fTodoTaskUpdater, pm);
+					addSymbols(data, storageLinkageID, ctx, pm);
 			}
-		} catch (CoreException e) {
+		} catch (CoreException | RuntimeException | Error e) {
 			// Avoid parsing files again, that caused an exception to be thrown.
-			withdrawRequests(linkageID, fileKeys);
-			throw e;
-		} catch (RuntimeException e) {
-			withdrawRequests(linkageID, fileKeys);
-			throw e;
-		} catch (Error e) {
 			withdrawRequests(linkageID, fileKeys);
 			throw e;
 		}
@@ -1287,6 +1337,83 @@ public abstract class AbstractIndexerTask extends PDOMWriter {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Parses comments to extract replacement headers from <code>@headername{header}</code> and
+	 * {@code IWYU pragma: private}.
+	 *
+	 * @return replacement headers keyed by file paths 
+	 */
+	private Map<String, String> extractReplacementHeaders(IASTComment[] comments, IProgressMonitor pm) {
+		Map<String, String> replacementHeaders = new HashMap<>();
+		StringBuilder text = new StringBuilder();
+		IASTFileLocation carryoverLocation = null;
+		for (int i = 0; i < comments.length; i++) {
+			IASTComment comment = comments[i];
+			IASTFileLocation location = comment.getFileLocation();
+			if (location == null)
+				continue;
+			String fileName = location.getFileName();
+			if (replacementHeaders.containsKey(fileName))
+				continue;
+			char[] commentChars = comment.getComment();
+			if (commentChars.length <= 2)
+				continue;
+			if (carryoverLocation == null ||
+					!location.getFileName().equals(carryoverLocation.getFileName()) ||
+					location.getStartingLineNumber() != carryoverLocation.getEndingLineNumber() + 1) {
+				text.delete(0, text.length());
+			}
+			carryoverLocation = null;
+			text.append(commentChars, 2, commentChars.length - 2);
+			// Look for @headername{header}.
+			Matcher matcher = HEADERNAME_PATTERN.matcher(text);
+			if (matcher.find()) {
+				String header = matcher.group("header"); //$NON-NLS-1$
+				if (header == null) {
+					header = ""; //$NON-NLS-1$
+				} else {
+					// Normalize the header list.
+					header = header.replace(" or ", ",").replace(" ", ""); //$NON-NLS-1$//$NON-NLS-2$//$NON-NLS-3$//$NON-NLS-4$
+				}
+				replacementHeaders.put(fileName, header);
+				continue;
+			}
+			if (fPragmaPrivatePattern != null) {
+				// Look for IWYU pragma: private
+				matcher = fPragmaPrivatePattern.matcher(text);
+				if (matcher.find()) {
+					if (!isWhitespace(text, 0, matcher.start()))
+						continue;  // Extraneous text before the pragma.
+					if (isWhitespace(text, matcher.end(), text.length())) {
+						String header = matcher.group("header"); //$NON-NLS-1$
+						if (header == null)
+							header = ""; //$NON-NLS-1$
+						replacementHeaders.put(fileName, header);
+						continue;
+					}
+					// Handle the case when a IWYU pragma is split between two comment lines as:
+					//   IWYU pragma: private,
+					//   include "header"
+					if (text.charAt(matcher.end()) == ',' &&
+							isWhitespace(text, matcher.end() + 1, text.length())) {
+						// Defer processing until the next comment, which will be appended to this
+						// one.
+						carryoverLocation = location;
+					}
+				}
+			}
+		}
+		return replacementHeaders;
+	}
+
+	private boolean isWhitespace(CharSequence text, int start, int end) {
+		while (start < end) {
+			if (text.charAt(start++) > ' ')
+				return false;
+		}
+		return true;
 	}
 
 	public final IndexFileContent getFileContent(int linkageID, IIndexFileLocation ifl,

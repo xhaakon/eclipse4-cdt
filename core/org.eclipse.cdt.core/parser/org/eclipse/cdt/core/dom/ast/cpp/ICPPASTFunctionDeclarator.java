@@ -31,6 +31,12 @@ public interface ICPPASTFunctionDeclarator extends IASTStandardFunctionDeclarato
 	 * @since 5.1
 	 */
 	public static final IASTTypeId[] NO_EXCEPTION_SPECIFICATION = {};
+	
+	/**
+	 * Used as return value for {@link #getVirtSpecifiers()}.
+	 * @since 5.7
+	 */
+	public static final ICPPASTVirtSpecifier[] NO_VIRT_SPECIFIERS = {};
 
 	/**
 	 * Represents a 'noexcept' specification without an expression.
@@ -47,6 +53,9 @@ public interface ICPPASTFunctionDeclarator extends IASTStandardFunctionDeclarato
 	/** @since 5.2 */
 	public static final ASTNodeProperty TRAILING_RETURN_TYPE = new ASTNodeProperty(
 			"ICPPASTFunctionDeclarator.TRAILING_RETURN_TYPE [IASTTypeId]"); //$NON-NLS-1$
+	/** @since 5.7 */
+	public static final ASTNodeProperty VIRT_SPECIFIER = new ASTNodeProperty(
+			"ICPPASTFunctionDeclarator.VIRT_SPECIFIER [ICPPASTVirtSpecifier]");  //$NON-NLS-1$
 	
 	/**
 	 * Is this a const method?
@@ -185,7 +194,9 @@ public interface ICPPASTFunctionDeclarator extends IASTStandardFunctionDeclarato
 	 * Sets whether this function is declared override.
 	 * 
 	 * @since 5.5
+	 * @deprecated Use addVirtSpecifier() instead.
 	 */
+	@Deprecated
 	public void setOverride(boolean isOverride);
 
 	/**
@@ -199,6 +210,20 @@ public interface ICPPASTFunctionDeclarator extends IASTStandardFunctionDeclarato
 	 * Sets whether this function is declared final.
 	 * 
 	 * @since 5.5
+	 * @deprecated Use addVirtSpecifier() instead.
 	 */
+	@Deprecated
 	public void setFinal(boolean isFinal);
+	
+	/**
+	 * Returns the virt-specifiers of this function.
+	 * @since 5.7
+	 */
+	public ICPPASTVirtSpecifier[] getVirtSpecifiers();
+	
+	/**
+	 * Add a virt-specifiers to this function. 
+	 * @since 5.7
+	 */
+	public void addVirtSpecifier(ICPPASTVirtSpecifier virtSpecifier);
 }

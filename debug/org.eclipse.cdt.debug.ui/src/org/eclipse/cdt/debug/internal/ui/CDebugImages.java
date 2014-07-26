@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
  *     Ericsson             - Added tracepoint support (284286)
+ *     Marc Khouzam (Ericsson) - Added dynamic printf support (400628)
  *******************************************************************************/
 package org.eclipse.cdt.debug.internal.ui;
 
@@ -65,12 +66,16 @@ public class CDebugImages {
 	public static final String IMG_OVRS_GLOBAL = NAME_PREFIX + "global_ovr.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_BREAKPOINT_ENABLED = NAME_PREFIX + "brkp_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_BREAKPOINT_DISABLED = NAME_PREFIX + "brkpd_obj.gif";	//$NON-NLS-1$
+	public static final String IMG_OBJS_HWBREAKPOINT_ENABLED = NAME_PREFIX + "hwbrkp_obj.gif";	//$NON-NLS-1$
+	public static final String IMG_OBJS_HWBREAKPOINT_DISABLED = NAME_PREFIX + "hwbrkpd_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_ADDRESS_BREAKPOINT_ENABLED = NAME_PREFIX + "addrbrkp_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_ADDRESS_BREAKPOINT_DISABLED = NAME_PREFIX + "addrbrkpd_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_FUNCTION_BREAKPOINT_ENABLED = NAME_PREFIX + "funbrkp_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_FUNCTION_BREAKPOINT_DISABLED = NAME_PREFIX + "funbrkpd_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_TRACEPOINT_ENABLED = NAME_PREFIX + "trcp_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_TRACEPOINT_DISABLED = NAME_PREFIX + "trcpd_obj.gif";	//$NON-NLS-1$
+	public static final String IMG_OBJS_DYNAMICPRINTF_ENABLED = NAME_PREFIX + "dprintf_obj.gif";	//$NON-NLS-1$
+	public static final String IMG_OBJS_DYNAMICPRINTF_DISABLED = NAME_PREFIX + "dprintfd_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_WATCHPOINT_ENABLED = NAME_PREFIX + "readwrite_obj.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_WATCHPOINT_DISABLED = NAME_PREFIX + "readwrite_obj_disabled.gif";	//$NON-NLS-1$
 	public static final String IMG_OBJS_EVENTBREAKPOINT_ENABLED = NAME_PREFIX + "eventbreakpoint_obj.gif";	//$NON-NLS-1$
@@ -154,8 +159,12 @@ public class CDebugImages {
 	public static final ImageDescriptor DESC_OVRS_GLOBAL = createManaged(T_OVR, IMG_OVRS_GLOBAL);
 	public static final ImageDescriptor DESC_OBJS_BREAKPOINT_ENABLED = createManaged(T_OBJ, IMG_OBJS_BREAKPOINT_ENABLED);
 	public static final ImageDescriptor DESC_OBJS_BREAKPOINT_DISABLED = createManaged(T_OBJ, IMG_OBJS_BREAKPOINT_DISABLED);
+	public static final ImageDescriptor DESC_OBJS_HWBREAKPOINT_ENABLED = createManaged(T_OBJ, IMG_OBJS_HWBREAKPOINT_ENABLED);
+	public static final ImageDescriptor DESC_OBJS_HWBREAKPOINT_DISABLED = createManaged(T_OBJ, IMG_OBJS_HWBREAKPOINT_DISABLED);
 	public static final ImageDescriptor DESC_OBJS_TRACEPOINT_ENABLED = createManaged(T_ELCL, IMG_OBJS_TRACEPOINT_ENABLED);
 	public static final ImageDescriptor DESC_OBJS_TRACEPOINT_DISABLED = createManaged(T_DLCL, IMG_OBJS_TRACEPOINT_DISABLED);
+	public static final ImageDescriptor DESC_OBJS_DYNAMICPRINTF_ENABLED = createManaged(T_ELCL, IMG_OBJS_DYNAMICPRINTF_ENABLED);
+	public static final ImageDescriptor DESC_OBJS_DYNAMICPRINTF_DISABLED = createManaged(T_DLCL, IMG_OBJS_DYNAMICPRINTF_DISABLED);
 	public static final ImageDescriptor DESC_OBJS_WATCHPOINT_ENABLED = createManaged(T_OBJ, IMG_OBJS_WATCHPOINT_ENABLED);
 	public static final ImageDescriptor DESC_OBJS_WATCHPOINT_DISABLED = createManaged(T_OBJ, IMG_OBJS_WATCHPOINT_DISABLED);
 	public static final ImageDescriptor DESC_OBJS_EVENTBREAKPOINT_ENABLED = createManaged(T_OBJ, IMG_OBJS_EVENTBREAKPOINT_ENABLED);
