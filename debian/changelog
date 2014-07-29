@@ -1,10 +1,14 @@
-eclipse-cdt (8.4.0-1) UNRELEASED; urgency=medium
+eclipse-cdt (8.4.0-1) unstable; urgency=medium
 
+  [ Jakub Adam ]
   * New upstream release.
   * Build with javac target 1.7.
   * Add eclipse-remote-services-api to Build-Depends.
   * Override codeless-jar and incompatible-java-bytecode-format Lintian
     warnings.
+
+  [ tony mancill ]
+  * Bump version of default-jdk dependency to (>= 2:1.7)
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Sat, 26 Jul 2014 11:21:24 +0200
 
