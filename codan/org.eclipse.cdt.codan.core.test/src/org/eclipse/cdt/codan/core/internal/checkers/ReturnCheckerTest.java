@@ -346,4 +346,64 @@ public class ReturnCheckerTest extends CheckerTestCase {
 			loadCodeAndRunCpp(getAboveComment());
 			checkErrorLine(1);
 	}
+
+	//	int retindead() {
+	//			return 5;
+	//  ;
+	//	}
+	public void testRetInDeadCode1() throws Exception {
+		// bug 348386
+		loadCodeAndRunCpp(getAboveComment());
+		checkNoErrors();
+	}
+
+	//	int retindead() {
+	//			throw 42;
+	//  ;
+	//	}
+	public void testRetInDeadCodeThrow() throws Exception {
+		// bug 356908
+		loadCodeAndRunCpp(getAboveComment());
+		checkNoErrors();
+	}
+
+//	bool func( int i )
+//	{
+//	    switch( i )
+//	    {
+//	    case 0:
+//	        return true;
+//	    default:
+//	        return false;
+//	        break;
+//	    }
+//	}
+	public void testRetInDeadCodeCase() throws Exception {
+		// Bug 350168
+		loadCodeAndRunCpp(getAboveComment());
+		checkNoErrors();
+	}
+
+//	int test1() {
+//	    do {
+//	        return 1;
+//	    } while (0);
+//	}
+	public void testNoRetInfinitLoop() throws Exception {
+		// Bug 394521
+		loadCodeAndRunCpp(getAboveComment());
+		checkNoErrors();
+	}
+
+//	int test1_f()    // WARNING HERE: "No return, in function returning non-void"
+//	{
+//	    while (1)
+//	    {
+//	    }
+//	}
+	public void testNoRetInfinitLoop2() throws Exception {
+		// Bug 394521
+		loadCodeAndRunCpp(getAboveComment());
+		checkNoErrors();
+	}
 }

@@ -14,6 +14,7 @@
  *     Andrew Ferguson (Symbian)
  *     Sergey Prigogin (Google)
  *     Thomas Corbat (IFS)
+ *     Anders Dahlberg (Ericsson) - bug 84144
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -227,16 +228,16 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     	throw backtrack;
     }
 
-    private IASTName qualifiedName() throws BacktrackException, EndOfFileException {
-    	return ambiguousQualifiedName(CastExprCtx.eNotInBExpr);
+    private ICPPASTNameSpecifier nameSpecifier() throws BacktrackException, EndOfFileException {
+    	return ambiguousNameSpecifier(CastExprCtx.eNotInBExpr);
     }
 
-    private IASTName ambiguousQualifiedName(CastExprCtx ctx) throws BacktrackException, EndOfFileException {
+    private ICPPASTNameSpecifier ambiguousNameSpecifier(CastExprCtx ctx) throws BacktrackException, EndOfFileException {
     	TemplateIdStrategy strat= new TemplateIdStrategy();
     	IToken m= mark();
     	while (true) {
     		try {
-    			return qualifiedName(ctx, strat);
+    			return nameSpecifier(ctx, strat);
     		} catch (BacktrackException e) {
     			if (strat.setNextAlternative()) {
     				backup(m);
@@ -248,11 +249,11 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     }
 
     /**
-     * Parses a qualified name.
+     * Parses a name specifier.
      */
-    private IASTName qualifiedName(CastExprCtx ctx, ITemplateIdStrategy strat) throws BacktrackException, EndOfFileException {
+    private ICPPASTNameSpecifier nameSpecifier(CastExprCtx ctx, ITemplateIdStrategy strat) throws BacktrackException, EndOfFileException {
     	if (strat == null)
-    		return ambiguousQualifiedName(ctx);
+    		return ambiguousNameSpecifier(ctx);
 
     	ICPPASTQualifiedName qname= null;
     	ICPPASTNameSpecifier nameSpec= null;
@@ -354,11 +355,28 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     		setRange(qname, offset, endOffset);
     		nameSpec= qname;
     	}
-    	if (!(nameSpec instanceof IASTName)) {
+		return nameSpec;
+    }
+    
+    private ICPPASTName qualifiedName() throws BacktrackException, EndOfFileException {
+    	ICPPASTNameSpecifier nameSpec = nameSpecifier();
+    	if (!(nameSpec instanceof ICPPASTName)) {
     		// decltype-specifier without following ::
     		throwBacktrack(nameSpec);
     	}
-		return (IASTName) nameSpec;
+    	return (ICPPASTName) nameSpec;
+    }
+    
+    /**
+     * Parses a qualified name.
+     */
+    private ICPPASTName qualifiedName(CastExprCtx ctx, ITemplateIdStrategy strat) throws BacktrackException, EndOfFileException {
+    	ICPPASTNameSpecifier nameSpec = nameSpecifier(ctx, strat);
+    	if (!(nameSpec instanceof ICPPASTName)) {
+    		// decltype-specifier without following ::
+    		throwBacktrack(nameSpec);
+    	}
+    	return (ICPPASTName) nameSpec;
     }
     
     private void addNameSpecifier(ICPPASTQualifiedName qname, ICPPASTNameSpecifier nameSpec) {
@@ -1327,6 +1345,8 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
             return unaryExpression(IASTUnaryExpression.op_star, ctx, strat);
         case IToken.tAMPER:
             return unaryExpression(IASTUnaryExpression.op_amper, ctx, strat);
+        case IToken.tAND:
+            return unaryExpression(IASTUnaryExpression.op_labelReference, ctx, strat);
         case IToken.tPLUS:
             return unaryExpression(IASTUnaryExpression.op_plus, ctx, strat);
         case IToken.tMINUS:
@@ -2005,7 +2025,8 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 		
 		ICPPASTTypeId aliasedType = typeId(DeclarationOptions.TYPEID);
 		
-		if (LT(1) != IToken.tSEMI){
+		final int nextToken = LT(1);
+		if (nextToken != IToken.tSEMI && nextToken != IToken.tEOC){
 			throw backtrack;
 		}
 		int endOffset = consume().getEndOffset();
@@ -4476,7 +4497,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         int startOffset= LA(1).getOffset();
         boolean isVirtual = false;
         int visibility = 0;
-        IASTName name = null;
+        ICPPASTNameSpecifier nameSpec = null;
         loop: for (;;) {
             switch (LT(1)) {
             case IToken.t_virtual:
@@ -4499,9 +4520,9 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
             	break loop;
             }
         }
-        name = qualifiedName();
-        ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier baseSpec = nodeFactory.newBaseSpecifier(name, visibility, isVirtual);
-        setRange(baseSpec, startOffset, calculateEndOffset(name));
+        nameSpec = nameSpecifier();
+        ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier baseSpec = nodeFactory.newBaseSpecifier(nameSpec, visibility, isVirtual);
+        setRange(baseSpec, startOffset, calculateEndOffset(nameSpec));
         return baseSpec;
     }
 

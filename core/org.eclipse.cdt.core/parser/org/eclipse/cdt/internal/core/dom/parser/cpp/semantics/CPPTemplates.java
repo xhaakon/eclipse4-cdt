@@ -82,6 +82,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPEnumeration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPEnumerationSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionTemplate;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -1148,8 +1149,8 @@ public class CPPTemplates {
 			IType origType = types[i];
 			IType newType;
 			if (origType instanceof ICPPParameterPackType) {
-				origType= ((ICPPParameterPackType) origType).getType();
-				int packSize= determinePackSize(origType, tpMap);
+				IType innerType= ((ICPPParameterPackType) origType).getType();
+				int packSize= determinePackSize(innerType, tpMap);
 				if (packSize == PACK_SIZE_FAIL || packSize == PACK_SIZE_NOT_FOUND) {
 					newType= new ProblemBinding(point, IProblemBinding.SEMANTIC_INVALID_TYPE,
 							types[i] instanceof IBinding ? ((IBinding) types[i]).getNameCharArray() : null);
@@ -1160,7 +1161,7 @@ public class CPPTemplates {
 					System.arraycopy(result, 0, newResult, 0, j);
 					result= newResult;
 					for (int k= 0; k < packSize; k++) {
-						result[j++]= instantiateType(origType, tpMap, k, within, point);
+						result[j++]= instantiateType(innerType, tpMap, k, within, point);
 					}
 					continue;
 				}
@@ -1507,12 +1508,12 @@ public class CPPTemplates {
 					return ((ICPPClassSpecialization) owner).specializeMember(binding, point);
 				}
 			}
-		} else if (binding instanceof CPPFunctionInstance) {
+		} else if (binding instanceof ICPPFunctionInstance) {
 			// TODO(nathanridge):
-			//   Maybe we should introduce a CPPDeferredFunctionInstance and have things that can return
-			//   a dependent CPPFunctionInstance (like instantiateForAddressOfFunction) return that when
+			//   Maybe we should introduce an ICPPDeferredFunctionInstance and have things that can return
+			//   a dependent ICPPFunctionInstance (like instantiateForAddressOfFunction) return that when
 			//   appropriate?
-			CPPFunctionInstance origInstance = (CPPFunctionInstance) binding;
+			ICPPFunctionInstance origInstance = (ICPPFunctionInstance) binding;
 			ICPPTemplateArgument[] origArgs = origInstance.getTemplateArguments();
 			ICPPTemplateArgument[] newArgs = instantiateArguments(origArgs, tpMap, packOffset, within, point, false);
 			if (origArgs != newArgs) {
@@ -2041,8 +2042,17 @@ public class CPPTemplates {
 				IBinding instance= instantiateFunctionTemplate(template, args, map, point);
 				if (instance instanceof ICPPFunction) {
 					final ICPPFunction f = (ICPPFunction) instance;
-					if (SemanticUtil.isValidType(f.getType()))
-						return f;
+					if (SemanticUtil.isValidType(f.getType())) {
+						// The number of arguments have been checked against the function
+						// template's required argument count at an earlier stage. However,
+						// the process of instantiation can increase the required argument
+						// count by expanding parameter packs. If arguments are provided
+						// for a parameter pack explicitly, it's possible for deduction to
+						// succeed without having enough function arguments to match a 
+						// corresponding function parameter pack - so we check again.
+						if (fnArgs.size() >= f.getRequiredArgumentCount())
+							return f;
+					}
 				}
 			}
 		} catch (DOMException e) {

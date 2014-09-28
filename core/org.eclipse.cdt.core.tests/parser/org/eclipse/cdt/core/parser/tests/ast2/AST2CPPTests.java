@@ -97,6 +97,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConversionName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeleteExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
@@ -112,6 +113,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeConstructorExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTWhileStatement;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBasicType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
@@ -649,7 +651,7 @@ public class AST2CPPTests extends AST2TestBase {
 		IASTName name_B1 = comp.getName();
 
 		ICPPASTBaseSpecifier base = comp.getBaseSpecifiers()[0];
-		IASTName name_A2 = base.getName();
+		IASTName name_A2 = (IASTName) base.getNameSpecifier();
 
 		decl = (IASTSimpleDeclaration) comp.getMembers()[0];
 		IASTName name_f1 = decl.getDeclarators()[0].getName();
@@ -1120,7 +1122,7 @@ public class AST2CPPTests extends AST2TestBase {
 	//    X::f();
 	//    X::g();
 	// }
-	public void testUsingDeclaration_1() throws Exception {
+	public void testUsingDeclaration() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		NameCollector collector = new NameCollector();
 		tu.accept(collector);
@@ -1141,6 +1143,39 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPUsingDeclaration using_g = (ICPPUsingDeclaration) collector.getName(8).resolveBinding();
 		assertSame(using_g.getDelegates()[0], g);
 		assertInstances(collector, using_g.getDelegates()[0], 3); // decl + using-decl + ref
+	}
+
+	//	namespace A {
+	//	  void f(int);
+	//	}
+	//	using A::f;
+	//	namespace A {
+	//	  void f(char);
+	//	}
+	//	void foo() {
+	//	  f('i');
+	//	}
+	//	void bar() {
+	//	  using A::f;
+	//	  f('c');
+	//	}
+	public void testUsingDeclaration_86368() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+		IFunction f1= bh.assertNonProblem("f(int)", 1);
+		IFunction f2= bh.assertNonProblem("f('i')", 1);
+		assertSame(f1, f2);
+		IFunction g1= bh.assertNonProblem("f(char)", 1);
+		IFunction g2= bh.assertNonProblem("f('c')", 1);
+		assertSame(g1, g2);
+
+		// Alternative binding resolution order.
+		bh = getAssertionHelper();
+		f2= bh.assertNonProblem("f('i')", 1);
+		f1= bh.assertNonProblem("f(int)", 1);
+		assertSame(f1, f2);
+		g2= bh.assertNonProblem("f('c')", 1);
+		g1= bh.assertNonProblem("f(char)", 1);
+		assertSame(g1, g2);
 	}
 
 	// typedef int Int;
@@ -6827,23 +6862,20 @@ public class AST2CPPTests extends AST2TestBase {
 		assertInstance(((IFunctionType) s2.getType()).getParameterTypes()[0], IBasicType.class);
 	}
 
-	//    namespace A {
-	//    	class X {
-	//    		friend void f(int);
-	//    		class Y {
-	//    			friend void g(int);
-	//    		};
-	//    	};
-	//    	void test() {
-	//         f(1);
-	//         g(1);
-	//      }
-	//    }
-	public void testFriendFunctionResolution_86368_1() throws Exception {
-		final String code= getAboveComment();
-		parseAndCheckBindings(code);
-
-		BindingAssertionHelper bh= new BindingAssertionHelper(code, true);
+	//	namespace A {
+	//	  class X {
+	//	    friend void f(int);
+	//	    class Y {
+	//		  friend void g(int);
+	//	  	};
+	//	  };
+	//	  void test() {
+	//	    f(1);
+	//	    g(1);
+	//	  }
+	//	}
+	public void testFriendFunctionResolution_86368() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
 		IFunction f1= bh.assertNonProblem("f(int)", 1);
 		IFunction f2= bh.assertNonProblem("f(1)", 1);
 		assertSame(f1, f2);
@@ -6851,7 +6883,8 @@ public class AST2CPPTests extends AST2TestBase {
 		IFunction g2= bh.assertNonProblem("g(1)", 1);
 		assertSame(g1, g2);
 
-		bh= new BindingAssertionHelper(code, true);
+		// Alternative binding resolution order.
+		bh = getAssertionHelper();
 		f2= bh.assertNonProblem("f(1)", 1);
 		f1= bh.assertNonProblem("f(int)", 1);
 		assertSame(f1, f2);
@@ -6860,39 +6893,25 @@ public class AST2CPPTests extends AST2TestBase {
 		assertSame(g1, g2);
 	}
 
-	//    namespace A {
-	//    	void f(int);
-	//    }
-	//    using A::f;
-	//    namespace A {
-	//    	void f(char); // openReferences fails
-	//    }
-	//    void foo() {
-	//    	f('i');
-	//    }
-	//    void bar() {
-	//    	using A::f;
-	//    	f('c');
-	//    }
-	public void testFriendFunctionResolution_86368_2() throws Exception {
-		final String code= getAboveComment();
-		parseAndCheckBindings(code);
-
-		BindingAssertionHelper bh= new BindingAssertionHelper(code, true);
-		IFunction f1= bh.assertNonProblem("f(int)", 1);
-		IFunction f2= bh.assertNonProblem("f('i')", 1);
+	//	template <typename T>
+	//	class A {
+	//	  template <typename U>
+	//	  friend int func(int i);
+	//	};
+	//
+	//	template <typename U>
+	//	int func(int i = 0);
+	//
+	//	template <typename U>
+	//	int func(int i) { return i; }
+	public void testFriendFunction_438114() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+		ICPPFunction f1= bh.assertNonProblemOnFirstIdentifier("func(int i);");
+		ICPPFunction f2= bh.assertNonProblemOnFirstIdentifier("func(int i = 0);");
+		ICPPFunction f3= bh.assertNonProblemOnFirstIdentifier("func(int i) {");
 		assertSame(f1, f2);
-		IFunction g1= bh.assertNonProblem("f(char)", 1);
-		IFunction g2= bh.assertNonProblem("f('c')", 1);
-		assertSame(g1, g2);
-
-		bh= new BindingAssertionHelper(code, true);
-		f2= bh.assertNonProblem("f('i')", 1);
-		f1= bh.assertNonProblem("f(int)", 1);
-		assertSame(f1, f2);
-		g2= bh.assertNonProblem("f('c')", 1);
-		g1= bh.assertNonProblem("f(char)", 1);
-		assertSame(g1, g2);
+		assertSame(f2, f3);
+		assertEquals(0, f1.getRequiredArgumentCount());
 	}
 
 	// class A {
@@ -8282,6 +8301,17 @@ public class AST2CPPTests extends AST2TestBase {
 	//	}
 	public void testDecltypeInNameQualifier_380751() throws Exception {
 		parseAndCheckBindings();
+	}
+	
+	//	struct Base {};
+	//	struct Derived : decltype(Base()) {};
+	public void testDecltypeInBaseSpecifier_438348() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPClassType base = helper.assertNonProblem("struct Base", "Base");
+		ICPPClassType derived = helper.assertNonProblem("Derived");
+		ICPPBase[] bases = derived.getBases();
+		assertEquals(1, bases.length);
+		assertEquals(base, bases[0].getBaseClass());
 	}
 
 	//	template <typename T>
@@ -10646,7 +10676,6 @@ public class AST2CPPTests extends AST2TestBase {
 		assertEquals(5, waldo.getInitialValue().numericalValue().longValue());
 	}
 	
-	
 	//	constexpr int naive_fibonacci(int x) {
 	//		return x == 0 ? 0
 	//			 : x == 1 ? 1
@@ -10664,7 +10693,6 @@ public class AST2CPPTests extends AST2TestBase {
 		assertNull(waldo.getInitialValue().numericalValue());
 	}
 	
-	
 	//	constexpr int foo(int a = 42) {
 	//		return a;
 	//	}
@@ -10673,5 +10701,24 @@ public class AST2CPPTests extends AST2TestBase {
 		BindingAssertionHelper helper = getAssertionHelper();
 		IVariable waldo = helper.assertNonProblem("waldo");
 		assertEquals(42, waldo.getInitialValue().numericalValue().longValue());
+	}
+	
+	//	struct S1 { S1(int); };
+	//	struct S2 { void operator()(int); };
+	//	S2 s2;
+	//	int main() {
+	//		S1(42);
+	//		s2(43);
+	//	}
+	public void testICPPASTFunctionCallExpression_getOverload_441701() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		
+		ICPPASTFunctionCallExpression call1 = helper.assertNode("S1(42)");
+		ICPPFunction constructor = helper.assertNonProblem("S1(int)", "S1");
+		assertEquals(constructor, call1.getOverload());
+
+		ICPPASTFunctionCallExpression call2 = helper.assertNode("s2(43)");
+		ICPPFunction operator = helper.assertNonProblem("operator()");
+		assertEquals(operator, call2.getOverload());
 	}
 }

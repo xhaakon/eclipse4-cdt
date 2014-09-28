@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 IBM Corporation and others.
+ * Copyright (c) 2005, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,6 +13,7 @@
  *     Jens Elmenthaler - http://bugs.eclipse.org/173458 (camel case completion)
  *     Sergey Prigogin (Google)
  *     Marc-Andre Laperle (Ericsson)
+ *     Anders Dahlberg (Ericsson) - bug 84144
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
@@ -455,7 +456,16 @@ public class CVisitor extends ASTQueries {
 		IBinding binding = null;
 		IASTNode parent = name.getParent();
 		
-		if (parent instanceof CASTIdExpression) {
+		// GNU Goto label reference
+		//
+		//   void* labelPtr = &&foo; <-- label reference
+		// foo:
+		//
+		boolean labelReference = isLabelReference(parent);
+		
+		if (labelReference) {
+			binding = createLabelReferenceBinding(name);
+		} else if (parent instanceof CASTIdExpression) {
 			binding = resolveBinding(parent);
 		} else if (parent instanceof ICASTTypedefNameSpecifier) {
 			binding = resolveBinding(parent);
@@ -595,7 +605,35 @@ public class CVisitor extends ASTQueries {
 		}
 		return null;
 	}
-	
+
+	private static IBinding createLabelReferenceBinding(IASTName name) {
+		// Find function scope for r-value expression
+		//   void* labelPtr = &&foo;
+		// foo:                 ^^^
+		//   return
+		IBinding binding = null;
+		IBinding enclosingFunction = findEnclosingFunction(name);
+		if (enclosingFunction instanceof IFunction) {
+			IFunction function = (IFunction) enclosingFunction;
+			IScope functionScope = function.getFunctionScope();
+			if (functionScope != null) {
+				binding = functionScope.getBinding(name, false);
+				if (!(binding instanceof ILabel)) {
+					binding = new CLabel(name);
+					ASTInternal.addName(functionScope, name);
+				}
+			}
+		}
+
+		if (binding == null) {
+			IASTNode parentExpression = name.getParent();
+			binding = new ProblemBinding(parentExpression, IProblemBinding.SEMANTIC_BAD_SCOPE,
+					parentExpression.getRawSignature().toCharArray());
+		}
+
+		return binding;
+	}
+
 	/**
 	 * if prefix == false, return an IBinding or null
 	 * if prefix == true, return an IBinding[] or null
@@ -1627,6 +1665,7 @@ public class CVisitor extends ASTQueries {
 	static public boolean declaredBefore(IASTNode nodeA, IASTNode nodeB) {
 	    if (nodeB == null) return true;
 	    if (nodeB.getPropertyInParent() == STRING_LOOKUP_PROPERTY) return true;
+	    if (nodeB.getPropertyInParent() == STRING_LOOKUP_TAGS_PROPERTY) return true;
 	    
 	    if (nodeA instanceof ASTNode) {
 	    	ASTNode nd= (ASTNode) nodeA;
@@ -1661,26 +1700,6 @@ public class CVisitor extends ASTQueries {
 	    }
 	    
 	    return true; 
-	}
-
-	/**
-	 * Searches for the function enclosing the given node. May return <code>null</code>.
-	 */
-	public static IBinding findEnclosingFunction(IASTNode node) {
-		while (node != null && !(node instanceof IASTFunctionDefinition)) {
-			node= node.getParent();
-		}
-		if (node == null)
-			return null;
-		
-		IASTDeclarator dtor= findInnermostDeclarator(((IASTFunctionDefinition) node).getDeclarator());
-		if (dtor != null) {
-			IASTName name= dtor.getName();
-			if (name != null) {
-				return name.resolveBinding();
-			}
-		}
-		return null;
 	}
 
 	/**

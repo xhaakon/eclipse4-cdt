@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -1871,13 +1871,6 @@ public class CPPSemantics {
 	    int pointOfDecl= -1;
 	    if (obj instanceof ICPPInternalBinding) {
 	        ICPPInternalBinding cpp = (ICPPInternalBinding) obj;
-	        // For bindings in global or namespace scope we don't know whether there is a
-	        // previous declaration in one of the skipped header files. For bindings that
-	        // are likely to be redeclared we need to assume that there is a declaration
-	        // in one of the headers.
-	    	if (indexBased && acceptDeclaredAfter(cpp)) {
-	    		return true;
-	    	}
 	        IASTNode[] n = cpp.getDeclarations();
 	        if (n != null && n.length > 0) {
 	        	nd = (ASTNode) n[0];
@@ -2061,9 +2054,11 @@ public class CPPSemantics {
 	        } else {
 	        	if (obj == null) {
 	        		obj = temp;
-	        	} else if (obj.equals(temp)) {
-	        	    // Ok, delegates are synonyms.
-	        	} else {
+	        	} else if (!obj.equals(temp)) {
+	        		if (obj instanceof ICPPNamespace && temp instanceof ICPPNamespace &&
+	        				SemanticUtil.isSameNamespace((ICPPNamespace) obj, (ICPPNamespace) temp)) {
+	        			continue;
+	        		}
 	        		int c = compareByRelevance(tu, obj, temp);
 	        		if (c < 0) {
 	        			obj= temp;

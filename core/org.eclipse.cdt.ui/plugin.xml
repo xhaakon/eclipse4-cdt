@@ -3406,7 +3406,8 @@
             id="org.eclipse.cdt.ui.indexer">
          <enabledWhen>
 		     <adapt type="org.eclipse.core.resources.IProject">
-		          <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		          <test property="org.eclipse.core.resources.projectNature"
+		                value="org.eclipse.cdt.core.cnature"/>
 		     </adapt>         
          </enabledWhen>
       </page>
@@ -3417,7 +3418,8 @@
             id="org.eclipse.cdt.ui.fileTypes">
          <enabledWhen>
 		     <adapt type="org.eclipse.core.resources.IProject">
-		          <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		          <test property="org.eclipse.core.resources.projectNature"
+		                value="org.eclipse.cdt.core.cnature"/>
 		     </adapt>         
          </enabledWhen>
        </page>
@@ -3428,7 +3430,8 @@
             id="org.eclipse.cdt.ui.cHelp">
          <enabledWhen>
 		     <adapt type="org.eclipse.core.resources.IProject">
-		          <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		          <test property="org.eclipse.core.resources.projectNature"
+		                value="org.eclipse.cdt.core.cnature"/>
 		     </adapt>         
          </enabledWhen>
       </page>
@@ -3439,7 +3442,8 @@
             name="%CDTLanguagesProperty.name">
          <enabledWhen>
 		     <adapt type="org.eclipse.core.resources.IProject">
-		          <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		          <test property="org.eclipse.core.resources.projectNature"
+		                value="org.eclipse.cdt.core.cnature"/>
 		     </adapt>         
          </enabledWhen>
       </page>
@@ -3463,7 +3467,8 @@
             id="org.eclipse.cdt.ui.propertyPages.CodeFormatterPreferencePage">
          <enabledWhen>
 		     <adapt type="org.eclipse.core.resources.IProject">
-		          <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		          <test property="org.eclipse.core.resources.projectNature"
+		                value="org.eclipse.cdt.core.cnature"/>
 		     </adapt>         
          </enabledWhen>
       </page>
@@ -3475,7 +3480,8 @@
          <keywordReference id="org.eclipse.cdt.ui.common"/>
          <enabledWhen>
              <adapt type="org.eclipse.core.resources.IProject">
-                 <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+                 <test property="org.eclipse.core.resources.projectNature"
+                       value="org.eclipse.cdt.core.cnature"/>
              </adapt>
          </enabledWhen>
       </page>
@@ -3487,8 +3493,10 @@
          <enabledWhen>
             <adapt type="org.eclipse.core.resources.IResource">
                <and>
-                  <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
-                  <test property="org.eclipse.cdt.ui.checkPreference" value="org.eclipse.cdt.core:language.settings.providers.disabled=false"/>
+                  <test property="org.eclipse.core.resources.projectNature"
+                        value="org.eclipse.cdt.core.cnature"/>
+                  <test property="org.eclipse.cdt.ui.checkPreference"
+                        value="org.eclipse.cdt.core/language.settings.providers.disabled=false"/>
                </and>
             </adapt>
          </enabledWhen>
@@ -3768,7 +3776,8 @@
              <instanceof value="org.eclipse.cdt.ui.CElementGrouping"/>
              <and>
 	             <instanceof value="org.eclipse.core.resources.IResource"/>
-	             <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+	             <test property="org.eclipse.core.resources.projectNature"
+	                   value="org.eclipse.cdt.core.cnature"/>
              </and>
              <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
           </or>
@@ -3796,7 +3805,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -3810,7 +3820,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -3843,7 +3854,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />
 				<and>
 				   <instanceof value="org.eclipse.core.resources.IResource" />
-	               <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+	               <test property="org.eclipse.core.resources.projectNature"
+	                     value="org.eclipse.cdt.core.cnature"/>
 				</and>
 			</or>
           </enablement>
@@ -3857,7 +3869,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 				<and>
 				   <instanceof value="org.eclipse.core.resources.IResource" />
-	               <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+	               <test property="org.eclipse.core.resources.projectNature"
+	                     value="org.eclipse.cdt.core.cnature"/>
 				</and>
 			</or>
           </enablement>
@@ -3877,7 +3890,8 @@
 	         	<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
          	</or>
          </enablement>
@@ -3897,7 +3911,8 @@
 	         	<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
          	</or>
          </enablement>
@@ -3912,7 +3927,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -3927,7 +3943,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -3942,7 +3959,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IContainer"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -3957,7 +3975,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IProject"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                  value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -3971,7 +3990,8 @@
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
 		        <and>
 		            <instanceof value="org.eclipse.core.resources.IContainer"/>
-		            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		            <test property="org.eclipse.core.resources.projectNature"
+		                 value="org.eclipse.cdt.core.cnature"/>
 		        </and>
 			</or>
          </enablement>
@@ -4079,30 +4099,37 @@
   <extension
         point="org.eclipse.core.expressions.propertyTesters">
       <propertyTester
-           id="org.eclipse.cdt.ui.preferenceTester"
-           class="org.eclipse.cdt.ui.newui.PropertyTester"
-           namespace="org.eclipse.cdt.ui"
-           properties="checkPreference"
-           type="java.lang.Object"/>
+            class="org.eclipse.cdt.internal.ui.expressions.CPropertyTester"
+            id="org.eclipse.cdt.ui.preferenceTester"
+            namespace="org.eclipse.cdt.ui"
+            properties="checkPreference"
+            type="java.lang.Object"/>
       <propertyTester
-           id="org.eclipse.cdt.Tester1"
-           class="org.eclipse.cdt.ui.newui.PropertyTester"
-           namespace="org.eclipse.cdt.ui"
-           properties="isSource"
-           type="org.eclipse.cdt.core.model.ITranslationUnit"/>
+            class="org.eclipse.cdt.internal.ui.expressions.CPropertyTester"
+            id="org.eclipse.cdt.Tester1"
+            namespace="org.eclipse.cdt.ui"
+            properties="isSource"
+            type="org.eclipse.cdt.core.model.ITranslationUnit"/>
       <propertyTester
-           id="org.eclipse.cdt.Tester2"
-           class="org.eclipse.cdt.ui.newui.PropertyTester"
-           namespace="org.eclipse.cdt.ui"
-           properties="isSource"
-           type="org.eclipse.core.resources.IFile"/>
+            class="org.eclipse.cdt.internal.ui.expressions.CPropertyTester"
+            id="org.eclipse.cdt.Tester2"
+            namespace="org.eclipse.cdt.ui"
+            properties="isSource"
+            type="org.eclipse.core.resources.IFile"/>
       <propertyTester
-           id="org.eclipse.cdt.ui.workingSetPropertyTester"
-           class="org.eclipse.cdt.internal.ui.workingsets.WorkingSetPropertyTester"
-           namespace="org.eclipse.cdt.ui"
-           properties="hasCProjects"
-           type="org.eclipse.ui.IWorkingSet"/>
+            class="org.eclipse.cdt.internal.ui.expressions.ResourcePropertyTester"
+            id="org.eclipse.cdt.core.projectBuilderTester"
+            namespace="org.eclipse.cdt.ui"
+            properties="projectBuilder"
+            type="org.eclipse.core.resources.IResource"/>
+      <propertyTester
+            class="org.eclipse.cdt.internal.ui.workingsets.WorkingSetPropertyTester"
+            id="org.eclipse.cdt.ui.workingSetPropertyTester"
+            namespace="org.eclipse.cdt.ui"
+            properties="hasCProjects"
+            type="org.eclipse.ui.IWorkingSet"/>
   </extension>
+   
   <extension
         point="org.eclipse.ui.exportWizards">
      <category
@@ -4396,29 +4423,61 @@
             id="org.eclipse.cdt.internal.ui.refactoring.extractfunction.ExtractFunctionRefactoring">
       </contribution>
    </extension>
-	<extension point="org.eclipse.ltk.core.refactoring.renameParticipants">
-		<renameParticipant id="org.eclipse.jdt.junit.renameTypeParticipant"
-			name="%renameParticipant.name"
-			class="org.eclipse.cdt.internal.ui.refactoring.rename.RenameSourceFolder">
-			<enablement>
-				<or>
-				<with variable="affectedNatures">
-					<iterate operator="or">
-						<equals value="org.eclipse.cdt.core.ccnature" />
-					</iterate>
-				</with>
-				<with variable="affectedNatures">
-					<iterate operator="or">
-						<equals value="org.eclipse.cdt.core.cnature" />
-					</iterate>
-				</with>
-				</or>
-				<with variable="element">
-					<instanceof value="org.eclipse.core.resources.IFolder" />
-				</with>
-			</enablement>
-		</renameParticipant>
-	</extension>
+   <extension point="org.eclipse.ltk.core.refactoring.moveParticipants">
+	  <moveParticipant id="org.eclipse.cdt.ui.headerFileMoveParticipant"
+            name="%headerFileMoveParticipant.name"
+            class="org.eclipse.cdt.internal.ui.refactoring.rename.HeaderFileMoveParticipant">
+         <enablement>
+            <with variable="affectedNatures">
+               <iterate operator="or">
+                  <or>
+                     <equals value="org.eclipse.cdt.core.cnature" />
+                     <equals value="org.eclipse.cdt.core.ccnature" />
+                  </or>
+               </iterate>
+            </with>
+            <with variable="element">
+               <instanceof value="org.eclipse.core.resources.IResource"/>
+            </with>
+         </enablement>
+      </moveParticipant>
+   </extension>
+   <extension point="org.eclipse.ltk.core.refactoring.renameParticipants">
+	  <renameParticipant id="org.eclipse.cdt.ui.headerFileRenameParticipant"
+            name="%headerFileRenameParticipant.name"
+            class="org.eclipse.cdt.internal.ui.refactoring.rename.HeaderFileRenameParticipant">
+         <enablement>
+            <with variable="affectedNatures">
+               <iterate operator="or">
+                  <or>
+                     <equals value="org.eclipse.cdt.core.cnature" />
+                     <equals value="org.eclipse.cdt.core.ccnature" />
+                  </or>
+               </iterate>
+            </with>
+            <with variable="element">
+               <instanceof value="org.eclipse.core.resources.IResource"/>
+            </with>
+         </enablement>
+      </renameParticipant>
+	  <renameParticipant id="org.eclipse.cdt.ui.RenameSourceFolder"
+            name="%renameFolderParticipant.name"
+            class="org.eclipse.cdt.internal.ui.refactoring.rename.SourceFolderRenameParticipant">
+         <enablement>
+            <with variable="affectedNatures">
+               <iterate operator="or">
+                  <or>
+                     <equals value="org.eclipse.cdt.core.cnature" />
+                     <equals value="org.eclipse.cdt.core.ccnature" />
+                  </or>
+               </iterate>
+            </with>
+            <with variable="element">
+               <instanceof value="org.eclipse.core.resources.IFolder" />
+            </with>
+         </enablement>
+      </renameParticipant>
+   </extension>
    <!-- Add support for undo / redo in the FileListControl -->
    <extension
          id="org.eclipse.cdt.ui.FileListControlHandler"

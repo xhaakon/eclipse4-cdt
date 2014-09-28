@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2012 QNX Software Systems and others.
+ * Copyright (c) 2007, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,12 +12,15 @@
  *     Sergey Prigogin (Google)
  *     Jens Elmenthaler - http://bugs.eclipse.org/173458 (camel case completion)
  *     Nathan Ridge
+ *     Thomas Corbat (IFS)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text.contentassist;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -56,6 +59,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDirective;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplate;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplatePartialSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
@@ -64,6 +68,12 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionTemplate;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMember;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.parser.ast.ASTAccessVisibility;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
@@ -84,8 +94,6 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.AccessContext;
 import org.eclipse.cdt.internal.core.parser.util.ContentAssistMatcherFactory;
 
-import org.eclipse.cdt.internal.ui.text.CHeuristicScanner;
-import org.eclipse.cdt.internal.ui.text.Symbols;
 import org.eclipse.cdt.internal.ui.viewsupport.CElementImageProvider;
 
 /**
@@ -94,6 +102,12 @@ import org.eclipse.cdt.internal.ui.viewsupport.CElementImageProvider;
  * @author Bryan Wilkinson
  */
 public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer {
+	private static final String HASH = "#"; //$NON-NLS-1$;
+	private static final String DEFAULT_ARGUMENT_PATTERN = " = {0}"; //$NON-NLS-1$;
+	private static final String TEMPLATE_PARAMETER_PATTERN = "template<{0}> class"; //$NON-NLS-1$;
+	private static final String TYPENAME = "typename"; //$NON-NLS-1$;
+	private static final String ELLIPSIS = "..."; //$NON-NLS-1$;
+
 	/**
 	 * Default constructor is required (executable extension).
 	 */
@@ -152,40 +166,6 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 		}
 
 		return proposals;
-	}
-
-	/**
-	 * Checks whether the invocation offset is inside a using-declaration.
-	 * 
-	 * @param context  the invocation context
-	 * @return {@code true} if the invocation offset is inside a using-declaration
-	 */
-	private boolean inUsingDeclaration(CContentAssistInvocationContext context) {
-		IDocument doc = context.getDocument();
-		int offset = context.getInvocationOffset();
-
-		// Look at the tokens preceding the invocation offset.
-		CHeuristicScanner.TokenStream tokenStream = new CHeuristicScanner.TokenStream(doc, offset);
-		int token = tokenStream.previousToken();
-
-		// There may be a partially typed identifier which is being completed.
-		if (token == Symbols.TokenIDENT)
-			token = tokenStream.previousToken();
-
-		// Before that, there may be any number of "namespace::" token pairs.
-		while (token == Symbols.TokenDOUBLECOLON) {
-			token = tokenStream.previousToken();
-			if (token == Symbols.TokenUSING) {  // there could also be a leading "::" for global namespace
-				return true;
-			} else if (token != Symbols.TokenIDENT) {
-				return false;
-			} else {
-				token = tokenStream.previousToken();
-			}
-		}
-
-		// Before that, there must be a "using" token.
-		return token == Symbols.TokenUSING;
 	}
 
 	/**
@@ -288,9 +268,11 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 
 			IASTFunctionStyleMacroParameter[] params = functionMacro.getParameters();
 			if (params != null) {
+				final String parameterDelimiter = context.getFunctionParameterDelimiter();
 				for (int i = 0; i < params.length; ++i) {
-					if (i > 0)
-						args.append(", "); //$NON-NLS-1$
+					if (i > 0) {
+						args.append(parameterDelimiter);
+					}
 					args.append(params[i].getParameter());
 				}
 			}
@@ -336,7 +318,8 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 				|| binding instanceof CImplicitFunction
 				|| binding instanceof CImplicitTypedef
 				|| binding instanceof CBuiltinVariable
-				|| binding instanceof CBuiltinParameter)
+				|| binding instanceof CBuiltinParameter
+				|| binding instanceof ICPPClassTemplatePartialSpecialization)
 				&& !(binding instanceof CPPImplicitMethod)) {
 			return;
 		}
@@ -375,26 +358,88 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 		return name.length == 0 || name[0] == '{';
 	}
 
+	private void addProposalForClassTemplate(ICPPClassTemplate templateType, CContentAssistInvocationContext context,
+			int baseRelevance, List<ICompletionProposal> proposals) {
+		int relevance = getClassTypeRelevance(templateType);
+		StringBuilder representation = new StringBuilder(templateType.getName());
+		boolean inUsingDeclaration = context.isInUsingDirective();
+		String templateParameterRepresentation = ""; //$NON-NLS-1$
+		if (!inUsingDeclaration) {
+			representation.append("<{0}>"); //$NON-NLS-1$
+			templateParameterRepresentation = buildTemplateParameters(templateType, context);
+		} else if (!context.isFollowedBySemicolon()) {
+			representation.append(';');
+		}
+		String representationString = MessageFormat.format(representation.toString(), ""); //$NON-NLS-1$
+		String displayString = MessageFormat.format(representation.toString(), templateParameterRepresentation);
+		CCompletionProposal proposal = createProposal(representationString, displayString, getImage(templateType),
+				baseRelevance + relevance, context);
+
+		if (!inUsingDeclaration) {
+			CProposalContextInformation info =
+					new CProposalContextInformation(getImage(templateType), displayString, templateParameterRepresentation);
+			info.setContextInformationPosition(context.getContextInformationOffset());
+			proposal.setContextInformation(info);
+			if (!context.isContextInformationStyle()) {
+				proposal.setCursorPosition(representationString.length() - 1);
+			}
+		}
+		proposals.add(proposal);
+	}
+
+	private String buildTemplateParameters(ICPPClassTemplate templateType, CContentAssistInvocationContext context) {
+		ICPPTemplateParameter[] parameters = templateType.getTemplateParameters();
+		StringBuilder representation = new StringBuilder();
+
+		final String parameterDelimiter = context.getTemplateParameterDelimiter();
+		final boolean addDefaultedParameters = isDisplayDefaultedParameters();
+		final boolean addDefaultArguments = isDisplayDefaultArguments();
+		for (int i = 0; i < parameters.length; i++) {
+			ICPPTemplateParameter parameter = parameters[i];
+			ICPPTemplateArgument defaultValue = parameter.getDefaultValue();
+			if (!addDefaultedParameters && defaultValue != null) {
+				break;
+			}
+			if (i > 0) {
+				representation.append(parameterDelimiter);
+			}
+			if (parameter instanceof ICPPTemplateNonTypeParameter) {
+				IType parameterType = ((ICPPTemplateNonTypeParameter) parameter).getType();
+				String typeName = ASTTypeUtil.getType(parameterType);
+				representation.append(typeName);
+			} else if (parameter instanceof ICPPTemplateTypeParameter) {
+				representation.append(TYPENAME);
+			} else if (parameter instanceof ICPPTemplateTemplateParameter) {
+				String templateParameterParameters = buildTemplateParameters((ICPPTemplateTemplateParameter) parameter, context);
+				representation.append(MessageFormat.format(TEMPLATE_PARAMETER_PATTERN, templateParameterParameters));
+				representation.append(templateParameterParameters);
+			}
+			if (parameter.isParameterPack()) {
+				representation.append(ELLIPSIS);
+			}
+			representation.append(' ');
+			representation.append(parameter.getName());
+			if (addDefaultArguments && defaultValue != null) {
+				String defaultArgumentRepresentation = MessageFormat.format(DEFAULT_ARGUMENT_PATTERN, defaultValue);
+				for (int parameterIndex = 0; parameterIndex < i; parameterIndex++) {
+					String templateArgumentID = HASH + parameterIndex;
+					String templateArgumentValue = parameters[parameterIndex].getName();
+					defaultArgumentRepresentation = defaultArgumentRepresentation.replaceAll(templateArgumentID, templateArgumentValue);
+				}
+				representation.append(defaultArgumentRepresentation);
+			}
+		}
+		return representation.toString();
+	}
+
 	private void handleClass(ICPPClassType classType, IASTCompletionContext astContext,
 			CContentAssistInvocationContext context, int baseRelevance, List<ICompletionProposal> proposals) {
-		if (context.isContextInformationStyle()) {
-			ICPPConstructor[] constructors = classType.getConstructors();
-			for (ICPPConstructor constructor : constructors) {
-				handleFunction(constructor, context, baseRelevance, proposals);
-			}
+		if (context.isContextInformationStyle() && context.isAfterOpeningParenthesis()) {
+			addProposalsForConstructors(classType, context, baseRelevance, proposals);
+		} else if (classType instanceof ICPPClassTemplate) {
+			addProposalForClassTemplate((ICPPClassTemplate) classType, context, baseRelevance, proposals);
 		} else {
-			int relevance= 0;
-			switch (classType.getKey()) {
-			case ICPPClassType.k_class:
-				relevance= RelevanceConstants.CLASS_TYPE_RELEVANCE;
-				break;
-			case ICompositeType.k_struct:
-				relevance= RelevanceConstants.STRUCT_TYPE_RELEVANCE;
-				break;
-			case ICompositeType.k_union:
-				relevance= RelevanceConstants.UNION_TYPE_RELEVANCE;
-				break;
-			}
+			int relevance = getClassTypeRelevance(classType);
 			if (astContext instanceof IASTName && !(astContext instanceof ICPPASTQualifiedName)) {
 				IASTName name= (IASTName)astContext;
 				if (name.getParent() instanceof IASTDeclarator) {
@@ -405,6 +450,30 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 			proposals.add(createProposal(classType.getName(), classType.getName(), getImage(classType),
 					baseRelevance + RelevanceConstants.CLASS_TYPE_RELEVANCE, context));
 		}
+	}
+
+	private void addProposalsForConstructors(ICPPClassType classType,
+			CContentAssistInvocationContext context, int baseRelevance, List<ICompletionProposal> proposals) {
+		ICPPConstructor[] constructors = classType.getConstructors();
+		for (ICPPConstructor constructor : constructors) {
+			handleFunction(constructor, context, baseRelevance, proposals);
+		}
+	}
+
+	private int getClassTypeRelevance(ICPPClassType classType) {
+		int relevance= 0;
+		switch (classType.getKey()) {
+		case ICPPClassType.k_class:
+			relevance= RelevanceConstants.CLASS_TYPE_RELEVANCE;
+			break;
+		case ICompositeType.k_struct:
+			relevance= RelevanceConstants.STRUCT_TYPE_RELEVANCE;
+			break;
+		case ICompositeType.k_union:
+			relevance= RelevanceConstants.UNION_TYPE_RELEVANCE;
+			break;
+		}
+		return relevance;
 	}
 
 	private void handleFunction(IFunction function, CContentAssistInvocationContext context,
@@ -422,26 +491,37 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 		String returnTypeStr = null;
 		IParameter[] params = function.getParameters();
 		if (params != null) {
+			final String parameterDelimiter = context.getFunctionParameterDelimiter();
 			for (int i = 0; i < params.length; ++i) {
-				IType paramType = params[i].getType();
+				IParameter param = params[i];
+				if (skipDefaultedParameter(param)) {
+					break;
+				}
+				IType paramType = param.getType();
 				if (i > 0) {
-					dispargs.append(',');
-					idargs.append(',');
+					dispargs.append(parameterDelimiter);
+					idargs.append(parameterDelimiter);
 				}
 
 				dispargs.append(ASTTypeUtil.getType(paramType, false));
 				idargs.append(ASTTypeUtil.getType(paramType, false));
-				String paramName = params[i].getName();
+				String paramName = param.getName();
 				if (paramName != null && paramName.length() > 0) {
 					dispargs.append(' ');
 					dispargs.append(paramName);
+				}
+				if (param instanceof ICPPParameter) {
+					ICPPParameter cppParam = (ICPPParameter) param;
+					if (cppParam.hasDefaultValue() && isDisplayDefaultArguments()) {
+						dispargs.append(MessageFormat.format(DEFAULT_ARGUMENT_PATTERN, cppParam.getDefaultValue()));
+					}
 				}
 			}
 
 			if (function.takesVarArgs()) {
 				if (params.length > 0) {
-					dispargs.append(',');
-					idargs.append(',');
+					dispargs.append(parameterDelimiter);
+					idargs.append(parameterDelimiter);
 				}
 				dispargs.append("..."); //$NON-NLS-1$
 				idargs.append("..."); //$NON-NLS-1$
@@ -479,10 +559,12 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 		// In a using declaration, emitting parentheses after the function
 		// name is useless, since the user will just have to delete them.
 		// Instead, emitting a semicolon is useful.
-		boolean inUsingDeclaration = inUsingDeclaration(context);
+		boolean inUsingDeclaration = context.isInUsingDirective();
 		if (inUsingDeclaration) {
 			repStringBuff.setLength(repStringBuff.length() - 1);  // Remove opening parenthesis
-			repStringBuff.append(';');
+			if (!context.isFollowedBySemicolon()) {
+				repStringBuff.append(';');
+			}
 		} else {
 			repStringBuff.append(')');
 		}
@@ -498,7 +580,7 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 			proposal.setCursorPosition(cursorPosition);
 		}
 
-		if (contextDispargString != null) {
+		if (contextDispargString != null && !inUsingDeclaration) {
 			CProposalContextInformation info =
 					new CProposalContextInformation(image, dispString, contextDispargString);
 			info.setContextInformationPosition(context.getContextInformationOffset());
@@ -506,6 +588,10 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 		}
 
 		proposals.add(proposal);
+	}
+
+	private boolean skipDefaultedParameter(IParameter param) {
+		return !isDisplayDefaultedParameters() && param instanceof ICPPParameter && ((ICPPParameter)param).hasDefaultValue();
 	}
 
 	private void handleVariable(IVariable variable, CContentAssistInvocationContext context,
@@ -701,5 +787,19 @@ public class DOMCompletionProposalComputer extends ParsingBasedProposalComputer 
 
 		return imageDescriptor != null ?
 				CUIPlugin.getImageDescriptorRegistry().get(imageDescriptor) : null;
+	}
+
+	private static boolean isDisplayDefaultArguments() {
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		return preferenceStore.getBoolean(ContentAssistPreference.DEFAULT_ARGUMENT_DISPLAY_ARGUMENTS);
+	}
+
+	private static boolean isDisplayDefaultedParameters() {
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		return preferenceStore.getBoolean(ContentAssistPreference.DEFAULT_ARGUMENT_DISPLAY_PARAMETERS_WITH_DEFAULT_ARGUMENT);
+	}
+
+	private static IPreferenceStore getPreferenceStore() {
+		return CUIPlugin.getDefault().getPreferenceStore();
 	}
 }

@@ -8031,6 +8031,49 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	template <typename = int>
+	//	struct S {
+	//	    typedef int A;
+	//
+	//	    template <typename... Args>
+	//	    void waldo(A, Args...);
+	//	};
+	//
+	//	int main() {
+	//	    S<> s;
+	//	    s.waldo(0, 0);  // ERROR HERE
+	//	}
+	public void testParameterPackInNestedTemplate_441028() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename... Args>
+	//	void waldo(Args...);
+	//
+	//	int main() {
+	//	    waldo<int>();
+	//	}
+	public void testExplicitArgumentsForParameterPack_404245() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		helper.assertProblem("waldo<int>()", "waldo<int>");
+	}
+	
+	//	// Example 1
+	//	template <typename... T>
+	//	void foo1(T... t) {
+	//		bar(t.waldo...);
+	//	}
+	//
+	//	// Example 2
+	//	template <typename> struct A {}; 
+	//	template <typename... T>
+	//	void foo2(A<T>... t) {
+	//		bar(t.waldo...);
+	//	}
+	public void testMemberAccessInPackExpansion_442213() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	template <typename T>
 	//	struct A {};
 	//

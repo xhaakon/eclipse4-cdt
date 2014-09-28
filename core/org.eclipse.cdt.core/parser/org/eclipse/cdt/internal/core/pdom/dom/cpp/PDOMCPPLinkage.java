@@ -1104,7 +1104,7 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 		    	name = (IASTName) parentNode;
 		    	parentNode = parentNode.getParent();
 			}
-			if (name.getPropertyInParent() == ICPPASTBaseSpecifier.NAME)
+			if (name.getPropertyInParent() == ICPPASTBaseSpecifier.NAME_SPECIFIER)
 				pdomName.setIsBaseSpecifier();
 		}
 	}
@@ -1166,12 +1166,10 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			}
 			if (file == null && !(binding instanceof IIndexBinding)) {
 				IBinding owner= binding.getOwner();
-				if (owner instanceof ICPPNamespace) {
-					if (owner.getNameCharArray().length == 0) {
-						IASTNode node= ASTInternal.getDeclaredInSourceFileOnly(getPDOM(), binding, false, glob);
-						if (node != null) {
-							file= wpdom.getFileForASTNode(getLinkageID(), node);
-						}
+				if (owner instanceof ICPPNamespace && owner.getNameCharArray().length == 0) {
+					IASTNode node= ASTInternal.getDeclaredInSourceFileOnly(getPDOM(), binding, false, glob);
+					if (node != null) {
+						file= wpdom.getFileForASTNode(getLinkageID(), node);
 					}
 				}
 			}

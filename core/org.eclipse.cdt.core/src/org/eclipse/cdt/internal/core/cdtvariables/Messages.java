@@ -12,13 +12,12 @@ package org.eclipse.cdt.internal.core.cdtvariables;
 
 import org.eclipse.osgi.util.NLS;
 
-public class Messages extends NLS {
-	private static final String BUNDLE_NAME= "org.eclipse.cdt.internal.core.cdtvariables.messages"; //$NON-NLS-1$
-
+class Messages extends NLS {
 	public static String EclipseVariablesVariableSupplier_illegal_variable;
+
 	static {
-		// initialize resource bundle
-		NLS.initializeMessages(BUNDLE_NAME, Messages.class);
+		// Initialize resource bundle.
+		NLS.initializeMessages(Messages.class.getName(), Messages.class);
 	}
 
 	private Messages() {

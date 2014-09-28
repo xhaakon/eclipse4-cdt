@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension-point id="launchBarUIContributions" name="launchBar UI Contributions" schema="schema/launchBarUIContributions.exsd"/>
+   <extension
+         id="launchBarInjector"
+         point="org.eclipse.e4.workbench.model">
+      <processor
+            apply="always"
+            beforefragment="false"
+            class="org.eclipse.cdt.launchbar.ui.internal.LaunchBarInjector">
+      </processor>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.adapters">
+      <factory
+            adaptableType="org.eclipse.cdt.launchbar.core.ILaunchBarManager"
+            class="org.eclipse.cdt.launchbar.ui.internal.LaunchBarUIManagerAdapterFactory">
+         <adapter
+               type="org.eclipse.cdt.launchbar.ui.internal.LaunchBarUIManager">
+         </adapter>
+      </factory>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            defaultHandler="org.eclipse.cdt.launchbar.ui.internal.commands.BuildActiveCommandHandler"
+            id="org.eclipse.cdt.launchbar.ui.command.buildActive"
+            name="Build Active Configuration">
+      </command>
+      <command
+            defaultHandler="org.eclipse.cdt.launchbar.ui.internal.commands.LaunchActiveCommandHandler"
+            id="org.eclipse.cdt.launchbar.ui.command.launchActive"
+            name="Launch Active Configuration">
+      </command>
+      <command
+            defaultHandler="org.eclipse.cdt.launchbar.ui.internal.commands.StopActiveCommandHandler"
+            id="org.eclipse.cdt.launchbar.ui.command.stop"
+            name="Stop">
+      </command>
+      <command
+            defaultHandler="org.eclipse.cdt.launchbar.ui.internal.commands.ConfigureActiveLaunchHandler"
+            id="org.eclipse.cdt.launchbar.ui.command.configureActiveLaunch"
+            name="Configure Active Launch Configuration">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="org.eclipse.cdt.launchbar.ui.internal.LaunchBarPreferenceInitializer">
+      </initializer>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="org.eclipse.debug.ui.LaunchingPreferencePage"
+            class="org.eclipse.cdt.launchbar.ui.internal.LaunchBarPreferencePage"
+            id="org.eclipse.cdt.launchbar.ui.prefPage"
+            name="Launch Bar">
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.launchbar.ui.launchBarUIContributions">
+      <descriptorUI
+            descriptorTypeId="org.eclipse.cdt.launchbar.core.descriptor.default"
+            labelProvider="org.eclipse.cdt.launchbar.ui.internal.DefaultDescriptorLabelProvider">
+      </descriptorUI>
+      <targetUI
+            labelProvider="org.eclipse.cdt.launchbar.ui.internal.LocalTargetLabelProvider"
+            targetTypeId="org.eclipse.cdt.launchbar.core.target.local"
+            name="Local Target">
+      </targetUI>
+   </extension>
+
+</plugin>

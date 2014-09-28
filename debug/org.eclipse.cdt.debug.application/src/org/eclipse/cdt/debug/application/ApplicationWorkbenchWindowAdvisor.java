@@ -10,8 +10,12 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.application;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
@@ -19,11 +23,13 @@ import org.eclipse.cdt.internal.debug.application.DebugAttachedExecutable;
 import org.eclipse.cdt.internal.debug.application.DebugCoreFile;
 import org.eclipse.cdt.internal.debug.application.DebugExecutable;
 import org.eclipse.cdt.internal.debug.application.JobContainer;
+import org.eclipse.cdt.utils.spawner.ProcessFactory;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
@@ -105,6 +111,37 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor {
 		}
 	}
 
+	// Private method to search for executable names on PATH
+	private String findExecutable(String input) {
+		String result = input;
+		
+		Path x = new Path(input);
+		try {
+			if (!x.isAbsolute() && x.segmentCount() == 1) {
+				String command = "which " + input; //$NON-NLS-1$
+				Process p = null;
+				InputStream in = null;
+				try {
+					p = ProcessFactory.getFactory().exec(command);
+					in = p.getInputStream();
+					InputStreamReader reader = new InputStreamReader(in);
+					BufferedReader br = new BufferedReader(reader);
+					String line = br.readLine();
+					if (line != null)
+						result = line;
+				} finally {
+					if (in != null)
+						in.close();
+					if (p != null)
+						p.destroy();
+				}
+			}
+		} catch (IOException e) {
+			// do nothing
+		}
+		return result;
+	}
+	
 	public class PostWindowCreateRunnable implements IRunnableWithProgress {
 
 		@Override
@@ -143,7 +180,7 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor {
 					else if ("-e".equals(args[i])) {
 						++i;
 						if (i < args.length)
-							executable = args[i];
+							executable = findExecutable(args[i]);
 						++i;
 						StringBuffer argBuffer = new StringBuffer();
 						// Remaining values are arguments to the executable
@@ -158,14 +195,19 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor {
 				}
 				// Verify any core file or executable path is valid.
 				if (corefile != null) {
-					File executableFile = new File(executable);
+					File executableFile = null;
+					if (executable != null) {
+						executableFile = new File(executable);
+						executable = executableFile.getCanonicalPath();
+					}
 					File coreFile = new File(corefile);
-					if (!executableFile.exists() || !coreFile.exists()) {
+					corefile = coreFile.getCanonicalPath();
+					if (executable == null || !executableFile.exists() || !coreFile.exists()) {
 						final CoreFileInfo info = new CoreFileInfo("", "", ""); //$NON-NLS-1$ $NON-NLS-2$ $NON-NLS-3$
 						final IStatus errorStatus = new Status(IStatus.ERROR, Activator.PLUGIN_ID, 0, 
 								Messages.GdbDebugNewExecutableCommand_Binary_file_does_not_exist, null);
 						final String executablePath = executable;
-						final String coreFilePath = buildLog;
+						final String coreFilePath = corefile;
 
 						Display.getDefault().syncExec(new Runnable() {
 
@@ -197,7 +239,13 @@ public class ApplicationWorkbenchWindowAdvisor extends WorkbenchWindowAdvisor {
 					}
 				} else if (executable != null) {
 					File executableFile = new File(executable);
-					if (!executableFile.exists()) {
+					executable = executableFile.getCanonicalPath();
+					File buildLogFile = null;
+					if (buildLog != null) {
+						buildLogFile = new File(buildLog);
+						buildLog = buildLogFile.getCanonicalPath();
+					}
+					if (!executableFile.exists() || (buildLog != null && !buildLogFile.exists())) {
 						final NewExecutableInfo info = new NewExecutableInfo("", "", "", ""); //$NON-NLS-1$ $NON-NLS-2$ $NON-NLS-3$
 						final IStatus errorStatus = new Status(IStatus.ERROR, Activator.PLUGIN_ID, 0, 
 								Messages.GdbDebugNewExecutableCommand_Binary_file_does_not_exist, null);

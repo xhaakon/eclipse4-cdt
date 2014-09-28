@@ -348,6 +348,19 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 		assertDeclared();
 	}
 
+	//	namespace ns1 {
+	//	namespace ns2 {
+	//	class A {};
+	//	}
+	//	}
+	//	namespace ns = ns1::ns2;
+
+	//	ns::A a;
+	public void testNamespaceAlias() throws Exception {
+		assertDefined("A", "ns");
+		assertDeclared();
+	}
+
 	//	struct A {
 	//	  A(const char* s);
 	//	};
@@ -580,6 +593,14 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 	}
 
 	//	struct A {};
+
+	//	auto lambda = [](A* a) { return *a; };
+	public void testLambdaExpression() throws Exception {
+		assertDefined("A");
+		assertDeclared();
+	}
+
+	//	struct A {};
 	//	struct B {};
 	//	struct C {};
 	//	struct prefixD {};
@@ -607,6 +628,16 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 
 	//	MACRO(a);
 	public void testMacro_3() throws Exception {
+		assertDefined("MACRO");
+		assertDeclared();
+	}
+
+	//	void f(int);
+	//	#define MACRO(name, arg) void name() { f(arg); }
+
+	//  int bar;
+	//	MACRO(foo, bar);
+	public void testMacro_4() throws Exception {
 		assertDefined("MACRO");
 		assertDeclared();
 	}

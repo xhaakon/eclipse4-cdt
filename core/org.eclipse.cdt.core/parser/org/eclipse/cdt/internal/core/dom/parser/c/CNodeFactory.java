@@ -9,6 +9,7 @@
  *     Mike Kucera (IBM Corporation) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
  *     Thomas Corbat (IFS)
+ *     Anders Dahlberg (Ericsson) - bug 84144
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
@@ -300,6 +301,11 @@ public class CNodeFactory extends NodeFactory implements ICNodeFactory {
 	@Override
 	public IASTGotoStatement newGotoStatement(IASTName name) {
 		return new CASTGotoStatement(name);
+	}
+	
+	@Override
+	public IASTStatement newGotoStatement(IASTExpression expression) {
+		return new GNUCASTGotoStatement(expression);
 	}
 	
 	@Override

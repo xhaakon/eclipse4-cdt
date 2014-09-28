@@ -32,6 +32,7 @@ import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsRemovedEvent;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsUpdatedEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
+import org.eclipse.cdt.dsf.gdb.internal.GdbDebugOptions;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakListInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakpoint;
@@ -54,8 +55,10 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.IBreakpointManager;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -66,6 +69,20 @@ import org.junit.runner.RunWith;
 @SuppressWarnings( "restriction" )
 @RunWith(BackgroundRunner.class)
 public class GDBConsoleBreakpointsTest extends BaseTestCase {
+
+	private static boolean fPreviousTraceState;
+	
+	@BeforeClass
+	public static void EnableTraces() {
+		fPreviousTraceState = GdbDebugOptions.DEBUG;
+		GdbDebugOptions.DEBUG = true;
+	}
+	
+	@AfterClass
+	public static void DisableTraces() {
+		GdbDebugOptions.DEBUG = fPreviousTraceState;	
+	}
+	
 
 	final static private int DEFAULT_TIMEOUT = 20000;
 	final static private TimeUnit DEFAULT_TIME_UNIT = TimeUnit.MILLISECONDS;
@@ -320,10 +337,31 @@ public class GDBConsoleBreakpointsTest extends BaseTestCase {
 		// Remove the platform breakpoint and verify that 
 		// the target breakpoint is deleted.
 		deletePlatformBreakpoint(plBpt);
-		waitForBreakpointEvent(IBreakpointsRemovedEvent.class);
-		Assert.assertTrue(getPlatformBreakpointCount() == 0);
+		
+		// Don't fail right away if we don't get the breakpoint event
+		// as we can't tell the true cause.
+		// Let further checks happen to help figure things out.
+
+		String failure = "";
+		try {
+			waitForBreakpointEvent(IBreakpointsRemovedEvent.class);
+		} catch (Exception e) {
+			failure += e.getMessage();
+		}
+		
+		int platformBp = getPlatformBreakpointCount();
+		if (platformBp != 0) {
+			if (!failure.isEmpty()) failure += ", "; 
+			failure += "Platform breakpoints remaining: " + platformBp;
+		}
+		
 		miBpts = getTargetBreakpoints();
-		Assert.assertTrue(miBpts.length == 0);
+		if (miBpts.length != 0) {
+			if (!failure.isEmpty()) failure += ", "; 
+			failure += "Target breakpoints remaining: " + miBpts.length;
+		}
+		
+		Assert.assertTrue(failure, failure.isEmpty());
 	}
 
   	private void setConsoleLineBreakpoint(String fileName, int lineNumber) throws Throwable {
