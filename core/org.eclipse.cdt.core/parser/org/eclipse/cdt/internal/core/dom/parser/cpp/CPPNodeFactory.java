@@ -9,6 +9,7 @@
  *     Mike Kucera (IBM) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
  *     Thomas Corbat (IFS)
+ *     Anders Dahlberg (Ericsson) - bug 84144
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -87,6 +88,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLambdaExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTName;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceAlias;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
@@ -183,8 +185,14 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 	}
 
 	@Override
+	@Deprecated
 	public ICPPASTBaseSpecifier newBaseSpecifier(IASTName name, int visibility, boolean isVirtual) {
-		return new CPPASTBaseSpecifier(name, visibility, isVirtual);
+		return new CPPASTBaseSpecifier((ICPPASTName) name, visibility, isVirtual);
+	}
+	
+	@Override
+	public ICPPASTBaseSpecifier newBaseSpecifier(ICPPASTNameSpecifier nameSpecifier, int visibility, boolean isVirtual) {
+		return new CPPASTBaseSpecifier(nameSpecifier, visibility, isVirtual);
 	}
 
 	@Override
@@ -432,6 +440,11 @@ public class CPPNodeFactory extends NodeFactory implements ICPPNodeFactory {
 	@Override
 	public IASTGotoStatement newGotoStatement(IASTName name) {
 		return new CPPASTGotoStatement(name);
+	}
+
+	@Override
+	public IASTStatement newGotoStatement(IASTExpression expression) {
+		return new GNUCPPASTGotoStatement(expression);
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,6 +13,7 @@
  *     Thomas Corbat (IFS)
  *     Nathan Ridge
  *     Marc-Andre Laperle
+ *     Anders Dahlberg (Ericsson) - bug 84144
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
@@ -156,6 +157,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespaceAlias;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespaceScope;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameterPackType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPReferenceType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
@@ -171,6 +173,7 @@ import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.ASTInternal;
 import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.parser.ASTTranslationUnit;
+import org.eclipse.cdt.internal.core.dom.parser.IASTInternalScope;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.SizeofCalculator;
@@ -298,7 +301,17 @@ public class CPPVisitor extends ASTQueries {
 			id.resolveBinding();
 			return name.getBinding();
 		}
-		if (parent instanceof IASTIdExpression) {
+
+		// GNU Goto label reference
+		//
+		//   void* labelPtr = &&foo; <-- label reference
+		// foo:
+		//
+		boolean labelReference = isLabelReference(parent);
+
+		if (labelReference) {
+			return createLabelReferenceBinding(name);
+		} else if (parent instanceof IASTIdExpression) {
 			return resolveBinding(parent);
 		} else if (parent instanceof ICPPASTFieldReference) {
 			return resolveBinding(parent);
@@ -373,6 +386,34 @@ public class CPPVisitor extends ASTQueries {
 		}
 
 		return scope == inScope;
+	}
+
+	private static IBinding createLabelReferenceBinding(IASTName name) {
+		// Find function scope for r-value expression
+		//   void* labelPtr = &&foo;
+		// foo:                 ^^^
+		//   return
+		IBinding binding = null;
+		IBinding enclosingFunction = findEnclosingFunction(name);
+		if (enclosingFunction instanceof IFunction) {
+			IFunction function = (IFunction) enclosingFunction;
+			IScope functionScope = function.getFunctionScope();
+			if (functionScope != null) {
+				binding = functionScope.getBinding(name, false);
+				if (!(binding instanceof ILabel)) {
+					binding = new CPPLabel(name);
+					ASTInternal.addName(functionScope, name);
+				}
+			}
+		}
+
+		if (binding == null) {
+			IASTNode parentExpression = name.getParent();
+			binding = new CPPScope.CPPScopeProblem(parentExpression, IProblemBinding.SEMANTIC_BAD_SCOPE,
+					parentExpression.getRawSignature().toCharArray());
+		}
+
+		return binding;
 	}
 
 	private static IBinding createBinding(IASTGotoStatement gotoStatement) {
@@ -708,27 +749,27 @@ public class CPPVisitor extends ASTQueries {
 
 		IASTName name= declarator.getName().getLastName();
 
-		// in case the binding was created starting from another name within the declarator.
+		// In case the binding was created starting from another name within the declarator.
 		IBinding candidate= name.getBinding();
 		if (candidate != null) {
 			return candidate;
 		}
 
-		// function type
+		// Function type.
 		if (parent instanceof IASTTypeId)
 		    return CPPSemantics.resolveBinding(name);
 
-		// function type for non-type template parameter
+		// Function type for non-type template parameter.
 		ASTNodeProperty prop = parent.getPropertyInParent();
 		if (prop == ICPPASTTemplateDeclaration.PARAMETER || prop == ICPPASTTemplatedTypeTemplateParameter.PARAMETER) {
 			return CPPTemplates.createBinding((ICPPASTTemplateParameter) parent);
 		}
 
-		// explicit instantiations
+		// Explicit instantiations.
 		if (prop == ICPPASTExplicitTemplateInstantiation.OWNED_DECLARATION)
 			return CPPSemantics.resolveBinding(name);
 
-		// explicit specializations
+		// Explicit specializations.
 		ICPPASTTemplateDeclaration tmplDecl= CPPTemplates.getTemplateDeclaration(name);
 		if (tmplDecl instanceof ICPPASTTemplateSpecialization) {
 			IBinding b= CPPSemantics.resolveBinding(name);
@@ -740,13 +781,13 @@ public class CPPVisitor extends ASTQueries {
 			return b;
 		}
 
-		// parameter declarations
+		// Parameter declarations.
         if (parent instanceof ICPPASTParameterDeclaration) {
 			ICPPASTParameterDeclaration param = (ICPPASTParameterDeclaration) parent;
 			parent = param.getParent();
 			if (parent instanceof IASTStandardFunctionDeclarator) {
 				IASTStandardFunctionDeclarator fdtor = (IASTStandardFunctionDeclarator) param.getParent();
-				// Create parameter bindings only if the declarator declares a function
+				// Create parameter bindings only if the declarator declares a function.
 				if (findTypeRelevantDeclarator(fdtor) != fdtor)
 					return null;
 
@@ -771,7 +812,7 @@ public class CPPVisitor extends ASTQueries {
 			return new ProblemBinding(name, IProblemBinding.SEMANTIC_INVALID_TYPE);
         }
 
-		// function declaration/definition
+		// Function declaration/definition.
 		IBinding binding= null;
 		final boolean template= tmplDecl != null;
 		boolean isFriendDecl= false;
@@ -798,7 +839,7 @@ public class CPPVisitor extends ASTQueries {
         } else if (parent instanceof IASTSimpleDeclaration) {
         	IASTSimpleDeclaration simpleDecl = (IASTSimpleDeclaration) parent;
         	if (simpleDecl.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef) {
-        		// Typedef declaration
+        		// Typedef declaration.
         		if (binding instanceof ICPPInternalBinding && binding instanceof ITypedef && name.isActive()) {
         			IType t1 = ((ITypedef) binding).getType();
         			IType t2 = createType(declarator);
@@ -808,26 +849,27 @@ public class CPPVisitor extends ASTQueries {
         			}
         			return new ProblemBinding(name, IProblemBinding.SEMANTIC_INVALID_REDECLARATION);
         		}
-        		// If we don't resolve the target type first, we get a problem binding in case the typedef
-        		// redeclares the target type, otherwise it is safer to defer the resolution of the target type.
+        		// If we don't resolve the target type first, we get a problem binding in case
+        		// the typedef redeclares the target type, otherwise it is safer to defer
+        		// the resolution of the target type.
         		IType targetType= createType(declarator);
         		CPPTypedef td= new CPPTypedef(name);
         		td.setType(targetType);
         		binding = td;
         	} else if (typeRelevantDtor instanceof IASTFunctionDeclarator) {
-        		// Function declaration via function declarator
+        		// Function declaration via function declarator.
     			isFunction= true;
     		} else {
-        		// Looks like a variable declaration
+        		// Looks like a variable declaration.
         	    IType t1 = createType(declarator);
         	    if (SemanticUtil.getNestedType(t1, TDEF) instanceof IFunctionType) {
         	    	// Function declaration via a typedef for a function type
         	    	isFunction= true;
         	    } else if (binding instanceof IParameter) {
-        	    	// Variable declaration redeclaring a parameter
+        	    	// Variable declaration redeclaring a parameter.
         	    	binding = new ProblemBinding(name, IProblemBinding.SEMANTIC_INVALID_REDECLARATION);
         	    } else {
-        	    	// Variable declaration
+        	    	// Variable declaration.
         	    	IType t2= null;
         	    	if (binding != null && binding instanceof IVariable && !(binding instanceof IIndexBinding)) {
         	    		t2 = ((IVariable) binding).getType();
@@ -895,6 +937,9 @@ public class CPPVisitor extends ASTQueries {
 								   : new CPPFunction(typeRelevantDtor);
 			}
 			binding= CPPSemantics.checkDeclSpecifier(binding, name, parent);
+			if (isFriendDecl && scope instanceof IASTInternalScope) {
+				((IASTInternalScope) scope).addBinding(binding);
+			}
         }
 
 		return binding;
@@ -1257,6 +1302,9 @@ public class CPPVisitor extends ASTQueries {
 				final ICPPASTFieldReference fieldReference = (ICPPASTFieldReference) parent;
 				IType type = fieldReference.getFieldOwnerType();
 				type= getUltimateTypeUptoPointers(type);
+				if (type instanceof ICPPParameterPackType) {
+					type = ((ICPPParameterPackType) type).getType();
+				}
 				if (type instanceof ICPPClassType) {
 					type= SemanticUtil.mapToAST(type, fieldReference);
 					return ((ICPPClassType) type).getCompositeScope();
@@ -1669,7 +1717,7 @@ public class CPPVisitor extends ASTQueries {
 
 			switch (kind) {
 			case KIND_LABEL:
-				if (prop == IASTGotoStatement.NAME)
+				if (prop == IASTGotoStatement.NAME || prop == IASTIdExpression.ID_NAME)
 					break;
 				return PROCESS_CONTINUE;
 
@@ -1678,7 +1726,7 @@ public class CPPVisitor extends ASTQueries {
 				if (prop == IASTNamedTypeSpecifier.NAME ||
 						prop == ICPPASTPointerToMember.NAME ||
 						prop == ICPPASTUsingDeclaration.NAME ||
-						prop == ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier.NAME ||
+						prop == ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier.NAME_SPECIFIER ||
 						prop == ICPPASTTemplateId.TEMPLATE_NAME ||
 						p2 == ICPPASTQualifiedName.SEGMENT_NAME) {
 					break;
@@ -2463,26 +2511,6 @@ public class CPPVisitor extends ASTQueries {
 	public static boolean isLValueReference(IType t) {
 		t= SemanticUtil.getNestedType(t, TDEF);
 		return t instanceof ICPPReferenceType && !((ICPPReferenceType) t).isRValueReference();
-	}
-
-	/**
-	 * Searches for the function enclosing the given node. May return <code>null</code>.
-	 */
-	public static IBinding findEnclosingFunction(IASTNode node) {
-		while (node != null && !(node instanceof IASTFunctionDefinition)) {
-			node= node.getParent();
-		}
-		if (node == null)
-			return null;
-
-		IASTDeclarator dtor= findInnermostDeclarator(((IASTFunctionDefinition) node).getDeclarator());
-		if (dtor != null) {
-			IASTName name= dtor.getName();
-			if (name != null) {
-				return name.resolveBinding();
-			}
-		}
-		return null;
 	}
 
 	/**

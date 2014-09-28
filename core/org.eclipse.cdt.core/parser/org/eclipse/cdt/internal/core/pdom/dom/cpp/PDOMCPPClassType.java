@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 QNX Software Systems and others.
+ * Copyright (c) 2005, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,10 @@
  *     Thomas Corbat (IFS)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.cpp;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMVisitor;
@@ -41,10 +45,6 @@ import org.eclipse.cdt.internal.core.pdom.dom.PDOMName;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMNode;
 import org.eclipse.core.runtime.CoreException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 /**
  * @author Doug Schaefer
  */
@@ -66,7 +66,7 @@ class PDOMCPPClassType extends PDOMCPPBinding implements IPDOMCPPClassType, IPDO
 		setKind(classType);
 		setAnonymous(classType);
 		setFinal(classType);
-		// linked list is initialized by storage being zero'd by malloc
+		// Linked list is initialized by storage being zero'd by malloc
 	}
 
 	public PDOMCPPClassType(PDOMLinkage linkage, long bindingRecord) {
@@ -290,7 +290,7 @@ class PDOMCPPClassType extends PDOMCPPBinding implements IPDOMCPPClassType, IPDO
 			if (nchars == null || !CharArrayUtils.equals(nchars, getNameCharArray()))
 				return false;
 
-			return SemanticUtil.isSameOwner(getOwner(), ctype.getOwner());
+			return SemanticUtil.haveSameOwner(this, ctype);
 		}
 		return false;
 	}
@@ -308,7 +308,7 @@ class PDOMCPPClassType extends PDOMCPPBinding implements IPDOMCPPClassType, IPDO
 			return bases;
 
 		try {
-			List<PDOMCPPBase> list = new ArrayList<PDOMCPPBase>();
+			List<PDOMCPPBase> list = new ArrayList<>();
 			for (PDOMCPPBase base = getFirstBase(); base != null; base = base.getNextBase()) {
 				list.add(base);
 			}
@@ -318,7 +318,7 @@ class PDOMCPPClassType extends PDOMCPPBinding implements IPDOMCPPClassType, IPDO
 			return bases;
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
-			return new ICPPBase[0];
+			return ICPPBase.EMPTY_BASE_ARRAY;
 		}
 	}
 
@@ -373,7 +373,7 @@ class PDOMCPPClassType extends PDOMCPPBinding implements IPDOMCPPClassType, IPDO
 	@Override
 	public IBinding[] getFriends() {
 		try {
-			final List<IBinding> list = new ArrayList<IBinding>();
+			final List<IBinding> list = new ArrayList<>();
 			for (PDOMCPPFriend friend = getFirstFriend();
 					friend != null; friend = friend.getNextFriend()) {
 				list.add(0, friend.getFriendSpecifier());
@@ -381,7 +381,7 @@ class PDOMCPPClassType extends PDOMCPPBinding implements IPDOMCPPClassType, IPDO
 			return list.toArray(new IBinding[list.size()]);
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
-			return new IBinding[0];
+			return IBinding.EMPTY_BINDING_ARRAY;
 		}
 	}
 

@@ -1705,7 +1705,19 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	//	namespace alias = ns;
 	//	void alias::fun() {
 	//	}
-	public void testNamespaceAliasAsQualifier_356493() throws Exception {
+	public void testNamespaceAliasAsQualifier_356493a() throws Exception {
+		IFunction ref= getBindingFromASTName("fun", 0);
+		assertEquals("ns", ref.getOwner().getName());
+	}
+
+	//	namespace ns {
+	//		void fun();
+	//	}
+	//	namespace alias = ns;
+
+	//	void alias::fun() {
+	//	}
+	public void testNamespaceAliasAsQualifier_356493b() throws Exception {
 		IFunction ref= getBindingFromASTName("fun", 0);
 		assertEquals("ns", ref.getOwner().getName());
 	}
@@ -1848,6 +1860,13 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	
 	//	int z;
 	public void testLambdaOwnedByClass() throws Exception {
+		checkBindings();
+	}
+	
+	//	extern char TableValue[10];
+	
+	//	char TableValue[sizeof TableValue];
+	public void testNameLookupFromArrayModifier_435075() throws Exception {
 		checkBindings();
 	}
 }

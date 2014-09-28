@@ -13,6 +13,7 @@
  *     Marc Khouzam (Ericsson) - Make each thread an IDisassemblyDMContext (bug 352748)
  *     Alvaro Sanchez-Leon (Ericsson AB) - Support for Step into selection (bug 244865)
  *     Alvaro Sanchez-Leon (Ericsson AB) - Bug 415362
+ *     Xavier Raynaud (Kalray) - Bug 438635
  *******************************************************************************/
 package org.eclipse.cdt.dsf.mi.service;
 
@@ -482,12 +483,18 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
      * @noreference This method is not intended to be referenced by clients.
      */
     @DsfServiceEventHandler
-    public void eventDispatched(final MIRunningEvent e) {
+    public void eventDispatched(MIRunningEvent e) {    	
     	if (fDisableNextRunningEvent) {
     		fDisableNextRunningEvent = false;
     		// We don't broadcast this running event
     		return;
     	}
+
+    	if (fLatestEvent instanceof IResumedDMEvent) {
+			// Ignore multiple running events in a row.  They will only slow down the UI
+			// for no added value.
+			return;
+		}
 
         IDMEvent<?> event = null;
         // Find the container context, which is used in multi-threaded debugging.
@@ -1290,6 +1297,12 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 	 * @since 3.0
 	 */
 	protected class MakeTargetAvailableStep extends Sequence.Step {
+
+	    /* public constructor required, so upper classes can override executeWithTargetAvailable */
+        /** @since 4.5 */
+        public MakeTargetAvailableStep() {
+        }
+
 		@Override
 		public void execute(final RequestMonitor rm) {
 			if (!isTargetAvailable()) {
@@ -1324,6 +1337,12 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 	 * @since 4.0
 	 */
 	protected class ExecuteQueuedOperationsStep extends Sequence.Step {
+
+        /* public constructor required, so upper classes can override executeWithTargetAvailable */
+        /** @since 4.5 */
+        public ExecuteQueuedOperationsStep() {
+        }
+
 		@Override
 		public void execute(final RequestMonitor rm) {
 			fCurrentlyExecutingSteps = true;
@@ -1360,6 +1379,12 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 	 * @since 3.0
 	 */
 	protected class RestoreTargetStateStep extends Sequence.Step {
+
+        /* public constructor required, so upper classes can override executeWithTargetAvailable */
+        /** @since 4.5 */
+        public RestoreTargetStateStep() {
+        }
+
 		@Override
 		public void execute(final RequestMonitor rm) {
 			if (!isTargetAvailable()) {

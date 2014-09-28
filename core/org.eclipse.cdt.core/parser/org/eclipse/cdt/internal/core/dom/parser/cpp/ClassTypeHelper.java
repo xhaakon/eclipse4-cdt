@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -154,7 +154,7 @@ public class ClassTypeHelper {
 			for (IBinding friend : getFriends(classType, null)) {
 				if (friend instanceof ICPPFunction &&
 						CharArrayUtils.equals(name, friend.getNameCharArray()) &&
-						SemanticUtil.isSameOwner(binding.getOwner(), friend.getOwner()) &&
+						SemanticUtil.haveSameOwner(binding, friend) &&
 						type.isSameType(((ICPPFunction) friend).getType())) {
 					return true;
 				}
@@ -713,6 +713,7 @@ public class ClassTypeHelper {
 			result.add(classOrTypedef);
 		}
 
+		// TODO(nathanridge): Also find subclasses referenced via decltype-specifiers rather than names.
 		IIndexName[] names= index.findNames(classOrTypedef, IIndex.FIND_REFERENCES | IIndex.FIND_DEFINITIONS);
 		for (IIndexName indexName : names) {
 			if (indexName.isBaseSpecifier()) {

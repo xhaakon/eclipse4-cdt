@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
+import org.eclipse.cdt.codan.core.cxx.Activator;
 import org.eclipse.cdt.codan.core.model.cfg.IBasicBlock;
 import org.eclipse.cdt.codan.core.model.cfg.IBranchNode;
 import org.eclipse.cdt.codan.core.model.cfg.ICfgData;
@@ -52,8 +53,12 @@ import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTSwitchStatement;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
+import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCatchHandler;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
+import org.eclipse.cdt.internal.core.dom.parser.Value;
+import org.eclipse.osgi.util.NLS;
 
 /**
  * This class creates C control flow graph
@@ -152,6 +157,8 @@ public class ControlFlowGraphBuilder {
 			return createWhile(prev, (IASTWhileStatement) body);
 		} else if (body instanceof IASTForStatement) {
 			return createFor(prev, (IASTForStatement) body);
+		} else if (body instanceof ICPPASTRangeBasedForStatement) {
+			return createRangeBasedFor(prev, (ICPPASTRangeBasedForStatement) body);
 		} else if (body instanceof IASTDoStatement) {
 			return createDoWhile(prev, (IASTDoStatement) body);
 		} else if (body instanceof IASTReturnStatement) {
@@ -197,7 +204,6 @@ public class ControlFlowGraphBuilder {
 			addOutgoing(prev, gotoNode);
 			return gotoNode;
 		} else if (body instanceof IASTProblemStatement) {
-			// System.err.println("problem");
 			CxxPlainNode node = factory.createPlainNode(body);
 			addOutgoing(prev, node);
 			return node;
@@ -206,7 +212,8 @@ public class ControlFlowGraphBuilder {
 		} else if (body instanceof ICPPASTTryBlockStatement) {
 			return createTry(prev, (ICPPASTTryBlockStatement) body);
 		} else {
-			System.err.println("unknown statement for cfg: " + body); //$NON-NLS-1$
+			Activator.log(NLS.bind(Messages.ControlFlowGraphBuilder_unsupported_statement_type,
+					body.getClass().getSimpleName()));
 		}
 		return prev;
 	}
@@ -375,6 +382,11 @@ public class ControlFlowGraphBuilder {
 		return nBreak;
 	}
 
+	private IBasicBlock createRangeBasedFor(IBasicBlock prev, ICPPASTRangeBasedForStatement forNode) {
+		// TODO(Alena Laskavaia): Implement proper graph.
+		return createSubGraph(prev, forNode.getBody());
+	}
+
 	protected IBasicBlock createWhile(IBasicBlock prev, IASTWhileStatement body) {
 		// Add continue connector
 		IConnectorNode nContinue = factory.createConnectorNode();
@@ -463,14 +475,38 @@ public class ControlFlowGraphBuilder {
 		if (prev instanceof IExitNode || prev == null) {
 			dead.add(node);
 			return;
-		} else if (prev instanceof ICfgData) {
-			if (prev instanceof IDecisionNode && !(node instanceof IBranchNode)) {
+		}
+		if (prev instanceof IDecisionNode) {
+			if (node instanceof IBranchNode) {
+				IDecisionNode decisionNode = (IDecisionNode) prev;
+				if (isConstant(decisionNode, 1) && ((IBranchNode) node).getLabel().equals(IBranchNode.ELSE)) {
+					dead.add(node);
+					return;
+				} else if (isConstant(decisionNode, 0) && ((IBranchNode) node).getLabel().equals(IBranchNode.THEN)) {
+					dead.add(node);
+					return;
+				}
+			} else {
 				dead.add(node);
 				return;
 			}
-			((AbstractBasicBlock) prev).addOutgoing(node);
 		}
+		((AbstractBasicBlock) prev).addOutgoing(node);
 		if (!(node instanceof IStartNode))
 			((AbstractBasicBlock) node).addIncoming(prev);
+	}
+
+	private boolean isConstant(IDecisionNode node, long testvalue) {
+		if (node instanceof ICfgData) {
+			IASTNode ast = (IASTNode) ((ICfgData) node).getData();
+			if (ast instanceof IASTExpression) {
+				IValue dvalue = Value.create((IASTExpression) ast, 5);
+				Long numericalValue = dvalue.numericalValue();
+				if (numericalValue == null)
+					return false;
+				return numericalValue == testvalue;
+			}
+		}
+		return false;
 	}
 }

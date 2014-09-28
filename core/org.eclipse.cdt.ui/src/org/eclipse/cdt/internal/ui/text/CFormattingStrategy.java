@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2008 QNX Software Systems and others.
+ * Copyright (c) 2000, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,10 +8,12 @@
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
  *     Anton Leherbauer (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
 
 import org.eclipse.jface.text.BadLocationException;
@@ -33,75 +35,69 @@ import org.eclipse.cdt.internal.corext.util.CodeFormatterUtil;
  * @author AChapiro
  */
 public class CFormattingStrategy extends ContextBasedFormattingStrategy {
-	/** Documents to be formatted by this strategy */
-	private final LinkedList<IDocument> fDocuments= new LinkedList<IDocument>();
-	/** Partitions to be formatted by this strategy */
-	private final LinkedList<TypedPosition> fPartitions= new LinkedList<TypedPosition>();
+	private static class WorkItem {
+		final IDocument document;
+		final TypedPosition partition;
+
+		WorkItem(IDocument document, TypedPosition partition) {
+			this.document = document;
+			this.partition = partition;
+		}
+	}
+
+	private final Deque<WorkItem> fWorkItems= new ArrayDeque<>();
 
 	/**
-	 * Creates a new java formatting strategy.
+	 * Creates a new formatting strategy.
  	 */
 	public CFormattingStrategy() {
 		super();
 	}
 
-	/*
-	 * @see org.eclipse.jface.text.formatter.ContextBasedFormattingStrategy#format()
-	 */
 	@Override
 	public void format() {
 		super.format();
-		
-		final IDocument document= fDocuments.removeFirst();
-		final TypedPosition partition= fPartitions.removeFirst();
-		
-		if (document != null && partition != null) {
-			try {
-				@SuppressWarnings("unchecked")
-				final Map<String, String> preferences = getPreferences();
-				final TextEdit edit = CodeFormatterUtil.format(
-						CodeFormatter.K_TRANSLATION_UNIT, document.get(),
-						partition.getOffset(), partition.getLength(), 0,
-						TextUtilities.getDefaultLineDelimiter(document),
-						preferences);
 
-				if (edit != null)
-					edit.apply(document);
-			} catch (MalformedTreeException e) {
-				CUIPlugin.log(e);
-			} catch (BadLocationException e) {
-				// Can only happen on concurrent document modification - log and
-				// bail out
-				CUIPlugin.log(e);
-			}
+		WorkItem workItem = fWorkItems.getFirst();
+		IDocument document= workItem.document;
+		TypedPosition partition= workItem.partition;
+		
+		if (document == null || partition == null)
+			return;
+
+		@SuppressWarnings("unchecked")
+		Map<String, Object> preferences = getPreferences();
+
+		try {
+			TextEdit edit = CodeFormatterUtil.format(
+					CodeFormatter.K_TRANSLATION_UNIT, document.get(),
+					partition.getOffset(), partition.getLength(), 0,
+					TextUtilities.getDefaultLineDelimiter(document),
+					preferences);
+
+			if (edit != null)
+				edit.apply(document);
+		} catch (MalformedTreeException e) {
+			CUIPlugin.log(e);
+		} catch (BadLocationException e) {
+			// Can only happen on concurrent document modification - log and bail out.
+			CUIPlugin.log(e);
 		}
  	}
 
-	/*
-	 * @see org.eclipse.jface.text.formatter.ContextBasedFormattingStrategy#formatterStarts(org.eclipse.jface.text.formatter.IFormattingContext)
-	 */
 	@Override
 	public void formatterStarts(final IFormattingContext context) {
 		super.formatterStarts(context);
 		
-		Object property = context.getProperty(FormattingContextProperties.CONTEXT_PARTITION);
-		if (property instanceof TypedPosition) {
-			fPartitions.addLast((TypedPosition) property);
-		}
-		property= context.getProperty(FormattingContextProperties.CONTEXT_MEDIUM);
-		if (property instanceof IDocument) {			
-			fDocuments.addLast((IDocument) property);
-		}
+		TypedPosition partition = (TypedPosition) context.getProperty(FormattingContextProperties.CONTEXT_PARTITION);
+		IDocument document= (IDocument) context.getProperty(FormattingContextProperties.CONTEXT_MEDIUM);
+		fWorkItems.addLast(new WorkItem(document, partition));
 	}
 
-	/*
-	 * @see org.eclipse.jface.text.formatter.ContextBasedFormattingStrategy#formatterStops()
-	 */
 	@Override
 	public void formatterStops() {
 		super.formatterStops();
 
-		fPartitions.clear();
-		fDocuments.clear();
+		fWorkItems.clear();
 	}
 }
