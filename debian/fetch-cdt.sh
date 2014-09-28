@@ -3,7 +3,7 @@
 set -e
 
 NAME=eclipse-cdt
-VERSION=8.4.0
+VERSION=8.5.0
 DEB_VERSION=${VERSION}
 
 CDT_GIT_WEB=http://git.eclipse.org/c/cdt/org.eclipse.cdt.git/
