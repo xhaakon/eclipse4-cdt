@@ -3,7 +3,7 @@
 set -e
 
 NAME=eclipse-cdt
-VERSION=8.5.0
+VERSION=8.6.0
 DEB_VERSION=${VERSION}
 
 CDT_GIT_WEB=http://git.eclipse.org/c/cdt/org.eclipse.cdt.git/
@@ -37,6 +37,7 @@ rm -rf core/org.eclipse.cdt.core.aix/os \
 rm -rf core/org.eclipse.cdt.core.linux.ia64/os \
        core/org.eclipse.cdt.core.linux.ppc/os \
        core/org.eclipse.cdt.core.linux.ppc64/os \
+       core/org.eclipse.cdt.core.linux.ppc64le/os \
        core/org.eclipse.cdt.core.linux.x86/os \
        core/org.eclipse.cdt.core.linux.x86_64/os \
        core/org.eclipse.cdt.core.linux/cdt_linux.jar
