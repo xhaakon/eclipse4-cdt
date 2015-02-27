@@ -2,6 +2,7 @@ eclipse-cdt (8.6.0-1) UNRELEASED; urgency=medium
 
   * New upstream release.
   * Bump Standards-Version to 3.9.6.
+  * Override incompatible-java-bytecode-format Lintian warning.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 27 Feb 2015 23:27:07 +0100
 
