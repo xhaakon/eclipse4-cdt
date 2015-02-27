@@ -230,7 +230,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 		 * @param nodeLocation  The node location
 		 * @param highlighting The highlighting
 		 */
-		private void addNodeLocation(IASTNodeLocation nodeLocation, HighlightingStyle highlighting) {
+		private void addNodeLocation(IASTNodeLocation nodeLocation, HighlightingStyle highlightingStyle) {
 			if (nodeLocation == null) {
 				return;
 			}
@@ -239,7 +239,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 				int length= nodeLocation.getNodeLength();
 				if (offset > -1 && length > 0) {
 					fMinLocation= offset + length;
-					addPosition(offset, length, highlighting);
+					addPosition(offset, length, highlightingStyle);
 				}
 			}
 		}
@@ -251,14 +251,14 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 		 * @param length The range length
 		 * @param highlighting The highlighting
 		 */
-		private void addPosition(int offset, int length, HighlightingStyle highlighting) {
+		private void addPosition(int offset, int length, HighlightingStyle highlightingStyle) {
 			boolean isExisting= false;
 			// TODO: use binary search
 			for (int i= 0, n= fRemovedPositions.size(); i < n; i++) {
 				HighlightedPosition position= fRemovedPositions.get(i);
 				if (position == null)
 					continue;
-				if (position.isEqual(offset, length, highlighting)) {
+				if (position.isEqual(offset, length, highlightingStyle)) {
 					isExisting= true;
 					fRemovedPositions.set(i, null);
 					fNOfRemovedPositions--;
@@ -267,7 +267,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			}
 
 			if (!isExisting) {
-				HighlightedPosition position= fJobPresenter.createHighlightedPosition(offset, length, highlighting);
+				HighlightedPosition position= fJobPresenter.createHighlightedPosition(offset, length, highlightingStyle);
 				fAddedPositions.add(position);
 			}
 		}

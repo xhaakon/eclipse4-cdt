@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -44,6 +44,7 @@ import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IPointerType;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IQualifierType;
+import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
@@ -67,6 +68,7 @@ import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.CharArraySet;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.core.parser.util.ObjectSet;
+import org.eclipse.cdt.internal.core.dom.parser.ASTTranslationUnit;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeContainer;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTranslationUnit;
@@ -355,7 +357,8 @@ public class SemanticUtil {
 			if (ret == r && params == ps) {
 				return type;
 			}
-			return new CPPFunctionType(ret, params, ft.isConst(), ft.isVolatile(), ft.takesVarArgs());
+			return new CPPFunctionType(ret, params, ft.isConst(), ft.isVolatile(),
+					ft.hasRefQualifier(), ft.isRValueReference(), ft.takesVarArgs());
 		}
 
 		if (type instanceof ITypedef) {
@@ -405,7 +408,7 @@ public class SemanticUtil {
 		if (newNestedType == null)
 			return type;
 
-		// Bug 249085 make sure not to add unnecessary qualifications
+		// Do not to add unnecessary qualifications (bug 24908). 
 		if (type instanceof IQualifierType) {
 			IQualifierType qt= (IQualifierType) type;
 			return addQualifiers(newNestedType, qt.isConst(), qt.isVolatile(), false);
@@ -488,37 +491,62 @@ public class SemanticUtil {
 		}
 	}
 
-	public static IType mapToAST(IType type, IASTNode node) {
-		if (node == null)
-			return type;
-
-		if (type instanceof IFunctionType) {
-			final ICPPFunctionType ft = (ICPPFunctionType) type;
-			final IType r = ft.getReturnType();
-			final IType ret = mapToAST(r, node);
-			if (ret == r) {
-				return type;
-			}
-			return new CPPFunctionType(ret, ft.getParameterTypes(), ft.isConst(), ft.isVolatile(), ft.takesVarArgs());
-		}
-		if (type instanceof ITypeContainer) {
-			final ITypeContainer tc = (ITypeContainer) type;
-			final IType nestedType= tc.getType();
-			if (nestedType == null)
-				return type;
-
-			IType newType= mapToAST(nestedType, node);
-			if (newType != nestedType) {
-				return replaceNestedType(tc, newType);
-			}
-			return type;
-		} else if (type instanceof ICPPClassType && type instanceof IIndexBinding) {
-			IASTTranslationUnit tu = node.getTranslationUnit();
-			if (tu instanceof CPPASTTranslationUnit) {
-				return ((CPPASTTranslationUnit) tu).mapToAST((ICPPClassType) type, node);
+	public static IType mapToAST(IType type, IASTNode point) {
+		if (point != null && type instanceof IIndexBinding && type instanceof ICPPClassType) {
+			IASTTranslationUnit ast = point.getTranslationUnit();
+			if (ast instanceof CPPASTTranslationUnit) {
+				return ((CPPASTTranslationUnit) ast).mapToAST((ICPPClassType) type, point);
 			}
 		}
 		return type;
+	}
+
+	public static ICPPTemplateArgument[] mapToAST(ICPPTemplateArgument[] args, IASTNode point) {
+		if (point == null)
+			return args;
+
+		// Don't create a new array until it's really needed.
+		ICPPTemplateArgument[] result = args;
+		for (int i = 0; i < args.length; i++) {
+			final ICPPTemplateArgument arg = args[i];
+			ICPPTemplateArgument newArg = arg;
+			if (arg != null) {
+				newArg = mapToAST(arg, point);
+				if (result != args) {
+					result[i] = newArg;
+				} else if (arg != newArg) {
+					result = new ICPPTemplateArgument[args.length];
+					if (i > 0) {
+						System.arraycopy(args, 0, result, 0, i);
+					}
+					result[i] = newArg;
+				}
+			}
+		}
+		return result;
+	}
+
+	public static ICPPTemplateArgument mapToAST(ICPPTemplateArgument arg, IASTNode point) {
+		IType type = arg.getTypeValue();
+		if (type != null) {
+			IType mappedType = mapToAST(type, point);
+			IType originalType = arg.getOriginalTypeValue();
+			IType mappedOriginalType = originalType == type ? mappedType : mapToAST(originalType, point);
+			if (mappedType != type || mappedOriginalType != originalType) {
+				return new CPPTemplateTypeArgument(mappedType, mappedOriginalType);
+			}
+		}
+		return arg;
+	}
+
+	public static IScope mapToAST(IScope scope, IASTNode point) {
+		if (point != null) {
+			IASTTranslationUnit ast = point.getTranslationUnit();
+			if (ast instanceof ASTTranslationUnit) {
+				return ((ASTTranslationUnit) ast).mapToASTScope(scope);
+			}
+		}
+		return scope;
 	}
 
 	public static IType[] getSimplifiedTypes(IType[] types) {
@@ -711,13 +739,16 @@ public class SemanticUtil {
 				clazz= (ICPPClassType) ((ICPPDeferredClassInstance) clazz).getSpecializedBinding();
 			}
 
+			// The base classes may have changed since the definition of clazz was indexed.
+			clazz = (ICPPClassType) mapToAST(clazz, point);
+
 			for (ICPPBase cppBase : ClassTypeHelper.getBases(clazz, point)) {
 				IBinding base= cppBase.getBaseClass();
 				if (base instanceof IType && hashSet.add(base)) {
 					IType tbase= (IType) base;
 					if (tbase.isSameType(baseClass) ||
-							(baseClass instanceof ICPPSpecialization &&  // allow some flexibility with templates
-							((IType)((ICPPSpecialization) baseClass).getSpecializedBinding()).isSameType(tbase))) {
+							(baseClass instanceof ICPPSpecialization && // Allow some flexibility with templates.  
+							((IType) ((ICPPSpecialization) baseClass).getSpecializedBinding()).isSameType(tbase))) {
 						return 1;
 					}
 
@@ -789,9 +820,8 @@ public class SemanticUtil {
 	 *
 	 * @param init the initializer's AST node
 	 * @param type the type of the variable
-	 * @param maxDepth maximum recursion depth
 	 */
-	public static IValue getValueOfInitializer(IASTInitializer init, IType type, int maxDepth) {
+	public static IValue getValueOfInitializer(IASTInitializer init, IType type) {
 		IASTInitializerClause clause= null;
 		if (init instanceof IASTEqualsInitializer) {
 			clause= ((IASTEqualsInitializer) init).getInitializerClause();
@@ -813,7 +843,7 @@ public class SemanticUtil {
 			}
 		}
 		if (clause instanceof IASTExpression) {
-			return Value.create((IASTExpression) clause, maxDepth);
+			return Value.create((IASTExpression) clause);
 		}
 		return Value.UNKNOWN;
 	}

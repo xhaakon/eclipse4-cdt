@@ -1,12 +1,14 @@
 /*******************************************************************************
- * Copyright (c) 2011 Ericsson and others.
+ * Copyright (c) 2011, 2014 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Ericsson			  - Initial Implementation
+ *     Simon Marchi (Ericsson) - Remove a catch that just fails a test.
+ *     Simon Marchi (Ericsson) - Disable tests for gdb < 7.2.
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests;
 
@@ -51,11 +53,8 @@ import org.junit.runner.RunWith;
 
 @RunWith(BackgroundRunner.class)
 public class LaunchConfigurationAndRestartTest extends BaseTestCase {
+	protected static final String EXEC_NAME = "LaunchConfigurationAndRestartTestApp.exe";
 
-	protected static final String PROGRAM_DIR = "data/launch/bin/";
-	protected static final String PROGRAM_NAME = "LaunchConfigurationAndRestartTestApp.exe";
-	protected static final String PROGRAM = PROGRAM_DIR + PROGRAM_NAME;
-	
 	protected static final int FIRST_LINE_IN_MAIN = 27;
 	protected static final int LAST_LINE_IN_MAIN = 30;
 
@@ -80,7 +79,7 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     	super.setLaunchAttributes();
 
     	// Set the binary
-        setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, PROGRAM);
+        setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, EXEC_PATH + EXEC_NAME);
     }
     
     // This method cannot be tagged as @Before, because the launch is not
@@ -109,11 +108,7 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
 				wait(1000);
 			}
     		fRestart = false;
-        	try {
-				SyncUtil.restart(getGDBLaunch());
-			} catch (Throwable e) {
-				fail("Restart failed: " + e.getMessage());
-			}
+			SyncUtil.restart(getGDBLaunch());
         }
     }
 
@@ -140,16 +135,16 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     // *********************************************************************
 
     /**
-     * This test will tell the launch to set the working directory to data/launch/src/
+     * This test will tell the launch to set the working directory to data/launch/bin/
      * and will verify that we can find the file LaunchConfigurationAndRestartTestApp.cpp.
      * This will confirm that GDB has been properly configured with the working dir.
      */
     @Test
     public void testSettingWorkingDirectory() throws Throwable {
-    	IPath path = new Path(fFullProgramPath);
-    	String dir = path.removeLastSegments(4).toPortableString() + "/" + PROGRAM_DIR;
-        setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY, dir);
-        setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, dir + PROGRAM_NAME);
+		IPath path = new Path(fFullProgramPath);
+		String dir = path.removeLastSegments(4).toPortableString() + "/" + EXEC_PATH;
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY, dir);
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, dir + EXEC_NAME);
 
        	doLaunch();
         
@@ -158,7 +153,7 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     		protected void execute(DataRequestMonitor<MIInfo> rm) {
     			fGdbControl.queueCommand(
     					fGdbControl.getCommandFactory().createMIFileExecFile(
-    							fGdbControl.getContext(), PROGRAM_NAME),
+    							fGdbControl.getContext(), EXEC_NAME),
     				    rm);
     		}
     	};
@@ -212,8 +207,17 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
      * as the gdbinit file.  We then verify the that the content was properly read.
      * launchConfigTestGdbinit will simply set some arguments for the program to read;
      * the arguments are "1 2 3 4 5 6".
-     */    
+     *
+     * This test is disabled for gdb.7.1 because gdb inserts an extraneous \n that messes up
+     * the launch sequence (more particularly, the byte length detection):
+     *
+     *     17-interpreter-exec console "p/x (char)-1"
+     *     ~"\n"
+     *     ~"$1 = 0xff\n"
+     *     17^done
+     */
     @Test
+    @Ignore
     public void testSourceGdbInit() throws Throwable {
         setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_GDB_INIT, 
                            "data/launch/src/launchConfigTestGdbinit");
@@ -272,6 +276,7 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
      * Repeat the test testSourceGdbInit, but after a restart.
      */
     @Test
+    @Ignore
     public void testSourceGdbInitRestart() throws Throwable {
     	fRestart = true;
     	testSourceGdbInit();
@@ -677,7 +682,7 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     	// the JUnit tests.
     	
     	IFile fakeFile = null;
-        CDIDebugModel.createLineBreakpoint(PROGRAM, fakeFile, ICBreakpointType.REGULAR, LAST_LINE_IN_MAIN + 1, true, 0, "", true); //$NON-NLS-1$
+        CDIDebugModel.createLineBreakpoint(EXEC_PATH + EXEC_NAME, fakeFile, ICBreakpointType.REGULAR, LAST_LINE_IN_MAIN + 1, true, 0, "", true); //$NON-NLS-1$
     	doLaunch();
 
     	MIStoppedEvent stoppedEvent = getInitialStoppedEvent();

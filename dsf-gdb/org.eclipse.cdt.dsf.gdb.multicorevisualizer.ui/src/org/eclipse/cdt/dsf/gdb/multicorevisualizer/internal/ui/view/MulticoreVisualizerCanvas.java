@@ -18,6 +18,7 @@
  *     Marc Dumais (Ericsson) - Bug 405390
  *     Marc Dumais (Ericsson) - Bug 407321
  *     Xavier Raynaud (Kalray) - Bug 431935
+ *     Marc Khouzam (Ericsson) - Bug 454293
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.view;
@@ -76,20 +77,13 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 	/** Whether we need to recache graphic objects. */
 	protected boolean m_recache = true;
 	
-	/**
-	 * Whether we need to recache objects that depend on target state.
-	 */
+	/** Whether we need to recache objects that depend on target state */
 	protected boolean m_recacheState = true;
 	
-	/**
-	 * Whether view size has changed, requiring us to recalculate object sizes.
-	 */
+	/** Whether view size has changed, requiring us to recalculate object sizes */
 	protected boolean m_recacheSizes = true;
 	
-	/**
-	 * Whether the load information has changed and we need to update the load meters
-	 * @since 1.1
-	 */
+	/** Whether the load information has changed and we need to update the load meters */
 	protected boolean m_recacheLoadMeters = true;
 		
 	/** Whether we need to repaint the canvas */
@@ -327,10 +321,7 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 		requestUpdate();
 	}
 	
-	/**
-	 * only update the load meters
-	 * @since 1.1
-	 */
+	/** Requests that next paint call should update the load meters */
 	public void refreshLoadMeters() {
 		requestRecache(false, false, true);
 	}
@@ -377,8 +368,7 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 	}
 	
 	/**
-	 * Requests that the next paing call should recache state and/or size and/or load information
-	 * @since 1.1
+	 * Requests that the next paint call should recache state and/or size and/or load information
 	 */
 	// synchronized so we don't change recache flags while doing a recache
 	public synchronized void requestRecache(boolean state, boolean sizes, boolean load) {
@@ -393,9 +383,11 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 		m_canvasFilterManager.updateCurrentFilter();
 	}
 	
-	/** Fits n square items into a rectangle of the specified size.
+	/** 
+	 * Fits n square items into a rectangle of the specified size.
 	 *  Returns largest edge of one of the square items that allows
-	 *  them all to pack neatly in rows/columns in the specified area. */
+	 *  them all to pack neatly in rows/columns in the specified area. 
+	 */
 	public int fitSquareItems(int nitems, int width, int height) {
 		int max_edge = 0;
 		if (width > height) {
@@ -421,6 +413,13 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 		return max_edge;
 	}
 	
+	/**
+	 * Allows overriding classes to change this behavior.
+	 */
+	protected boolean getCPULoadEnabled() {
+		return m_model == null ? false : m_model.getLoadMetersEnabled();
+	}
+	
 	/** Recache persistent objects (tiles, etc.) for new monitor */
 	// synchronized so we don't change recache flags while doing a recache
 	public synchronized void recache() {
@@ -438,15 +437,9 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 			m_cpuMap.clear();
 			m_coreMap.clear();
 			m_threadMap.clear();
-
-			// For debugging purposes only, allows us to force a CPU count.
-			//int cpu_count = 0;
-			//int force_cpu_count = 2;
 			
 			if (m_model != null) {
 				for (VisualizerCPU cpu : m_model.getCPUs()) {
-					//if (force_cpu_count >= cpu_count) break;
-					//cpu_count++;
 					// current filter permits displaying this CPU? 
 					if (m_canvasFilterManager.displayObject(cpu)) {
 						MulticoreVisualizerCPU mcpu = new MulticoreVisualizerCPU(cpu.getID());
@@ -463,13 +456,6 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 					}
 				}
 			}
-			/*
-			while (cpu_count < force_cpu_count) {
-				MulticoreVisualizerCPU mcpu = new MulticoreVisualizerCPU(cpu_count);
-				m_cpus.add(mcpu);
-				cpu_count++;
-			}
-			*/
 			
 			// we've recached state, which implies recacheing sizes and load meters
 			m_recacheState = false;
@@ -488,7 +474,7 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 					if (visualizerCpu != null) {
 						// update CPUs load meter 
 						MulticoreVisualizerLoadMeter meter = visualizerCpu.getLoadMeter();
-						meter.setEnabled(m_model.getLoadMetersEnabled());
+						meter.setEnabled(getCPULoadEnabled());
 						meter.setLoad(modelCpu.getLoad());
 						meter.setHighLoadWatermark(modelCpu.getHighLoadWatermark());
 
@@ -532,7 +518,7 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 			}
 			
 			// make room when load meters are present, else use a more compact layout
-			int core_margin = m_model.getLoadMetersEnabled() ? 20 : 12;      // margin around cores in a CPU 
+			int core_margin = getCPULoadEnabled() ? 20 : 12;      // margin around cores in a CPU 
 			int core_separation = 4;  // spacing between cores
 
 			int loadMeterWidth = core_margin*3/5;
@@ -549,7 +535,10 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 			int height = bounds.height + cpu_separation - statusBarHeight;
 			
 			// put status bar at the bottom of the canvas area
-			m_statusBar.setBounds(cpu_margin, bounds.y + bounds.height - 2 * cpu_margin , width  , statusBarHeight);
+			m_statusBar.setBounds(cpu_margin, 
+					bounds.y + bounds.height - 2 * cpu_margin, 
+					width , 
+					statusBarHeight);
 			
 			int cpu_edge = fitSquareItems(ncpus, width, height);
 			int cpu_size = cpu_edge - cpu_separation;
@@ -577,7 +566,10 @@ public class MulticoreVisualizerCanvas extends GraphicCanvas
 			for (MulticoreVisualizerCPU cpu : m_cpus) {
 				cpu.setBounds(x, y, cpu_size-1, cpu_size-1);
 				// put cpu meter in the right margin of the CPU
-				cpu.getLoadMeter().setBounds(x + cpu_size - 2*cpu_margin, y + 2*core_margin, loadMeterWidth, cpu_size-3*core_margin);
+				cpu.getLoadMeter().setBounds(x + cpu_size - 2*cpu_margin,
+						y + 2*core_margin,
+						loadMeterWidth,
+						cpu_size-3*core_margin);
 				
 				int left = x + core_margin;
 				int cx = left, cy = y + core_margin;

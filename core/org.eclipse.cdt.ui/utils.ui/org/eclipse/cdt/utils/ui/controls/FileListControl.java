@@ -28,6 +28,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -37,6 +38,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.variables.IStringVariableManager;
 import org.eclipse.core.variables.VariablesPlugin;
 import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.dialogs.IInputValidator;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -58,6 +60,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
@@ -151,6 +154,34 @@ public class FileListControl {
 			this.type = browseType;
 		}
 
+		private String getInitialValue(String initialValue) {
+			IDialogSettings dialogSettings = CUIPlugin.getDefault().getDialogSettings();
+			// restore file
+			String sfile = dialogSettings.get(FileListControl.class.getName());
+			if (sfile != null && (initialValue == null || initialValue.isEmpty())) {
+				return sfile;
+			}
+			return initialValue;
+		}
+
+		protected void saveWidgetValues() {
+			IDialogSettings dialogSettings = CUIPlugin.getDefault().getDialogSettings();
+			// save file name
+			dialogSettings.put(FileListControl.class.getName(), getValue());
+		}
+
+		@Override
+		public boolean close() {
+			saveWidgetValues();
+			return super.close();
+		}
+
+		@Override
+		protected Control createContents(Composite parent) {
+			Control area = super.createContents(parent);
+			getText().setText(getInitialValue(getValue()));
+			return area;
+		}
 		/**
 		 * Returns true if the value has been set by a browse dialog.
 		 */
@@ -207,7 +238,7 @@ public class FileListControl {
 						/* See if we can discover the project from the context *
 						 * and check whether the path must be resolved... */
 						IProject project = null;
-						IResource resource = null;
+
 						if(contextInfo != null) {
 							try {
 								// Try to find the project
@@ -217,17 +248,34 @@ public class FileListControl {
 
 								// Try to resolve the currentPathText
 								IVariableSubstitutor varSubs = new SupplierBasedCdtVariableSubstitutor(contextInfo, "", "");  //$NON-NLS-1$//$NON-NLS-2$
-								String value = CdtVariableResolver.resolveToString(currentPathText, varSubs);
-								if (!"".equals(value)) { //$NON-NLS-1$
-									IResource rs[] = ResourcesPlugin.getWorkspace().getRoot().findContainersForLocationURI(URIUtil.toURI(value));
-									if (rs == null || rs.length == 0)
-										resource = ResourceLookup.selectFileForLocation(new Path(value), null);
-									else
-										resource = rs[0];
-								}
+								currentPathText = CdtVariableResolver.resolveToString(currentPathText,
+										varSubs);
+
 							} catch (CdtVariableException e) {
 								// It's OK not to find the project... carry on as before
 							}
+						} else {
+							try {
+								currentPathText = variableManager.performStringSubstitution(currentPathText,
+										false);
+							} catch (CoreException e) {
+								// ignore
+							}
+						}
+						IResource resource = null;
+						if (!currentPathText.isEmpty()) {
+							IResource rs[] = null;
+							try {
+								rs = ResourcesPlugin.getWorkspace().getRoot()
+										.findContainersForLocationURI(URIUtil.toURI(currentPathText));
+							} catch (Exception e) {
+								// rs will be null here, exception is throw is path is not absolute
+							}
+							if (rs == null || rs.length == 0)
+								resource = ResourceLookup.selectFileForLocation(new Path(currentPathText),
+										null);
+							else
+								resource = rs[0];
 						}
 
 						/* Create workspace folder/file selection dialog and
@@ -593,8 +641,7 @@ public class FileListControl {
 		moveDownItem.setImage(IMG_MOVEDOWN);
 		moveDownItem.setToolTipText(MOVEDOWN_STR);
 		moveDownItem.addSelectionListener(getSelectionListener());
-		grid3 = new GridData(GridData.FILL_HORIZONTAL
-				| GridData.HORIZONTAL_ALIGN_BEGINNING);
+		grid3 = new GridData(GridData.FILL_HORIZONTAL | GridData.HORIZONTAL_ALIGN_END);
 		buttonPanel.setLayoutData(grid3);
 		// list control
 		list = new ClipboardList(filePanel, SWT.V_SCROLL | SWT.H_SCROLL | SWT.BORDER | SWT.MULTI);

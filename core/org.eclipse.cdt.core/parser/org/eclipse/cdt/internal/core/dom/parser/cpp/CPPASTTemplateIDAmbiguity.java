@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2011, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     Markus Schorn - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -22,6 +23,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IFunction;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionTemplate;
@@ -64,7 +66,7 @@ public class CPPASTTemplateIDAmbiguity extends ASTAmbiguousNode
 		for (BranchPoint v= fVariants; v != null; v= v.getNext()) {
 			Variant selected= null;
 			int bestCount= 0;
-			for (Variant q= v.getFirstVariant(); q != null ; q=q.getNext()) {
+			for (Variant q= v.getFirstVariant(); q != null ; q= q.getNext()) {
 				final IASTName[] templateNames = q.getTemplateNames();
 				if (templateNames.length > bestCount) {
 					// Don't check branch-points inside of a selected variant.
@@ -72,7 +74,7 @@ public class CPPASTTemplateIDAmbiguity extends ASTAmbiguousNode
 					if (((ASTNode) expression).getOffset() < minOffset)
 						break;
 
-					// Setup the ast to use the alternative
+					// Setup the AST to use the alternative.
 					owner.replace(nodeToReplace, expression);
 					nodeToReplace= resolveNestedAmbiguities(expression, resolver);
 
@@ -84,7 +86,7 @@ public class CPPASTTemplateIDAmbiguity extends ASTAmbiguousNode
 				}
 			}
 			
-			// Adjust the operator sequence
+			// Adjust the operator sequence.
 			if (selected != null) {
 				minOffset= selected.getRightOffset();
 				BinaryOperator targetOp = selected.getTargetOperator();
@@ -117,7 +119,7 @@ public class CPPASTTemplateIDAmbiguity extends ASTAmbiguousNode
 						return -1;
 					count++;
 				} else if (b instanceof ICPPSpecialization || b instanceof ICPPTemplateDefinition
-						|| b instanceof ICPPConstructor 
+						|| b instanceof ICPPAliasTemplateInstance || b instanceof ICPPConstructor 
 						|| (b instanceof IFunction && b instanceof ICPPUnknownBinding)) {
 					count++;
 				} else {
@@ -141,7 +143,7 @@ public class CPPASTTemplateIDAmbiguity extends ASTAmbiguousNode
 	@Override
 	public IASTNode[] getNodes() {
 		if (fNodes == null) {
-			List<IASTNode> nl= new ArrayList<IASTNode>();
+			List<IASTNode> nl= new ArrayList<>();
 			BinaryOperator op= fEndOperator;
 			while (op != null) {
 				nl.add(op.getExpression());

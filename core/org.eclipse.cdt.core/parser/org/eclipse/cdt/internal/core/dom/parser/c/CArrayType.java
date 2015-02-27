@@ -84,9 +84,6 @@ public class CArrayType implements ICArrayType, ITypeContainer, ISerializableTyp
 		return CharArrayUtils.equals(s1.getSignature(), s2.getSignature());
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IArrayType#getType()
-	 */
 	@Override
 	public IType getType() {
 		return type;
@@ -139,7 +136,12 @@ public class CArrayType implements ICArrayType, ITypeContainer, ISerializableTyp
     	if (sizeExpression == null)
     		return value= null;
 
-    	return value= Value.create(sizeExpression, Value.MAX_RECURSION_DEPTH);
+    	return value= Value.create(sizeExpression);
+    }
+
+    @Override
+    public boolean hasSize() {
+    	return value == Value.NOT_INITIALIZED ? sizeExpression != null : value != null;
     }
 
     @Override
@@ -210,8 +212,6 @@ public class CArrayType implements ICArrayType, ITypeContainer, ISerializableTyp
 	@Override
 	@Deprecated
     public IASTExpression getArraySizeExpression() {
-        if (sizeExpression != null)
-            return sizeExpression;
-        return null;
+        return sizeExpression;
     }
 }

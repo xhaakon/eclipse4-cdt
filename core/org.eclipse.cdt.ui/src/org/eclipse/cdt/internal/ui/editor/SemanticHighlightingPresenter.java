@@ -247,14 +247,14 @@ public class SemanticHighlightingPresenter implements ITextPresentationListener,
 	 *
 	 * @param offset The offset
 	 * @param length The length
-	 * @param highlighting The highlighting
+	 * @param style The highlighting
 	 * @return The new highlighted position
 	 */
-	public HighlightedPosition createHighlightedPosition(int offset, int length, HighlightingStyle highlighting) {
+	public HighlightedPosition createHighlightedPosition(int offset, int length, HighlightingStyle style) {
 		// TODO: reuse deleted positions
-		return new HighlightedPosition(offset, length, highlighting, fPositionUpdater);
+		return new HighlightedPosition(offset, length, style, fPositionUpdater);
 	}
-
+	
 	/**
 	 * Adds all current positions to the given list.
 	 * <p>

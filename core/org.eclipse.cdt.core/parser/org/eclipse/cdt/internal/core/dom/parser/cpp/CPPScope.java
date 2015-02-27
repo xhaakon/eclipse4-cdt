@@ -17,7 +17,6 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IName;
-import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -78,7 +77,7 @@ abstract public class CPPScope implements ICPPASTInternalScope {
 	}
 
 	@Override
-	public IScope getParent() throws DOMException {
+	public IScope getParent() {
 		return CPPVisitor.getContainingNonTemplateScope(physicalNode);
 	}
 
@@ -226,7 +225,7 @@ abstract public class CPPScope implements ICPPASTInternalScope {
 	public IBinding[] getBindingsInAST(ScopeLookupData lookup) {
 		populateCache();
 	    final char[] c = lookup.getLookupKey();
-	    IBinding[] result = null;
+	    IBinding[] result = IBinding.EMPTY_BINDING_ARRAY;
 
 	    Object obj = null;
 	    if (lookup.isPrefixLookup()) {
@@ -258,7 +257,7 @@ abstract public class CPPScope implements ICPPASTInternalScope {
 	        	result = addCandidate(obj, lookup, result);
 	        }
 	    }
-	    return ArrayUtil.trim(IBinding.class, result);
+	    return ArrayUtil.trim(result);
 	}
 
 	private IBinding[] addCandidate(Object candidate, ScopeLookupData lookup, IBinding[] result) {
@@ -288,7 +287,9 @@ abstract public class CPPScope implements ICPPASTInternalScope {
 			binding= (IBinding) candidate;
 		}
 
-		return ArrayUtil.append(IBinding.class, result, binding);
+		if (binding != null)
+			result = ArrayUtil.append(result, binding);
+		return result;
 	}
 
 	@Override

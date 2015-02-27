@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     IBM - Initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -149,29 +150,33 @@ public class CPPASTTranslationUnit extends ASTTranslationUnit implements ICPPAST
         return ParserLanguage.CPP;
     }
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTTranslationUnit#getLinkage()
-	 */
 	@Override
 	public ILinkage getLinkage() {
 		return Linkage.CPP_LINKAGE;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.parser.scanner.ISkippedIndexedFilesListener#skippedFile(org.eclipse.cdt.internal.core.parser.scanner.IncludeFileContent)
-	 */
 	@Override
 	public void skippedFile(int offset, InternalFileContent fileContent) {
 		super.skippedFile(offset, fileContent);
 		fScopeMapper.registerAdditionalDirectives(offset, fileContent.getUsingDirectives());
 	}	
-	
-	// bug 217102: namespace scopes from the index have to be mapped back to the AST.
-	public IScope mapToASTScope(IIndexScope scope) {
-		return fScopeMapper.mapToASTScope(scope);
+
+	@Override
+	public IScope mapToASTScope(IScope scope) {
+		if (scope instanceof IIndexScope) {
+			return fScopeMapper.mapToASTScope((IIndexScope) scope);
+		}
+		return scope;
 	}
 
-	// bug 262719: class types from the index have to be mapped back to the AST.
+	/**
+	 * Maps a class type to the AST.
+	 *
+	 * @param binding a class type, possibly from index
+	 * @param point a lookup point in the AST
+	 * @return the corresponding class in the AST, or the original class type if it doesn't have
+	 *     a counterpart in the AST.
+	 */
 	public ICPPClassType mapToAST(ICPPClassType binding, IASTNode point) {
 		return fScopeMapper.mapToAST(binding, point);
 	}

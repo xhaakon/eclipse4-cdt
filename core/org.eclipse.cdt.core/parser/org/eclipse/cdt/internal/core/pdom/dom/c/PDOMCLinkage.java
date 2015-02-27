@@ -43,6 +43,7 @@ import org.eclipse.cdt.internal.core.pdom.dom.FindBinding;
 import org.eclipse.cdt.internal.core.pdom.dom.IPDOMMemberOwner;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMASTAdapter;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMBinding;
+import org.eclipse.cdt.internal.core.pdom.dom.PDOMGlobalScope;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMLinkage;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMNode;
 import org.eclipse.core.runtime.CoreException;
@@ -128,8 +129,16 @@ class PDOMCLinkage extends PDOMLinkage implements IIndexCBindingConstants {
 
 		PDOMNode insertIntoIndex= null;
 		if (binding instanceof IField) { // must be before IVariable
-			if (parent instanceof IPDOMMemberOwner)
+			if (parent instanceof IPDOMMemberOwner) {
 				pdomBinding = new PDOMCField(this, (IPDOMMemberOwner)parent, (IField) binding);
+				// If the field is inside an anonymous struct or union, add it to the parent node as well.
+				if (parent instanceof ICompositeType && ((ICompositeType) parent).isAnonymous()) {
+					insertIntoIndex = parent.getParentNode();
+					if (insertIntoIndex == null) {
+						insertIntoIndex = this;
+					}
+				}
+			}
 		} else if (binding instanceof IVariable) {
 			IVariable var= (IVariable) binding;
 			pdomBinding = new PDOMCVariable(this, parent, var);
@@ -332,6 +341,11 @@ class PDOMCLinkage extends PDOMLinkage implements IIndexCBindingConstants {
 	@Override
 	public IBTreeComparator getIndexComparator() {
 		return new FindBinding.DefaultBindingBTreeComparator(this);
+	}
+
+	@Override
+	public PDOMGlobalScope getGlobalScope() {
+		return PDOMCGlobalScope.INSTANCE;
 	}
 
 	@Override 

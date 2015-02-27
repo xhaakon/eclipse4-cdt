@@ -101,7 +101,6 @@ public class DebugExecutable {
 			monitor.worked(1);
 			// Find last launch if one exists
 			String memento = ResourcesPlugin.getWorkspace().getRoot().getPersistentProperty(new QualifiedName(STANDALONE_QUALIFIER, LAST_LAUNCH));
-//					System.out.println("memento is " + memento);
 			if (memento != null) {
 				ILaunchConfiguration lastConfiguration = getLaunchManager().getLaunchConfiguration(memento);
 				try {
@@ -116,7 +115,7 @@ public class DebugExecutable {
 			// Delete all launch configurations that specify the project we are about to delete
 			ILaunchConfiguration lconfigs[] = getLaunchManager().getLaunchConfigurations();
 			for (ILaunchConfiguration lconfig : lconfigs) {
-				if (lconfig.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, "").equals(proj.getName()))
+				if (lconfig.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, "").equals(proj.getName())) //$NON-NLS-1$
 					lconfig.delete();
 			}
 			
@@ -141,7 +140,6 @@ public class DebugExecutable {
 		importJob.join();
 		monitor.worked(3);
 		if (importJob.getResult() == Status.OK_STATUS) {
-//					System.out.println("importJob successful");
 			//				 See if the default project exists
 			Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables();
 			for (Executable exec : executables) {
@@ -213,7 +211,6 @@ public class DebugExecutable {
 					}
 				}
 
-//						System.out.println("creating language settings providers");
 				// Create all the LanguageSettingsProviders
 				List<ILanguageSettingsProvider> providers = LanguageSettingsManager
 						.createLanguageSettingsProviders(langProviderIds);
@@ -223,8 +220,6 @@ public class DebugExecutable {
 				.setLanguageSettingProviders(providers);
 				
 				monitor.worked(1);
-
-//						System.out.println("before setProjectDescription");
 				
 				// Update the project description.
 				projDescManager.setProjectDescription(project,
@@ -237,11 +232,9 @@ public class DebugExecutable {
 								false);
 				LanguageSettingsManager.serializeLanguageSettings(projDescReadOnly);
 				
-//						System.out.println("after setProjectDescription");
-
 				monitor.worked(1);
 				
-				if (!("".equals(executable)))
+				if (!("".equals(executable))) //$NON-NLS-1$
 					// We need to parse the macro compile options if they exist.  We need to lock the
 					// workspace when we do this so we don't have multiple copies of our GCCCompilerOptionsParser
 					// LanguageSettingsProvider and we end up filling in the wrong one.
@@ -256,7 +249,6 @@ public class DebugExecutable {
 							ResourcesPlugin.getWorkspace().getRoot(), IWorkspace.AVOID_UPDATE, new NullProgressMonitor());
 			}
 			
-//					System.out.println("about to close all editors");
 			IWorkbench workbench = PlatformUI.getWorkbench();
 			if (workbench != null) {
 				final IWorkbenchWindow workbenchWindow = workbench.getActiveWorkbenchWindow();
@@ -266,7 +258,7 @@ public class DebugExecutable {
 						activePage.closeAllEditors(false);
 				}
 			}
-//					System.out.println("about to create launch configuration");
+
 			config = createConfiguration(executable, arguments, buildLog, true);
 			// If we are starting up the debugger, save the executable as the default executable to use
 			if (startup) {
@@ -275,21 +267,18 @@ public class DebugExecutable {
 			}
 			monitor.worked(1);
 		} else {
-			System.out.println("Import job failed");
+			System.out.println("Import job failed"); //$NON-NLS-1$
 			return null;
 		}
 		return config;
 	}
 
 	protected static ILaunchConfigurationType getLaunchConfigType() {
-		return getLaunchManager().getLaunchConfigurationType(
-				"org.eclipse.cdt.launch.applicationLaunchType"); //$NON-NLS-1$
+		return getLaunchManager().getLaunchConfigurationType(ICDTLaunchConfigurationConstants.ID_LAUNCH_C_APP);
 	}
-	
 	
 	protected static ILaunchConfiguration createConfiguration(String bin,
 			String arguments, String buildLog, boolean save) {
-//		System.out.println("creating launch configuration");
 		ILaunchConfiguration config = null;
 		try {
 			String progName = bin;
@@ -321,5 +310,4 @@ public class DebugExecutable {
 		}
 		return config;
 	}
-
 }

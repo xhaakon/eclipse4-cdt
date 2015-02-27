@@ -17,8 +17,8 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPFunctionParameterMap;
 
@@ -83,12 +83,12 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 	 * @return a fully or partially instantiated evaluation, or the original evaluation
 	 */
 	ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPClassSpecialization within, int maxdepth, IASTNode point);
+			ICPPTypeSpecialization within, int maxdepth, IASTNode point);
 
 	/**
 	 * Keeps track of state during a constexpr evaluation.
 	 */
-	class ConstexprEvaluationContext {
+	final class ConstexprEvaluationContext {
 		/**
 		 * The maximum number of steps allowed in a single constexpr evaluation.
 		 * This is used to prevent a buggy constexpr function from causing the
@@ -100,7 +100,7 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 		private IASTNode fPoint;
 		
 		/**
-		 * Construct a ConstexprEvaluationContext for a new constexpr evaluation.
+		 * Constructs a ConstexprEvaluationContext for a new constexpr evaluation.
 		 * @param point the point of instantiation, determines the scope for name lookups
 		 */
 		public ConstexprEvaluationContext(IASTNode point) {
@@ -109,7 +109,8 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 		}
 
 		/**
-		 * Record a new step being performed in this constexpr evaluation.
+		 * Records a new step being performed in this constexpr evaluation.
+		 *
 		 * @return this constexpr evaluation
 		 */
 		public ConstexprEvaluationContext recordStep() {
@@ -118,14 +119,14 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 		}
 
 		/**
-		 * Get the number of steps performed so far in the constexpr evaluation.
+		 * Returns the number of steps performed so far in the constexpr evaluation.
 		 */
 		public int getStepsPerformed() {
 			return fStepsPerformed;
 		}
 		
 		/**
-		 * Get the point of instantiation.
+		 * Returns the point of instantiation.
 		 */
 		public IASTNode getPoint() {
 			return fPoint;

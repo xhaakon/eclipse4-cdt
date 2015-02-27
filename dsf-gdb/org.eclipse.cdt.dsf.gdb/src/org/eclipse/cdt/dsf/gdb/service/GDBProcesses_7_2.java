@@ -9,14 +9,19 @@
  *     Onur Akdemir (TUBITAK BILGEM-ITI) - Multi-process debugging (Bug 237306)
  *     Marc Khouzam (Ericsson) - Workaround for Bug 352998
  *     Marc Khouzam (Ericsson) - Update breakpoint handling for GDB >= 7.4 (Bug 389945)
+ *     Alvaro Sanchez-Leon (Ericsson) - Breakpoint Enable does not work after restarting the application (Bug 456959)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.service;
 
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.cdt.debug.core.CDebugUtils;
+import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
@@ -28,6 +33,8 @@ import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
+import org.eclipse.cdt.dsf.debug.service.IMultiDetach;
+import org.eclipse.cdt.dsf.debug.service.IMultiTerminate;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
@@ -58,9 +65,71 @@ import org.eclipse.debug.core.ILaunch;
  * 
  * @since 4.0
  */
-public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
+public class GDBProcesses_7_2 extends GDBProcesses_7_1 implements IMultiTerminate, IMultiDetach {
+
+	abstract private class ConditionalRequestMonitor extends ImmediateDataRequestMonitor<Boolean> {
+
+    	private Iterator<? extends IDMContext> fIterator;
+    	private boolean fAll = true;
+    	private DataRequestMonitor<Boolean> fParentMonitor;
+
+		private ConditionalRequestMonitor(Iterator<? extends IDMContext> it, boolean all, DataRequestMonitor<Boolean> parentMonitor) {
+			super(parentMonitor);
+			fAll = all;
+			fParentMonitor = parentMonitor;
+			fIterator = it;
+		}
+
+		@Override
+    	protected void handleCompleted() {
+			if (!isSuccess()) {
+				fParentMonitor.setStatus(getStatus());
+				fParentMonitor.done();
+				return;
+			}
+
+			if (getData() != fAll) {
+				fParentMonitor.setData(getData());
+				fParentMonitor.done();
+			}
+			else if (!fIterator.hasNext()) {
+				fParentMonitor.setData(fAll);
+				fParentMonitor.done();
+			}
+			else {
+				proceed(fIterator, fAll, fParentMonitor);
+			}
+    	}
+		
+		abstract protected void proceed(Iterator<? extends IDMContext> it, boolean all, DataRequestMonitor<Boolean> parentMonitor);
+	}
     
-    /**
+    private class CanDetachRequestMonitor extends ConditionalRequestMonitor {
+
+		private CanDetachRequestMonitor(Iterator<? extends IDMContext> it, boolean all, DataRequestMonitor<Boolean> parentMonitor) {
+			super(it, all, parentMonitor);
+		}
+
+		@Override
+		protected void proceed(Iterator<? extends IDMContext> it, boolean all, DataRequestMonitor<Boolean> parentMonitor) {
+			canDetachDebuggerFromProcess(it.next(), new CanDetachRequestMonitor(it, all, parentMonitor));
+		}
+
+	}
+
+	private class CanTerminateRequestMonitor extends ConditionalRequestMonitor {
+
+		private CanTerminateRequestMonitor(Iterator<? extends IDMContext> it, boolean all, DataRequestMonitor<Boolean> parentMonitor) {
+			super(it, all, parentMonitor);
+		}
+
+		@Override
+		protected void proceed(Iterator<? extends IDMContext> it, boolean all, DataRequestMonitor<Boolean> parentMonitor) {
+			canTerminate((IThreadDMContext)it.next(), new CanTerminateRequestMonitor(it, all, parentMonitor));
+		}
+	}
+
+	/**
      * The id of the single thread to be used during event visualization. 
      * @since 4.1 
      */
@@ -114,6 +183,8 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 	 *            initialization is done.
 	 */
 	private void doInitialize(RequestMonitor requestMonitor) {
+        register(new String[]{ IMultiDetach.class.getName(), IMultiTerminate.class.getName() }, new Hashtable<String,String>());
+
 		fCommandControl = getServicesTracker().getService(IGDBControl.class);
         fCommandFactory = getServicesTracker().getService(IMICommandControl.class).getCommandFactory();
     	fBackend = getServicesTracker().getService(IGDBBackend.class);
@@ -331,8 +402,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 		                    @Override
 		                    public void execute(RequestMonitor rm) {
 		                    	MIBreakpointsManager bpmService = getServicesTracker().getService(MIBreakpointsManager.class);
-		                    	IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
-		                    	bpmService.startTrackingBreakpoints(bpTargetDmc, rm);
+		                    	bpmService.startTrackingBpForProcess(fContainerDmc, rm);
 		                    }
 		                },
 		                // Turn on reverse debugging if it was enabled as a launch option
@@ -557,29 +627,39 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
     /** @since 4.0 */
     @DsfServiceEventHandler
     @Override
-    public void eventDispatched(IExitedDMEvent e) {
-    	IDMContext dmc = e.getDMContext();
-    	if (dmc instanceof IBreakpointsTargetDMContext) {
-    		// A process has died, we should stop tracking its breakpoints, but only if it is not restarting
-    		// We only do this when the process is a breakpointTargetDMC itself (GDB < 7.4);
-    		// we don't want to stop tracking breakpoints when breakpoints are only set once
-    		// for all processes (GDB >= 7.4)
-    		if (!fProcRestarting.remove(dmc)) {
-    			if (fBackend.getSessionType() != SessionType.CORE) {
-    				IBreakpointsTargetDMContext bpTargetDmc = (IBreakpointsTargetDMContext)dmc;
-    				MIBreakpointsManager bpmService = getServicesTracker().getService(MIBreakpointsManager.class);
-    				if (bpmService != null) {
-    					bpmService.stopTrackingBreakpoints(bpTargetDmc, new ImmediateRequestMonitor() {
-    						@Override
-    						protected void handleCompleted() {
-    							// Ok, no need to report any error because we may have already shutdown.
-    							// We need to override handleCompleted to avoid risking having a error printout in the log
-    						}
-    					});
-    				}
-    			}
-    		}
-    	}
+	public void eventDispatched(IExitedDMEvent e) {
+		IDMContext dmc = e.getDMContext();
+
+		if (dmc instanceof IContainerDMContext) {
+			MIBreakpointsManager bpmService = getServicesTracker().getService(MIBreakpointsManager.class);
+
+			// Time to remove the tracking of a restarting process
+			boolean restarting = fProcRestarting.remove(dmc);
+
+			if (bpmService != null) {
+				if (!restarting) {
+					// Process exited, remove it from the thread break point filtering
+					bpmService.removeTargetFilter((IContainerDMContext) dmc);
+
+					if (dmc instanceof IBreakpointsTargetDMContext) {
+						// A process has died, we should stop tracking its breakpoints, but only if it is not restarting
+						// We only do this when the process is a breakpointTargetDMC itself (GDB < 7.4);
+						// we don't want to stop tracking breakpoints when breakpoints are only set once
+						// for all processes (GDB >= 7.4)
+						if (fBackend.getSessionType() != SessionType.CORE) {
+							IBreakpointsTargetDMContext bpTargetDmc = (IBreakpointsTargetDMContext) dmc;
+							bpmService.stopTrackingBreakpoints(bpTargetDmc, new ImmediateRequestMonitor() {
+								@Override
+								protected void handleCompleted() {
+									// Ok, no need to report any error because we may have already shutdown.
+									// We need to override handleCompleted to avoid risking having a error printout in the log
+								}
+							});
+						}
+					}
+				}
+			}
+		}
     	
     	super.eventDispatched(e);
     }
@@ -608,5 +688,112 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
     public void eventDispatched(ITraceRecordSelectedChangedDMEvent e) {
     	setTraceVisualization(e.isVisualizationModeEnabled());
     }
+
+	/**
+	 * @since 4.6
+	 */
+	@Override
+	public void canDetachDebuggerFromSomeProcesses(IDMContext[] dmcs, final DataRequestMonitor<Boolean> rm) {
+		canDetachFromProcesses(dmcs, false, rm);
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	@Override
+	public void canDetachDebuggerFromAllProcesses(IDMContext[] dmcs, DataRequestMonitor<Boolean> rm) {
+		canDetachFromProcesses(dmcs, true, rm);
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	protected void canDetachFromProcesses(IDMContext[] dmcs, boolean all, DataRequestMonitor<Boolean> rm) {
+		Set<IMIContainerDMContext> contDmcs = new HashSet<IMIContainerDMContext>();
+		for (IDMContext c : dmcs) {
+			IMIContainerDMContext contDmc = DMContexts.getAncestorOfType(c, IMIContainerDMContext.class);
+			if (contDmc != null) {
+				contDmcs.add(contDmc);
+			}
+		}
+
+		Iterator<IMIContainerDMContext> it = contDmcs.iterator();
+		if (!it.hasNext()) {
+			rm.setData(false);
+			rm.done();
+			return;
+		}
+		canDetachDebuggerFromProcess(it.next(), new CanDetachRequestMonitor(it, all, rm));
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	@Override
+	public void detachDebuggerFromProcesses(IDMContext[] dmcs, final RequestMonitor rm) {
+		Set<IMIContainerDMContext> contDmcs = new HashSet<IMIContainerDMContext>();
+		for (IDMContext c : dmcs) {
+			IMIContainerDMContext contDmc = DMContexts.getAncestorOfType(c, IMIContainerDMContext.class);
+			if (contDmc != null) {
+				contDmcs.add(contDmc);
+			}
+		}
+		if (contDmcs.isEmpty()) {
+			rm.done();
+			return;
+		}
+
+		CountingRequestMonitor crm = new CountingRequestMonitor(ImmediateExecutor.getInstance(), rm);
+		crm.setDoneCount(contDmcs.size());
+		for (IMIContainerDMContext contDmc : contDmcs) {
+			detachDebuggerFromProcess(contDmc, crm);
+		}
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	@Override
+	public void canTerminateSome(IThreadDMContext[] dmcs, DataRequestMonitor<Boolean> rm) {
+		canTerminate(dmcs, false, rm);
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	@Override
+	public void canTerminateAll(IThreadDMContext[] dmcs, DataRequestMonitor<Boolean> rm) {
+		canTerminate(dmcs, true, rm);
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	protected void canTerminate(IThreadDMContext[] dmcs, boolean all, DataRequestMonitor<Boolean> rm) {
+		Iterator<IThreadDMContext> it = Arrays.asList(dmcs).iterator();
+		if (!it.hasNext()) {
+			rm.setData(false);
+			rm.done();
+			return;
+		}
+		canTerminate(it.next(), new CanTerminateRequestMonitor(it, all, rm));
+	}
+
+	/**
+	 * @since 4.6
+	 */
+	@Override
+	public void terminate(IThreadDMContext[] dmcs, RequestMonitor rm) {
+		if (dmcs.length == 0) {
+			rm.done();
+			return;
+		}
+
+		CountingRequestMonitor crm = new CountingRequestMonitor(ImmediateExecutor.getInstance(), rm);
+		crm.setDoneCount(dmcs.length);
+		for (IThreadDMContext threadDmc : dmcs) {
+			terminate(threadDmc, crm);
+		}
+	}
 }
 

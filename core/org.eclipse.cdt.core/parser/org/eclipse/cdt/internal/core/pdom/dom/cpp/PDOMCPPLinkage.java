@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 QNX Software Systems and others.
+ * Copyright (c) 2005, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.ICompositeType;
 import org.eclipse.cdt.core.dom.ast.IEnumeration;
 import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IFunction;
@@ -101,6 +102,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPUnknownMember;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPDeferredClassInstance;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalEnumerator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalBinary;
@@ -120,6 +122,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalTypeId;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalUnary;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.EvalUnaryTypeID;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.TypeOfDependentExpression;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.TypeOfUnknownMember;
 import org.eclipse.cdt.internal.core.index.IIndexBindingConstants;
 import org.eclipse.cdt.internal.core.index.IIndexCPPBindingConstants;
 import org.eclipse.cdt.internal.core.index.composite.CompositeIndexBinding;
@@ -133,6 +136,7 @@ import org.eclipse.cdt.internal.core.pdom.dom.IPDOMMemberOwner;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMASTAdapter;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMBinding;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMFile;
+import org.eclipse.cdt.internal.core.pdom.dom.PDOMGlobalScope;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMLinkage;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMName;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMNode;
@@ -324,6 +328,34 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			fTemplate.initData(fOriginalAliasedType);
 		}
 	}
+	
+	class ConfigureInstance implements Runnable {
+		PDOMCPPSpecialization fInstance;
+		
+		public ConfigureInstance(PDOMCPPSpecialization specialization) {
+			fInstance = specialization;
+			postProcesses.add(this);
+		}
+		
+		@Override
+		public void run() {
+			fInstance.storeTemplateParameterMap();
+		}
+	}
+	
+	class ConfigureClassInstance implements Runnable {
+		PDOMCPPClassInstance fClassInstance;
+		
+		public ConfigureClassInstance(PDOMCPPClassInstance classInstance) {
+			fClassInstance = classInstance;
+			postProcesses.add(this);
+		}
+		
+		@Override
+		public void run() {
+			fClassInstance.storeTemplateArguments();
+		}
+	}
 
 	/**
 	 * Adds or returns existing binding for the given name.
@@ -336,13 +368,26 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 		IBinding binding = name.resolveBinding();
 
 		PDOMBinding pdomBinding = addBinding(binding, name);
+		
+		// Some nodes schedule some of their initialization to be done
+		// after the binding has been added to the PDOM, to avoid
+		// infinite recursion. We run those post-processes now.
+		// Note that we need to run it before addImplicitMethods() is
+		// called, since addImplicitMethods() expects the binding to
+		// be fully initialized.
+		handlePostProcesses();
+
 		if (pdomBinding instanceof PDOMCPPClassType || pdomBinding instanceof PDOMCPPClassSpecialization) {
 			if (binding instanceof ICPPClassType && name.isDefinition()) {
 				addImplicitMethods(pdomBinding, (ICPPClassType) binding, name);
 			}
 		}
-
+		
+		// Some of the nodes created during addImplicitMethods() can
+		// also schedule post-processes, so we need to run through
+		// them again.
 		handlePostProcesses();
+
 		return pdomBinding;
 	}
 
@@ -464,6 +509,13 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 		} else if (binding instanceof ICPPField) {
 			if (parent instanceof PDOMCPPClassType || parent instanceof PDOMCPPClassSpecialization) {
 				pdomBinding = new PDOMCPPField(this, parent, (ICPPField) binding);
+				// If the field is inside an anonymous struct or union, add it to the parent node as well.
+				if (((ICompositeType) parent).isAnonymous()) {
+					parent2 = parent.getParentNode();
+					if (parent2 == null) {
+						parent2 = this;
+					}
+				}
 			}
 		} else if (binding instanceof ICPPClassTemplate) {
 			pdomBinding= new PDOMCPPClassTemplate(this, parent, (ICPPClassTemplate) binding);
@@ -498,9 +550,9 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			pdomBinding = new PDOMCPPUsingDeclaration(this, parent, (ICPPUsingDeclaration) binding);
 		} else if (binding instanceof ICPPEnumeration) {
 			pdomBinding = new PDOMCPPEnumeration(this, parent, (ICPPEnumeration) binding);
-		} else if (binding instanceof IEnumerator) {
+		} else if (binding instanceof ICPPInternalEnumerator) {
 			assert parent instanceof ICPPEnumeration;
-			pdomBinding = new PDOMCPPEnumerator(this, parent, (IEnumerator) binding);
+			pdomBinding = new PDOMCPPEnumerator(this, parent, (ICPPInternalEnumerator) binding);
 			if (parent instanceof ICPPEnumeration && !((ICPPEnumeration) parent).isScoped()) {
 				parent2= parent.getParentNode();
 				if (parent2 == null) {
@@ -632,8 +684,8 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			result= new PDOMCPPUsingDeclarationSpecialization(this, parent, (ICPPUsingDeclaration) special, orig);
 		} else if (special instanceof ICPPEnumeration) {
 			result= new PDOMCPPEnumerationSpecialization(this, parent, (ICPPEnumeration) special, orig);
-		} else if (special instanceof IEnumerator) {
-			result= new PDOMCPPEnumeratorSpecialization(this, parent, (IEnumerator) special, orig);
+		} else if (special instanceof ICPPInternalEnumerator) {
+			result= new PDOMCPPEnumeratorSpecialization(this, parent, (ICPPInternalEnumerator) special, orig);
 		}
 
 		return result;
@@ -644,7 +696,7 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			final long fileLocalRec= type.getLocalToFileRec();
 			IScope scope = binding.getCompositeScope();
 			if (scope instanceof ICPPClassScope) {
-				List<ICPPMethod> old= new ArrayList<ICPPMethod>();
+				List<ICPPMethod> old= new ArrayList<>();
 				if (type instanceof ICPPClassType) {
 					ArrayUtil.addAll(old, ClassTypeHelper.getImplicitMethods((ICPPClassType) type, point));
 				}
@@ -1004,6 +1056,11 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 	}
 
 	@Override
+	public PDOMGlobalScope getGlobalScope() {
+		return PDOMCPPGlobalScope.INSTANCE;
+	}
+
+	@Override
 	public void onCreateName(PDOMFile file, IASTName name, PDOMName pdomName) throws CoreException {
 		super.onCreateName(file, name, pdomName);
 
@@ -1225,6 +1282,8 @@ class PDOMCPPLinkage extends PDOMLinkage implements IIndexCPPBindingConstants {
 			return CPPAliasTemplateInstance.unmarshal(firstBytes, buffer);
 		case ITypeMarshalBuffer.TYPE_TRANSFORMATION:
 			return CPPUnaryTypeTransformation.unmarshal(firstBytes, buffer);
+		case ITypeMarshalBuffer.UNKNOWN_MEMBER_TYPE:
+			return TypeOfUnknownMember.unmarshal(getPDOM(), firstBytes, buffer);
 		}
 
 		throw new CoreException(CCorePlugin.createStatus("Cannot unmarshal a type, first bytes=" + firstBytes)); //$NON-NLS-1$

@@ -14,7 +14,7 @@
   <parent>
     <groupId>org.eclipse.cdt</groupId>
     <artifactId>cdt-parent</artifactId>
-    <version>8.5.0-SNAPSHOT</version>
+    <version>8.6.0-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -33,10 +33,11 @@
           <useUIThread>false</useUIThread>
           <product>org.eclipse.platform.ide</product>
           <application>org.eclipse.ui.ide.workbench</application>
-          <argLine>${base.ui.test.vmargs}</argLine>
+          <argLine>${tycho.testArgLine} ${base.ui.test.vmargs}</argLine>
           <includes>
              <include>**/AllTests.*</include>
           </includes>
+          <testFailureIgnore>true</testFailureIgnore>
           <dependencies>
             <dependency>
               <artifactId>org.eclipse.platform.feature.group</artifactId>

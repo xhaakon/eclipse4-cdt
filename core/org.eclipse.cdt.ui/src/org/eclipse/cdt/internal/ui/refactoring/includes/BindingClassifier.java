@@ -95,6 +95,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTypeId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
@@ -111,6 +112,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.index.IIndexMacro;
 import org.eclipse.cdt.core.index.IndexFilter;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
@@ -142,7 +144,6 @@ public class BindingClassifier {
 		"unique_ptr", // 20.7.1 //$NON-NLS-1$
 		"weak_ptr" // 20.7.2.3 //$NON-NLS-1$
 	};
-	public enum InclusionType { DECLARATION, DEFINITION }
 
 	private class BindingCollector extends ASTVisitor {
 		BindingCollector() {
@@ -399,7 +400,7 @@ public class BindingClassifier {
 					}
 				}
 			} else if (memberBinding instanceof ICPPConstructor) {
-				// Class construction
+				// Class construction.
 				ICPPConstructor constructor = (ICPPConstructor) memberBinding;
 
 				// We need to define the owning type of the constructor.
@@ -810,9 +811,24 @@ public class BindingClassifier {
 				} else {
 					IBinding owner = binding.getOwner();
 					if (owner instanceof IType) {
-						defineBinding(owner);	 // Member access requires definition of the containing type.
+						defineBinding(owner); // Member access requires definition of the containing type.
 						if (binding instanceof IProblemBinding)
 							declareBinding(binding);
+						if (!isDefinedLocally(owner) &&
+								(!(binding instanceof ICPPMember) || !((ICPPMember) binding).isStatic())) {
+							// Record the fact that the header file defining the owner must also
+							// provide a definition of the type of this member (bug 442841).
+							IType type = null;
+							if (binding instanceof IVariable) {
+								type = ((IVariable) binding).getType();
+							} else if (binding instanceof IFunction) {
+								type = ((IFunction) binding).getType().getReturnType();
+							}
+							type = getNestedType(type, ALLCVQ);
+							if (type instanceof IBinding) {
+								markAsDefined((IBinding) type);
+							}
+						}
 					} else {
 						declareBinding(binding); // Declare the binding of this name.
 					}
@@ -1027,6 +1043,11 @@ public class BindingClassifier {
 			return Collections.singleton(binding);
 		if (binding instanceof ICPPNamespace)
 			return Collections.emptySet();
+		if (binding instanceof ICPPUsingDeclaration) {
+			Set<IBinding> result = new HashSet<>();
+			Collections.addAll(result, ((ICPPUsingDeclaration) binding).getDelegates());
+			return result;
+		}
 
 		Deque<IBinding> queue = new ArrayDeque<>();
 
@@ -1053,8 +1074,8 @@ public class BindingClassifier {
 						}
 					}
 				}
-				// Get the specialized binding - e.g. get the binding for X if the current binding is
-				// for the template specialization X<Y>.
+				// Get the specialized binding - e.g. get the binding for X if the current binding
+				// is for the template specialization X<Y>.
 				addRequiredBindings(((ICPPSpecialization) binding).getSpecializedBinding(), queue);
 			} else {
 				bindings.add(binding);
@@ -1112,15 +1133,14 @@ public class BindingClassifier {
 	 * @param binding The binding to add.
 	 */
 	private void declareBinding(IBinding binding) {
+		if (binding instanceof ICPPNamespace && !(binding instanceof ICPPNamespaceAlias))
+			return;
 		if (fProcessedDefinedBindings.contains(binding))
 			return;
-
-		if (fAst.getDeclarationsInAST(binding).length != 0)
+		if (isDeclaredLocally(binding))
 			return;  // Declared locally.
-
 		if (!fProcessedDeclaredBindings.add(binding))
 			return;
-
 		if (!canForwardDeclare(binding)) {
 			defineBinding(binding);
 			return;
@@ -1133,11 +1153,8 @@ public class BindingClassifier {
 					fBindingsToDefine.contains(requiredBinding)) {
 				return;
 			}
-			if (fAst.getDefinitionsInAST(requiredBinding).length != 0) {
-				return;  // Defined locally
-			}
-			if (fAst.getDeclarationsInAST(requiredBinding).length != 0) {
-				return;  // Defined locally
+			if (isDeclaredLocally(requiredBinding) || isDefinedLocally(requiredBinding)) {
+				return;  // Declared or defined locally.
 			}
 
 			if (canForwardDeclare(requiredBinding)) {
@@ -1161,7 +1178,9 @@ public class BindingClassifier {
 	 */
 	private boolean canForwardDeclare(IBinding binding) {
 		boolean canDeclare = false;
-		if (binding instanceof ICompositeType) {
+		if (binding instanceof ICPPUsingDeclaration) {
+			return true;  // Return true to consider delegates later on.
+		} if (binding instanceof ICompositeType) {
 			canDeclare = fPreferences.forwardDeclareCompositeTypes;
 		} else if (binding instanceof IEnumeration) {
 			canDeclare = fPreferences.forwardDeclareEnums && isEnumerationWithoutFixedUnderlyingType(binding);
@@ -1217,9 +1236,11 @@ public class BindingClassifier {
 	 * @param binding The binding to add.
 	 */
 	private void defineBinding(IBinding binding) {
+		if (binding instanceof ICPPNamespace && !(binding instanceof ICPPNamespaceAlias))
+			return;
 		if (!markAsDefined(binding))
 			return;
-		if (binding instanceof CPPClosureType || fAst.getDefinitionsInAST(binding).length != 0)
+		if (isDefinedLocally(binding))
 			return;  // Defined locally.
 
 		Collection<IBinding> requiredBindings = getRequiredBindings(binding);
@@ -1228,11 +1249,27 @@ public class BindingClassifier {
 			if (requiredBinding != binding) {
 				if (!markAsDefined(requiredBinding))
 					continue;
-				if (fAst.getDefinitionsInAST(requiredBinding).length != 0)
+				if (isDefinedLocally(requiredBinding))
 					continue;  // Defined locally.
 			}
 			fBindingsToDefine.add(requiredBinding);
 		}
+	}
+
+	private boolean isDefinedLocally(IBinding binding) {
+		return binding instanceof CPPClosureType || fAst.getDefinitionsInAST(binding).length != 0;
+	}
+
+	private boolean isDeclaredLocally(IBinding binding) {
+		IASTName[] declarations = fAst.getDeclarationsInAST(binding);
+		for (IASTName name : declarations) {
+			IASTNode node = name;
+			if (node.getPropertyInParent() == ICPPASTQualifiedName.SEGMENT_NAME)
+				node = node.getParent();
+			if (node.getPropertyInParent() != ICPPASTUsingDeclaration.NAME)
+				return true;
+		}
+		return false;
 	}
 
 	private void defineBindingForName(IASTName name) {

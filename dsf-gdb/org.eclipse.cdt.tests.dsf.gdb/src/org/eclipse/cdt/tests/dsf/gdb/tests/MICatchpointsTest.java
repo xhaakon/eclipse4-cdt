@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Ericsson and others.
+ * Copyright (c) 2007, 2014 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Ericsson - Initial Implementation
+ *     Simon Marchi (Ericsson) - Add and use runningOnWindows().
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests;
 
@@ -61,7 +62,6 @@ import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
 import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
-import org.eclipse.core.runtime.Platform;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -82,9 +82,8 @@ import org.junit.runner.RunWith;
 @RunWith(BackgroundRunner.class)
 public class MICatchpointsTest extends BaseTestCase {
 
-    private static final String TEST_APPL   = "data/launch/bin/CatchpointTestApp.exe"; //$NON-NLS-1$
-
-    public static final String SOURCE_FILE    = "CatchpointTestApp.cc"; //$NON-NLS-1$
+    private static final String EXEC_NAME  = "CatchpointTestApp.exe"; //$NON-NLS-1$
+    private static final String SOURCE_NAME = "CatchpointTestApp.cc"; //$NON-NLS-1$
     
     public static final int LINE_NUMBER_SLEEP_CALL = 17;
 
@@ -185,7 +184,7 @@ public class MICatchpointsTest extends BaseTestCase {
     	super.setLaunchAttributes();
     	
     	// Select the binary to run the tests against
-    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, TEST_APPL);
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, EXEC_PATH + EXEC_NAME);
     }
     
 	@Override
@@ -754,7 +753,7 @@ public class MICatchpointsTest extends BaseTestCase {
 		// target in a suspended state. Unfortunately, there is nothing
 		// practical CDT can do to address this issue except wait for the gdb
 		// folks to resolve it. See https://bugs.eclipse.org/bugs/show_bug.cgi?id=304096#c27
-	    if (Platform.getOS().equals(Platform.OS_WIN32)) {
+	    if (runningOnWindows()) {
 	    	return;
 	    }
 		
@@ -951,7 +950,7 @@ public class MICatchpointsTest extends BaseTestCase {
 		// target in a suspended state. Unfortunately, there is nothing
 		// practical CDT can do to address this issue except wait for the gdb
 		// folks to resolve it. See https://bugs.eclipse.org/bugs/show_bug.cgi?id=304096#c27
-	    if (Platform.getOS().equals(Platform.OS_WIN32)) {
+	    if (runningOnWindows()) {
 	    	return;
 	    }
 		
@@ -1106,7 +1105,7 @@ public class MICatchpointsTest extends BaseTestCase {
 		// target in a suspended state. Unfortunately, there is nothing
 		// practical CDT can do to address this issue except wait for the gdb
 		// folks to resolve it. See https://bugs.eclipse.org/bugs/show_bug.cgi?id=304096#c27
-	    if (Platform.getOS().equals(Platform.OS_WIN32)) {
+	    if (runningOnWindows()) {
 	    	return;
 	    }
 		
@@ -1277,7 +1276,7 @@ public class MICatchpointsTest extends BaseTestCase {
 		// Set the breakpoint
 		Map<String, Object> breakpoint = new HashMap<String, Object>();
 		breakpoint.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.BREAKPOINT);
-		breakpoint.put(MIBreakpoints.FILE_NAME, SOURCE_FILE);
+		breakpoint.put(MIBreakpoints.FILE_NAME, SOURCE_NAME);
 		breakpoint.put(MIBreakpoints.LINE_NUMBER, lineNumber);
 		IBreakpointDMContext refLineBkpt = insertBreakpoint(fBreakpointsDmc, breakpoint);
 		assertTrue(fWait.getMessage(), fWait.isOK());

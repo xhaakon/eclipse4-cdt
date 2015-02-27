@@ -30,6 +30,7 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.ICompositeType;
 import org.eclipse.cdt.core.dom.ast.IEnumeration;
 import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IField;
@@ -52,6 +53,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPDeferredFunction;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
@@ -482,6 +485,15 @@ public class SemanticHighlightings {
 				IBinding binding= token.getBinding();
 				if (binding instanceof ICPPMethod) {
 					return true;
+				} else if (binding instanceof ICPPDeferredFunction) {
+					ICPPFunction[] candidates = ((ICPPDeferredFunction) binding).getCandidates();
+					if (candidates != null) {
+						for (ICPPFunction candidate : candidates) {
+							if (candidate instanceof ICPPMethod) {
+								return true;
+							}
+						}
+					}
 				}
 			}
 			return false;
@@ -938,7 +950,7 @@ public class SemanticHighlightings {
 			}
 			if (node instanceof IASTName) {
 				IBinding binding= token.getBinding();
-				if (binding instanceof ICPPClassType && !(binding instanceof ICPPTemplateParameter)) {
+				if (binding instanceof ICompositeType && !(binding instanceof ICPPTemplateParameter)) {
 					return true;
 				}
 			}

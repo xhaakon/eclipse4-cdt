@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2014 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -25,6 +25,7 @@
  *     Dmitry Kozlov (Mentor Graphics) - New trace-related methods (Bug 390827)
  *     Alvaro Sanchez-Leon (Ericsson AB) - [Memory] Support 16 bit addressable size (Bug 426730)
  *     Marc Khouzam (Ericsson) - Support for dynamic printf (Bug 400638)
+ *     Marc Khouzam (Ericsson) - Support for -gdb-version (Bug 455408)
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.mi.service.command;
@@ -59,6 +60,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIMaintenance;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIPasscount;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRecord;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRemoteGet;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLISharedLibrary;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIShowEndian;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLISource;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIThread;
@@ -137,6 +139,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTraceNotes;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBSetTraceUser;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBShowExitCode;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBShowLanguage;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBVersion;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInferiorTTYSet;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInfoOs;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExec;
@@ -205,6 +208,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIDataReadMemoryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIDataWriteMemoryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowExitCodeInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowLanguageInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBVersionInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfoOsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListFeaturesInfo;
@@ -315,6 +319,16 @@ public class CommandFactory {
 	/** @since 4.1 */
 	public ICommand<MIInfo> createCLIRemoteGet(ICommandControlDMContext ctx, String remoteFile, String localFile) {
 		return new CLIRemoteGet(ctx, remoteFile, localFile);
+	}
+
+	/** @since 4.6 */
+	public ICommand<MIInfo> createCLISharedLibrary(ISymbolDMContext ctx) {
+		return new CLISharedLibrary(ctx);
+	}
+
+	/** @since 4.6 */
+	public ICommand<MIInfo> createCLISharedLibrary(ISymbolDMContext ctx, String name) {
+		return new CLISharedLibrary(ctx, name);
 	}
 
 	/**
@@ -823,6 +837,11 @@ public class CommandFactory {
 		return new MIGDBShowLanguage(ctx);
 	}
 
+	/** @since 4.6 */
+	public ICommand<MIGDBVersionInfo> createMIGDBVersion(ICommandControlDMContext ctx) {
+		return new MIGDBVersion(ctx);
+	}
+	
 	/** @since 4.0 */
 	public ICommand<MIInfo> createMIInferiorTTYSet(IMIContainerDMContext dmc, String tty) {
 		return new MIInferiorTTYSet(dmc, tty);

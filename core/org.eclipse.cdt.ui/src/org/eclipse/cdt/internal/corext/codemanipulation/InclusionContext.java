@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2013 Google, Inc and others.
+ * Copyright (c) 2013, 2015 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,12 +13,15 @@ package org.eclipse.cdt.internal.corext.codemanipulation;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
+import org.eclipse.cdt.core.CCorePreferenceConstants;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
@@ -31,6 +34,7 @@ import org.eclipse.cdt.internal.core.parser.scanner.IncludeSearchPathElement;
 import org.eclipse.cdt.internal.core.parser.scanner.ScannerUtility;
 import org.eclipse.cdt.internal.core.resources.ResourceLookup;
 
+import org.eclipse.cdt.internal.ui.editor.SourceHeaderPartnerFinder;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeGroupStyle;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeGroupStyle.IncludeKind;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludePreferences;
@@ -47,9 +51,12 @@ public class InclusionContext {
 	private final IncludePreferences fPreferences;
 	private String fSourceContents;
 	private String fLineDelimiter;
+	private Pattern fKeepPragmaPattern;
+	private IPath fTuLocation;
 
 	public InclusionContext(ITranslationUnit tu) {
 		fTu = tu;
+		fTuLocation = fTu.getLocation();
 		ICProject cProject = fTu.getCProject();
 		fProject = cProject.getProject();
 		fCurrentDirectory = fTu.getResource().getParent().getLocation();
@@ -244,24 +251,8 @@ public class InclusionContext {
 	 * used for test files.
 	 */
 	public boolean isPartnerFile(IPath path) {
-		String headerName = path.removeFileExtension().lastSegment();
-		String sourceName = getTranslationUnit().getLocation().removeFileExtension().lastSegment();
-		if (headerName.equals(sourceName))
-			return true;
-		if (sourceName.startsWith(headerName)) {
-			int pos = headerName.length();
-			while (pos < sourceName.length() && !Character.isLetterOrDigit(sourceName.charAt(pos))) {
-				pos++;
-			}
-			if (pos == sourceName.length())
-				return true;
-			String suffix = sourceName.substring(pos);
-			for (String s : fPreferences.partnerFileSuffixes) {
-				if (suffix.equalsIgnoreCase(s))
-					return true;
-			}
-		}
-		return false;
+		return SourceHeaderPartnerFinder.isPartnerFile(getTranslationUnitLocation(), path,
+				fPreferences.partnerFileSuffixes);
 	}
 
 	public IncludeInfo createIncludeInfo(IPath header, IncludeGroupStyle style) {
@@ -306,5 +297,36 @@ public class InclusionContext {
 			}
 		}
 		return fLineDelimiter;
+	}
+
+	public Pattern getKeepPragmaPattern() {
+		if (fKeepPragmaPattern == null) {
+			String keepPattern = CCorePreferenceConstants.getPreference(
+					CCorePreferenceConstants.INCLUDE_KEEP_PATTERN, fProject,
+					CCorePreferenceConstants.DEFAULT_INCLUDE_KEEP_PATTERN);
+			try {
+				fKeepPragmaPattern = Pattern.compile(keepPattern);
+			} catch (PatternSyntaxException e) {
+				fKeepPragmaPattern = Pattern.compile(CCorePreferenceConstants.DEFAULT_INCLUDE_KEEP_PATTERN);
+			}
+		}
+		return fKeepPragmaPattern;
+	}
+
+	/**
+	 * Sets the effective translation unit location that overrides the default value obtained by
+	 * calling {@code getTranslationUnit().getLocation()}.
+	 *
+	 * @param location the file system location to set 
+	 */
+	public void setTranslationUnitLocation(IPath location) {
+		this.fTuLocation = location;
+	}
+
+	/**
+	 * Returns the effective translation unit location.
+	 */
+	public IPath getTranslationUnitLocation() {
+		return fTuLocation;
 	}
 }

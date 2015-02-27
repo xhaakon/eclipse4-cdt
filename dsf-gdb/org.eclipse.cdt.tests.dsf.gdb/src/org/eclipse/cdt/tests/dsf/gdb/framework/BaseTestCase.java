@@ -7,15 +7,21 @@
  * 
  * Contributors:
  *     Ericsson			  - Initial Implementation
+ *     Simon Marchi (Ericsson) - Add and use runningOnWindows().
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.framework;
 
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.datamodel.IDMEvent;
@@ -37,7 +43,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationType;
@@ -65,6 +70,12 @@ import org.junit.rules.Timeout;
  */
 @SuppressWarnings("restriction")
 public class BaseTestCase {
+	/*
+	 * Path to executable
+	 */
+	protected static final String EXEC_PATH = "data/launch/bin/";
+	protected static final String SOURCE_PATH = "data/launch/src/";
+
 	// Timeout value for each individual test
 	private final static int TEST_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 	
@@ -75,7 +86,7 @@ public class BaseTestCase {
 	@Rule public TestRule timeout = new Timeout(TEST_TIMEOUT);
 	
 	public static final String ATTR_DEBUG_SERVER_NAME = TestsPlugin.PLUGIN_ID + ".DEBUG_SERVER_NAME";
-	private static final String DEFAULT_TEST_APP = "data/launch/bin/GDBMIGenericTestApp.exe";
+	private static final String DEFAULT_EXEC_NAME = "GDBMIGenericTestApp.exe";
 	
     private static GdbLaunch fLaunch;
 
@@ -101,6 +112,8 @@ public class BaseTestCase {
 	final private String fTargetSuspendedSem = new String(); // just used as a semaphore
 
 	private static boolean fgStatusHandlersEnabled = true;
+
+	private static HashMap<String, Integer> fTagLocations = new HashMap<>();
 
     public GdbLaunch getGDBLaunch() { return fLaunch; }
     
@@ -196,12 +209,12 @@ public class BaseTestCase {
 		setLaunchAttributes();
 		doLaunch();
 	}
-	
-    protected void setLaunchAttributes() {
+
+	protected void setLaunchAttributes() {
     	// Clear all launch attributes before starting a new test
     	launchAttributes = new HashMap<String, Object>();
     	
-   		launchAttributes.put(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, DEFAULT_TEST_APP);
+   		launchAttributes.put(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, EXEC_PATH + DEFAULT_EXEC_NAME);
 
 		launchAttributes.put(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN, true);
 		launchAttributes.put(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL, ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_SYMBOL_DEFAULT);
@@ -223,6 +236,64 @@ public class BaseTestCase {
     	// Set the global launch attributes
     	launchAttributes.putAll(globalLaunchAttributes);
     }
+
+	/**
+	 * Given a set of tags (strings) to find in sourceFile, populate the
+	 * fTagLocations map with the line numbers where they are found.
+	 *
+	 * @param sourceName The path of the source file, relative to {@link #SOURCE_PATH}.
+	 * @param tags Strings to find in sourceFile.
+	 * @throws IOException If sourceFile is not found or can't be read.
+	 * @throws RuntimeException If one or more tags are not found in sourceFile.
+	 */
+	protected void resolveLineTagLocations(String sourceName,
+			String... tags) throws IOException {
+		try (BufferedReader reader =
+				new BufferedReader(new FileReader(SOURCE_PATH + sourceName))) {
+			Set<String> tagsToFind = new HashSet<>(Arrays.asList(tags));
+			String line;
+			int lineNumber = 1;
+
+			fTagLocations.clear();
+
+			line = reader.readLine();
+			while (line != null) {
+				for (String tag : tagsToFind) {
+					if (line.contains(tag)) {
+						fTagLocations.put(tag, lineNumber);
+						tagsToFind.remove(tag);
+						break;
+					}
+				}
+
+				lineNumber++;
+				line = reader.readLine();
+			}
+
+			/* Make sure all tags have been found */
+			if (tagsToFind.size() > 0) {
+				throw new RuntimeException(
+						"Some tags were not found in " + sourceName);
+			}
+		}
+	}
+
+	/**
+	 * Get the source line number that contains the specified tag. In order to
+	 * get an interesting result, {@link #resolveLineTagLocations} must be
+	 * called prior to calling this function.
+	 *
+	 * @param tag Tag for which to get the source line.
+	 * @return The line number corresponding to tag.
+	 * @throws NoSuchElementException if the tag does not exist.
+	 */
+	protected int getLineForTag(String tag) {
+		if (!fTagLocations.containsKey(tag)) {
+			throw new NoSuchElementException("tag " + tag);
+		}
+
+		return fTagLocations.get(tag);
+	}
 
     /**
      * Launch GDB.  The launch attributes must have been set already.
@@ -300,16 +371,12 @@ public class BaseTestCase {
 
 	}
 
- 	@After
+	@After
 	public void doAfterTest() throws Exception {
- 		if (fLaunch != null) {
- 			try {
-				fLaunch.terminate();
-			} catch (DebugException e) {
-				assert false : "Could not terminate launch";
-			}
-            fLaunch = null;
- 		}
+		if (fLaunch != null) {
+			fLaunch.terminate();
+			fLaunch = null;
+		}
 	}
 
  	/**
@@ -368,7 +435,7 @@ public class BaseTestCase {
 	 */
  	public static void setGdbProgramNamesLaunchAttributes(String version) {
 		// See bugzilla 303811 for why we have to append ".exe" on Windows
- 		boolean isWindows = Platform.getOS().equals(Platform.OS_WIN32);
+ 		boolean isWindows = runningOnWindows();
  		String gdbPath = System.getProperty("cdt.tests.dsf.gdb.path");
  		String debugName = "gdb." + version + (isWindows ? ".exe" : "");
  		String debugServerName = "gdbserver." + version + (isWindows ? ".exe" : "");
@@ -398,6 +465,10 @@ public class BaseTestCase {
         	// If we cannot run GDB, just ignore the test case.
         	Assume.assumeNoException(e);
         }
+ 	}
+
+ 	protected static boolean runningOnWindows() {
+ 		return Platform.getOS().equals(Platform.OS_WIN32);
  	}
 
 	@BeforeClass

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Mentor Graphics and others.
+ * Copyright (c) 2012, 2014 Mentor Graphics and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,13 +7,14 @@
  *
  * Contributors:
  * Mentor Graphics - Initial API and implementation
+ * Marc Khouzam (Ericsson) - Run tests in alphabetical order since they are dependent on each other.
  *******************************************************************************/
 
 package org.eclipse.cdt.tests.dsf.gdb.tests.tests_7_4;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -55,17 +56,23 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.IBreakpointManager;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class TraceFileTest_7_4 extends BaseTestCase {
 
-	private final static String FILE_NAME = "TracepointTestApp.cc";
-	private final static int LINE_NUMBER_1 = 97;
-	private final static int LINE_NUMBER_2 = 102;
-	private final static String TEVAL_STRING = "lBoolPtr2";
-	private final static String COLLECT_STRING1 = "counter";
+	private final static String SOURCE_NAME = "TracepointTestApp.cc";
+	private final static String EXEC_NAME = "TracepointTestApp.exe";
+	private final static String TRACE_NAME = "trace";
+	private final static int LINE_NUMBER_1 = 17;
+	private final static int LINE_NUMBER_2 = 24;
+	private final static String END_FUNCTION = "lastCall";
+	private final static String TEVAL_STRING = "a";
+	private final static String COLLECT_STRING1 = "x";
 	private final static String COLLECT_STRING2 = "$regs";
-	private final static String TRACE_FILE = "data/launch/bin/trace";
 
 	private DsfSession fSession;
 	private DsfServicesTracker fServicesTracker;
@@ -85,6 +92,18 @@ public class TraceFileTest_7_4 extends BaseTestCase {
     	// Each test sets its own launch attributes
 	}
 
+    @AfterClass
+    public static void doAfterClassTraceFileTest_7_4() {
+    	try {
+    		// Make sure we don't have any tracepoint actions
+    		// or any kind of breakpoints in the workspace
+    		// so that tests run after this class are not affected
+			deleteActionsAndBreakpoints();
+		} catch (Throwable e) {
+			System.out.println("ERROR: Failed to delete all breakpoints");
+		}
+    }
+    
 	@Override
 	@After
 	public void doAfterTest() throws Exception {
@@ -102,9 +121,8 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 	/**
 	 * This test implements the following steps.
 	 * 1. Starts a remote session
-	 * 2. Sets two tracepoints at data/launch/src/TracepointTestApp.cc:97 
-	 *    and data/launch/src/TracepointTestApp.cc:102.
-     *    The first tracepoint's command is "teval lBoolPtr2".
+	 * 2. Sets two tracepoints in data/launch/src/TracepointTestApp.cc
+     *    The first tracepoint's command is "teval a".
      *    The second tracepoint's commands are "collect counter" and "collect $regs".
      * 3. Sets a regular breakpoint at the end of the source file.
 	 * 4. Starts tracing
@@ -113,8 +131,11 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 	 * 7. Saves the trace data into a file (data/launch/bin/trace).
 	 */
 	@Test
-	public void createTraceFile() throws Throwable {
+	public void a_createTraceFile() throws Throwable {
+    	// Make sure that there are no tracepoint actions and no platform breakpoints in the workspace.
+    	deleteActionsAndBreakpoints();
 		deleteOldTraceFile();
+
 		startRemoteSession();
 		setTracepoints();
 		MIBreakpointDMContext bptDMC = setBreakpointAtEndLine();
@@ -132,10 +153,10 @@ public class TraceFileTest_7_4 extends BaseTestCase {
      * actions are created.
      */
     @Test
-    public void testTraceFile() throws Throwable {
-    	// Make sure that there is no tracepoint actions and platform breakpoints 
-    	// are in the workspace.
+    public void b_testTraceFile() throws Throwable {
+    	// Make sure that there are no tracepoint actions and no platform breakpoints in the workspace.
     	deleteActionsAndBreakpoints();
+    	
     	startTraceFileSession();
     	// Verify that required tracepoints and new tracepoint actions are created.
     	checkActionsAndTracepoints();
@@ -144,10 +165,10 @@ public class TraceFileTest_7_4 extends BaseTestCase {
     /**
      * This test verifies that the tracepoint actions and platform tracepoints 
      * created by 'testTraceFile()' are associated with the corresponding target 
-     * tracepoints.
+     * tracepoints and are not created a second time.
      */
     @Test
-    public void testTraceFileWithExistingTracepoints() throws Throwable {
+    public void c_testTraceFileWithExistingTracepoints() throws Throwable {
     	// Verify that actions and tracepoints required for this test are in place.
     	checkActionsAndTracepoints();
     	startTraceFileSession();
@@ -163,7 +184,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 		// especially in the case of a relative path
 		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY, "${workspace_loc}");
 		// Because we just set a different working directory, we must use an absolute path for the program
-    	String absoluteProgram = new Path("data/launch/bin/TracepointTestApp.exe").toFile().getAbsolutePath();
+    	String absoluteProgram = new Path(EXEC_PATH + EXEC_NAME).toFile().getAbsolutePath();
         setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, absoluteProgram);
 
         // Set post-mortem launch
@@ -173,7 +194,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 		setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_POST_MORTEM_TYPE,
 		                   IGDBLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TRACE_FILE);
 		// Set core file path
-		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_COREFILE_PATH, TRACE_FILE);
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_COREFILE_PATH, EXEC_PATH + TRACE_NAME);
 
 		doLaunch();
 
@@ -184,7 +205,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
     /**
      * Deletes all tracepoint actions and all existing platform breakpoints.
      */
-    private void deleteActionsAndBreakpoints() throws Throwable {
+    private static void deleteActionsAndBreakpoints() throws Throwable {
     	TracepointActionManager tam = TracepointActionManager.getInstance();
     	IBreakpointManager bm = DebugPlugin.getDefault().getBreakpointManager();
     	
@@ -221,7 +242,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 
     private void checkTracepoint(ICTracepoint tracepoint) throws Throwable {
     	TracepointActionManager tam = TracepointActionManager.getInstance();
-		assertTrue(FILE_NAME.equals(new Path(tracepoint.getFileName()).lastSegment()));
+		assertTrue(SOURCE_NAME.equals(new Path(tracepoint.getFileName()).lastSegment()));
 		assertTrue(LINE_NUMBER_1 == tracepoint.getLineNumber() || LINE_NUMBER_2 == tracepoint.getLineNumber());
 		String[] actionNames = 
 			((String)tracepoint.getMarker().getAttribute(BreakpointActionManager.BREAKPOINT_ACTION_ATTRIBUTE)).split(TracepointActionManager.TRACEPOINT_ACTION_DELIMITER);
@@ -241,7 +262,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
     private void startRemoteSession() throws Throwable {
     	// Set launch attributes
 		super.setLaunchAttributes();		
-		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, "data/launch/bin/TracepointTestApp.exe");
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, EXEC_PATH + EXEC_NAME);
 		// GDB tracepoints are only supported on a remote target (e.g., using gdbserver)
 		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_START_MODE,
 				IGDBLaunchConfigurationConstants.DEBUGGER_MODE_REMOTE);		
@@ -326,8 +347,8 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 	private MIBreakpointDMContext setBreakpointAtEndLine() throws Throwable {
 		Map<String, Object> attributes = new HashMap<String, Object>();
 		attributes.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.BREAKPOINT);
-		attributes.put(MIBreakpoints.FILE_NAME, FILE_NAME);
-		attributes.put(MIBreakpoints.LINE_NUMBER, 152);
+		attributes.put(MIBreakpoints.FILE_NAME, SOURCE_NAME);
+		attributes.put(MIBreakpoints.FUNCTION, END_FUNCTION);
 		IBreakpointDMContext bptDMC = insertBreakpoint(fBreakpointsDmc, attributes);
 		assertTrue(bptDMC instanceof MIBreakpointDMContext);
 		return (MIBreakpointDMContext)bptDMC;
@@ -354,7 +375,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 
 		Map<String, Object> attributes = new HashMap<String, Object>();
 		attributes.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.TRACEPOINT);
-		attributes.put(MIBreakpoints.FILE_NAME, FILE_NAME);
+		attributes.put(MIBreakpoints.FILE_NAME, SOURCE_NAME);
 		attributes.put(MIBreakpoints.LINE_NUMBER, LINE_NUMBER_1);
 		attributes.put(MIBreakpoints.COMMANDS, evalAction.getName());
 		insertBreakpoint(fBreakpointsDmc, attributes);
@@ -393,7 +414,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 	}
 
 	private void saveTraceData() throws Throwable {
-    	final File traceFile = new Path(TRACE_FILE).toFile();
+    	final File traceFile = new Path(EXEC_PATH + TRACE_NAME).toFile();
 		final AsyncCompletionWaitor wait = new AsyncCompletionWaitor();
 
 		fSession.getExecutor().submit(new Runnable() {
@@ -419,7 +440,7 @@ public class TraceFileTest_7_4 extends BaseTestCase {
 	}
 
 	private void deleteOldTraceFile() throws Throwable {
-    	File traceFile = new Path(TRACE_FILE).toFile();
+    	File traceFile = new Path(EXEC_PATH + TRACE_NAME).toFile();
 		traceFile.delete();
 		assertFalse(traceFile.exists());
 	}

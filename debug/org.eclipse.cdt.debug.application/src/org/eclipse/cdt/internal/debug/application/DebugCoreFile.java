@@ -43,19 +43,16 @@ public class DebugCoreFile {
 					throws CoreException, InterruptedException {
 		ILaunchConfiguration config = null;
 
-		//					System.out.println("about to create launch configuration");
 		config = createConfiguration(coreFile, executable, true);
 		monitor.worked(1);
 		return config;
 	}
 
 	protected static ILaunchConfigurationType getLaunchConfigType() {
-		return getLaunchManager().getLaunchConfigurationType(
-				"org.eclipse.cdt.launch.postmortemLaunchType"); //$NON-NLS-1$
+		return getLaunchManager().getLaunchConfigurationType(ICDTLaunchConfigurationConstants.ID_LAUNCH_C_POST_MORTEM);				
 	}
 	
 	protected static ILaunchConfiguration createConfiguration(String corePath, String exePath, boolean save) {
-//		System.out.println("creating launch configuration");
 		ILaunchConfiguration config = null;
 		try {
 			ILaunchConfigurationType configType = getLaunchConfigType();

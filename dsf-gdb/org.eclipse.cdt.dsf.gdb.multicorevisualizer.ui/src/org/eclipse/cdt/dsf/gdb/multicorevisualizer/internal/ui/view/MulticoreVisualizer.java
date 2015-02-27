@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2014 Tilera Corporation and others.
+ * Copyright (c) 2012, 2015 Tilera Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,11 +17,17 @@
  *     Marc-Andre Laperle (Ericsson) - Bug 411634
  *     Marc Dumais (Ericsson) - Bug 409965
  *     Xavier Raynaud (kalray) - Bug 431935
+ *     Marc Dumais (Ericsson) - Bug 441713
+ *     Marc Dumais (Ericsson) - Bug 442312
+ *     Marc Dumais (Ericsson) - Bug 451392
+ *     Marc Dumais (Ericsson) - Bug 453206
+ *     Marc Dumais (Ericsson) - Bug 458076
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.view;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +43,7 @@ import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
 import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.MulticoreVisualizerUIPlugin;
 import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.actions.EnableLoadMetersAction;
 import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.actions.FilterCanvasAction;
+import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.actions.PinToDebugSessionAction;
 import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.actions.RefreshAction;
 import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.actions.SelectAllAction;
 import org.eclipse.cdt.dsf.gdb.multicorevisualizer.internal.ui.actions.SetLoadMeterPeriodAction;
@@ -83,6 +90,7 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Composite;
@@ -95,7 +103,7 @@ import org.eclipse.swt.widgets.Composite;
  */
 @SuppressWarnings("restriction")
 public class MulticoreVisualizer extends GraphicCanvasVisualizer
-    implements DSFDebugModelListener
+    implements DSFDebugModelListener, IPinnable
 {	
 	// --- constants ---
 	
@@ -125,91 +133,93 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	/** Model changed listener, attached to Debug View. */
 	protected IModelChangedListener m_modelChangedListener = null;
 	
-	// These two arrays are used to cache the CPU and core
+	/** Debug view selection changed listener, attached to Debug View. */
+	protected ISelectionChangedListener m_debugViewSelectionChangedListener = null;
+	
+	
+	// This is used to cache the CPU and core
 	// contexts, each time the model is recreated.  This way
 	// we can avoid asking the backend for the CPU/core
 	// geometry each time we want to update the load information.
-	/**
-	 * @since 1.1
-	 */
-	protected ICPUDMContext[] m_cpuContextsCache = null;
-	/**
-	 * @since 1.1
-	 */
-	protected ICoreDMContext[] m_coreContextsCache = null;
+	protected List<IDMContext> m_cpuCoreContextsCache = null;
+
 	
-	/**
-	 * Main switch that determines if we should display the load meters
-	 * @since 1.1
-	 */
+	/** Main switch that determines if we should display the load meters */
 	protected boolean m_loadMetersEnabled = false;
-	/**
-	 * Timer used to trigger the update of the CPU/core load meters
-	 * @since 1.1
-	 */
+	/** Timer used to trigger the update of the CPU/core load meters */
 	protected Timer m_updateLoadMeterTimer = null;
-	/**
-	 * @since 1.1
-	 */
+	/** update period for the load meters */
 	protected int m_loadMeterTimerPeriod = LOAD_METER_TIMER_MEDIUM; // default 1000ms
+	
 	// Load meters refresh periods, in ms
+	/** constant for the very short load meters update period */
 	private static final int LOAD_METER_TIMER_MIN = 100;
+	/** constant for the short load meters update period */
 	private static final int LOAD_METER_TIMER_FAST = 500;
-	private static final int LOAD_METER_TIMER_MEDIUM = 1000; 
+	/** constant for the medium load meters update period */
+	private static final int LOAD_METER_TIMER_MEDIUM = 1000;
+	/** constant for the long load meters update period */
 	private static final int  LOAD_METER_TIMER_SLOW = 5000;
+	
+	/** Currently pinned session id, if any  */
+	private String m_currentPinedSessionId = null;
 	
 
 	// --- UI members ---
 
 	/** Whether actions have been initialized. */
-	boolean m_actionsInitialized = false;
+	protected boolean m_actionsInitialized = false;
 	
 	/** Toolbar / menu action */
-	Separator m_separatorAction = null;	
+	protected Separator m_separatorAction = null;	
 
 	/** Toolbar / menu action */
-	ResumeCommandAction m_resumeAction = null;
+	protected ResumeCommandAction m_resumeAction = null;
 	
 	/** Toolbar / menu action */
-	SuspendCommandAction m_suspendAction = null;
+	protected SuspendCommandAction m_suspendAction = null;
 	
 	/** Toolbar / menu action */
-	TerminateCommandAction m_terminateAction = null;
+	protected TerminateCommandAction m_terminateAction = null;
 	
 	/** Toolbar / menu action */
-	StepReturnCommandAction m_stepReturnAction = null;
+	protected StepReturnCommandAction m_stepReturnAction = null;
 	
 	/** Toolbar / menu action */
-	StepOverCommandAction m_stepOverAction = null;
+	protected StepOverCommandAction m_stepOverAction = null;
 	
 	/** Toolbar / menu action */
-	StepIntoCommandAction m_stepIntoAction = null;
+	protected StepIntoCommandAction m_stepIntoAction = null;
 	
 	/** Toolbar / menu action */
-	DropToFrameCommandAction m_dropToFrameAction = null;
+	protected DropToFrameCommandAction m_dropToFrameAction = null;
 	
 	/** Toolbar / menu action */
-	SelectAllAction m_selectAllAction = null;
+	protected SelectAllAction m_selectAllAction = null;
 	
 	/** Toolbar / menu action */
-	RefreshAction m_refreshAction = null;
+	protected RefreshAction m_refreshAction = null;
 	
 	/** Sub-menu */
-	IMenuManager m_loadMetersSubMenu = null;
+	protected IMenuManager m_loadMetersSubMenu = null;
+	
 	/** Sub-sub menu */
-	IMenuManager m_loadMetersRefreshSubSubmenu = null;
+	protected IMenuManager m_loadMetersRefreshSubSubmenu = null;
 	
 	/** Menu action */
-	EnableLoadMetersAction m_enableLoadMetersAction = null;
+	protected EnableLoadMetersAction m_enableLoadMetersAction = null;
 	
 	/** Menu action */
-	List<SetLoadMeterPeriodAction> m_setLoadMeterPeriodActions = null;
+	protected List<SetLoadMeterPeriodAction> m_setLoadMeterPeriodActions = null;
 	
 	/** Menu action */
-	FilterCanvasAction m_setFilterAction = null;
+	protected FilterCanvasAction m_setFilterAction = null;
 
 	/** Menu action */
-	FilterCanvasAction m_clearFilterAction = null;	
+	protected FilterCanvasAction m_clearFilterAction = null;	
+	
+	/** Menu action */
+	protected PinToDebugSessionAction m_pinToDbgSessionAction = null;
 
 	// --- constructors/destructors ---
 	
@@ -227,6 +237,11 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		disposeActions();
 		disposeLoadMeterTimer();
 		removeEventListener();
+		// dispose CPU/core contexts cache
+		if (m_cpuCoreContextsCache != null) {
+			m_cpuCoreContextsCache.clear();
+			m_cpuCoreContextsCache = null;
+		}
 	}
 	
 	
@@ -236,10 +251,11 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	@Override
 	public void initializeVisualizer() {
 		fEventListener = new MulticoreVisualizerEventListener(this);
+		m_cpuCoreContextsCache = new ArrayList<IDMContext>(); 
 	}
 	
 	/**
-	 * @since 1.1
+	 * Sets-up the timer associated to load meters refresh
 	 */
 	protected void initializeLoadMeterTimer() {
 		if (!m_loadMetersEnabled) return;
@@ -249,7 +265,7 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	}
 	
 	/**
-	 * @since 1.1
+	 * disposes of the load meter timer
 	 */
 	protected void disposeLoadMeterTimer() {
 		if(m_updateLoadMeterTimer != null) {
@@ -288,7 +304,7 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	}
 	
 	/**
-	 * @since 1.1
+	 * takes care of the details of changing the load meter timer period
 	 */
 	public void setLoadMeterTimerPeriod(int p) {
 		assert (p > LOAD_METER_TIMER_MIN);
@@ -299,7 +315,7 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	}
 	
 	/**
-	 * @since 1.1
+	 * enables or disables the load meters
 	 */
 	public void setLoadMetersEnabled(boolean enabled) {
 		if (m_loadMetersEnabled == enabled) return;
@@ -456,6 +472,10 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		m_clearFilterAction.init(this);
 		m_clearFilterAction.setEnabled(false);
 		
+		m_pinToDbgSessionAction = new PinToDebugSessionAction();
+		m_pinToDbgSessionAction.init(this);
+		m_pinToDbgSessionAction.setEnabled(false);
+		
 		// Note: debug view may not be initialized at startup,
 		// so we'll pretend the actions are not yet updated,
 		// and reinitialize them later.
@@ -481,6 +501,9 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
     	// show the load meter refresh speed sub-menu only 
     	// if the load meters are enabled
     	m_loadMetersRefreshSubSubmenu.setVisible(m_loadMetersEnabled);
+    	
+    	// Enable pinning menu item when there is a current debug session
+    	m_pinToDbgSessionAction.setEnabled(m_sessionState != null);
 		
 		// We should not change the enablement of the debug view
 		// actions, as they are automatically enabled/disabled
@@ -539,7 +562,6 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 			m_refreshAction = null;
 		}
 		
-		
 		if (m_loadMetersSubMenu != null) {
 			m_loadMetersSubMenu.dispose();
 			m_loadMetersSubMenu = null;
@@ -572,6 +594,11 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 			m_clearFilterAction.dispose();
 			m_clearFilterAction = null;
 		}
+		
+		if (m_pinToDbgSessionAction != null) {
+			m_pinToDbgSessionAction.dispose();
+			m_pinToDbgSessionAction = null;
+		}
 
 		m_actionsInitialized = false;
 	}
@@ -586,16 +613,22 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		// initialize menu/toolbar actions, if needed
 		createActions();
 
-		toolBarManager.add(m_resumeAction);
-		toolBarManager.add(m_suspendAction);
-		toolBarManager.add(m_terminateAction);
-		
-		toolBarManager.add(m_separatorAction);
-		
-		toolBarManager.add(m_stepReturnAction);
-		toolBarManager.add(m_stepOverAction);
-		toolBarManager.add(m_stepIntoAction);
-		toolBarManager.add(m_dropToFrameAction);
+		// display debug buttons only if MV is not pinned
+		// note: if in the future we want to display the debug buttons even 
+		// when pinned, all that needs to be done it to remove this check.
+		if (!m_pinToDbgSessionAction.isChecked()) {
+			toolBarManager.add(m_resumeAction);
+			toolBarManager.add(m_suspendAction);
+			toolBarManager.add(m_terminateAction);
+
+			toolBarManager.add(m_separatorAction);
+
+			toolBarManager.add(m_stepReturnAction);
+			toolBarManager.add(m_stepOverAction);
+			toolBarManager.add(m_stepIntoAction);
+			toolBarManager.add(m_dropToFrameAction);
+		}
+		toolBarManager.add(m_pinToDbgSessionAction);
 		
 		updateActions();
 	}
@@ -608,7 +641,6 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		createActions();
 
 		// TODO: Anything we want to hide on the toolbar menu?
-		
 		updateActions();
 	}
 
@@ -734,7 +766,19 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 						}});
 					}
 				};
+				m_debugViewSelectionChangedListener = 
+						new ISelectionChangedListener() {
+							@Override
+							public void selectionChanged(SelectionChangedEvent event) {
+								// Execute a refresh after any pending UI updates.
+								GUIUtils.exec( new Runnable() { @Override public void run() {
+									// Update canvas selection to match to dbg view selection
+									updateCanvasSelectionFromDebugView();
+								}});
+							}
+						};
 				m_debugViewer.addModelChangedListener(m_modelChangedListener);
+				m_debugViewer.addSelectionChangedListener(m_debugViewSelectionChangedListener);
 			}
 		}
 	}
@@ -742,11 +786,13 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	/** Removes debug viewer listener. */
 	protected void removeDebugViewerListener()
 	{
-		if (m_modelChangedListener != null) {
+		if (m_modelChangedListener != null && m_debugViewSelectionChangedListener != null) {
 			if (m_debugViewer != null) {
 				m_debugViewer.removeModelChangedListener(m_modelChangedListener);
+				m_debugViewer.removeSelectionChangedListener(m_debugViewSelectionChangedListener);
 				m_debugViewer = null;
 				m_modelChangedListener = null;
+				m_debugViewSelectionChangedListener = null;
 			}
 		}
 	}
@@ -786,6 +832,18 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	{
 		m_canvas.requestRecache();
 		m_canvas.requestUpdate();
+	}
+	
+	
+	/** Updates the UI elements such as the toolbar and context menu */
+	public void raiseVisualizerChangedEvent() {
+		// FIXME: replace hack below by raising a new VisualizerChanged
+		// event, listened-to by VisualizerViewer, that causes it to raise
+		// its own VISUALIZER_CHANGED event. See bug 442584 for details
+		
+		// for now do a non-change to the selection to trigger a call to 
+		// VisualizerView#updateUI()
+		setSelection(getSelection());
 	}
 	
 
@@ -862,7 +920,10 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 						}
 						else { // thread
 							VisualizerThread thread = model.getThread(tid);
-							if (thread != null) {
+							// here "tid" is the "GDB thread id", which is not
+							// unique across sessions, so make sure the thread
+							// belongs to the correct process, before selecting it
+							if (thread != null && thread.getPID() == pid) {
 								selected.add(thread);
 							}
 						}
@@ -875,6 +936,39 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		return visualizerSelection;
 	}
 	
+	
+	// --- IPinnable implementation ---
+	
+	/**
+	 * Pins the multicore visualizer to the current debug session, preventing
+	 * it from switching to a different session.
+	 */
+	@Override
+	public void pin() {
+		// No current session - do nothing
+		if (m_sessionState == null)
+			return;
+		
+		m_currentPinedSessionId = m_sessionState.getSessionID();
+	}
+	
+	/**
+	 * Unpins the visualizer.
+	 */
+	@Override
+	public void unpin() {
+		m_currentPinedSessionId = null;
+		// force visualizer to re-evaluate its current session and
+		// display the correct one, if needed
+		workbenchSelectionChanged(null);
+	}
+	
+	/** Returns whether the MV is currently pinned to a session */
+	@Override
+	public boolean isPinned() {
+		return m_currentPinedSessionId != null;
+	}
+
 
 	// --- DSF Context Management ---
 	
@@ -883,6 +977,10 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	 */
 	public boolean updateDebugContext()
 	{
+		// is the visualizer pinned? Then inhibit context change
+		if (isPinned())
+			return false;
+		
 		String sessionId = null;
 		IAdaptable debugContext = DebugUITools.getDebugContext();
 		if (debugContext instanceof IDMVMContext) {
@@ -914,8 +1012,6 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		{
 			// stop timer that updates the load meters
 			disposeLoadMeterTimer();
-			m_cpuContextsCache = null;
-			m_coreContextsCache = null;
 			
 			m_sessionState.removeServiceEventListener(fEventListener);
 			m_sessionState.dispose();
@@ -949,6 +1045,9 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 			setCanvasModel(null);
 			return;
 		}
+		// clear CPU/core cache
+		m_cpuCoreContextsCache.clear();
+		
 		m_sessionState.execute(new DsfRunnable() { @Override public void run() {
 			// get model asynchronously, and update canvas
 			// in getVisualizerModelDone().
@@ -981,6 +1080,13 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	protected void updateCanvasSelectionInternal()
 	{
 		updateCanvasSelectionInternal(SelectionUtils.getWorkbenchSelection());
+	}
+	
+	/** Updates canvas selection from current debug view selection.
+	 *  Note: this method assumes it is called on the UI thread. */
+	protected void updateCanvasSelectionFromDebugView()
+	{
+		updateCanvasSelectionInternal(DebugViewUtils.getDebugViewSelection());
 	}
 	
 	/** Updates canvas selection from current workbench selection.
@@ -1030,8 +1136,6 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
 	public void getCPUsDone(ICPUDMContext[] cpuContexts, Object arg)
 	{
-		// save CPU contexts
-		m_cpuContextsCache = cpuContexts;
 		VisualizerModel model = (VisualizerModel) arg;
 		
 		if (cpuContexts == null || cpuContexts.length == 0) {
@@ -1046,6 +1150,9 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 			// Collect core data.
 			DSFDebugModel.getCores(m_sessionState, this, model);
 		} else {
+			// save CPU contexts
+			m_cpuCoreContextsCache.addAll(Arrays.asList(cpuContexts));
+			
 			// keep track of CPUs left to visit
 			int count = cpuContexts.length;
 			model.getTodo().add(count);
@@ -1069,14 +1176,15 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 							 ICoreDMContext[] coreContexts,
 							 Object arg)
 	{
-		// save core contexts
-		m_coreContextsCache = coreContexts;
 		VisualizerModel model = (VisualizerModel) arg;
 
 		if (coreContexts == null || coreContexts.length == 0) {
 			// no cores for this cpu context
 			// That's fine.
 		} else {
+			// save core contexts
+			m_cpuCoreContextsCache.addAll(Arrays.asList(coreContexts));
+			
 			int cpuID = Integer.parseInt(cpuContext.getId());
 			VisualizerCPU cpu = model.getCPU(cpuID);
 
@@ -1124,7 +1232,6 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 				// Collect thread data
 				DSFDebugModel.getThreadData(m_sessionState, cpuContext, coreContext, execContext, this, model);
 			}
-			
 		}
 		
 		// keep track of cores visited
@@ -1198,13 +1305,11 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 	}
 	
 	
-	/**
-	 * @since 1.1
-	 */
+	/** Updates the loads for all cpus and cores */
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
 	@Override
 	public void updateLoads() {
-		if (m_cpuContextsCache == null || m_coreContextsCache == null) {
+		if (m_cpuCoreContextsCache.isEmpty()) {
 			// not ready to get load info yet
 			return;
 		}
@@ -1215,24 +1320,17 @@ public class MulticoreVisualizer extends GraphicCanvasVisualizer
 		
 		VisualizerModel model = fDataModel;
 		
-		// keep track of how many loads we expect
-		int count = m_cpuContextsCache.length + m_coreContextsCache.length;
 		model.getLoadTodo().dispose();
-		model.getLoadTodo().add(count);
+		// keep track of how many loads we expect
+		model.getLoadTodo().add(m_cpuCoreContextsCache.size());
 		
-		// ask load for each CPU
-		for (ICPUDMContext cpuCtx : m_cpuContextsCache) {
-			DSFDebugModel.getLoad(m_sessionState, cpuCtx, this, model);
-		}
-		// ask load for each core
-		for (ICoreDMContext coreCtx : m_coreContextsCache) {
-			DSFDebugModel.getLoad(m_sessionState, coreCtx, this, model);
+		// ask load for each CPU and core
+		for (IDMContext context : m_cpuCoreContextsCache) {
+			DSFDebugModel.getLoad(m_sessionState, context, this, model);
 		}
 	}
 	
-	/**  
-	 * Invoked when a getLoad() request completes.
-	 * @since 1.1*/
+	/** Invoked when a getLoad() request completes. */
 	@Override
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
 	public void getLoadDone(IDMContext context, ILoadInfo load, Object arg) 

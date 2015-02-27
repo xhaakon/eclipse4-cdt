@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2013 Google, Inc and others.
+ * Copyright (c) 2009, 2014 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.ICompositeType;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
+import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
@@ -29,9 +30,11 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPMember;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPDeferredClassInstance;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalUnknownScope;
 
 /**
  * The context that determines access to private and protected class members.
@@ -76,7 +79,8 @@ public class AccessContext {
 	 */
 	private boolean isUnqualifiedLookup;
 	private ICPPClassType namingClass;  // depends on the binding for which we check the access
-	private ICPPClassType firstCandidateForNamingClass; // the first candidate is independent of the binding for which we do the access-check
+	// The first candidate is independent of the binding for which we do the access-check.
+	private ICPPClassType firstCandidateForNamingClass;
 	private DOMException initializationException;
 
 	public AccessContext(IASTName name) {
@@ -89,6 +93,9 @@ public class AccessContext {
 	 * @return <code>true</code> if the binding is accessible.
 	 */
 	public boolean isAccessible(IBinding binding) {
+		if (binding instanceof ICPPTemplateParameter)
+			return true;
+
 		int bindingVisibility;
 		if (binding instanceof ICPPMember) {
 			bindingVisibility = ((ICPPMember) binding).getVisibility();
@@ -97,7 +104,8 @@ public class AccessContext {
 	            binding = ((ICPPSpecialization) binding).getSpecializedBinding();
 	        }
 	        if (binding instanceof ICPPClassTemplatePartialSpecialization) {
-	        	// A class template partial specialization inherits the visibility of its primary class template. 
+	        	// A class template partial specialization inherits the visibility of its primary
+	        	// class template. 
 	        	binding = ((ICPPClassTemplatePartialSpecialization) binding).getPrimaryClassTemplate();
 	        }
 	        if (binding instanceof ICPPAliasTemplateInstance) {
@@ -230,6 +238,9 @@ public class AccessContext {
 		if (bases != null) {
 			for (ICPPBase base : bases) {
 				IBinding baseClass = base.getBaseClass();
+				if (baseClass instanceof ICPPDeferredClassInstance) {
+					baseClass = ((ICPPDeferredClassInstance) baseClass).getTemplateDefinition();
+				}
 				if (!(baseClass instanceof ICPPClassType)) {
 					continue;
 				}
@@ -248,9 +259,16 @@ public class AccessContext {
 		LookupData data = new LookupData(name);
 		isUnqualifiedLookup= !data.qualified;
 		
-		ICPPScope scope= CPPSemantics.getLookupScope(name);
+		ICPPScope scope = CPPSemantics.getLookupScope(name);
 		while (scope != null && !(scope instanceof ICPPClassScope)) {
-			scope = CPPSemantics.getParentScope(scope, data.getTranslationUnit());
+			if (scope instanceof ICPPInternalUnknownScope) {
+				IType scopeType = ((ICPPInternalUnknownScope) scope).getScopeType();
+				if (scopeType instanceof ICPPDeferredClassInstance) {
+					return ((ICPPDeferredClassInstance) scopeType).getClassTemplate();
+				}
+			} else {
+				scope = CPPSemantics.getParentScope(scope, data.getTranslationUnit());
+			}
 		}
 		if (scope instanceof ICPPClassScope) {
 			return ((ICPPClassScope) scope).getClassType();
@@ -280,6 +298,9 @@ public class AccessContext {
 		if (maxdepth > 0) {
 			for (ICPPBase cppBase : ClassTypeHelper.getBases(derived, point)) {
 				IBinding base= cppBase.getBaseClass();
+				if (base instanceof ICPPSpecialization) {
+					base = ((ICPPSpecialization) base).getSpecializedBinding();
+				}
 				if (base instanceof ICPPClassType) {
 					ICPPClassType tbase= (ICPPClassType) base;
 					if (tbase.isSameType(target)) {

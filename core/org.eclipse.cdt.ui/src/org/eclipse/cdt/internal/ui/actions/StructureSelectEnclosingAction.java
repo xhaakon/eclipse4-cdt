@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Tomasz Wesolowski and others.
+ * Copyright (c) 2010, 2015 Tomasz Wesolowski and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     Tomasz Wesolowski - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.actions;
 
@@ -18,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTNodeSelector;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.model.ISourceRange;
 
 import org.eclipse.cdt.internal.core.model.ext.SourceRange;
@@ -25,7 +27,6 @@ import org.eclipse.cdt.internal.core.model.ext.SourceRange;
 import org.eclipse.cdt.internal.ui.editor.SelectionHistory;
 
 public class StructureSelectEnclosingAction extends StructureSelectionAction {
-
 	public static final String PREFIX = "StructureSelectEnclosing."; //$NON-NLS-1$
 
 	public StructureSelectEnclosingAction(ResourceBundle bundle, ITextEditor editor, SelectionHistory history) {
@@ -34,23 +35,25 @@ public class StructureSelectEnclosingAction extends StructureSelectionAction {
 
 	@Override
 	public ISourceRange doExpand(IASTTranslationUnit ast, SourceRange current) {
-
 		ISourceRange newSourceRange = expandToEnclosing(ast, current);
 		if (newSourceRange != null) {
 			history.remember(current);
 		}
 		return newSourceRange;
 	}
-	
+
 	/**
-	 * Made public to serve as fallback for other expansions
+	 * Package visibility to serve as a fallback for other expansions.
 	 */
-	public static ISourceRange expandToEnclosing(IASTTranslationUnit ast, SourceRange current) {
+	static ISourceRange expandToEnclosing(IASTTranslationUnit ast, SourceRange current) {
 		final IASTNodeSelector nodeSelector = ast.getNodeSelector(null);
 		IASTNode node = nodeSelector.findStrictlyEnclosingNode(current.getStartPos(), current.getLength());
 		if (node == null)
 			return null;
-		
+
+		if (node.getPropertyInParent() == ICPPASTTemplateDeclaration.OWNED_DECLARATION)
+			node = node.getParent();
+
 		final IASTFileLocation fileLocation = node.getFileLocation();
 		return new SourceRange(fileLocation.getNodeOffset(), fileLocation.getNodeLength());
 	}
