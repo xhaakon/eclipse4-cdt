@@ -15,6 +15,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
+import static org.eclipse.cdt.core.parser.ParserLanguage.CPP;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -91,6 +93,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPQualifierType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.model.ASTStringUtil;
@@ -108,6 +111,7 @@ public class AST2TestBase extends BaseTestCase {
     protected static class CommonTypes {
     	public static IType int_ = new CPPBasicType(Kind.eInt, 0);
     	public static IType pointerToInt = new CPPPointerType(int_);
+    	public static IType constInt = new CPPQualifierType(int_, true, false);
     }
 
     private static final ScannerInfo GNU_SCANNER_INFO = new ScannerInfo(getGnuMap());
@@ -550,15 +554,26 @@ public class AST2TestBase extends BaseTestCase {
     		return (T) binding;
     	}
 
-    	private int getIdentifierLength(String str) {
+    	private int getIdentifierOffset(String str) {
+    		for (int i = 0; i < str.length(); ++i) {
+    			if (Character.isJavaIdentifierPart(str.charAt(i)))
+    				return i;
+    		}
+    		fail("Didn't find identifier in \"" + str + "\"");
+    		return -1;
+		}
+
+    	private int getIdentifierLength(String str, int offset) {
     		int i;
-    		for (i = 0; i < str.length() && Character.isJavaIdentifierPart(str.charAt(i)); ++i) {
+    		for (i = offset; i < str.length() && Character.isJavaIdentifierPart(str.charAt(i)); ++i) {
     		}
     		return i;
     	}
 
 		public IProblemBinding assertProblemOnFirstIdentifier(String section) {
-			return assertProblem(section, getIdentifierLength(section));
+			int offset = getIdentifierOffset(section);
+			String identifier = section.substring(offset, getIdentifierLength(section, offset));
+			return assertProblem(section, identifier);
 		}
 
 		public IProblemBinding assertProblemOnFirstIdentifier(String section, int problemId) {
@@ -568,10 +583,12 @@ public class AST2TestBase extends BaseTestCase {
 		}
 
 		public <T extends IBinding> T assertNonProblemOnFirstIdentifier(String section, Class... cs) {
-			return assertNonProblem(section, getIdentifierLength(section), cs);
+			int offset = getIdentifierOffset(section);
+			String identifier = section.substring(offset, getIdentifierLength(section, offset));
+			return assertNonProblem(section, identifier, cs);
 		}
 
-    	public void assertNoName(String section, int len) {
+		public void assertNoName(String section, int len) {
 			IASTName name= findName(section, len);
 			if (name != null) {
 				String selection = section.substring(0, len);
@@ -586,7 +603,7 @@ public class AST2TestBase extends BaseTestCase {
     	public IASTImplicitName assertImplicitName(String section, int len, Class<?> bindingClass) {
     		IASTName name = findImplicitName(section, len);
     		final String selection = section.substring(0, len);
-			assertNotNull("did not find \"" + selection + "\"", name);
+			assertNotNull("Did not find \"" + selection + "\"", name);
 
 			assertInstance(name, IASTImplicitName.class);
 			IASTImplicitNameOwner owner = (IASTImplicitNameOwner) name.getParent();
@@ -753,9 +770,17 @@ public class AST2TestBase extends BaseTestCase {
 	}
 
 	final protected IASTTranslationUnit parseAndCheckBindings(String code, ParserLanguage lang, boolean useGnuExtensions,
-			int limitTrvialInitializers) throws Exception {
-		IASTTranslationUnit tu = parse(code, lang, useGnuExtensions, true, limitTrvialInitializers);
+			int limitTrivialInitializers) throws Exception {
+		IASTTranslationUnit tu = parse(code, lang, useGnuExtensions, true, limitTrivialInitializers);
 		NameCollector col = new NameCollector();
+		tu.accept(col);
+		assertNoProblemBindings(col);
+		return tu;
+	}
+	
+	final protected IASTTranslationUnit parseAndCheckImplicitNameBindings() throws Exception {
+		IASTTranslationUnit tu = parse(getAboveComment(), CPP, false, true);
+		NameCollector col = new NameCollector(true /* Visit implicit names */);
 		tu.accept(col);
 		assertNoProblemBindings(col);
 		return tu;

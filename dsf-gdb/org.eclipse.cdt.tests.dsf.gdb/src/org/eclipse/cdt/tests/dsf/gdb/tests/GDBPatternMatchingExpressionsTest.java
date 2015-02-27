@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Ericsson and others.
+ * Copyright (c) 2012, 2014 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     Marc Khouzam (Ericsson) - Initial Implementation
  *     Marc Khouzam (Ericsson) - Tests for Pattern Matching for variables (Bug 394408)
+ *     Alvaro Sanchez-Leon (Ericsson AB) - Allow user to edit register groups (Bug 235747)
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests;
 
@@ -24,9 +25,7 @@ import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
-import org.eclipse.cdt.dsf.datamodel.CompositeDMContext;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
-import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMAddress;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
@@ -36,9 +35,8 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions3.IExpressionDMDataExtensio
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
-import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
-import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRegisters2;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.StepType;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -61,19 +59,20 @@ import org.junit.runner.RunWith;
 
 @RunWith(BackgroundRunner.class)
 public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
+	private static final String EXEC_NAME = "PatternMatchingExpressionsTestApp.exe";
 
 	private DsfSession fSession;
 
 	private DsfServicesTracker fServicesTracker;
 
 	protected IMIExpressions fExpService;
-	protected IRegisters fRegService;
+	protected IRegisters2 fRegService;
 
 	@Override
 	protected void setLaunchAttributes() {
 		super.setLaunchAttributes();
 
-		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, "data/launch/bin/PatternMatchingExpressionsTestApp.exe");
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, EXEC_PATH + EXEC_NAME);
 	}
 
 	@Override
@@ -88,7 +87,7 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 
 				fExpService = fServicesTracker.getService(IMIExpressions.class);
 
-				fRegService = fServicesTracker.getService(IRegisters.class);
+				fRegService = fServicesTracker.getService(IRegisters2.class);
 			}
 		};
 		fSession.getExecutor().submit(runnable).get();
@@ -173,33 +172,27 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 		Query<String> query = new Query<String>() {
 			@Override
 			protected void execute(final DataRequestMonitor<String> rm) {
-				fRegService.getRegisterGroups(threadDmc, new ImmediateDataRequestMonitor<IRegisterGroupDMContext[]>(rm) {
-					@Override
-					protected void handleSuccess() {
-						fRegService.getRegisters(
-								new CompositeDMContext(new IDMContext[] { getData()[0], threadDmc } ), 
-								new ImmediateDataRequestMonitor<IRegisterDMContext[]>(rm) {
-									@Override
-									protected void handleSuccess() {
-										assert getData() instanceof MIRegisterDMC[];
-										for (MIRegisterDMC register : (MIRegisterDMC[])getData()) {
-											if (register.getName().equals(regName)) {
-												final FormattedValueDMContext valueDmc = fRegService.getFormattedValueContext(register, IFormattedValues.HEX_FORMAT);
-												fRegService.getFormattedExpressionValue(valueDmc, new ImmediateDataRequestMonitor<FormattedValueDMData>(rm) {
-													@Override
-													protected void handleSuccess() {
-														rm.done(getData().getFormattedValue());
-													};
-												});
-												return;
-											}
-										}
-										// If we get here, we didn't find the register!
-										assertTrue("Invalid register: " + regName, false);
+				fRegService.getRegisters(threadDmc, 
+						new ImmediateDataRequestMonitor<IRegisterDMContext[]>(rm) {
+							@Override
+							protected void handleSuccess() {
+								assert getData() instanceof MIRegisterDMC[];
+								for (MIRegisterDMC register : (MIRegisterDMC[])getData()) {
+									if (register.getName().equals(regName)) {
+										final FormattedValueDMContext valueDmc = fRegService.getFormattedValueContext(register, IFormattedValues.HEX_FORMAT);
+										fRegService.getFormattedExpressionValue(valueDmc, new ImmediateDataRequestMonitor<FormattedValueDMData>(rm) {
+											@Override
+											protected void handleSuccess() {
+												rm.done(getData().getFormattedValue());
+											};
+										});
+										return;
 									}
-								});
-					}
-				});
+								}
+								// If we get here, we didn't find the register!
+								assertTrue("Invalid register: " + regName, false);
+							}
+						});
 			}
 		};
 
@@ -270,7 +263,7 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testSingleReg() throws Throwable {
-		final String regName = "esp";
+		final String regName = "cs";
 		final String exprString = "$" + regName;
 
 		SyncUtil.runToLocation("foo");
@@ -308,8 +301,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMatchSingleReg() throws Throwable {
-		final String exprString = "=$esp";
-		final String[] children = new String[] { "$esp" };
+		final String exprString = "=$xmm0";
+		final String[] children = new String[] { "$xmm0" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -413,10 +406,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMatchRegWithStar() throws Throwable {
-		// Add the $eip register first as it is present for 32bit but not 64bit machines.
-		// When we put it first like that, we force it to be included in the list all the time.
-		final String exprString = "$eip;=$e*";
-		final String[] children = new String[] { "$eip","$eax","$ebp","$ebx","$ecx","$edi","$edx","$eflags","$es", "$esi","$esp" };
+		final String exprString = "=$f*";
+		final String[] children = new String[] { "$fctrl", "$fioff", "$fiseg", "$fooff", "$fop", "$foseg", "$fs", "$fstat", "$ftag" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -435,7 +426,7 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMultiplyReg() throws Throwable {
-		final String exprString = "$eax*0";
+		final String exprString = "$fctrl*0";
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -531,10 +522,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMatchRegWithQuestionMark() throws Throwable {
-		// Add the $eip register first as it is present for 32bit but not 64bit machines.
-		// When we put it first like that, we force it to be included in the list all the time.
-		final String exprString = "$eip;=$e??";
-		final String[] children = new String[] { "$eip","$eax","$ebp","$ebx","$ecx","$edi","$edx", "$esi","$esp" };
+		final String exprString = "=$f????";
+		final String[] children = new String[] { "$fctrl", "$fioff", "$fiseg", "$fooff", "$foseg", "$fstat" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -552,7 +541,7 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testRegWithConditionalOperator() throws Throwable {
-		final String exprString = "$eax?0x16:0x11";
+		final String exprString = "$es?0x16:0x11";
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -562,7 +551,7 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 		final IExpressionDMContext exprDmc = SyncUtil.createExpression(frameDmc, exprString);
 		checkChildrenCount(exprDmc, 0);
 
-		assertEquals(getExpressionValue(exprDmc), "0x16");
+		assertEquals(getExpressionValue(exprDmc), "0x11");
 	}
 	/**
 	 * Test that variables can be matched using '?'
@@ -627,8 +616,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMatchRegWithOneLetterRange() throws Throwable {
-		final String exprString = "=$ea[x]";
-		final String[] children = new String[] { "$eax" };
+		final String exprString = "=$xmm[0]";
+		final String[] children = new String[] { "$xmm0" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -667,8 +656,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMatchRegWithLetterRange() throws Throwable {
-		final String exprString = "=$eb[a-z]";
-		final String[] children = new String[] { "$ebp", "$ebx" };
+		final String exprString = "=$fo[a-z]";
+		final String[] children = new String[] { "$fop" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -687,8 +676,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testMatchRegWithComplexLetterRange() throws Throwable {
-		final String exprString = "=$e[b-c]*";
-		final String[] children = new String[] { "$ebp", "$ebx", "$ecx" };
+		final String exprString = "=$fo[o-p]*";
+		final String[] children = new String[] { "$fooff", "$fop" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -1165,8 +1154,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	 */
 	@Test
 	public void testUniqueWhenOverlapReg() throws Throwable {
-		final String exprString = "=$eax; =$e?x; =$eb?";
-		final String[] children = new String[] { "$eax","$ebx","$ecx","$edx", "$ebp" };
+		final String exprString = "=$fioff; =$f?off; =$fo*";
+		final String[] children = new String[] { "$fioff","$fooff","$fop","$foseg" };
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);
@@ -1648,8 +1637,8 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	@Test
 	public void testGroupExpressionValue() throws Throwable {
 		final String noMatchExpr = "=$zzz*";
-		final String singleMatchExpr = "=$eax;";
-		final String doubleMatchExpr = "=$eax;=$ebx";
+		final String singleMatchExpr = "=$ds;";
+		final String doubleMatchExpr = "=$ds;=$es";
 
 		SyncUtil.runToLocation("foo");
 		MIStoppedEvent stoppedEvent = SyncUtil.step(5, StepType.STEP_OVER);

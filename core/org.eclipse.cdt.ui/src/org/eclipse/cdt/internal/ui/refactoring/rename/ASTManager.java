@@ -1,5 +1,5 @@
 /******************************************************************************* 
- * Copyright (c) 2005, 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2005, 2015 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
  * which accompanies this distribution, and is available at 
@@ -36,6 +36,7 @@ import org.eclipse.ui.services.IDisposable;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.EScopeKind;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
@@ -132,9 +133,10 @@ public class ASTManager implements IDisposable {
     public final static int FALSE= 0;
     public final static int UNKNOWN= -1;
     
+    // TODO(sprigogin): Replace fSharedAST and fTranslationUnits with CRefactoringContext.
 	private IASTTranslationUnit fSharedAST;
-    private Map<IFile, IASTTranslationUnit> fTranslationUnits= new HashMap<IFile, IASTTranslationUnit>();
-    private HashSet<String> fProblemUnits= new HashSet<String>();
+    private Map<IFile, IASTTranslationUnit> fTranslationUnits= new HashMap<>();
+    private Set<String> fProblemUnits= new HashSet<>();
     private CRefactoringArgument fArgument;
     private IBinding[] fValidBindings;
     private String fRenameTo;
@@ -337,7 +339,7 @@ public class ASTManager implements IDisposable {
         IASTNode node1= ASTInternal.getPhysicalNodeOfScope(s1);
         IASTNode node2= ASTInternal.getPhysicalNodeOfScope(s2);
 
-        // forward declarations do not have parent scopes.
+        // Forward declarations do not have parent scopes.
         if (s1 == null) {
             if (!fileStatic && node2 instanceof IASTTranslationUnit) {
                 return TRUE;
@@ -358,7 +360,10 @@ public class ASTManager implements IDisposable {
         if (node1 instanceof IASTTranslationUnit && node2 instanceof IASTTranslationUnit) {
             return hasSameLocation(node1, node2, fileStatic);
         }
-        
+
+        if (s1.getKind() == EScopeKind.eGlobal && s2.getKind() == EScopeKind.eGlobal)
+        	return TRUE;
+
         String name1= getName(s1);
         String name2= getName(s2);
         
@@ -388,7 +393,7 @@ public class ASTManager implements IDisposable {
             return FALSE;
         }
 
-        // classes
+        // Classes.
         if (s1 instanceof ICPPClassScope || s1 instanceof ICCompositeTypeScope) {
             if (s2 instanceof ICPPClassScope || s2 instanceof ICCompositeTypeScope) {
                 return isSameScope(s1.getParent(), s2.getParent(), fileStatic);
@@ -605,7 +610,7 @@ public class ASTManager implements IDisposable {
     }
 
     private static IType getRealType(IType t) {
-        while(t instanceof ITypedef) {
+        while (t instanceof ITypedef) {
             t= ((ITypedef) t).getType();
         }
         return t;
@@ -757,8 +762,7 @@ public class ASTManager implements IDisposable {
         
         // eliminate global bindings when looking up in a class type
         if (removeGlobalsWhenClassScope &&
-                (scope instanceof ICPPClassScope || 
-                        scope instanceof ICCompositeTypeScope)) {
+                (scope instanceof ICPPClassScope || scope instanceof ICCompositeTypeScope)) {
             int count= 0;
             for (int i = 0; i < result.length; i++) {
                 IBinding binding = result[i];
@@ -771,7 +775,7 @@ public class ASTManager implements IDisposable {
             }
             if (count < result.length) {
                 IBinding[] copy= new IBinding[count];
-                int i=0;
+                int i= 0;
                 for (IBinding b : result) {
                     if (b != null) {
                         copy[i++]= b;
@@ -781,7 +785,7 @@ public class ASTManager implements IDisposable {
             }
         }        
         
-        // try to find constructors
+        // Try to find constructors.
         if (scope instanceof ICPPBlockScope) {
             for (int i = 0; i < result.length; i++) {
                 IBinding binding = result[i];
@@ -804,9 +808,6 @@ public class ASTManager implements IDisposable {
         fArgument= arg;
     }
 
-	/**
-	 * @see IDisposable#dispose()
-	 */
 	@Override
 	public void dispose() {
         Assert.isTrue(!fDisposed, "ASTManager.dispose() called more than once"); //$NON-NLS-1$
@@ -836,7 +837,7 @@ public class ASTManager implements IDisposable {
             return;
 
         pm.beginTask(RenameMessages.ASTManager_task_analyze, 2);
-        IASTTranslationUnit tu= getTranslationUnit(index, fArgument.getSourceFile(), true, status);
+        IASTTranslationUnit tu= getAST(index, fArgument.getSourceFile(), true, status);
         pm.worked(1);
         if (tu != null) {
         	final IASTNodeSelector nodeSelector = tu.getNodeSelector(tu.getFilePath());
@@ -897,23 +898,33 @@ public class ASTManager implements IDisposable {
 			if (!Character.isJavaIdentifierPart(sig[i]))
 				return null;
 		}
-		while(offset > 0) {
-			if (Character.isJavaIdentifierPart(sig[offset-1]))
-				offset--;
-			else 
+		while (offset > 0) {
+			if (!Character.isJavaIdentifierPart(sig[offset - 1]))
 				break;
+			offset--;
 		}
-		while(end < sig.length) {
-			if (Character.isJavaIdentifierPart(sig[end]))
-				end++;
-			else
+		while (end < sig.length) {
+			if (!Character.isJavaIdentifierPart(sig[end]))
 				break;
+			end++;
 		}
 		return rawSignature.substring(offset, end);
 	}
 
-	private IASTTranslationUnit getTranslationUnit(IIndex index, IFile sourceFile, boolean cacheit,
-			RefactoringStatus status) {
+	/**
+	 * Returns an AST for the given file.
+	 *
+	 * @param index the index to use for the AST
+	 * @param sourceFile the source file to obtain an AST for
+	 * @param astStyle the style to pass to {@link ITranslationUnit#getAST(IIndex, int)} method.
+	 *     If a previously cached AST is returned, the style is not guaranteed to match
+	 *     the requested one.
+	 * @param cacheIt if {@code true}, the AST will be cached for later reuse 
+	 * @return the requested AST or {@code null}
+	 * @throws CoreException
+	 */
+	public synchronized IASTTranslationUnit getAST(IIndex index, IFile sourceFile, int astStyle,
+			boolean cacheIt) throws CoreException {
         IASTTranslationUnit ast=  fTranslationUnits.get(sourceFile);
         if (ast == null) {
             ICElement celem= CoreModel.getDefault().create(sourceFile);
@@ -925,20 +936,16 @@ public class ASTManager implements IDisposable {
                 	// Try to get a shared AST before creating our own.
     	        	ast = ASTProvider.getASTProvider().acquireSharedAST(tu, index,
     	        			ASTProvider.WAIT_ACTIVE_ONLY, null);
-    	        	if (ast == null) {
-    					try {
-							ast= tu.getAST(index, PARSE_MODE);
-						} catch (CoreException e) {
-		            		status.addError(e.getMessage());
-						}
-    	            	if (cacheit) {
-    	            		fTranslationUnits.put(sourceFile, ast);
-    	            	}
-    	        	} else {
+    	        	if (ast != null) {
     	        		if (fSharedAST != null) {
     	        			ASTProvider.getASTProvider().releaseSharedAST(fSharedAST);
     	        		}
     	        		fSharedAST = ast;
+    	        	} else {
+						ast= tu.getAST(index, astStyle);
+    	            	if (cacheIt) {
+    	            		fTranslationUnits.put(sourceFile, ast);
+    	            	}
     	        	}
         		}
             }
@@ -946,7 +953,17 @@ public class ASTManager implements IDisposable {
         return ast;
     }
 
-    public void analyzeTextMatches(IIndex index, Collection<CRefactoringMatch> matches,
+	private IASTTranslationUnit getAST(IIndex index, IFile sourceFile, boolean cacheIt,
+			RefactoringStatus status) {
+		try {
+			return getAST(index, sourceFile, PARSE_MODE, cacheIt);
+		} catch (CoreException e) {
+			status.addError(e.getMessage());
+			return null;
+		}
+    }
+
+	public void analyzeTextMatches(IIndex index, Collection<CRefactoringMatch> matches,
     		IProgressMonitor monitor, RefactoringStatus status) {
         CRefactoringMatchStore store= new CRefactoringMatchStore();
         for (CRefactoringMatch match : matches) {
@@ -986,7 +1003,7 @@ public class ASTManager implements IDisposable {
                 }
 
                 if (doParse) {
-                    IASTTranslationUnit tu= getTranslationUnit(index, file, false, status);
+                    IASTTranslationUnit tu= getAST(index, file, false, status);
                     monitor.worked(1);
                     analyzeTextMatchesOfTranslationUnit(tu, store, status);
                     if (status.hasFatalError()) {
@@ -1008,9 +1025,9 @@ public class ASTManager implements IDisposable {
 
     private void analyzeTextMatchesOfTranslationUnit(IASTTranslationUnit tu, 
             final CRefactoringMatchStore store, final RefactoringStatus status) {
-        fKnownBindings= new HashMap<IBinding, Integer>();
-        fConflictingBinding= new HashSet<IBinding>();
-        final Set<IPath> paths= new HashSet<IPath>();
+        fKnownBindings= new HashMap<>();
+        fConflictingBinding= new HashSet<>();
+        final Set<IPath> paths= new HashSet<>();
         boolean renamesMacro= fArgument.getArgumentKind() == CRefactory.ARGUMENT_MACRO;
         
         analyzeMacroMatches(tu, store, paths, status);
@@ -1186,7 +1203,7 @@ public class ASTManager implements IDisposable {
             cmp= UNKNOWN;
             handleProblemBinding(name.getTranslationUnit(), (IProblemBinding) binding, status);
         } else {
-        	// check whether a qualifier has a problem binding
+        	// Check whether a qualifier has a problem binding.
         	boolean problemInQualifier= false;
         	IASTNode parent= name.getParent();
         	if (parent instanceof ICPPASTQualifiedName) {
@@ -1231,7 +1248,7 @@ public class ASTManager implements IDisposable {
         			}
         		}
         	}
-            fKnownBindings.put(binding, new Integer(cmp));
+            fKnownBindings.put(binding, Integer.valueOf(cmp));
         }
         switch (cmp) {
         case TRUE:
@@ -1478,7 +1495,7 @@ public class ASTManager implements IDisposable {
 
     protected void classifyConflictingBindings(IASTTranslationUnit tu, Set<IBinding> shadows,
     		Collection<IBinding> redecl, Collection<IBinding> barriers, RefactoringStatus status) {
-        // collect bindings on higher or equal level
+        // Collect bindings on higher or equal level.
         String name= fArgument.getName();
         IBinding[] newBindingsAboverOrEqual= null;
         IScope oldBindingsScope= null;
@@ -1496,19 +1513,19 @@ public class ASTManager implements IDisposable {
                 }
             }            
 
-            if (newBindingsAboverOrEqual != null && newBindingsAboverOrEqual.length>0) {
+            if (newBindingsAboverOrEqual != null && newBindingsAboverOrEqual.length > 0) {
                 break;
             }
         }
         if (newBindingsAboverOrEqual == null) {
-            newBindingsAboverOrEqual= new IBinding[0];
+            newBindingsAboverOrEqual= IBinding.EMPTY_BINDING_ARRAY;
         }
         
-        // check conflicting bindings for being from above or equal level.
+        // Check conflicting bindings for being from above or equal level.
         for (IBinding conflictingBinding : fConflictingBinding) {
             if (conflictingBinding != null) {
                 boolean isAboveOrEqual= false;
-                for (int i = 0; !isAboveOrEqual && i<newBindingsAboverOrEqual.length; i++) {
+                for (int i = 0; !isAboveOrEqual && i < newBindingsAboverOrEqual.length; i++) {
                     IBinding aboveBinding = newBindingsAboverOrEqual[i];
                     try {
                         if (isSameBinding(tu.getIndex(), aboveBinding, conflictingBinding) == TRUE) {
@@ -1524,7 +1541,7 @@ public class ASTManager implements IDisposable {
             }
         }
 
-        // find bindings on same level
+        // Find bindings on same level.
         for (IBinding aboveBinding : newBindingsAboverOrEqual) {
             IScope aboveScope;
             try {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2014 IBM Corporation and others.
+ * Copyright (c) 2000, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -100,6 +100,10 @@ public final class PreferencesMessages extends NLS {
 	public static String CEditorPreferencePage_behaviorPage_matchingBrackets;
 	public static String CEditorPreferencePage_behaviorPage_subWordNavigation;
 	public static String CEditorPreferencePage_behaviorPage_inactiveCode;
+	public static String CEditorPreferencePage_behaviorPage_formattingWithEmptySelection;
+	public static String CEditorPreferencePage_behaviorPage_formatFile; 
+	public static String CEditorPreferencePage_behaviorPage_formatStatement;
+	public static String CEditorPreferencePage_behaviorPage_confirmFormattingScope;
 	public static String CEditorPreferencePage_behaviorPage_appearanceColorOptions;
 	public static String CEditorPreferencePage_behaviorPage_matchingBracketColor;
 	public static String CEditorPreferencePage_behaviorPage_inactiveCodeColor;
@@ -181,6 +185,7 @@ public final class PreferencesMessages extends NLS {
 	public static String SaveActionsPreferencePage_inEditedLines;
 	public static String SaveActionsPreferencePage_inAllLines;
 	public static String SaveActionsPreferencePage_ensureNewline;
+	public static String SaveActionsPreferencePage_formatSourceCode;
 
 	public static String SmartTypingConfigurationBlock_autoclose_title;
 	public static String SmartTypingConfigurationBlock_autoindent_newlines;
@@ -464,6 +469,7 @@ public final class PreferencesMessages extends NLS {
 	public static String IncludePragmasBlock_begin_exports_pattern;
 	public static String IncludePragmasBlock_end_exports_pattern;
 	public static String IncludePragmasBlock_private_pattern;
+	public static String IncludePragmasBlock_keep_pattern;
 
 	public static String NameStylePreferencePage_title;
 	public static String NameStyleBlock_code_node;

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2013 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2015 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,6 +19,7 @@ import java.util.List;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
+import org.eclipse.cdt.core.dom.ast.EScopeKind;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBasicType;
 import org.eclipse.cdt.core.dom.ast.IBasicType.Kind;
@@ -31,6 +32,7 @@ import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IValue;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBasicType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
@@ -246,7 +248,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	  void m2(const StrT<T> s) {}
 	//	};
 
-    // #include "header.h"
 	//  void main() {
 	//     C1<char> c1;
 	//	   c1.m1("aaa");  // OK
@@ -281,7 +282,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//   public: void assign(const T* s) {}
 	// };
 
-    // #include "header.h"
 	// void main() {
 	//   StrT<char> x;
 	//   x.assign("aaa");
@@ -363,7 +363,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	  void m3();
 	//	};
 
-    // #include "header.h"
 	//  void C1::m3() {
 	//	   m1("aaa");  // OK
 	//	   m2("aaa");  // problem
@@ -608,7 +607,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	  B<int>::a;
 	//	}
 	public void testInstanceInheritance_258745() throws Exception {
-		getBindingFromASTName("a", 1, ICPPField.class);
+		getBindingFromFirstIdentifier("a", ICPPField.class);
 	}
 
 	// class A {}; class B {}; class C {};
@@ -618,7 +617,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	// template<typename T3>
 	// class D<A, T3> {};
 
-    // #include "header.h"
 	// template<typename T3> class D<A, T3>; // harmless declaration for test purposes
 	// template<typename T3> class D<B, T3> {};
 	// template<typename T3> class D<C, T3> {};
@@ -1188,7 +1186,8 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		IBinding foo3= getBindingFromASTName("foo(e)", 3);
 		IBinding foo4= getBindingFromASTName("foo(cx)", 3);
 
-		assertEquals(foo1, foo2); assertEquals(foo2, foo3);
+		assertEquals(foo1, foo2);
+		assertEquals(foo2, foo3);
 		assertEquals(foo3, foo4);
     }
 
@@ -1212,8 +1211,8 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
     	ICPPClassType sc1= assertInstance(b1.getSpecializedBinding(), ICPPClassType.class);
     	assertTrue(sc0.isSameType(sc1));
 
-    	assertNull(sc0.getScope());
-    	assertNull(b0.getScope());
+    	assertEquals(EScopeKind.eGlobal, sc0.getScope().getKind());
+    	assertEquals(EScopeKind.eGlobal, b0.getScope().getKind());
     }
 
     // template<typename T>
@@ -1230,7 +1229,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
     //   class B {};
     // };
 
-    // #include "header.h"
     // void refs() {
     //    A<C>::B acb;
     //    A<D>::B adb;
@@ -1260,7 +1258,8 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 
     	assertFalse(b0 instanceof ICPPSpecialization);
 
-    	IIndexScope s0= (IIndexScope) b0.getScope(), s4= (IIndexScope) b4.getScope();
+    	IIndexScope s0= (IIndexScope) b0.getScope();
+    	IIndexScope s4= (IIndexScope) b4.getScope();
     	IScope s1= b1.getScope();
 
     	assertTrue(((IType)s0.getScopeBinding()).isSameType((IType)((IIndexScope)b2.getCompositeScope()).getScopeBinding()));
@@ -1319,7 +1318,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
     	ICPPClassScope s1= assertInstance(b1.getScope(), ICPPClassScope.class);
     	assertInstance(s1.getClassType(), ICPPTemplateDefinition.class);
 
-    	assertNull(s1.getClassType().getScope());
+    	assertEquals(EScopeKind.eGlobal, s1.getClassType().getScope().getKind());
     }
 
 	//    typedef signed int SI;
@@ -1686,7 +1685,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 
 	// template <typename T= int> class XT;
 
-    // #include "header.h"
 	// template <typename T> class XT {};
 	// void test() {
 	//    XT<> x;
@@ -1945,7 +1943,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	B<float> b;
 	//	C<float> c;
 
-	// #include "header.h"
 	//	void test() {
 	//		b.f();
 	//		b.f(1);
@@ -1978,10 +1975,9 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	    typedef int type;
 	//	};
 
-	// #include "header.h"
-	//	template <typename>	struct foo {};
+	//	template <typename> struct foo {};
 	//	int main() {
-	//	    typedef foo<int>::type type;  // ERROR HERE: 'foo<int>::type' could not be
+	//	    typedef foo<int>::type type;
 	//	}
 	public void testSpecializationInIndex_367563a() throws Exception {
 		getBindingFromASTName("type type", 4, ITypedef.class);
@@ -1992,10 +1988,9 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	    typedef int type;
 	//	};
 
-	// #include "header.h"
 	//	template <typename>	struct foo {};
 	//	int main() {
-	//	    typedef foo<int*>::type type;  // ERROR HERE: 'foo<int>::type' could not be
+	//	    typedef foo<int*>::type type;
 	//	}
 	public void testSpecializationInIndex_367563b() throws Exception {
 		getBindingFromASTName("type type", 4, ITypedef.class);
@@ -2016,7 +2011,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	template <> struct foo<int> {
 	//	    typedef int type;
 	//	};
-	//	typedef foo<remove_const<const int>::type>::type t;  // ERROR HERE
+	//	typedef foo<remove_const<const int>::type>::type t;
 	public void testCurrentInstanceOfClassTemplatePartialSpec_368404() throws Exception {
 		ITypedef tdef= getBindingFromASTName("type t;", 4, ITypedef.class);
 		assertEquals("int", ASTTypeUtil.getType(tdef, true));
@@ -2443,7 +2438,6 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	template <typename = void>
 	//	struct S;
 
-	//	#include "header.h"
 	//	template <>
 	//	struct S<void> {
 	//		typedef int type;
@@ -2461,24 +2455,20 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	}
 
 	//	template <class T, class U>
-	//	struct multipliable2
-	//	{
+	//	struct multipliable2 {
 	//	    friend T operator *(const U& lhs, const T& rhs);
 	//	};
 	//
 	//	template <class T>
-	//	struct multipliable1
-	//	{
+	//	struct multipliable1 {
 	//	    friend T operator *(const T& lhs, const T& rhs);
 	//	};
 
-	//	#include "header.h"
 	//	struct overloaded : multipliable1<overloaded> {};
 	//
 	//	int foo(overloaded);
 	//
-	//	int main()
-	//	{
+	//	int main() {
 	//	    overloaded c, d;
 	//	    foo(c * d);
 	//	}
@@ -2487,18 +2477,15 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	}
 
 	//	template <class T, class U>
-	//	struct multipliable2
-	//	{
+	//	struct multipliable2 {
 	//	    friend T operator *(const U& lhs, const T& rhs);
 	//	};
 	//
 	//	template <class T>
-	//	struct multipliable1
-	//	{
+	//	struct multipliable1 {
 	//	    friend T operator *(const T& lhs, const T& rhs) {}
 	//	};
 
-	//	#include "header.h"
 	//	struct overloaded : multipliable1 <overloaded> {};
 	//
 	//	int foo(overloaded);
@@ -2568,16 +2555,64 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	template <typename T>
 	//	class Derived : public Base<B<S>, f<T> > {};
 
-	//	#include "header.h"
 	//	const Derived<S> decl;
 	//	
 	//	void bar(const B<S>&);
 	//	
-	//	void foo()
-	//	{
+	//	void foo() {
 	//	    bar(decl());  // ERROR HERE: Invalid arguments
 	//	}
 	public void testInstantiationOfFunctionInstance_437675() throws Exception {
 		checkBindings();
+	}
+	
+	//	struct IID { };
+	//	
+	//	struct IUnknown {};
+	//	
+	//	template<class T>
+	//	class IID_DUMMY : IID { };
+	//	
+	//	template<class T>
+	//	const IID &__uuidof(T x) { return IID_DUMMY<T>(); }
+	//
+	//	static IID IID_IUnknown = {};
+	//
+	//	template<class T>
+	//	class MYCComPtr { };
+	//
+	//	template <class T, const IID* piid = &__uuidof<T> >
+	//	class MYCComQIPtr : public MYCComPtr<T> {};
+	//	
+	//	template<>
+	//	class MYCComQIPtr<IUnknown, &IID_IUnknown> : public MYCComPtr<IUnknown> {};
+	
+	//	// source file is deliberately empty
+	public void testInfiniteRecursionMarshallingTemplateDefinition_439923() throws Exception {
+		checkBindings();
+	}
+	
+	
+	//	template <typename T>
+	//	struct Bar {};
+	//
+	//	template <typename T>
+	//	auto foo(T t) -> Bar<decltype(t.foo)> {
+	//	    Bar<decltype(t.foo)> bar; // bogus `invalid template arguments` error here
+	//		return bar;
+	//	}
+	//	
+	//	struct S {
+	//		int foo;
+	//	};
+	
+	//	int main() {
+	//		Bar<int> var1;
+	//		auto var2 = foo(S());
+	//	}
+	public void testTypeOfUnknownMember_447728() throws Exception {
+		IVariable var1 = getBindingFromASTName("var1", 4);
+		IVariable var2 = getBindingFromASTName("var2", 4);
+		assertSameType(var1.getType(), var2.getType());
 	}
 }

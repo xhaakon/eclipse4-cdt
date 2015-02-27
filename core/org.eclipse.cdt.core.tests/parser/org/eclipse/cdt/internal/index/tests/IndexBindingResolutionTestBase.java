@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2013 Symbian Software Systems and others.
+ * Copyright (c) 2006, 2014 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,7 +16,9 @@ package org.eclipse.cdt.internal.index.tests;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMManager;
@@ -62,10 +64,11 @@ import org.osgi.framework.Bundle;
  * then it is assumed to have come from a file which is already indexed.
  *
  * This class is for testing the process by which bindings are looked up in
- * the PDOM purely from AST information (i.e. without a real binding from the DOM)
+ * the PDOM purely from AST information (i.e. without a real binding from the DOM).
  */
 public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 	private static final boolean DEBUG= false;
+	private static final String END_OF_ADDED_CODE_MARKER = "/*END_OF_ADDED_CODE*/";
 	protected ITestStrategy strategy;
 
 	public void setStrategy(ITestStrategy strategy) {
@@ -91,16 +94,24 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 		for (int i = 0; i < strategy.getAstCount(); i++) {
 			IASTTranslationUnit ast = strategy.getAst(i);
 			final IASTNodeSelector nodeSelector = ast.getNodeSelector(null);
-			final int offset = strategy.getAstSource(i).indexOf(section);
+			String source = ast.getRawSignature();
+			// Skip the automatically added code.
+			int offset = source.indexOf(END_OF_ADDED_CODE_MARKER);
 			if (offset >= 0) {
-				if (preferImplicitName) {
-					return nodeSelector.findImplicitName(offset, len);
-				} else {
-					IASTName name= nodeSelector.findName(offset, len);
-					if (name == null)
-						name= nodeSelector.findImplicitName(offset, len);
-					return name;
-				}
+				offset += END_OF_ADDED_CODE_MARKER.length();
+				if (source.charAt(offset) == '\n')
+					offset++;
+			} else {
+				offset = 0;
+			}
+			offset = source.indexOf(section, offset);
+			if (offset >= 0) {
+				IASTName name= null;
+				if (!preferImplicitName)
+					name= nodeSelector.findName(offset, len);
+				if (name == null)
+					name= nodeSelector.findImplicitName(offset, len);
+				return name;
 			}
 		}
 
@@ -312,14 +323,17 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 		}
 	}
 
-	final protected void checkBindings() throws Exception {
+	protected final void checkBindings() {
 		for (int i = 0; i < strategy.getAstCount(); i++) {
-			IASTTranslationUnit ast = strategy.getAst(i);
-			NameCollector col = new NameCollector();
-			ast.accept(col);
-			for (IASTName n : col.nameList) {
-				assertFalse("ProblemBinding for " + n.getRawSignature(), n.resolveBinding() instanceof IProblemBinding);
-			}
+			checkBindings(strategy.getAst(i));
+		}
+	}
+
+	protected final void checkBindings(IASTTranslationUnit ast) {
+		NameCollector col = new NameCollector();
+		ast.accept(col);
+		for (IASTName n : col.nameList) {
+			assertFalse("ProblemBinding for " + n.getRawSignature(), n.resolveBinding() instanceof IProblemBinding);
 		}
 	}
 
@@ -334,7 +348,7 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
         {
             shouldVisitNames = true;
         }
-        public List<IASTName> nameList = new ArrayList<IASTName>();
+        public List<IASTName> nameList = new ArrayList<>();
 
         @Override
 		public int visit(IASTName name) {
@@ -414,7 +428,9 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 			testData = TestSourceReader.getContentsForTest(b, "parser", IndexBindingResolutionTestBase.this.getClass(), getName(), 2);
 
 			if (testData.length < 2)
-				return;
+				fail("Insufficient test data");
+			testData[1].insert(0, "#include \"header.h\" " + END_OF_ADDED_CODE_MARKER + "\n");
+
 			IFile file = TestSourceReader.createFile(cproject.getProject(), new Path("header.h"), testData[0].toString());
 			CCorePlugin.getIndexManager().setIndexerId(cproject, IPDOMManager.ID_FAST_INDEXER);
 	        waitForIndexer(cproject);
@@ -495,10 +511,14 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 		@Override
 		public void setUp() throws Exception {
 			cproject = cpp ?
-					CProjectHelper.createCCProject(getName()+System.currentTimeMillis(), "bin", IPDOMManager.ID_NO_INDEXER) :
-					CProjectHelper.createCProject(getName()+System.currentTimeMillis(), "bin", IPDOMManager.ID_NO_INDEXER);
+					CProjectHelper.createCCProject(getName() + System.currentTimeMillis(), "bin", IPDOMManager.ID_NO_INDEXER) :
+					CProjectHelper.createCProject(getName() + System.currentTimeMillis(), "bin", IPDOMManager.ID_NO_INDEXER);
 			Bundle b = CTestPlugin.getDefault().getBundle();
 			testData = TestSourceReader.getContentsForTest(b, "parser", IndexBindingResolutionTestBase.this.getClass(), getName(), 2);
+
+			if (testData.length < 2)
+				fail("Insufficient test data");
+			testData[1].insert(0, "#include \"header.h\" " + END_OF_ADDED_CODE_MARKER + "\n");
 
 			IFile file = TestSourceReader.createFile(cproject.getProject(), new Path("header.h"), testData[0].toString());
 			CCorePlugin.getIndexManager().setIndexerId(cproject, IPDOMManager.ID_FAST_INDEXER);
@@ -546,6 +566,10 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 	 * The first line of each comment section preceding the test contains the name of the file
 	 * to put the contents of the section to. To request the AST of a file, put an asterisk after
 	 * the file name.
+	 *
+	 * If the same file name is repeated more than once, the file will be created and then updated
+	 * with the new contents. It is guaranteed that the indexer will run for the original and then
+	 * for the updated file contents.
 	 */
 	protected class SinglePDOMTestNamedFilesStrategy implements ITestStrategy {
 		private IIndex index;
@@ -557,8 +581,8 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 
 		public SinglePDOMTestNamedFilesStrategy(boolean cpp) {
 			this.cpp = cpp;
-			astSources = new ArrayList<StringBuilder>();
-			asts = new ArrayList<IASTTranslationUnit>();
+			astSources = new ArrayList<>();
+			asts = new ArrayList<>();
 		}
 
 		@Override
@@ -594,28 +618,42 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 			Bundle b = CTestPlugin.getDefault().getBundle();
 			testData = TestSourceReader.getContentsForTest(b, "parser", IndexBindingResolutionTestBase.this.getClass(), getName(), 0);
 
-			List<IFile> astFiles = new ArrayList<IFile>();
-			for (int i = 0; i < testData.length; i++) {
-				StringBuilder contents = testData[i];
-				int endOfLine = contents.indexOf("\n");
-				if (endOfLine >= 0)
-					endOfLine++;
-				else
-					endOfLine = contents.length();
-				String filename = contents.substring(0, endOfLine).trim();
-				contents.delete(0, endOfLine);  // Remove first line from the file contents
-				boolean astRequested = filename.endsWith("*");
-				if (astRequested) {
-					filename = filename.substring(0, filename.length() - 1).trim();
+			List<IFile> astFiles = new ArrayList<>();
+			for (int i = 0; i < testData.length;) {
+				Set<String> createdFiles = new HashSet<>();
+				for (int j = i; j < testData.length; j++, i++) {
+					StringBuilder contents = testData[j];
+					int endOfLine = contents.indexOf("\n");
+					if (endOfLine >= 0) {
+						endOfLine++;
+					} else {
+						endOfLine = contents.length();
+					}
+					String filename = contents.substring(0, endOfLine).trim();
+					boolean astRequested = filename.endsWith("*");
+					if (astRequested) {
+						filename = filename.substring(0, filename.length() - 1).trim();
+					}
+					if (!createdFiles.add(filename)) {
+						// The file has already been encountered since the project was indexed.
+						// Wait for the indexer before updating the file.
+						break;
+					}
+					contents.delete(0, endOfLine);  // Remove first line from the file contents.
+					IFile file = TestSourceReader.createFile(cproject.getProject(), new Path(filename), contents.toString());
+					if (astRequested || (j == testData.length - 1 && astFiles.isEmpty())) {
+						int pos = astFiles.indexOf(file);
+						if (pos < 0) {
+							astFiles.add(file);
+							astSources.add(contents);
+						} else {
+							astSources.set(pos, contents);
+						}
+					}
 				}
-				IFile file = TestSourceReader.createFile(cproject.getProject(), new Path(filename), contents.toString());
-				if (astRequested || (i == testData.length - 1 && astFiles.isEmpty())) {
-					astSources.add(contents);
-					astFiles.add(file);
-				}
+				CCorePlugin.getIndexManager().setIndexerId(cproject, IPDOMManager.ID_FAST_INDEXER);
+		        waitForIndexer(cproject);
 			}
-			CCorePlugin.getIndexManager().setIndexerId(cproject, IPDOMManager.ID_FAST_INDEXER);
-	        waitForIndexer(cproject);
 
 			if (DEBUG) {
 				System.out.println("Project PDOM: " + getName());
@@ -687,6 +725,10 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 					CProjectHelper.createCProject("OnlineContent"+System.currentTimeMillis(), "bin", IPDOMManager.ID_NO_INDEXER);
 			Bundle b= CTestPlugin.getDefault().getBundle();
 			testData= TestSourceReader.getContentsForTest(b, "parser", IndexBindingResolutionTestBase.this.getClass(), getName(), 2);
+			if (testData.length < 2)
+				fail("Insufficient test data");
+			testData[1].insert(0, "#include \"header.h\" " + END_OF_ADDED_CODE_MARKER + "\n");
+
 			referenced = createReferencedContent();
 
 			TestScannerProvider.sIncludes= new String[] {referenced.getProject().getLocation().toOSString()};
@@ -702,7 +744,7 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 			waitForIndexer(cproject);
 
 			if (DEBUG) {
-				System.out.println("Online: "+getName());
+				System.out.println("Online: " + getName());
 			 	((PDOM) CCoreInternals.getPDOMManager().getPDOM(cproject)).accept(new PDOMPrettyPrinter());
 			}
 
@@ -724,7 +766,7 @@ public abstract class IndexBindingResolutionTestBase extends BaseTestCase {
 			waitForIndexer(referenced);
 
 			if (DEBUG) {
-				System.out.println("Referenced: "+getName());
+				System.out.println("Referenced: " + getName());
 				((PDOM) CCoreInternals.getPDOMManager().getPDOM(referenced)).accept(new PDOMPrettyPrinter());
 			}
 

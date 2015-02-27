@@ -256,6 +256,31 @@
            	 <separator name="updatePolicy" visible="true"/>
        </menuContribution>
        <menuContribution
+            locationURI="popup:org.eclipse.debug.ui.ExpressionView?after=expressionGroup">
+          <menu 
+                 id="org.eclipse.cdt.dsf.debug.ui.ExpressionsView_addgroup" 
+            	 label="%menu.addGroup.label">
+               <visibleWhen checkEnabled="true">
+               </visibleWhen>
+         </menu> 
+       </menuContribution>
+       <menuContribution
+            locationURI="popup:org.eclipse.cdt.dsf.debug.ui.ExpressionsView_addgroup">
+		     <command
+                 id="org.eclipse.cdt.dsf.ui.menu.addRegistersExpression"
+                 commandId="org.eclipse.cdt.dsf.ui.addRegistersExpression" 
+            	 label="%command.addRegisters.label">
+               <visibleWhen checkEnabled="true"/>
+            </command>       
+
+		     <command
+                 id="org.eclipse.cdt.dsf.ui.menu.addLocalsExpression"
+                 commandId="org.eclipse.cdt.dsf.ui.addLocalsExpression" 
+            	 label="%command.addLocals.label">
+            	 <visibleWhen checkEnabled="true"/>  
+            </command>
+       </menuContribution>
+       <menuContribution
             locationURI="menu:org.eclipse.debug.ui.ExpressionView?after=updatePolicy">
             <menu 
                  id="org.eclipse.cdt.dsf.debug.ui.expressionsView_updatePolicies" 
@@ -327,6 +352,7 @@
             <reference definitionId="org.eclipse.cdt.dsf.debug.ui.testAreUpdatePoliciesSupported"/>
          </activeWhen>
       </handler>
+
       <handler
       		class="org.eclipse.cdt.dsf.debug.internal.ui.viewmodel.actions.DsfViewMemoryHandler"
       		commandId="org.eclipse.cdt.debug.ui.commands.viewMemory">
@@ -340,7 +366,71 @@
 			        </count>
 			    </with>
 			</activeWhen>
-      </handler>  
+      </handler>
+      <handler
+      		class="org.eclipse.cdt.dsf.debug.internal.ui.actions.DsfAddRegisterGroupCommand"
+      		commandId="org.eclipse.cdt.debug.ui.command.addRegisterGroup">
+			<activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			        <or>
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.register.RegisterVMNode$RegisterVMC">
+			            </instanceof>
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.register.RegisterGroupVMNode$RegisterGroupVMC">
+			            </instanceof>
+			        </or>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+      <handler
+      		class="org.eclipse.cdt.dsf.debug.internal.ui.actions.DsfEditRegisterGroupCommand"
+      		commandId="org.eclipse.cdt.debug.ui.command.editRegisterGroup">
+			<activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.register.RegisterGroupVMNode$RegisterGroupVMC">
+			            </instanceof>
+			        </iterate>
+			        <count value="1">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+      <handler
+      		class="org.eclipse.cdt.dsf.debug.internal.ui.actions.DsfRemoveRegisterGroupsCommand"
+      		commandId="org.eclipse.cdt.debug.ui.command.removeRegisterGroups">
+			<activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.register.RegisterGroupVMNode$RegisterGroupVMC">
+			            </instanceof>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+      <handler
+      		class="org.eclipse.cdt.dsf.debug.internal.ui.actions.DsfRestoreRegisterGroupsCommand"
+      		commandId="org.eclipse.cdt.debug.ui.command.restoreRegisterGroups">
+			<activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			        <or>
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.register.RegisterVMNode$RegisterVMC">
+			            </instanceof>
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.register.RegisterGroupVMNode$RegisterGroupVMC">
+			            </instanceof>
+			        </or>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
    </extension>
    <extension point="org.eclipse.core.expressions.definitions">
       <definition id="org.eclipse.cdt.dsf.debug.ui.testIsUpdateModesActionSetActive">
@@ -513,6 +603,18 @@
             description="%command.rulerToggleBreakpoint.description"
             id="org.eclipse.cdt.dsf.debug.ui.disassembly.commands.rulerToggleBreakpoint"
             name="%command.rulerToggleBreakpoint.name">
+      </command>
+      <command
+            id="org.eclipse.cdt.dsf.ui.addLocalsExpression"
+            name="%command.addLocals.name"
+            categoryId="org.eclipse.debug.ui.category.run"
+            >
+      </command>
+	  <command
+            id="org.eclipse.cdt.dsf.ui.addRegistersExpression"
+            name="%command.addRegisters.name"
+            categoryId="org.eclipse.debug.ui.category.run"
+            >
       </command>
    </extension>
 
@@ -889,5 +991,12 @@
             name="%stepIntoSelectionHyperlinkDetector.label"
             targetId="org.eclipse.cdt.ui.cCode">            
       </hyperlinkDetector>
+   </extension>
+   <extension
+         point="org.eclipse.ui.elementFactories">
+      <factory
+            class="org.eclipse.cdt.dsf.debug.ui.viewmodel.SimpleMapPersistableFactory"
+            id="org.eclipse.cdt.dsf.ui.simpleMapPersistableFactory">
+      </factory>
    </extension>
 </plugin>

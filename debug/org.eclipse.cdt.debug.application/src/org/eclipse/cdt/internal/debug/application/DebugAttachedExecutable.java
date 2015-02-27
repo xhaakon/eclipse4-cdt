@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Red Hat, Inc.
+ * Copyright (c) 2014, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -82,14 +82,27 @@ public class DebugAttachedExecutable {
 	 * Import given executable into the Executables project then create a launch configuration.
 	 * 
 	 * @param monitor
-	 * @param executable
 	 * @param buildLog
-	 * @param arguments
 	 * @throws CoreException
 	 * @throws InterruptedException
 	 */
 	public static ILaunchConfiguration createLaunchConfig(IProgressMonitor monitor,
 			String buildLog)
+					throws CoreException, InterruptedException {
+		return createLaunchConfig(monitor, buildLog, null);
+	}
+
+	/**
+	 * Import given executable into the Executables project then create a launch configuration.
+	 * 
+	 * @param monitor
+	 * @param buildLog
+	 * @param pid
+	 * @throws CoreException
+	 * @throws InterruptedException
+	 */
+	public static ILaunchConfiguration createLaunchConfig(IProgressMonitor monitor,
+			String buildLog, String pid)
 					throws CoreException, InterruptedException {
 		ILaunchConfiguration config = null;
 		String defaultProjectName = "Executables"; //$NON-NLS-1$
@@ -160,7 +173,6 @@ public class DebugAttachedExecutable {
 			}
 		}
 
-		//						System.out.println("creating language settings providers");
 		// Create all the LanguageSettingsProviders
 		List<ILanguageSettingsProvider> providers = LanguageSettingsManager
 				.createLanguageSettingsProviders(langProviderIds);
@@ -171,13 +183,10 @@ public class DebugAttachedExecutable {
 
 		monitor.worked(1);
 
-		//						System.out.println("before setProjectDescription");
-
 		// Update the project description.
 		projDescManager.setProjectDescription(project,
 				projectDescription);
 
-		//						System.out.println("after setProjectDescription");
 
 		// Serialize the language settings for the project now in case we don't run a
 		// language settings provider which will do this in shutdown.
@@ -205,19 +214,21 @@ public class DebugAttachedExecutable {
 					activePage.closeAllEditors(false);
 			}
 		}
-		//					System.out.println("about to create launch configuration");
-		config = createConfiguration(true);
+
+		config = createConfiguration(pid, true);
 		monitor.worked(1);
 		return config;
 	}
 
 	protected static ILaunchConfigurationType getLaunchConfigType() {
-		return getLaunchManager().getLaunchConfigurationType(
-				"org.eclipse.cdt.launch.attachLaunchType"); //$NON-NLS-1$
+		return getLaunchManager().getLaunchConfigurationType(ICDTLaunchConfigurationConstants.ID_LAUNCH_C_ATTACH);
 	}
 
 	protected static ILaunchConfiguration createConfiguration(boolean save) {
-		//		System.out.println("creating launch configuration");
+		return createConfiguration(null, save);
+	}
+
+	protected static ILaunchConfiguration createConfiguration(String pid, boolean save) {
 		ILaunchConfiguration config = null;
 		try {
 			ILaunchConfigurationType configType = getLaunchConfigType();
@@ -232,6 +243,12 @@ public class DebugAttachedExecutable {
 			wc.setAttribute(
 					ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY,
 					(String) null);
+
+			if (pid != null) {
+				wc.setAttribute(ICDTLaunchConfigurationConstants.ATTR_ATTACH_PROCESS_ID,
+						Integer.valueOf(pid));
+			}
+			
 			if (save) {
 				config = wc.doSave();
 			} else {

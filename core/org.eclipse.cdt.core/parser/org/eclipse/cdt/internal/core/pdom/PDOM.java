@@ -251,11 +251,16 @@ public class PDOM extends PlatformObject implements IPDOM {
 	 *  CDT 8.4 development (versions not supported on the 8.3.x branch)
 	 *  170.0 - Unconditionally store arguments of EvalTypeId, bug 430230.
 	 *  171.0 - Replacement headers for Organize Includes, bug 414692.
-	 *  172.0 - Store default values for function parameters, bug 432701.
+	 *  #172.0# - Store default values for function parameters, bug 432701. <<CDT 8.4>>
+	 *
+	 *  CDT 8.6 development (versions not supported on the 8.5.x branch)
+	 *  180.0 - Internal types of enumerators, bug 446711.
+	 *  180.1 - Storing types of unknown members, bug 447728.
+	 *  180.2 - Do not apply significant macros to source files, bug 450888.
 	 */
-	private static final int MIN_SUPPORTED_VERSION= version(172, 0);
-	private static final int MAX_SUPPORTED_VERSION= version(172, Short.MAX_VALUE);
-	private static final int DEFAULT_VERSION = version(172, 0);
+	private static final int MIN_SUPPORTED_VERSION= version(180, 2);
+	private static final int MAX_SUPPORTED_VERSION= version(180, Short.MAX_VALUE);
+	private static final int DEFAULT_VERSION = version(180, 2);
 
 	private static int version(int major, int minor) {
 		return (major << 16) + minor;
@@ -968,7 +973,6 @@ public class PDOM extends PlatformObject implements IPDOM {
 
 	@Override
 	public void releaseReadLock() {
-		boolean clearCache= false;
 		synchronized (mutex) {
 			assert lockCount > 0: "No lock to release"; //$NON-NLS-1$
 			if (sDEBUG_LOCKS) {
@@ -979,12 +983,15 @@ public class PDOM extends PlatformObject implements IPDOM {
 			if (lockCount > 0)
 				--lockCount;
 			mutex.notifyAll();
-			clearCache= lockCount == 0;
 			db.setLocked(lockCount != 0);
 		}
-		if (clearCache) {
-			clearResultCache();
-		}
+		// A lock release probably means that some AST is going away. The result cache has to be
+		// cleared since it may contain objects belonging to the AST that is going away. A failure
+		// to release an AST object would cause a memory leak since the whole AST would remain
+		// pinned to memory.
+		// TODO(sprigogin): It would be more efficient to replace the global result cache with
+		// separate caches for each AST.
+		clearResultCache();
 	}
 
 	/**

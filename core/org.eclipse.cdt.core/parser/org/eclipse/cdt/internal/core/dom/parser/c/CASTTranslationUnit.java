@@ -1,14 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2011 IBM Corporation and others.
+ * Copyright (c) 2002, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    IBM Rational Software - Initial API and implementation
- *    Markus Schorn (Wind River Systems)
- *    Yuan Zhang / Beth Tibbitts (IBM Research)
+ *     IBM Rational Software - Initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Yuan Zhang / Beth Tibbitts (IBM Research)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
@@ -21,17 +22,19 @@ import org.eclipse.cdt.core.dom.ast.ICompositeType;
 import org.eclipse.cdt.core.dom.ast.IMacroBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.c.ICCompositeTypeScope;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.internal.core.dom.Linkage;
 import org.eclipse.cdt.internal.core.dom.parser.ASTTranslationUnit;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
+import org.eclipse.cdt.internal.core.index.IIndexScope;
 
 /**
  * C-specific implementation of a translation unit.
  */
 public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbiguityParent {
-	private CScope compilationUnit = null;
+	private CScope compilationUnit;
 	private final CStructMapper fStructMapper;
 
 	public CASTTranslationUnit() {
@@ -78,11 +81,6 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
     	return ArrayUtil.removeNulls(IASTName.class, names);
     }
     
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.IASTTranslationUnit#getReferences(org.eclipse.cdt.core.dom.ast.IBinding)
-	 */
 	@Override
 	public IASTName[] getReferences(IBinding binding) {
         if (binding instanceof IMacroBinding)
@@ -106,13 +104,27 @@ public class CASTTranslationUnit extends ASTTranslationUnit implements IASTAmbig
 		accept(new CASTAmbiguityResolver()); 
 	}
 
+	@Override
+	public IScope mapToASTScope(IScope scope) {
+		if (scope instanceof IIndexScope) {
+			if (scope.getKind() == EScopeKind.eGlobal)
+				return getScope();
+			if (scope instanceof ICCompositeTypeScope) {
+				ICompositeType type = ((ICCompositeTypeScope) scope).getCompositeType();
+				type = mapToASTType(type);
+				return type.getCompositeScope();
+			}
+		}
+		return scope;
+	}
+
 	/**
 	 * Maps structs from the index into this AST.
 	 */
 	public ICompositeType mapToASTType(ICompositeType type) {
 		return fStructMapper.mapToAST(type);
 	}
-	
+
 	@Override
 	protected IType createType(IASTTypeId typeid) {
 		return CVisitor.createType(typeid.getAbstractDeclarator());

@@ -361,6 +361,16 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 		assertDeclared();
 	}
 
+	//	namespace ns {
+	//	class A {};
+	//	}
+
+	//	using ns::A;
+	public void testUsingDeclaration() throws Exception {
+		assertDefined();
+		assertDeclared("A");
+	}
+
 	//	struct A {
 	//	  A(const char* s);
 	//	};
@@ -597,6 +607,23 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 	//	auto lambda = [](A* a) { return *a; };
 	public void testLambdaExpression() throws Exception {
 		assertDefined("A");
+		assertDeclared();
+	}
+
+	//	struct A {
+	//	  void operator()();
+	//	};
+	//	struct B : public A {
+	//	};
+	//	struct C {
+	//	  B b;
+	//	};
+
+	//	void test(C* c) {
+	//	  c->b();
+	//	}
+	public void testFieldAccess_442841() throws Exception {
+		assertDefined("C", "operator ()");
 		assertDeclared();
 	}
 

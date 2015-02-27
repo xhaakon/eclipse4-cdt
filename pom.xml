@@ -10,19 +10,21 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>8.5.0-SNAPSHOT</version>
+	<version>8.6.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
 	<properties>
-		<tycho-version>0.21.0</tycho-version>
-		<tycho-extras-version>0.21.0</tycho-extras-version>
+		<tycho-version>0.22.0</tycho-version>
+		<tycho-extras-version>0.22.0</tycho-extras-version>
 		<sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
 		<cdt-site>http://hudson.eclipse.org/cdt/job/cdt-master/lastSuccessfulBuild/artifact/releng/org.eclipse.cdt.repo/target/repository</cdt-site>
+		<repo-path>tools/cdt/builds/8.6/nightly</repo-path>
 		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
 		<sonar.jacoco.reportPath>${project.basedir}/../../target/jacoco.exec</sonar.jacoco.reportPath>
 		<target-platform>cdt-e4.4</target-platform>
 		<help-docs-eclipserun-repo>http://download.eclipse.org/eclipse/updates/4.4</help-docs-eclipserun-repo>
+		<tycho.scmUrl>scm:git:git://git.eclipse.org/gitroot/cdt/org.eclipse.cdt.git</tycho.scmUrl>
 	</properties>
 
 	<licenses>
@@ -177,12 +179,13 @@
 		<module>build/org.eclipse.cdt.make.ui.tests</module>
 		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb.tests</module>
 		<module>dsf-gdb/org.eclipse.cdt.tests.dsf.gdb</module>
+		<module>dsf-gdb/org.eclipse.cdt.examples.dsf.gdb</module>
 		
 		<module>build/org.eclipse.cdt.autotools.core</module>
 		<module>build/org.eclipse.cdt.autotools.docs</module>
 		<module>build/org.eclipse.cdt.autotools.tests</module>
 		<module>build/org.eclipse.cdt.autotools.ui</module>
-		<!--<module>build/org.eclipse.cdt.autotools.ui.tests</module>-->
+		<module>build/org.eclipse.cdt.autotools.ui.tests</module>
 		<module>build/org.eclipse.cdt.autotools-feature</module>
 		<module>build/org.eclipse.cdt.autotools.source-feature</module>
 		<module>build/org.eclipse.linuxtools.cdt.autotools.core</module>
@@ -208,12 +211,6 @@
 		<module>remote/org.eclipse.cdt.remote.core</module>
 		<module>remote/org.eclipse.cdt.remote-feature</module>
 		
-		<module>launch/org.eclipse.cdt.launchbar.core</module>
-		<module>launch/org.eclipse.cdt.launchbar.ui</module>
-		<module>launch/org.eclipse.cdt.launchbar.cdt.core</module>
-		<module>launch/org.eclipse.cdt.launchbar-feature</module>
-	    <module>launch/org.eclipse.cdt.launchbar.core.tests</module>
-
 <!-- 
 		<module>lrparser/org.eclipse.cdt.core.lrparser.tests</module>
 		<module>upc/org.eclipse.cdt.core.parser.upc.tests</module>
@@ -231,10 +228,9 @@
 	<pluginRepositories>
    		<pluginRepository>
 			<id>cbi</id>
-     		<url>https://repo.eclipse.org/content/repositories/cbi-releases/</url>
-    	</pluginRepository>
+			<url>https://repo.eclipse.org/content/repositories/cbi-releases/</url>
+		</pluginRepository>
   	</pluginRepositories>
-
 	<profiles>
 		<profile>
 			<id>cdtRepo</id>
@@ -277,13 +273,13 @@
 						<artifactId>target-platform-configuration</artifactId>
 						<version>${tycho-version}</version>
 						<configuration>
-							<includePackedArtifacts>false</includePackedArtifacts>
+							<includePackedArtifacts>true</includePackedArtifacts>
 						</configuration>
 					</plugin>
 					<plugin>
 						<groupId>org.eclipse.tycho.extras</groupId>
 						<artifactId>tycho-pack200a-plugin</artifactId>
-						<version>${tycho-version}</version>
+						<version>${tycho-extras-version}</version>
 						<executions>
 							<execution>
 								<id>pack200-normalize</id>
@@ -311,7 +307,7 @@
 					<plugin>
 						<groupId>org.eclipse.tycho.extras</groupId>
 						<artifactId>tycho-pack200b-plugin</artifactId>
-						<version>${tycho-version}</version>
+						<version>${tycho-extras-version}</version>
 						<executions>
 							<execution>
 								<id>pack200-pack</id>
@@ -342,8 +338,85 @@
 				</plugins>
 			</build>
 		</profile>
+		<profile>
+			<id>ppc64le</id>
+			    <activation>
+        			<property>
+          				<name>!skip-ppc64le</name>
+        			</property>
+      			</activation>
+      			<modules>
+					<module>core/org.eclipse.cdt.core.linux.ppc64le</module>
+				</modules>
+				<build>				
+					<plugins>
+						<plugin>
+							<groupId>org.eclipse.tycho</groupId>
+							<artifactId>target-platform-configuration</artifactId>
+							<version>${tycho-version}</version>
+							<configuration>
+							  <resolver>p2</resolver>
+							  <pomDependencies>consider</pomDependencies>
+							<!-- We need to add all supported environments here as tycho does not currently -->
+							<!-- append the environments but replaces them with this definition -->
+							  <environments>
+								<environment>
+									<os>linux</os>
+									<ws>gtk</ws>
+									<arch>x86</arch>
+								</environment>
+								<environment>
+									<os>linux</os>
+									<ws>gtk</ws>
+									<arch>x86_64</arch>
+								</environment>
+								<environment>
+									<os>linux</os>
+									<ws>gtk</ws>
+									<arch>ppc64</arch>
+								</environment>
+								<environment>
+									<os>win32</os>
+									<ws>win32</ws>
+									<arch>x86</arch>
+								</environment>
+								<environment>
+									<os>win32</os>
+									<ws>win32</ws>
+									<arch>x86_64</arch>
+								</environment>
+								<environment>
+									<os>macosx</os>
+									<ws>cocoa</ws>
+									<arch>x86</arch>
+								</environment>
+								<environment>
+									<os>macosx</os>
+									<ws>cocoa</ws>
+									<arch>x86_64</arch>
+								</environment>
+								<environment>
+									<os>aix</os>
+									<ws>gtk</ws>
+									<arch>ppc</arch>
+								</environment>
+								<environment>
+									<os>solaris</os>
+									<ws>gtk</ws>
+									<arch>sparc</arch>
+								</environment>
+								<environment>
+									<os>linux</os>
+									<ws>gtk</ws>
+									<arch>ppc64le</arch>
+								</environment>
+							  </environments>
+							</configuration>
+						</plugin>
+					</plugins>
+				</build>	
+		</profile>
 	</profiles>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -435,7 +508,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.6.2.201302030002</version>
+				<version>0.7.1.201405082137</version>
 				<executions>
 					<execution>
 						<id>pre-test</id>
@@ -477,6 +550,23 @@
 							</goals>
 						</execution>
 					</executions>
+				</plugin>
+				<plugin>
+					<groupId>org.eclipse.tycho</groupId>
+					<artifactId>tycho-packaging-plugin</artifactId>
+					<version>${tycho-version}</version>
+					<configuration>
+						<sourceReferences>
+							<generate>true</generate>
+						</sourceReferences>
+					</configuration>
+					<dependencies>
+						<dependency>
+							<groupId>org.eclipse.tycho.extras</groupId>
+							<artifactId>tycho-sourceref-jgit</artifactId>
+							<version>${tycho-extras-version}</version>
+						</dependency>
+					</dependencies>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>

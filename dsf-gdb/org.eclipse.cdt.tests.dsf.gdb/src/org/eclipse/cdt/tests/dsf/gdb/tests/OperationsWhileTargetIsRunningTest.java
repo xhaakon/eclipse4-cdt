@@ -37,8 +37,11 @@ import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.ServiceEventWaitor;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
-import org.eclipse.core.runtime.preferences.DefaultScope;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.osgi.service.prefs.Preferences;
@@ -58,15 +61,20 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
 	private IMIContainerDMContext fContainerDmc;
 	private IGDBControl fControl;
 
-	/*
-	 * Path to executable
-	 */
-	private static final String EXEC_PATH = "data/launch/bin/";
-	/*
-	 * Name of the executable
-	 */
 	private static final String EXEC_NAME = "TargetAvail.exe";
-	
+
+	private static boolean fgAutoTerminate;
+
+    @BeforeClass
+	public static void doBeforeClass() throws Exception {
+		// Save the original values of the preferences used in this class
+		fgAutoTerminate = Platform.getPreferencesService().getBoolean( 
+				GdbPlugin.PLUGIN_ID,
+				IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, 
+				true,
+				null );		
+    }
+
 	@Override
 	public void doBeforeTest() throws Exception {
 		super.doBeforeTest();
@@ -96,6 +104,10 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
 		super.doAfterTest();
 
 		fServicesTracker.dispose();
+
+		// Restore the different preferences we might have changed
+		IEclipsePreferences node = InstanceScope.INSTANCE.getNode( GdbPlugin.PLUGIN_ID );
+		node.putBoolean( IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, fgAutoTerminate );
 	}
 	
 	@Override
@@ -108,7 +120,7 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
 
     /**
      * Test that the restart operation works properly while the target is running, and
-     * with the option to kill GDB after the process terminate enabled.  
+     * with the option to kill GDB after the process terminates, enabled.  
      */
     @Test
     public void restartWhileTargetRunningKillGDB() throws Throwable {
@@ -120,7 +132,7 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
     	}
 
     	// First set the preference to kill GDB (although it should not happen in this test)
-    	Preferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+    	Preferences node = InstanceScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
     	node.putBoolean(IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, true);
 
     	// The target is currently stopped.  We resume to get it running
@@ -138,7 +150,7 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
  
     /**
      * Test that the restart operation works properly while the target is running, and
-     * with the option to kill GDB after the process terminate disabled.  
+     * with the option to kill GDB after the process terminates, disabled.  
      */
     @Test
     public void restartWhileTargetRunningGDBAlive() throws Throwable {
@@ -150,7 +162,7 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
     	}
     	
     	// First set the preference not to kill gdb
-    	Preferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+    	Preferences node = InstanceScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
     	node.putBoolean(IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, false);
 
     	// The target is currently stopped.  We resume to get it running
@@ -168,12 +180,12 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
     
     /**
      * Test that the terminate operation works properly while the target is running, and
-     * with the option to kill GDB after the process terminate enabled. 
+     * with the option to kill GDB after the process terminates, enabled. 
      */
     @Test
     public void terminateWhileTargetRunningKillGDB() throws Throwable {
     	// First set the preference to kill GDB
-    	Preferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+    	Preferences node = InstanceScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
     	node.putBoolean(IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, true);
 
     	// The target is currently stopped.  We resume to get it running
@@ -185,7 +197,7 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
         		ICommandControlShutdownDMEvent.class);
 
         // Don't use a query here.  The terminate, because it kills GDB, may not return right away
-        // But that is ok because we wait for a shutdown event right after
+        // but that is ok because we wait for a shutdown event right after
         Runnable runnable = new Runnable() {
             @Override
 			public void run() {
@@ -206,12 +218,12 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
 
     /**
      * Test that the terminate operation works properly while the target is running, and
-     * with the option to kill GDB after the process terminate disabled. 
+     * with the option to kill GDB after the process terminates, disabled. 
      */
     @Test
     public void terminateWhileTargetRunningKeepGDBAlive() throws Throwable {
     	// First set the preference not to kill gdb
-    	Preferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+    	Preferences node = InstanceScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
     	node.putBoolean(IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, false);
 
     	// The target is currently stopped.  We resume to get it running
@@ -258,12 +270,12 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
     
     /**
      * Test that the detach operation works properly while the target is running, and
-     * with the option to kill GDB after the process terminate enabled.  
+     * with the option to kill GDB after the process terminates, enabled.  
      */
     @Test
     public void detachWhileTargetRunningKillGDB() throws Throwable {
     	// First set the preference to kill GDB
-    	Preferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+    	Preferences node = InstanceScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
     	node.putBoolean(IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, true);
 
     	// The target is currently stopped.  We resume to get it running
@@ -275,7 +287,7 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
         		ICommandControlShutdownDMEvent.class);
 
         // Don't use a query here.  Because GDB will be killed, the call to detach may not return right away
-        // But that is ok because we wait for a shutdown event right after
+        // but that is ok because we wait for a shutdown event right after
         Runnable runnable = new Runnable() {
             @Override
 			public void run() {
@@ -295,12 +307,12 @@ public class OperationsWhileTargetIsRunningTest extends BaseTestCase {
     
     /**
      * Test that the detach operation works properly while the target is running, and
-     * with the option to kill GDB after the process terminate disabled.  
+     * with the option to kill GDB after the process terminates, disabled.  
      */
     @Test
     public void detachWhileTargetRunningGDBAlive() throws Throwable {
     	// First set the preference not to kill gdb
-    	Preferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+    	Preferences node = InstanceScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
     	node.putBoolean(IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB, false);
 
     	// The target is currently stopped.  We resume to get it running

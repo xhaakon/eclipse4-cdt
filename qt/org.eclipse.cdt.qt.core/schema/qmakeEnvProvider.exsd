@@ -64,7 +64,7 @@
                </appinfo>
             </annotation>
          </attribute>
-         <attribute name="priority" type="integer" default="0">
+         <attribute name="priority" type="integer">
             <annotation>
                <documentation>
                   Priority of QMake environment provider. Less number means higher priority. Default priority is 0.
@@ -119,6 +119,7 @@
          The contributed class must implement &lt;code&gt;org.eclipse.cdt.qt.core.index.IQMakeEnvProvider&lt;/code&gt;.
       </documentation>
    </annotation>
+
 
    <annotation>
       <appinfo>

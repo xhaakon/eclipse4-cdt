@@ -139,8 +139,11 @@ import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.SizeofCalculator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNameBase;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPClassType;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunctionType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPMethod;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.OverloadableOperator;
@@ -328,16 +331,16 @@ public class AST2CPPTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
-	// int *p1; int *p2;
-	// union {
-	// struct {int a; int b;} A;
-	// struct {int a; int b;};
-	// } MyStruct;
-	// void test (void) {
-	// p1 = &MyStruct.A.a;
-	// p2 = &MyStruct.b;
-	//         MyStruct.b = 1;
-	// }
+	//	int *p1; int *p2;
+	//	union {
+	//	  struct {int a; int b;} A;
+	//	  struct {int a; int b;};
+	//	} MyStruct;
+	//	void test (void) {
+	//	  p1 = &MyStruct.A.a;
+	//	  p2 = &MyStruct.b;
+	//	  MyStruct.b = 1;
+	//	}
 	public void testBug78103() throws Exception {
 		parseAndCheckBindings(getAboveComment());
 	}
@@ -347,7 +350,7 @@ public class AST2CPPTests extends AST2TestBase {
 	//	  B(int t);
 	//	};
 	//	class A : public B {
-	//	  public:
+	//	public:
 	//	  A(int t);
 	//	};
 	//	A::A(int t) : B(t - 1) {}
@@ -401,12 +404,12 @@ public class AST2CPPTests extends AST2TestBase {
 		assertTrue(es.getExpression() instanceof IASTFunctionCallExpression);
 	}
 
-	// #define CURLOPTTYPE_OBJECTPOINT   10000
-	// #define CINIT(name,type,number) CURLOPT_ ## name = CURLOPTTYPE_ ## type + number
-	// typedef enum {
-	// CINIT(FILE, OBJECTPOINT, 1),
-	//     CINIT(URL,  OBJECTPOINT, 2)
-	// } CURLoption ;
+	//	#define CURLOPTTYPE_OBJECTPOINT   10000
+	//	#define CINIT(name,type,number) CURLOPT_ ## name = CURLOPTTYPE_ ## type + number
+	//	typedef enum {
+	//	  CINIT(FILE, OBJECTPOINT, 1),
+	//	  CINIT(URL,  OBJECTPOINT, 2)
+	//	} CURLoption;
 	public void testBug102825() throws Exception {
 		parseAndCheckBindings(getAboveComment());
 	}
@@ -2884,11 +2887,11 @@ public class AST2CPPTests extends AST2TestBase {
 		assertNotNull(whileStatement.getConditionDeclaration());
 	}
 
-	// void foo() {
-	//    const int x = 12;
-	//    {   enum { x = x };  }
-	// }
-	// enum { RED };
+	//	void foo() {
+	//	  const int x = 12;
+	//	  {   enum { x = x };  }
+	//	}
+	//	enum { RED };
 	public void testBug86353() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		NameCollector col = new NameCollector();
@@ -4629,12 +4632,12 @@ public class AST2CPPTests extends AST2TestBase {
 		assertInstances(col, B, 4);
 	}
 
-	// class X {
-	//   public:
-	//   void f(int);
-	//   int a;
-	// };
-	// int X:: * pmi = &X::a;
+	//	class X {
+	//	public:
+	//	  void f(int);
+	//	  int a;
+	//	};
+	//	int X:: * pmi = &X::a;
 	public void testBasicPointerToMember() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		assertEquals(tu.getDeclarations().length, 2);
@@ -4644,12 +4647,11 @@ public class AST2CPPTests extends AST2TestBase {
 		assertEquals("X::", po.getName().toString());
 	}
 
-	// struct B {};
-	// struct D : B {};
-	// void foo(D* dp)
-	// {
-	// B* bp = dynamic_cast<B*>(dp);
-	// }
+	//	struct B {};
+	//	struct D : B {};
+	//	void foo(D* dp) {
+	//	  B* bp = dynamic_cast<B*>(dp);
+	//	}
 	public void testBug84466() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		ICPPASTCastExpression dynamic_cast =
@@ -4663,8 +4665,7 @@ public class AST2CPPTests extends AST2TestBase {
 	}
 
 	public void testBug88338_CPP() throws Exception {
-		IASTTranslationUnit tu = parse(
-				"struct A; struct A* a;", CPP);
+		IASTTranslationUnit tu = parse("struct A; struct A* a;", CPP);
 		NameCollector col = new NameCollector();
 		tu.accept(col);
 
@@ -4692,11 +4693,11 @@ public class AST2CPPTests extends AST2TestBase {
 		assertEquals(f.getNestedDeclarator().getName().toString(), "pfi");
 	}
 
-	// class X { public: int bar; };
-	// void f(){
-	//    X a[10];
-	//    a[0].bar;
-	// }
+	//	class X { public: int bar; };
+	//	void f(){
+	//	  X a[10];
+	//	  a[0].bar;
+	//	}
 	public void testBug95484() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		NameCollector col = new NameCollector();
@@ -4706,10 +4707,10 @@ public class AST2CPPTests extends AST2TestBase {
 		assertSame(bar, col.getName(6).resolveBinding());
 	}
 
-	// int strcmp(const char *);
-	// void f(const char * const * argv){
-	//    strcmp(*argv);
-	// }
+	//	int strcmp(const char *);
+	//	void f(const char * const * argv){
+	//	  strcmp(*argv);
+	//	}
 	public void testBug95419() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		NameCollector col = new NameCollector();
@@ -4719,14 +4720,14 @@ public class AST2CPPTests extends AST2TestBase {
 		assertSame(strcmp, col.getName(4).resolveBinding());
 	}
 
-	//    class Other;
-	//    class Base {
-	//       public: Base(Other *);
-	//    };
-	//    class Sub : public Base {
-	//       public: Sub(Other *);
-	//    };
-	//    Sub::Sub(Other * b) : Base(b) {}
+	//	class Other;
+	//	class Base {
+	//	  public: Base(Other *);
+	//	};
+	//	class Sub : public Base {
+	//	  public: Sub(Other *);
+	//	};
+	//	Sub::Sub(Other * b) : Base(b) {}
 	public void testBug95673() throws Exception {
 		BindingAssertionHelper ba= getAssertionHelper();
 
@@ -4735,12 +4736,12 @@ public class AST2CPPTests extends AST2TestBase {
 		assertSame(ctor, ctor2);
 	}
 
-	// void mem(void *, const void *);
-	// void f() {
-	//    char *x;  int offset;
-	//    mem(x, "FUNC");
-	//    mem(x + offset, "FUNC2");
-	// }
+	//	void mem(void *, const void *);
+	//	void f() {
+	//	  char *x;  int offset;
+	//	  mem(x, "FUNC");
+	//	  mem(x + offset, "FUNC2");
+	//	}
 	public void testBug95768() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		NameCollector col = new NameCollector();
@@ -4908,14 +4909,14 @@ public class AST2CPPTests extends AST2TestBase {
 		assertSame(i, col.getName(7).resolveBinding());
 	}
 
-	// int f() {
-	//     return 5;
-	// }
-	// int main() {
-	// int a(5);
-	// int b(f());
-	// return a+b;
-	// }
+	//	int f() {
+	//	  return 5;
+	//	}
+	//	int main() {
+	//	  int a(5);
+	//	  int b(f());
+	//	  return a+b;
+	//  }
 	public void testBug86849() throws Exception {
 		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
 		NameCollector col = new NameCollector();
@@ -6263,24 +6264,24 @@ public class AST2CPPTests extends AST2TestBase {
 	//	void test2(char []);
 	//	void test3(t);
 	//	void xx() {
-	//	   char* x= 0;
-	//	   test1(x);
-	//	   test2(x); // problem binding here
-	//	   test3(x); // problem binding here
+	//	  char* x= 0;
+	//	  test1(x);
+	//	  test2(x);
+	//	  test3(x);
 	//	}
 	public void testAdjustmentOfParameterTypes_239975() throws Exception {
 		parseAndCheckBindings(getAboveComment(), CPP);
 	}
 
 	//	class A {
-	//		public:
-	//			void m(int c);
+	//	public:
+	//	  void m(int c);
 	//	};
 	//
 	//	void test(char c) {
-	//		void (A::* ptr2mem)(char);
-	//		ptr2mem= reinterpret_cast<void (A::*)(char)>(&A::m);
-	//      ptr2mem= (void (A::*)(int))(0);
+	//	  void (A::* ptr2mem)(char);
+	//	  ptr2mem= reinterpret_cast<void (A::*)(char)>(&A::m);
+	//	  ptr2mem= (void (A::*)(int))(0);
 	//	}
 	public void testTypeIdForPtrToMember_242197() throws Exception {
 		parseAndCheckBindings(getAboveComment(), CPP);
@@ -7235,25 +7236,152 @@ public class AST2CPPTests extends AST2TestBase {
 		ba.assertNonProblem("f(!p)", 1);
 	}
 
+	//	template<typename T>
+	//	struct A {
+	//	  enum {
+	//	    e1 = 0,
+	//	    e2 = int(e1)
+	//	  };
+	//	};
+	//
+	//	template<typename T, int v = A<T>::e2>
+	//	struct B;
+	//
+	//	template<typename T>
+	//	struct B<T, 0> {
+	//	  void waldo();
+	//	};
+	//
+	//	void test(B<int>& p) {
+	//	  p.waldo();
+	//	}
+	public void testDependentEnumeration_446711a() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	constexpr int f(int p) { return p; }
+	//	constexpr long f(long p) { return p + 0x100000000L; }
+	//
+	//	template<typename T>
+	//	struct A {
+	//	  enum {
+	//	    e1 = 0,
+	//	    e2 = f(e1)
+	//	  };
+	//	};
+	//
+	//	template<typename T, long v = A<T>::e2>
+	//	struct B;
+	//
+	//	template<typename T>
+	//	struct B<T, 0> {
+	//	  void waldo();
+	//	};
+	//
+	//	void test(B<int>& p) {
+	//	  p.waldo();
+	//	}
+	public void testDependentEnumeration_446711b() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	constexpr int f(long p) { return p; }
+	//	constexpr long f(int p) { return p + 0x100000000L; }
+	//
+	//	template<typename T>
+	//	struct A {
+	//	  enum {
+	//	    e1 = 0L,
+	//	    e2 = f(e1)
+	//	  };
+	//	};
+	//
+	//	template<typename T, long v = A<T>::e2>
+	//	struct B;
+	//
+	//	template<typename T>
+	//	struct B<T, 0> {
+	//	  void waldo();
+	//	};
+	//
+	//	void test(B<int>& p) {
+	//	  p.waldo();
+	//	}
+	public void testDependentEnumeration_446711c() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	constexpr int f(int p) { return p; }
+	//	constexpr long f(long p) { return p + 0x100000000L; }
+	//
+	//	template<typename T, T v>
+	//	struct A {
+	//	  enum {
+	//	    e1 = v,
+	//	    e2 = f(e1)
+	//	  };
+	//	};
+	//
+	//	template<typename T, T u, long v = A<T, u>::e2>
+	//	struct B;
+	//
+	//	template<typename T, T u>
+	//	struct B<T, u, 0> {
+	//	  void waldo();
+	//	};
+	//
+	//	void test(B<int, 0>& p) {
+	//	  p.waldo();
+	//	}
+	public void testDependentEnumeration_446711d() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	constexpr int f(int p) { return p; }
+	//	constexpr long f(long p) { return p + 0x100000000L; }
+	//
+	//	template<typename T, T v>
+	//	struct A {
+	//	  enum {
+	//	    e1 = v,
+	//	    e2 = f(e1)
+	//	  };
+	//	};
+	//
+	//	template<typename T, T u, long v = A<T, u>::e2>
+	//	struct B {};
+	//
+	//	template<typename T, T u>
+	//	struct B<T, u, 0> {
+	//	  void waldo();
+	//	};
+	//
+	//	void test(B<long, 0>& p) {
+	//	  p.waldo();
+	//	}
+	public void testDependentEnumeration_446711e() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		helper.assertProblemOnFirstIdentifier(".waldo()");
+	}
+
 	//	class S {
-	//		S(int);
+	//	  S(int);
 	//	};
 	//	void test() {
-	//		S **temp = new S*[1]; // problem on S
-	//		temp = new S*;        // problem on S
-	//		temp = new (S*);      // problem on S
-	//		temp = new ::S*[1]; // problem on S
-	//		temp = new ::S*;        // problem on S
-	//		temp = new (::S*);      // problem on S
+	//	  S **temp = new S*[1];
+	//	  temp = new S*;
+	//	  temp = new (S*);
+	//	  temp = new ::S*[1];
+	//	  temp = new ::S*;
+	//	  temp = new (::S*);
 	//	}
 	public void testNewPointerOfClass_267168() throws Exception {
-		final String code = getAboveComment();
-		parseAndCheckBindings(code, CPP);
+		parseAndCheckBindings();
 	}
 
 	//	void f(char *(names[2])= 0);
 	//  void f2(const char *(n[])) {
-	//     if (n && 1){}
+	//    if (n && 1){}
 	//  }
 	public void testPointerToArrayWithDefaultVal_267184() throws Exception {
 		final String code = getAboveComment();
@@ -7270,10 +7398,10 @@ public class AST2CPPTests extends AST2TestBase {
 		parseAndCheckBindings(code, CPP);
 	}
 
-	// class X {
-	//    virtual void pv() = 0;
-	//    void (*ptrToFunc) ()= 0;
-	// };
+	//	class X {
+	//	  virtual void pv() = 0;
+	//	  void (*ptrToFunc) ()= 0;
+	//	};
 	public void testPureVirtualVsInitDeclarator_267184() throws Exception {
 		final String code = getAboveComment();
 		IASTTranslationUnit tu= parseAndCheckBindings(code, CPP);
@@ -7545,11 +7673,11 @@ public class AST2CPPTests extends AST2TestBase {
 	}
 
 	//	class C {
-	//		C& operator()() {return *this;}
+	//	  C& operator()() { return *this; }
 	//	};
 	//	void test() {
-	//		C c;
-	//		c()()()()()()()()()()()()()();
+	//	  C c;
+	//	  c()()()()()()()()()()()()()();
 	//	}
 	public void testNestedOverloadedFunctionCalls_283324() throws Exception {
 		final String code = getAboveComment();
@@ -7593,30 +7721,59 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPFunction f1 = ba.assertNonProblem("f(i1)", 1, ICPPFunction.class);
 		IType t1 = f1.getType().getParameterTypes()[0];
 		assertTrue(t1 instanceof ICPPBasicType);
-		assertEquals(IBasicType.t_int, ((ICPPBasicType) t1).getType());
-		assertEquals(0, ((ICPPBasicType) t1).getQualifierBits());
+		assertEquals(IBasicType.Kind.eInt, ((ICPPBasicType) t1).getKind());
+		assertEquals(0, ((ICPPBasicType) t1).getModifiers());
 		ICPPFunction f2 = ba.assertNonProblem("f(u1)", 1, ICPPFunction.class);
 		IType t2 = f2.getType().getParameterTypes()[0];
 		assertTrue(t2 instanceof ICPPBasicType);
-		assertEquals(IBasicType.t_int, ((ICPPBasicType) t2).getType());
-		assertEquals(IBasicType.IS_UNSIGNED, ((ICPPBasicType) t2).getQualifierBits());
+		assertEquals(IBasicType.Kind.eInt, ((ICPPBasicType) t2).getKind());
+		assertEquals(IBasicType.IS_UNSIGNED, ((ICPPBasicType) t2).getModifiers());
 		ICPPFunction f3 = ba.assertNonProblem("f(l1)", 1, ICPPFunction.class);
 		IType t3 = f3.getType().getParameterTypes()[0];
 		assertTrue(t3 instanceof ICPPBasicType);
-		assertEquals(IBasicType.t_int, ((ICPPBasicType) t3).getType());
-		assertEquals(IBasicType.IS_LONG, ((ICPPBasicType) t3).getQualifierBits());
+		assertEquals(IBasicType.Kind.eInt, ((ICPPBasicType) t3).getKind());
+		assertEquals(IBasicType.IS_LONG, ((ICPPBasicType) t3).getModifiers());
 	}
 
-	// typedef enum enum_name enum_name;
+	//	void f(int t);
+	//	void f(long t);
+	//
+	//	enum e {
+	//	  i1 = 0L,
+	//	  i2 = (long) i1 + 1,
+	//	  i3 = long(i2 + 1)
+	//	};
+	//
+	//	void test() {
+	//	  f(i3);
+	//	}
+	public void testCastInEnumeratorValue_446380() throws Exception {
+		BindingAssertionHelper ba= getAssertionHelper();
+		IEnumerator i2 = ba.assertNonProblem("i2", IEnumerator.class);
+		Long v2 = i2.getValue().numericalValue();
+		assertNotNull(v2);
+		assertEquals(1, v2.intValue());
+		IEnumerator i3 = ba.assertNonProblem("i3", IEnumerator.class);
+		Long v3 = i3.getValue().numericalValue();
+		assertNotNull(v3);
+		assertEquals(2, v3.intValue());
+		ICPPFunction f = ba.assertNonProblemOnFirstIdentifier("f(i3)",ICPPFunction.class);
+		IType t = f.getType().getParameterTypes()[0];
+		// The declared types of the enum values don't affect the underlying type of the enum,
+		// only the values themselves do.
+		assertEquals("int", ASTTypeUtil.getType(t));
+	}
+
+	//	typedef enum enum_name enum_name;
 	public void testTypedefRecursion_285457() throws Exception {
 		BindingAssertionHelper ba= getAssertionHelper();
 		ba.assertProblem("enum_name", 9);
 	}
 
-	// struct MyStruct {
-	//   enum MyEnum {};
-	//   MyStruct(MyEnum value) {}
-	// };
+	//	struct MyStruct {
+	//	  enum MyEnum {};
+	//	  MyStruct(MyEnum value) {}
+	//	};
 	public void testEnumRedefinitionInStruct_385144() throws Exception {
 		parseAndCheckBindings();
 	}
@@ -7686,6 +7843,15 @@ public class AST2CPPTests extends AST2TestBase {
 		defNames=  new String[] {};
 		IASTCompositeTypeSpecifier cls= getCompositeType(tu, 1);
 		checkDeclDef(declNames, defNames, cls.getMembers());
+	}
+
+	//	#define MACRO "macro"
+	//	void f(const char* s);
+	//	void test() {
+	//	  f("aaa"MACRO);
+	//	}
+	public void testStringConcatenationWithMacro() throws Exception {
+		parseAndCheckBindings();
 	}
 
 	//	class X {
@@ -8329,6 +8495,16 @@ public class AST2CPPTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	int foo = 0;
+	//	auto bar = [foo] { return foo; };
+	public void testLambdaWithCapture_446225() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+		ICPPVariable foo1= bh.assertNonProblemOnFirstIdentifier("foo =", ICPPVariable.class);
+		ICPPVariable foo2= bh.assertNonProblemOnFirstIdentifier("[foo]", ICPPVariable.class);
+		assertTrue(foo1 == foo2);
+		assertEquals(2, bh.getTranslationUnit().getReferences(foo1).length);
+	}
+
 	//	typedef int TInt;
 	//	void test() {
 	//		int a1= {}, a2{};		// Initializer for declarator
@@ -8566,6 +8742,67 @@ public class AST2CPPTests extends AST2TestBase {
 	}
 
 	//	namespace std {
+	//		template <typename T> class initializer_list;
+	//	}
+	//	void waldo(int);
+	//	void waldo(std::initializer_list<int>);
+	//	void foo() {
+	//		waldo({});
+	//		waldo({1});
+	//		waldo({short(1)});
+	//		waldo({1, 2});
+	//	}
+	public void testListInitialization_439477a() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	void waldo(int const (&)[2]);
+	//	void waldo(int const (&)[3]);
+	//	void foo1() {
+	//		waldo({1, 2});        // should resolve to waldo(int const (&)[2])
+	//		waldo({1, 2, 3});     // should resolve to waldo(int const (&)[3])
+	//		waldo({1, 2, 3, 4});  // should not resolve
+	//	}
+	public void testListInitialization_439477b() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		
+		ICPPFunction def1 = helper.assertNonProblem("waldo(int const (&)[2])", "waldo");
+		ICPPFunction def2 = helper.assertNonProblem("waldo(int const (&)[3])", "waldo");
+		
+		ICPPFunction call1 = helper.assertNonProblem("waldo({1, 2})", "waldo");
+		ICPPFunction call2 = helper.assertNonProblem("waldo({1, 2, 3})", "waldo");
+		
+		assertEquals(call1, def1);
+		assertEquals(call2, def2);
+		
+		helper.assertProblem("waldo({1, 2, 3, 4})", "waldo", IProblemBinding.SEMANTIC_NAME_NOT_FOUND);
+	}
+	
+	//	namespace std {
+	//		template<class E>
+	//		class initializer_list {
+	//		  const E* _array;
+	//		  long unsigned int _len;
+	//
+	//		  initializer_list(const E* array, int len) {}
+	//		};
+	//	}
+	//
+	//	template<typename T>
+	//	struct A {
+	//	  A(std::initializer_list<T> list) {}
+	//	};
+	//
+	//	struct B {
+	//	  int b;
+	//	};
+	//
+	//	A<B> waldo({{0}, {0}});	
+	public void testListInitialization_458679() throws Exception {
+		parseAndCheckImplicitNameBindings();
+	}
+	
+	//	namespace std {
 	//		template<typename T> class initializer_list;
 	//	}
 	//	struct A {};
@@ -8789,7 +9026,7 @@ public class AST2CPPTests extends AST2TestBase {
 		bh.assertProblem("xl;", -1);
 	}
 
-	//	void f(int);
+	//	constexpr int f(int);
 	//	enum class X {e1, e2= e1+2, e3};
 	//	enum class Y {e1, e2= f(e1)+2, e3};
 	//	enum A {e1, e2= e1+2, e3};
@@ -8808,6 +9045,52 @@ public class AST2CPPTests extends AST2TestBase {
 	//	//  f(sizeof(S::m + 1)); // Error not detected by CDT: reference to non-static member in subexpression
 	//	}
 	public void testSizeofOfNonstaticMember_305979() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template <bool> struct B {};
+	//	template <>
+	//	struct B<true> {
+	//	  void waldo();
+	//	};
+	//	typedef char& one;
+	//	void test() {
+	//	  B<sizeof(one) == 1> b;
+	//	  b.waldo();
+	//	}
+	public void testSizeofReference_397342() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	struct A {
+	//	  char a[100];
+	//	};
+	//	struct B {
+	//	  A& b;
+	//	};
+	//	A* p;
+	public void testSizeofStructWithReferenceField_397342() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+		IASTName nameB = bh.findName("B");
+		IASTName namep = bh.findName("p");
+		ICPPClassType B = (ICPPClassType) nameB.resolveBinding();
+		IPointerType ptrToA = (IPointerType) ((ICPPVariable) namep.resolveBinding()).getType();
+		long pointerSize = SizeofCalculator.getSizeAndAlignment(ptrToA, namep).size;
+		long BSize = SizeofCalculator.getSizeAndAlignment(B, nameB).size;
+		assertEquals(pointerSize, BSize);
+	}
+
+	//	template <bool> struct B {};
+	//	template <>
+	//	struct B<true> {
+	//	  void waldo();
+	//	};
+	//	typedef char& one;
+	//	void test() {
+	//	  B<alignof(one) == 1> b;
+	//	  b.waldo();
+	//	}
+	public void testAlignof_451082() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -10094,7 +10377,7 @@ public class AST2CPPTests extends AST2TestBase {
 		assertInstance(sDefinition, ICPPASTCompositeTypeSpecifier.class);
 		assertTrue(((ICPPASTCompositeTypeSpecifier)sDefinition).isFinal());
 	}
-
+	
 	// struct S {
 	//     template<typename T>
 	// 	   void foo(T t) final {
@@ -10134,6 +10417,16 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testFinalParameter() throws Exception {
 		parseAndCheckBindings();
 	}
+	
+	//	struct S __final {};
+	//	struct T { void foo() __final; };
+	public void testFinalGccExtension_442457() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+		ICPPClassType s = bh.assertNonProblem("S");
+		assertTrue(s.isFinal());
+		ICPPMethod foo = bh.assertNonProblem("foo");
+		assertTrue(foo.isFinal());
+	}
 
 	//	struct S1 {};
 	//	S1 s1;
@@ -10165,12 +10458,50 @@ public class AST2CPPTests extends AST2TestBase {
 	//	template <bool> struct A {};
 	//	template <>
 	//	struct A<false> {
-	//	    typedef int type;
+	//	  typedef int type;
 	//	};
 	//	struct S {};
 	//	const bool b = __is_base_of(S, int);
 	//	typedef A<b>::type T;
 	public void testIsBaseOf_395019() throws Exception {
+		parseAndCheckBindings(getAboveComment(), CPP, true);
+	}
+
+	//	template<typename T, T v>
+	//	struct integral_constant {
+	//	  static constexpr T value = v;
+	//	  typedef integral_constant<T, v> type;
+	//	};
+	//
+	//	typedef integral_constant<bool, true> true_type;
+	//
+	//	typedef integral_constant<bool, false> false_type;
+	//
+	//	template<typename Base, typename Derived>
+	//	struct is_base_of : public integral_constant<bool, __is_base_of(Base, Derived)> {};
+	//
+	//	template<bool, typename T = void>
+	//	struct enable_if {};
+	//
+	//	template<typename T>
+	//	struct enable_if<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <class BaseType, class SubType>
+	//	using EnableIfIsBaseOf =
+	//	    typename enable_if<is_base_of<BaseType, SubType>::value, int>::type;
+	//
+	//	class A {};
+	//
+	//	template <typename T>
+	//	class B {};
+	//
+	//	template <typename T, EnableIfIsBaseOf<A, T> = 0>
+	//	using Waldo = B<T>;
+	//
+	//	Waldo<A> c;
+	public void testIsBaseOf_446094() throws Exception {
 		parseAndCheckBindings(getAboveComment(), CPP, true);
 	}
 
@@ -10328,38 +10659,6 @@ public class AST2CPPTests extends AST2TestBase {
 		assertEquals(1 /*true */, var.getInitialValue().numericalValue().longValue());
 	}
 
-	//	template <bool> struct B{};
-	//	template <>
-	//	struct B<true> {
-	//	    void waldo();
-	//	};
-	//	typedef char& one;
-	//	int main() {
-	//	    B<sizeof(one) == 1> b;
-	//	    b.waldo();
-	//	}
-	public void testSizeofReference_397342() throws Exception {
-		parseAndCheckBindings();
-	}
-
-	//	struct A {
-	//		char a[100];
-	//	};
-	//	struct B {
-	//		A& b;
-	//	};
-	//	A* p;
-	public void testSizeofStructWithReferenceField_397342() throws Exception {
-		BindingAssertionHelper bh = getAssertionHelper();
-		IASTName nameB = bh.findName("B");
-		IASTName namep = bh.findName("p");
-		ICPPClassType B = (ICPPClassType) nameB.resolveBinding();
-		IPointerType ptrToA = (IPointerType) ((ICPPVariable) namep.resolveBinding()).getType();
-		long pointerSize = SizeofCalculator.getSizeAndAlignment(ptrToA, namep).size;
-		long BSize = SizeofCalculator.getSizeAndAlignment(B, nameB).size;
-		assertEquals(pointerSize, BSize);
-	}
-
 	//  namespace NS {
 	//  class Enclosing {
 	//    class Inner {};
@@ -10513,15 +10812,15 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testUnderlyingTypeBuiltin_411196() throws Exception {
 		BindingAssertionHelper helper = getAssertionHelper();
 
-		assertSameType((ITypedef) helper.assertNonProblem("short1_type"), CPPVisitor.SHORT_TYPE);
-		assertSameType((ITypedef) helper.assertNonProblem("short2_type"), CPPVisitor.SHORT_TYPE);
+		assertSameType((ITypedef) helper.assertNonProblem("short1_type"), CPPBasicType.SHORT);
+		assertSameType((ITypedef) helper.assertNonProblem("short2_type"), CPPBasicType.SHORT);
 
-		assertSameType((ITypedef) helper.assertNonProblem("scoped_type"), CPPVisitor.INT_TYPE);
+		assertSameType((ITypedef) helper.assertNonProblem("scoped_type"), CPPBasicType.INT);
 
-		assertSameType((ITypedef) helper.assertNonProblem("unsigned_type"), CPPVisitor.UNSIGNED_INT);
-		assertSameType((ITypedef) helper.assertNonProblem("int_type"), CPPVisitor.INT_TYPE);
-		assertSameType((ITypedef) helper.assertNonProblem("ulong_type"), CPPVisitor.UNSIGNED_LONG);
-		assertSameType((ITypedef) helper.assertNonProblem("loong_type"), CPPVisitor.LONG_TYPE);
+		assertSameType((ITypedef) helper.assertNonProblem("unsigned_type"), CPPBasicType.UNSIGNED_INT);
+		assertSameType((ITypedef) helper.assertNonProblem("int_type"), CPPBasicType.INT);
+		assertSameType((ITypedef) helper.assertNonProblem("ulong_type"), CPPBasicType.UNSIGNED_LONG);
+		assertSameType((ITypedef) helper.assertNonProblem("loong_type"), CPPBasicType.LONG);
 	}
 
 	// namespace A {
@@ -10720,5 +11019,44 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPASTFunctionCallExpression call2 = helper.assertNode("s2(43)");
 		ICPPFunction operator = helper.assertNonProblem("operator()");
 		assertEquals(operator, call2.getOverload());
+	}
+
+	//  void f(int &&a);
+	public void testRValueReferenceSignature_427856() throws Exception {
+		IASTTranslationUnit tu = parseAndCheckBindings();
+		IASTSimpleDeclaration sd = (IASTSimpleDeclaration) tu.getDeclarations()[0];
+		isParameterSignatureEqual(sd.getDeclarators()[0], "(int&&)");
+	}
+	
+	//	constexpr int waldo1 = 42;
+	//	constexpr auto waldo2 = 43;
+	public void testConstexprVariableIsConst_451091() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPVariable waldo1 = helper.assertNonProblem("waldo1");
+		ICPPVariable waldo2 = helper.assertNonProblem("waldo2");
+		// constexpr on a variable *should* make it const
+		assertSameType(waldo1.getType(), CommonTypes.constInt);
+		assertSameType(waldo2.getType(), CommonTypes.constInt);
+	}
+	
+	//	constexpr int waldo1();
+	//	constexpr int (*waldo2())(int);
+	//	struct S { constexpr int waldo3(); };
+	public void testTypeOfConstexprFunction_451090() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPFunction waldo1 = helper.assertNonProblem("waldo1");
+		ICPPFunction waldo2 = helper.assertNonProblem("waldo2");
+		ICPPFunction waldo3 = helper.assertNonProblem("waldo3");
+		// constexpr on a function *should not* make its return type const
+		assertSameType(waldo1.getType().getReturnType(), CommonTypes.int_);
+		assertSameType(waldo2.getType().getReturnType(),
+				new CPPPointerType(new CPPFunctionType(CommonTypes.int_, new IType[]{ CommonTypes.int_ })));
+		// constexpr on a method *should not* make the method const
+		assertSameType(waldo3.getType(), new CPPFunctionType(CommonTypes.int_, new IType[]{}));
+	}
+	
+	//	void waldo() noexcept;
+	public void testASTCopyForNoexceptDefault_bug456207() throws Exception {
+		parseAndCheckBindings();
 	}
 }

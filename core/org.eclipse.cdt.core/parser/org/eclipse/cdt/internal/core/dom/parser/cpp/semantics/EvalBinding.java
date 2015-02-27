@@ -28,7 +28,6 @@ import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.IVariable;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameterPackType;
@@ -38,8 +37,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.cdt.internal.core.dom.parser.IInternalVariable;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
@@ -317,9 +316,7 @@ public class EvalBinding extends CPPDependentEvaluation {
 
 		IValue value= null;
  		// No need to call getBinding() since a function parameter never has an initial value.
-		if (fBinding instanceof IInternalVariable) {
-			value= ((IInternalVariable) fBinding).getInitialValue(Value.MAX_RECURSION_DEPTH);
-		} else if (fBinding instanceof IVariable) {
+		if (fBinding instanceof IVariable) {
 			value= ((IVariable) fBinding).getInitialValue();
 		} else if (fBinding instanceof IEnumerator) {
 			value= ((IEnumerator) fBinding).getValue();
@@ -377,7 +374,7 @@ public class EvalBinding extends CPPDependentEvaluation {
 
 	@Override
 	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPClassSpecialization within, int maxdepth, IASTNode point) {
+			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
 		IBinding origBinding = getBinding();
 		if (origBinding instanceof ICPPTemplateNonTypeParameter) {
 			if (tpMap != null) {

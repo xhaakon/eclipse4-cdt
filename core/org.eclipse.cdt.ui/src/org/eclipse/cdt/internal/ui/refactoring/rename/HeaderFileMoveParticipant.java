@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Google, Inc and others.
+ * Copyright (c) 2014, 2015 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,11 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.refactoring.rename;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceProxy;
 import org.eclipse.core.resources.IResourceProxyVisitor;
@@ -27,14 +29,16 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
+import org.eclipse.ltk.core.refactoring.participants.ISharableParticipant;
 import org.eclipse.ltk.core.refactoring.participants.MoveArguments;
 import org.eclipse.ltk.core.refactoring.participants.MoveParticipant;
+import org.eclipse.ltk.core.refactoring.participants.RefactoringArguments;
 
 /**
  * Updates include statements and include guards in response to a file or a folder move.
  */
-public class HeaderFileMoveParticipant extends MoveParticipant {
-	private IResource movedResource;
+public class HeaderFileMoveParticipant extends MoveParticipant implements ISharableParticipant {
+	private Map<IResource, MoveArguments> movedResources;
 	private Change change;
 
 	public HeaderFileMoveParticipant() {
@@ -42,63 +46,81 @@ public class HeaderFileMoveParticipant extends MoveParticipant {
 
 	@Override
 	protected boolean initialize(Object element) {
-		if (element instanceof IResource) {
-			this.movedResource = (IResource) element;
-			return true;
+		addElement(element, getArguments());
+		return movedResources != null;
+	}
+
+	@Override
+	public void addElement(Object element, RefactoringArguments arguments) {
+		if (element instanceof IResource && arguments instanceof MoveArguments) {
+			if (movedResources == null)
+				movedResources = new HashMap<>();
+			movedResources.put((IResource) element, (MoveArguments) arguments);
 		}
-		return false;
 	}
 
 	@Override
 	public RefactoringStatus checkConditions(IProgressMonitor pm, CheckConditionsContext context)
 			throws OperationCanceledException {
-		MoveArguments args = getArguments();
-		if (!args.getUpdateReferences())
-			return null;
-		if (movedResource.isLinked())
-			return null;
-
-		Object destinationResource = args.getDestination();
-		if (!(destinationResource instanceof IContainer))
-			return null;
-		final IContainer destination = (IContainer) destinationResource;
-		final IPath destinationLocation = destination.getLocation();
-		if (destinationLocation.equals(movedResource.getLocation().removeLastSegments(1)))
-			return null;
-
 		try {
+			if (movedResources == null)
+				return RefactoringStatus.create(Status.OK_STATUS);
+
 			// Maps the affected files to new, not yet existing, files.
 			final Map<IFile, IFile> movedFiles = new HashMap<>();
-			if (movedResource instanceof IContainer) {
-				final int prefixLength = movedResource.getFullPath().segmentCount() - 1;
-				((IContainer) movedResource).accept(new IResourceProxyVisitor() {
-					@Override
-					public boolean visit(IResourceProxy proxy) throws CoreException {
-						if (proxy.isLinked())
-							return false;
-						if (proxy.getType() == IResource.FILE) {
-							IFile file = (IFile) proxy.requestResource();
-							movedFiles.put(file, destination.getFile(file.getFullPath().removeFirstSegments(prefixLength)));
-							return false;
+
+			for (Map.Entry<IResource, MoveArguments> entry : movedResources.entrySet()) {
+				IResource movedResource = entry.getKey();
+				MoveArguments args = entry.getValue();
+				if (!args.getUpdateReferences())
+					continue;
+				if (movedResource.isLinked())
+					continue;
+
+				Object destinationResource = args.getDestination();
+				if (!(destinationResource instanceof IContainer))
+					continue;
+				final IContainer destination = (IContainer) destinationResource;
+				final IPath destinationLocation = destination.getLocation();
+				if (destinationLocation.equals(movedResource.getLocation().removeLastSegments(1)))
+					continue;
+		
+				if (movedResource instanceof IFolder) {
+					IFolder folder = (IFolder) movedResource;
+					final int prefixLength = folder.getFullPath().segmentCount() - 1;
+					folder.accept(new IResourceProxyVisitor() {
+						@Override
+						public boolean visit(IResourceProxy proxy) throws CoreException {
+							if (proxy.isLinked())
+								return false;
+							if (proxy.getType() == IResource.FILE) {
+								IFile file = (IFile) proxy.requestResource();
+								movedFiles.put(file, destination.getFile(file.getFullPath().removeFirstSegments(prefixLength)));
+								return false;
+							}
+							return true;
 						}
-						return true;
-					}
-				}, IResource.NONE);
-			} else if (movedResource instanceof IFile) {
-				IFile file = (IFile) movedResource;
-				movedFiles.put(file, destination.getFile(new Path(movedResource.getName())));
+					}, IResource.NONE);
+				} else if (movedResource instanceof IFile) {
+					IFile file = (IFile) movedResource;
+					movedFiles.put(file, destination.getFile(new Path(movedResource.getName())));
+				}
 			}
-	
-			HeaderFileReferenceAdjuster includeAdjuster = new HeaderFileReferenceAdjuster(movedFiles);
+
+			HeaderFileReferenceAdjuster includeAdjuster = new HeaderFileReferenceAdjuster(movedFiles,
+					Collections.<IContainer, IContainer>emptyMap(),	getProcessor());
 			change = includeAdjuster.createChange(context, pm);
 		} catch (CoreException e) {
 			return RefactoringStatus.create(e.getStatus());
+		} finally {
+			pm.done();
 		}
 		return RefactoringStatus.create(Status.OK_STATUS);
 	}
 
 	@Override
 	public Change createPreChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
+		change = RenameParticipantHelper.postprocessParticipantChange(change, this);
 		pm.done();
 		return change;
 	}

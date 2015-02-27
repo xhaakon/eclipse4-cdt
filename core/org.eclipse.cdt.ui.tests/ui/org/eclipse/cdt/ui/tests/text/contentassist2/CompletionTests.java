@@ -14,8 +14,14 @@
  *     Jens Elmenthaler - http://bugs.eclipse.org/173458 (camel case completion)
  *     Nathan Ridge
  *     Thomas Corbat (IFS)
+ *	   Michael Woski
  *******************************************************************************/
 package org.eclipse.cdt.ui.tests.text.contentassist2;
+
+import static org.eclipse.cdt.ui.tests.text.contentassist2.AbstractContentAssistTest.CompareType.CONTEXT;
+import static org.eclipse.cdt.ui.tests.text.contentassist2.AbstractContentAssistTest.CompareType.DISPLAY;
+import static org.eclipse.cdt.ui.tests.text.contentassist2.AbstractContentAssistTest.CompareType.ID;
+import static org.eclipse.cdt.ui.tests.text.contentassist2.AbstractContentAssistTest.CompareType.REPLACEMENT;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,8 +41,6 @@ import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
 import org.eclipse.cdt.ui.CUIPlugin;
 
 import org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistPreference;
-
-import static org.eclipse.cdt.ui.tests.text.contentassist2.AbstractContentAssistTest.CompareType.*;
 
 /**
  * A collection of code completion tests.
@@ -99,6 +103,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//				void m1private();
 	//	};
 	//	typedef C1 T1;
+	//	using A1 = C1;
 	//
 	//	class C2 : public T1 {
 	//		public:
@@ -149,6 +154,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//			T add(T tOther) {
 	//				return fTField + tOther;
 	//			}
+	//		class NestedClass{};
 	//	};
 	//	// bug 109480
 	//	class Printer
@@ -190,6 +196,12 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//	template<>
 	//	struct Specialization<int, int> {
 	//	};
+	//
+	//	template<typename T1, typename T2>
+	//	using AliasForSpecialization = Specialization<T1, T2>;
+	//
+	//	template<typename T1, typename T2>
+	//	using AliasForTemplateAlias = AliasForSpecialization<T1, T2>;
 
 	public CompletionTests(String name) {
 		super(name, true);
@@ -667,8 +679,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//#  d/*cursor*/
 	public void testCompletePreprocessorDirective2() throws Exception {
 		final String[] expected= { "define " };
-		assertCompletionResults(fCursorOffset, expected,
-				REPLACEMENT);
+		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
 	}
 
 	//#  if d/*cursor*/
@@ -688,6 +699,76 @@ public class CompletionTests extends AbstractContentAssistTest {
 	public void testTemplateMethod() throws Exception {
 		// see https://bugs.eclipse.org/bugs/show_bug.cgi?id=172436
 		final String[] expected= { "tConvert(void)" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	// void f(){T1::~/*cursor*/
+	public void testTypedefSyntheticMembers_415495() throws Exception {
+		final String[] expected = {};
+		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
+	}
+
+	// void f(){A1::~/*cursor*/
+	public void testAliasSyntheticMembers_415495() throws Exception {
+		final String[] expected = {};
+		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
+	}
+
+	// class BaseTest : Spec/*cursor*/
+	public void testBaseClassIsStruct_434446() throws Exception {
+		final String[] expected = { "Specialization<>" };
+		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
+	}
+
+	// class BaseTest : Alias/*cursor*/
+	public void testBaseClassIsTemplateAlias_434446() throws Exception {
+		// TODO Bug 455797, proposals are currently not presented as templates.
+		final String[] expected = { "AliasForSpecialization",
+				"AliasForTemplateAlias" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	// template<typename TP_Param>
+	// class BaseTest : TP/*cursor*/
+	public void testBaseClassIsTemplateParameter() throws Exception {
+		final String[] expected = { "TP_Param" };
+		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
+	}
+
+	//	template<typename T>
+	//	struct Parent {
+	//	protected:
+	//		struct Nested {
+	//		protected:
+	//			using TParam = T;
+	//		};
+	//	};
+	//
+	//	struct NestingTest: Parent<int> {
+	//		struct A : Nested {
+	//			TP/*cursor*/
+	//		};
+	//	};
+	public void testNestedBaseTemplateMembers_422401() throws Exception {
+		final String[] expected = { "TParam" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	//	template<typename T>
+	//	class Parent {
+	//		struct NestedHidden {};
+	//	protected:
+	//		struct NestedProtected {};
+	//	public:
+	//		struct NestedPublic {};
+	//	};
+	//
+	//	template<typename T>
+	//	class NestingTest: Parent<T> {
+	//		Parent<T>::/*cursor*/
+	//	};
+	public void testNestedBaseTemplateMembersFromUnknownScope_456752() throws Exception {
+		final String[] expected = { "NestedProtected", "NestedPublic" };
 		assertCompletionResults(fCursorOffset, expected, ID);
 	}
 
@@ -1396,6 +1477,32 @@ public class CompletionTests extends AbstractContentAssistTest {
 	public void testTemplateArgumentList() throws Exception {
 		setCommaAfterFunctionParameter(CCorePlugin.INSERT);
 		final String[] expected = { "Specialization<typename T1, typename T2>" };
+		assertContentAssistResults(fCursorOffset, expected, true, DISPLAY);
+	}
+
+	//	template<typename T,typename U>
+	//	struct TestTemplate {
+	//		class NestedClass {};
+	//	};
+	//	template<typename T>
+	//	struct TestTemplate<T,int> {
+	//		class NestedClass {};
+	//	};
+	//	template<>
+	//	struct TestTemplate<int,int> {
+	//		class NestedClass {};
+	//	};
+	//	template<typename T,typename U>
+	//	class TestTemplateSelfReference : TestTemplate<T,U>::/*cursor*/
+	public void testTemplateSelfReference_bug456101() throws Exception {
+		final String[] expected = { "NestedClass" };
+		assertContentAssistResults(fCursorOffset, expected, true, DISPLAY);
+	}
+
+	//	template<typename T>
+	//	class TestTemplateSelfReference : TClass<T>::/*cursor*/
+	public void testTemplateSelfReferencePDOM_bug456101() throws Exception {
+		final String[] expected = { "NestedClass" };
 		assertContentAssistResults(fCursorOffset, expected, true, DISPLAY);
 	}
 

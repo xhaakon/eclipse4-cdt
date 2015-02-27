@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2013, 2014 Google, Inc and others.
+ * Copyright (c) 2013, 2015 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -429,6 +429,23 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	}
 
 	//h1.h
+
+	//h2.h
+
+	//h3.h
+
+	//source.cpp
+	//#include "h1.h"
+	//#include "h2.h"  //  IWYU pragma: keep
+	//#include "h3.h"  /*   IWYU pragma: keep   */
+	//====================
+	//#include "h2.h"  //  IWYU pragma: keep
+	//#include "h3.h"  /*   IWYU pragma: keep   */
+	public void testPragmaKeep() throws Exception {
+		assertExpectedResults();
+	}
+
+	//h1.h
 	//#define M2(t, p) t p
 
 	//h2.h
@@ -550,6 +567,34 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//  b.m(1);
 	//}
 	public void testMethodDefinedInHeader() throws Exception {
+		assertExpectedResults();
+	}
+
+	//h1.h
+	//struct A {
+	//  void operator()();
+	//};
+	//struct B : public A {
+	//};
+
+	//h2.h
+	//#include "h1.h"
+	//
+	//struct C {
+	//  B b;
+	//};
+
+	//source.cpp
+	//void test(C* c) {
+	//  c->b();
+	//}
+	//====================
+	//#include "h2.h"
+	//
+	//void test(C* c) {
+	//  c->b();
+	//}
+	public void testFieldAccess_442841() throws Exception {
 		assertExpectedResults();
 	}
 

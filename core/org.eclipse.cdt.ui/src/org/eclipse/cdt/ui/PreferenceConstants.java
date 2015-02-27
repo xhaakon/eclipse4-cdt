@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2012 IBM Corporation and others.
+ * Copyright (c) 2005, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -931,6 +931,41 @@ public class PreferenceConstants {
 	public static final String FORMATTER_PROFILE = "formatter_profile"; //$NON-NLS-1$
 
 	/**
+	 * Preference key determining the scope of formatting when the selection is empty.
+	 * <p>
+	 * Value is of type {@code String}.
+	 *
+	 * @since 5.9
+	 */
+	public final static String FORMATTING_SCOPE_FOR_EMPTY_SELECTION = "formattingScopeForEmptySelection"; //$NON-NLS-1$
+	
+	/**
+	 * The value of {@link #FORMATTING_SCOPE_FOR_EMPTY_SELECTION} specifying that the formatting
+	 * applies to the whole document.
+	 *
+	 * @since 5.9
+	 */
+	public static final String FORMATTING_SCOPE_DOCUMENT = "document"; //$NON-NLS-1$
+
+	/**
+	 * The value of {@link #FORMATTING_SCOPE_FOR_EMPTY_SELECTION} specifying that the formatting
+	 * applies to the containing statement.
+	 *
+	 * @since 5.9
+	 */
+	public static final String FORMATTING_SCOPE_STATEMENT = "statement"; //$NON-NLS-1$
+
+	/**
+	 * Preference key for whether to ask user for how formatting of an empty selection
+	 * should be interpreted.
+	 * <p>
+	 * Value is of type {@code Boolean}. The default is {@code true}.
+	 *
+	 * @since 5.9
+	 */
+	public final static String FORMATTING_CONFIRM_SCOPE_FOR_EMPTY_SELECTION = "formattingConfirmScopeForEmptySelection"; //$NON-NLS-1$
+
+	/**
 	 * Preference key for whether to ensure a newline at the end of files when saving.
 	 *
 	 * @since 4.0
@@ -953,6 +988,13 @@ public class PreferenceConstants {
 	 * @since 5.1
 	 */
 	public final static String REMOVE_TRAILING_WHITESPACE_LIMIT_TO_EDITED_LINES = "removeTrailingWhitespaceEditedLines"; //$NON-NLS-1$
+
+	/**
+	 * Style format code on save
+	 *
+	 * @since 5.9
+	 */
+	public final static String FORMAT_SOURCE_CODE = "formatSourceCode"; //$NON-NLS-1$
 
 	/**
 	 * A named preference that defines whether the hint to make hover sticky should be shown.
@@ -2155,9 +2197,14 @@ public class PreferenceConstants {
 		store.setDefault(REMOVE_TRAILING_WHITESPACE, true);
 		store.setDefault(REMOVE_TRAILING_WHITESPACE_LIMIT_TO_EDITED_LINES, true);
 		store.setDefault(ENSURE_NEWLINE_AT_EOF, true);
+		store.setDefault(PreferenceConstants.FORMAT_SOURCE_CODE, false);
 
 		// Formatter profile
 		store.setDefault(FORMATTER_PROFILE, FormatterProfileManager.DEFAULT_PROFILE);
+
+		// Formatting behavior.
+		store.setDefault(FORMATTING_SCOPE_FOR_EMPTY_SELECTION, FORMATTING_SCOPE_DOCUMENT);
+		store.setDefault(FORMATTING_CONFIRM_SCOPE_FOR_EMPTY_SELECTION, true);
 
 		// Content assist
 		store.setDefault(CODEASSIST_EXCLUDED_CATEGORIES, "org.eclipse.cdt.ui.textProposalCategory\0"); //$NON-NLS-1$
@@ -2279,11 +2326,11 @@ public class PreferenceConstants {
      *     the workspace setting should be taken. Note that passing {@code null} should be avoided.
      * @return Returns the node matching the given context.
      */
-	private static IEclipsePreferences getPreferenceNode(String key, ICProject project) {
+	private static IEclipsePreferences getPreferenceNode(String key, IProject project) {
 		IEclipsePreferences node = null;
 
 		if (project != null) {
-			node = new ProjectScope(project.getProject()).getNode(CUIPlugin.PLUGIN_ID);
+			node = new ProjectScope(project).getNode(CUIPlugin.PLUGIN_ID);
 			if (node.get(key, null) != null) {
 				return node;
 			}
@@ -2308,10 +2355,37 @@ public class PreferenceConstants {
 	 * @param project The current context or {@code null} if no context is available and
 	 *     the workspace setting should be taken. Note that passing {@code null} should be avoided.
 	 * @return Returns the current value for the string.
+	 * @since 5.9
+	 */
+	public static String getPreference(String key, IProject project) {
+		return getPreference(key, project, null);
+	}
+
+	/**
+	 * Returns the string value for the given key in the given context.
+	 *
+	 * @param key The preference key
+	 * @param project The current context or {@code null} if no context is available and
+	 *     the workspace setting should be taken. Note that passing {@code null} should be avoided.
+	 * @return Returns the current value for the string.
 	 * @since 5.0
 	 */
 	public static String getPreference(String key, ICProject project) {
-		return getPreference(key, project, null);
+		return getPreference(key, project.getProject());
+	}
+
+	/**
+	 * Returns the string value for the given key in the given context.
+	 *
+	 * @param key The preference key
+	 * @param project The current context or {@code null} if no context is available and
+	 *     the workspace setting should be taken. Note that passing {@code null} should be avoided.
+	 * @param defaultValue The default value if not specified in the preferences.
+	 * @return Returns the current value of the preference.
+	 * @since 5.9
+	 */
+	public static String getPreference(String key, IProject project, String defaultValue) {
+		return getPreferenceNode(key, project).get(key, defaultValue);
 	}
 
 	/**
@@ -2325,7 +2399,22 @@ public class PreferenceConstants {
 	 * @since 5.6
 	 */
 	public static String getPreference(String key, ICProject project, String defaultValue) {
-		return getPreferenceNode(key, project).get(key, defaultValue);
+		return getPreference(key, project.getProject(), defaultValue);
+	}
+
+	/**
+	 * Returns the integer value for the given key in the given context.
+	 *
+	 * @param key The preference key
+	 * @param project The current context or {@code null} if no context is available and
+	 *     the workspace setting should be taken. Note that passing {@code null} should
+	 *     be avoided.
+	 * @param defaultValue The default value if not specified in the preferences.
+	 * @return Returns the current value of the preference.
+	 * @since 5.9
+	 */
+	public static int getPreference(String key, IProject project, int defaultValue) {
+		return getPreferenceNode(key, project).getInt(key, defaultValue);
 	}
 
 	/**
@@ -2340,7 +2429,21 @@ public class PreferenceConstants {
 	 * @since 5.1
 	 */
 	public static int getPreference(String key, ICProject project, int defaultValue) {
-		return getPreferenceNode(key, project).getInt(key, defaultValue);
+		return getPreference(key, project.getProject(), defaultValue);
+	}
+
+	/**
+	 * Returns the boolean value for the given key in the given context.
+	 *
+	 * @param key The preference key
+	 * @param project The current context or {@code null} if no context is available and
+	 *     the workspace setting should be taken. Note that passing {@code null} should be avoided.
+	 * @param defaultValue The default value if not specified in the preferences.
+	 * @return Returns the current value of the preference.
+	 * @since 5.9
+	 */
+	public static boolean getPreference(String key, IProject project, boolean defaultValue) {
+		return getPreferenceNode(key, project).getBoolean(key, defaultValue);
 	}
 
 	/**
@@ -2354,7 +2457,7 @@ public class PreferenceConstants {
 	 * @since 5.1
 	 */
 	public static boolean getPreference(String key, ICProject project, boolean defaultValue) {
-		return getPreferenceNode(key, project).getBoolean(key, defaultValue);
+		return getPreference(key, project.getProject(), defaultValue);
 	}
 
 	/**

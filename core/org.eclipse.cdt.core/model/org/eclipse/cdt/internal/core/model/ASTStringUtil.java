@@ -9,6 +9,7 @@
  *     Anton Leherbauer (Wind River Systems) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
  *     Sergey Prigogin (Google)
+ *     Marc-Andre Laperle (Ericsson)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.model;
 
@@ -59,6 +60,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDecltypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeleteExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator.RefQualifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTPackExpansionExpression;
@@ -314,6 +316,17 @@ public class ASTStringUtil {
 					if (cppFunctionDecl.isVolatile()) {
 						buffer.append(Keywords.VOLATILE).append(' ');
 					}
+					RefQualifier refQualifier = cppFunctionDecl.getRefQualifier();
+					if (refQualifier != null) {
+						switch (refQualifier) {
+						case LVALUE:
+							buffer.append(Keywords.cpAMPER).append(' ');
+							break;
+						case RVALUE:
+							buffer.append(Keywords.cpAND).append(' ');
+							break;
+						}
+					}
 					if (cppFunctionDecl.isPureVirtual()) {
 						buffer.append("=0 "); //$NON-NLS-1$
 					}
@@ -442,7 +455,11 @@ public class ASTStringUtil {
 					buffer.append(' ').append(Keywords.RESTRICT);
 				}
 			} else if (pointerOperator instanceof ICPPASTReferenceOperator) {
-				buffer.append(Keywords.cpAMPER);
+				if (((ICPPASTReferenceOperator) pointerOperator).isRValueReference()) {
+					buffer.append(Keywords.cpAND);
+				} else {
+					buffer.append(Keywords.cpAMPER);
+				}
 			}
 		} 
 		return buffer;

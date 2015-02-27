@@ -57,7 +57,7 @@ class PDOMCPPEnumerationSpecialization extends PDOMCPPSpecialization
 	private volatile IType fFixedType= ProblemBinding.NOT_INITIALIZED;
 	private PDOMCPPEnumScope fScope; // No need for volatile, all fields of PDOMCPPEnumScope are final.
 
-	public PDOMCPPEnumerationSpecialization(PDOMLinkage linkage, PDOMNode parent,
+	public PDOMCPPEnumerationSpecialization(PDOMCPPLinkage linkage, PDOMNode parent,
 			ICPPEnumeration enumeration, PDOMBinding specialized) throws CoreException {
 		super(linkage, parent, (ICPPSpecialization) enumeration, specialized);
 		storeProperties(enumeration);
@@ -258,6 +258,6 @@ class PDOMCPPEnumerationSpecialization extends PDOMCPPSpecialization
 				return i < enumerators.length ? enumerators[i] : enumerator;
 			}
 		}
-		return null;
+		return enumerator;
 	}
 }

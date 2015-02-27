@@ -24,23 +24,20 @@ import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.waits.Conditions;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotText;
-import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
 
 @RunWith(SWTBotJunit4ClassRunner.class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class TestEnvironmentVars extends AbstractTest {
-
-	@BeforeClass
-	public static void beforeClass() throws Exception {
-		AbstractTest.init("GnuProject2");
-	}
 
 	// Verify we can pass an unknown env var in configure options and it will be
 	// nulled out
 	// Verifies fix for Bug: #303616
 	@Test
-	public void referenceUnknownEnvVar() throws Exception {
+	public void t1referenceUnknownEnvVar() throws Exception {
 		SWTBotShell shell = openProperties("Autotools", "Configure Settings");
 		// Set the configure parameters to be --enable-jeff via user-defined
 		// options
@@ -80,7 +77,7 @@ public class TestEnvironmentVars extends AbstractTest {
 	// Verify we can set an environment variable and use it as a configure
 	// parameter
 	// Verifies fix for Bug: #303616
-	public void setEnvVar() throws Exception {
+	private void setEnvVar() throws Exception {
 		openProperties("C/C++ Build", "Environment");
 		bot.button("Add...").click();
 		SWTBotShell shell = bot.shell("New variable");
@@ -124,7 +121,7 @@ public class TestEnvironmentVars extends AbstractTest {
 	// Verify we can set an environment variable prior to the configuration
 	// command and
 	// it will be seen by the configure script
-	public void setEnvVarOnCommandLine() throws Exception {
+	private void setEnvVarOnCommandLine() throws Exception {
 		IPath path = checkProject().getLocation();
 		// Create a fake configure script which prints out the values of
 		// envvars some_var1, some_var2, and some_var3
@@ -159,7 +156,7 @@ public class TestEnvironmentVars extends AbstractTest {
 		// the script
 		clickContextMenu(projectExplorer.bot().tree().select(projectName),
 				"Reconfigure Project");
-		bot.shell("C/C++ - Eclipse Platform").activate();
+		focusMainShell();
 		bot.sleep(3000);
 		SWTBotView consoleView = bot.viewByPartName("Console");
 		consoleView.setFocus();

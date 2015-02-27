@@ -17,14 +17,15 @@ import static org.eclipse.swtbot.swt.finder.matchers.WidgetMatcherFactory.withRe
 import static org.eclipse.swtbot.swt.finder.matchers.WidgetMatcherFactory.withStyle;
 import static org.eclipse.swtbot.swt.finder.waits.Conditions.waitForWidget;
 import static org.eclipse.swtbot.swt.finder.waits.Conditions.widgetIsEnabled;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectNature;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
 import org.eclipse.swt.SWT;
@@ -52,27 +53,34 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.hamcrest.Matcher;
 import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public abstract class AbstractTest {
+
+	private static final String PROJECT_NAME = "GnuProject";
+
 	protected static SWTWorkbenchBot bot;
 	protected static String projectName;
 	protected static SWTBotShell mainShell;
 	protected static SWTBotView projectExplorer;
 
+	@BeforeClass
+	public static void initAbstractClass() throws Exception {
+		AbstractTest.init(PROJECT_NAME);
+	}
+
+	@AfterClass
+	public static void afterClass() throws Exception {
+		AbstractTest.deleteProject(PROJECT_NAME);
+	}
+
 	public static void init(String projectName) throws Exception {
 		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US";
+		SWTBotPreferences.PLAYBACK_DELAY = 10;
 		bot = new SWTWorkbenchBot();
-		mainShell = null;
-		for (int i = 0, attempts = 100; i < attempts; i++) {
-			for (SWTBotShell shell : bot.shells()) {
-				if (shell.getText().contains("Eclipse Platform")) {
-					mainShell = shell;
-					shell.setFocus();
-					break;
-				}
-			}
-		}
-		assertNotNull(mainShell);
+		bot.sleep(5000);
+		mainShell = getMainShell();
 		// Close the Welcome view if it exists
 		try {
 			bot.viewByTitle("Welcome").close();
@@ -120,6 +128,10 @@ public abstract class AbstractTest {
 		assertTrue(nature != null);
 
 		projectExplorer = bot.viewByTitle("Project Explorer");
+	}
+
+	public static void deleteProject(String projectName) throws CoreException {
+		ResourcesPlugin.getWorkspace().getRoot().getProject(projectName).delete(true, null);
 	}
 
 	public static class NodeAvailableAndSelect extends DefaultCondition {
@@ -303,7 +315,7 @@ public abstract class AbstractTest {
 				.toolbarDropDownButton("Display Selected Console");
 		org.hamcrest.Matcher<MenuItem> withRegex = withRegex(".*" + consoleType
 				+ ".*");
-		bot.shell("C/C++ - Eclipse Platform").activate();
+		focusMainShell();
 		b.menuItem(withRegex).click();
 		try {
 			b.pressShortcut(KeyStroke.getInstance("ESC"));
@@ -311,6 +323,24 @@ public abstract class AbstractTest {
 		}
 		view.setFocus();
 		return view;
+	}
+
+    /**
+     * Focus on the main window
+     */
+    public static void focusMainShell() {
+        SWTBotShell shell = getMainShell();
+        shell.activate();
+    }
+
+	private static SWTBotShell getMainShell() {
+		for (SWTBotShell shellBot : bot.shells()) {
+			if (shellBot.getText().toLowerCase().contains("eclipse")) {
+				return shellBot;
+			}
+		}
+		fail("Could not find main shell");
+		return null;
 	}
 
 	@After

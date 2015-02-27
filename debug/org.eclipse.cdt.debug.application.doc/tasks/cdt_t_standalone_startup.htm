@@ -16,11 +16,11 @@
 The script contains the command-line needed to start Eclipse and to pass appropriate
 parameters at start-up.  The following are the command-line options supported:
 
-<h4>-a</h4>
+<h4>-a [pid]</h4>
 <p>This option specifies that you want to attach and debug an existing executable that is running on your system.
-The option will bring up a dialog which contains a list of current executables running and you may choose the
-executable(s) you wish to attach to.  You also have the option of starting a new executable, if desired, but you
-cannot specify a build log using this method.
+If no pid is specified or an invalid pid is specified, the option will bring up a dialog which contains a list of current executables running and you may choose the
+executable(s) you wish to attach to.  The dialog will also give you the option of starting a new executable, if desired, but you
+cannot specify a build log using this method.  When used at the same as the -r option, the pid argument is ignored.
 
 <h4>-b &lt;build log&gt;</h4>
 <p>This option specifies an optional build log to use for indexing the source.  The build log
@@ -48,6 +48,21 @@ You then have the choice of simply hitting the OK button to debug the last execu
 as desired.  If the executable location you specify is invalid or no executable is specified and no previous executable exists,
 a dialog will be brought up to allow you to enter the required information.  The dialog will be appropriate to whether
 you have selected to debug a core file (-c specified) or not.</p>
+
+<h4>-r &lt;addr:port&gt;</h4>
+<p>This option specified a hostname or IP address and and IP port to connect to to perform remote debugging.
+The gdbserver must be running on the target and waiting for a connection on the specified port.
+This option can be used at the same time as the -a option.  In such a case
+a Remote-Attach session will be started allowing the user to attach to  
+different processes on the remote target.  The user will need to press
+the 'connect' button or use the context-menu of the Debug view to choose one or more processes
+to attach to. In this case the -e flag is optional, and when not specified,
+a dialog will be used instead to prompt for the binary's location.
+This option, when used without -a, will trigger a manual Remote debugging session towards
+a single, pre-selected binary and therefore requires the use of the -e option
+to specify the location of the binary on the local machine that matches the one on the 
+remote target.</p>
+
 
 <h2>Automated Set-up</h3>
 

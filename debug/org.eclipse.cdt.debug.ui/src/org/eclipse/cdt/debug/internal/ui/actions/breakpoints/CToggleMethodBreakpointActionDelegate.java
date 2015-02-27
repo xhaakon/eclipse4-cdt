@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2008 IBM Corporation and others.
+ * Copyright (c) 2000, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Freescale 	- Add support for conditionally activating an action
  *******************************************************************************/
 package org.eclipse.cdt.debug.internal.ui.actions.breakpoints;
 
@@ -44,5 +45,11 @@ public class CToggleMethodBreakpointActionDelegate extends CToggleBreakpointObje
 	    else {
 	        target.toggleMethodBreakpoints(part, selection);
 	    }
+	}
+
+	@Override
+	protected boolean canPerformAction(IToggleBreakpointsTarget target,
+			IWorkbenchPart part, ISelection selection) {
+		return target.canToggleMethodBreakpoints(part, selection);
 	}
 }

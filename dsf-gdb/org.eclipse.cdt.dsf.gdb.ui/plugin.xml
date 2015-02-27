@@ -328,6 +328,54 @@
             class="org.eclipse.cdt.dsf.gdb.internal.ui.commands.SelectPrevTraceRecordCommandHandler"
             commandId="org.eclipse.cdt.dsf.gdb.ui.command.selectPreviousTraceRecord">
       </handler>
+      <handler
+      		class="org.eclipse.cdt.dsf.gdb.internal.ui.actions.DsfLoadSymbolsCommandHandler"
+      		commandId="org.eclipse.cdt.debug.ui.command.loadSymbols">
+			 <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.modules.ModulesVMNode$ModuleVMContext">
+			            </instanceof>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen> 
+      </handler>
+      <handler
+      		class="org.eclipse.cdt.dsf.gdb.internal.ui.actions.DsfLoadSymbolsCommandHandler"
+      		commandId="org.eclipse.cdt.debug.ui.command.loadAllSymbols">
+			 <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="or">
+			            <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.modules.ModulesVMNode$ModuleVMContext">
+			            </instanceof>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen> 
+      </handler>
+            <handler
+            class="org.eclipse.cdt.dsf.gdb.internal.ui.commands.AddLocalsExpressionCommandHandler"
+            commandId="org.eclipse.cdt.dsf.ui.addLocalsExpression">
+            <activeWhen>
+            <with variable="org.eclipse.core.runtime.Platform">
+               <test property="org.eclipse.core.runtime.bundleState"
+            	   args="org.eclipse.cdt.dsf.gdb.ui" value="ACTIVE"/>
+            </with>
+            </activeWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.dsf.gdb.internal.ui.commands.AddRegistersExpressionCommandHandler"
+            commandId="org.eclipse.cdt.dsf.ui.addRegistersExpression">
+            <activeWhen>
+            <with variable="org.eclipse.core.runtime.Platform">
+               <test property="org.eclipse.core.runtime.bundleState"
+            	   args="org.eclipse.cdt.dsf.gdb.ui" value="ACTIVE"/>
+            </with>
+            </activeWhen>
+      </handler>
    </extension>
    <extension
          point="org.eclipse.ui.menus">

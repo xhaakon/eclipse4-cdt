@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 IBM Corporation and others.
+ * Copyright (c) 2005, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -126,14 +126,6 @@ public class AST2TemplateTests extends AST2TestBase {
 
 	private IASTTranslationUnit parseAndCheckBindings(final String code) throws Exception {
 		return parseAndCheckBindings(code, CPP);
-	}
-
-	protected IASTTranslationUnit parseAndCheckImplicitNameBindings() throws Exception {
-		IASTTranslationUnit tu = parse(getAboveComment(), CPP, false, true);
-		NameCollector col = new NameCollector(true /* Visit implicit names */);
-		tu.accept(col);
-		assertNoProblemBindings(col);
-		return tu;
 	}
 
 	protected BindingAssertionHelper getAssertionHelper() throws ParserException, IOException {
@@ -393,22 +385,6 @@ public class AST2TemplateTests extends AST2TestBase {
 		ICPPMethod f2 = (ICPPMethod) col.getName(8).resolveBinding();
 
 		assertSame(f2, f1);
-	}
-
-	// template < class T > void f (T);
-	// void main() {
-	//    f(1);
-	// }
-	public void testTemplateFunctionImplicitInstantiation() throws Exception {
-		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
-		NameCollector col = new NameCollector();
-		tu.accept(col);
-
-		ICPPFunctionTemplate f1 = (ICPPFunctionTemplate) col.getName(1).resolveBinding();
-		IFunction f2 = (IFunction) col.getName(5).resolveBinding();
-
-		assertTrue(f2 instanceof ICPPTemplateInstance);
-		assertSame(((ICPPTemplateInstance) f2).getTemplateDefinition(), f1);
 	}
 
 	// template < class T > void f(T);         // #1
@@ -2268,6 +2244,35 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper bh= new BindingAssertionHelper(getAboveComment(), CPP);
 		bh.assertNonProblem("make_pair(1", 9, ICPPFunction.class);
     }
+
+	// template < class T > void f (T);
+	// void main() {
+	//    f(1);
+	// }
+	public void testFunctionTemplateImplicitInstantiation() throws Exception {
+		IASTTranslationUnit tu = parse(getAboveComment(), CPP);
+		NameCollector col = new NameCollector();
+		tu.accept(col);
+
+		ICPPFunctionTemplate f1 = (ICPPFunctionTemplate) col.getName(1).resolveBinding();
+		IFunction f2 = (IFunction) col.getName(5).resolveBinding();
+
+		assertTrue(f2 instanceof ICPPTemplateInstance);
+		assertSame(((ICPPTemplateInstance) f2).getTemplateDefinition(), f1);
+	}
+
+	//	template <class T>
+	//	int waldo(T (*function)());
+	//
+	//	template <class T, class U>
+	//	int waldo(T (*function)(U));
+	//
+	//	void test() {
+	//	  waldo(+[]() {});
+	//	}
+	public void testFunctionTemplateWithLambdaArgument_443361() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	//	template<class T>
 	//	struct A {};
@@ -7041,6 +7046,31 @@ public class AST2TemplateTests extends AST2TestBase {
 		assertSameType(tRef.getTemplateParameterMap().getArgument(0).getTypeValue(), Sint);
 	}
 
+	//	template <typename T>
+	//	struct A {
+	//	  typedef void (T::*func)();
+	//	};
+	//
+	//	template <typename T>
+	//	struct B {
+	//	  template <typename A<T>::func U>
+	//	  class C {};
+	//
+	//	  template <typename A<T>::func U>
+	//	  using Waldo = C<U>;
+	//	};
+	//
+	//	struct D {
+	//	  void m();
+	//	};
+	//
+	//	void test() {
+	//	  B<D>::Waldo<&D::m>();
+	//	}
+	public void testTemplatedAliasWithPointerToMember_448785() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	// namespace NS {
 	//     template<typename T>
 	//     struct S {
@@ -8529,6 +8559,114 @@ public class AST2TemplateTests extends AST2TestBase {
 	//
 	//	};
 	public void testConstexprFunctionCallWithNonConstexprArguments_429891() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename> class A {};
+	//	template <int>      class B {};
+	//	const int D = 4;
+	//
+	//	// Type template parameter
+	//	template <typename A = A<int>>
+	//	struct C1 {};
+	//	C1<> c1;
+	//
+	//	// Template template parameter
+	//	template <template <typename> class A = A>
+	//	struct C2 { typedef A<int> type; };
+	//	C2<>::type c2;
+	//
+	//	// Non-type template parameter
+	//	template <int D = D>
+	//	struct C3 { typedef B<D> type; };
+	//	C3<>::type c3;
+	public void testNameLookupInDefaultTemplateArgument_399145() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template <typename T>
+	//	struct A {
+	//	  typedef T t;
+	//	};
+	//
+	//	void f(char*);
+	//	void g(int);
+	//
+	//	void test() {
+	//	  {
+	//	    struct B {
+	//	      typedef char* b;
+	//	    };
+	//	    A<B>::t::b a;
+	//	    f(a);
+	//	  }
+	//	  {
+	//	    struct B {
+	//	      typedef int b;
+	//	    };
+	//	    A<B>::t::b a;
+	//	    g(a);
+	//	  }
+	//	}
+	public void testLocalTypeAsTemplateArgument_442832() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename T>
+	//	struct Bar {};
+	//
+	//	template <typename T>
+	//	auto foo(T t) -> Bar<decltype(t.foo)> {
+	//	    Bar<decltype(t.foo)> bar; // bogus `invalid template arguments` error here
+	//		return bar;
+	//	}
+	//	
+	//	struct S {
+	//		int foo;
+	//	};
+	//	
+	//	int main() {
+	//		Bar<int> var1;
+	//		auto var2 = foo(S());
+	//	}
+	public void testTypeOfUnknownMember_447728() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		IVariable var1 = helper.assertNonProblem("var1");
+		IVariable var2 = helper.assertNonProblem("var2");
+		assertSameType(var1.getType(), var2.getType());
+	}
+	
+	//	template <bool>
+	//	struct integral_constant {
+	//	    static const bool value = true;
+	//	};
+	//
+	//	template <class>
+	//	struct meta2 {
+	//	    struct Test {};
+	//
+	//	    enum {
+	//	        value = sizeof((Test()))
+	//	    };
+	//	};
+	//
+	//	struct meta : integral_constant<meta2<int>::value> {};
+	//
+	//	template <int>
+	//	struct base {
+	//	    int waldo;
+	//	};
+	//
+	//	template <typename>
+	//	struct S : base<meta::value> {
+	//	    using base<meta::value>::waldo;
+	//	};
+	//
+	//	int main() {
+	//	    S<int> s;
+	//	    s.waldo = 42;
+	//	}
+	public void testClassSpecializationInEnumerator_457511() throws Exception {
 		parseAndCheckBindings();
 	}
 }

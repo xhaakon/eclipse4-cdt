@@ -35,37 +35,43 @@
    <extension
          point="org.eclipse.debug.ui.launchConfigurationTabGroups">
       <launchConfigurationTabGroup
-            type="org.eclipse.cdt.launch.applicationLaunchType"
             class="org.eclipse.cdt.debug.internal.ui.launch.PlaceHolderLaunchConfigurationTabGroup"
-            id="org.eclipse.cdt.launch.applicationLaunchTabGroup">
+            helpContextId="org.eclipse.cdt.debug.ui.cdt_debugging_projects"
+            id="org.eclipse.cdt.launch.applicationLaunchTabGroup"
+            type="org.eclipse.cdt.launch.applicationLaunchType">
          <launchMode mode="debug"/>
       </launchConfigurationTabGroup>
       <launchConfigurationTabGroup
-            type="org.eclipse.cdt.launch.applicationLaunchType"
             class="org.eclipse.cdt.debug.internal.ui.launch.PlaceHolderLaunchConfigurationTabGroup"
-            id="org.eclipse.cdt.launch.applicationRunLaunchTabGroup">
+            helpContextId="org.eclipse.cdt.debug.ui.cdt_debugging_projects"
+            id="org.eclipse.cdt.launch.applicationRunLaunchTabGroup"
+            type="org.eclipse.cdt.launch.applicationLaunchType">
          <launchMode mode="run"/>
       </launchConfigurationTabGroup>
       <launchConfigurationTabGroup
-            type="org.eclipse.cdt.launch.attachLaunchType"
             class="org.eclipse.cdt.debug.internal.ui.launch.PlaceHolderLaunchConfigurationTabGroup"
-            id="org.eclipse.cdt.launch.attachLaunchTabGroup">
+            helpContextId="org.eclipse.cdt.debug.ui.cdt_debugging_projects"
+            id="org.eclipse.cdt.launch.attachLaunchTabGroup"
+            type="org.eclipse.cdt.launch.attachLaunchType">
       </launchConfigurationTabGroup>
       <launchConfigurationTabGroup
-            type="org.eclipse.cdt.launch.postmortemLaunchType"
             class="org.eclipse.cdt.debug.internal.ui.launch.PlaceHolderLaunchConfigurationTabGroup"
-            id="org.eclipse.cdt.launch.postmortemLaunchTabGroup">
+            helpContextId="org.eclipse.cdt.debug.ui.cdt_debugging_projects"
+            id="org.eclipse.cdt.launch.postmortemLaunchTabGroup"
+            type="org.eclipse.cdt.launch.postmortemLaunchType">
       </launchConfigurationTabGroup>
       <launchConfigurationTabGroup
-            type="org.eclipse.cdt.launch.remoteApplicationLaunchType"
             class="org.eclipse.cdt.debug.internal.ui.launch.PlaceHolderLaunchConfigurationTabGroup"
-            id="org.eclipse.cdt.launch.remoteApplicationLaunchTabGroup">
+            helpContextId="org.eclipse.cdt.debug.ui.cdt_debugging_projects"
+            id="org.eclipse.cdt.launch.remoteApplicationLaunchTabGroup"
+            type="org.eclipse.cdt.launch.remoteApplicationLaunchType">
          <launchMode mode="debug"/>
       </launchConfigurationTabGroup>
       <launchConfigurationTabGroup
-            type="org.eclipse.cdt.launch.remoteApplicationLaunchType"
             class="org.eclipse.cdt.debug.internal.ui.launch.PlaceHolderLaunchConfigurationTabGroup"
-            id="org.eclipse.cdt.launch.remoteApplicationRunLaunchTabGroup">
+            helpContextId="org.eclipse.cdt.debug.ui.cdt_debugging_projects"
+            id="org.eclipse.cdt.launch.remoteApplicationRunLaunchTabGroup"
+            type="org.eclipse.cdt.launch.remoteApplicationLaunchType">
          <launchMode mode="run"/>
       </launchConfigurationTabGroup>
    </extension>
@@ -679,7 +685,7 @@
                enablesFor="1"
                label="%ToggleWatchpointAction.label"
                icon="icons/elcl16/watchpoint_co.gif"
-               class="org.eclipse.debug.ui.actions.ToggleWatchpointActionDelegate"
+               class="org.eclipse.cdt.debug.internal.ui.actions.breakpoints.CToggleWatchpointActionDelegate"
                tooltip="%ToggleWatchpointAction.tooltip"
                menubarPath="additions"
                id="org.eclipse.cdt.debug.ui.actions.ToggleWatchpointAction"/>
@@ -792,47 +798,10 @@
                   class="org.eclipse.cdt.debug.core.model.ICVariable">
             </selection>
          </action>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.RestoreDefaultRegisterGroupsActionDelegate"
-               helpContextId="restore_default_register_groups_action_context"
-               id="org.eclipse.cdt.debug.ui.restoreDefaultRegisterGroupsAction"
-               label="%RestoredefaultRegisterGroupsAction.label"
-               menubarPath="additions"
-               style="push"
-               tooltip="%RestoredefaultRegisterGroupsAction.tooltip">
-            <enablement>
-               <pluginState
-                     id="org.eclipse.cdt.debug.ui"
-                     value="activated"/>
-            </enablement>
-         </action>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.AddRegisterGroupActionDelegate"
-               helpContextId="add_register_group_action_context"
-               id="org.eclipse.cdt.debug.ui.addRegisterGroupAction"
-               label="%AddRegisterGroupAction.label"
-               menubarPath="additions"
-               style="push"
-               tooltip="%AddRegisterGroupAction.tooltip">
-            <enablement>
-               <pluginState
-                     id="org.eclipse.cdt.debug.ui"
-                     value="activated"/>
-            </enablement>
-         </action>
       </viewerContribution>
       <objectContribution
             objectClass="org.eclipse.cdt.debug.core.model.ICModule"
             id="org.eclipse.cdt.debug.ui.ModuleActions">
-         <action
-               helpContextId="load_symbols_action_context"
-               enablesFor="1"
-               label="%LoadSymbolsAction.label"
-               tooltip="%LoadSymbolsAction.tooltip"
-               icon="icons/elcl16/load_symbols_co.gif"
-               class="org.eclipse.cdt.debug.internal.ui.actions.LoadModuleSymbolsActionDelegate"
-               menubarPath="modulesGroup"
-               id="org.eclipse.cdt.debug.ui.LoadSymbolsAction"/>
          <action
                helpContextId="module_properties_action_context"
                enablesFor="1"
@@ -842,46 +811,6 @@
                style="pulldown"
                id="org.eclipse.cdt.debug.ui.ModulePropertiesAction">
          </action>
-      </objectContribution>
-      <viewerContribution
-            targetID="org.eclipse.debug.ui.ModuleView"
-            id="org.eclipse.cdt.debug.ui.modulesView.popupMenu">
-         <action
-               helpContextId="load_symbols_for_all_context"
-               label="%LoadSymbolsForAllAction.label"
-               tooltip="%LoadSymbolsForAllAction.tooltip"
-               icon="icons/elcl16/load_all_symbols_co.gif"
-               class="org.eclipse.cdt.debug.internal.ui.actions.LoadSymbolsForAllActionDelegate"
-               style="push"
-               menubarPath="modulesGroup"
-               id="org.eclipse.cdt.debug.ui.LoadSymbolsForAllAction">
-            <enablement>
-               <pluginState
-                     value="activated"
-                     id="org.eclipse.cdt.debug.ui"/>
-            </enablement>
-         </action>
-      </viewerContribution>
-      <objectContribution
-            adaptable="false"
-            id="org.eclipse.cdt.debug.ui.RegisterGroupActions"
-            objectClass="org.eclipse.cdt.debug.core.model.IPersistableRegisterGroup">
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.RemoveRegisterGroupActionDelegate"
-               enablesFor="+"
-               helpContextId="remove_register_group_action_context"
-               id="org.eclipse.cdt.debug.ui.removeRegisterGroupAction"
-               label="%RemoveRegisterGroupAction.label"
-               menubarPath="additions"
-               tooltip="%RemoveRegisterGroupAction.tooltip"/>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.EditRegisterGroupActionDelegate"
-               enablesFor="1"
-               helpContextId="edit_register_group_action_context"
-               id="org.eclipse.cdt.debug.ui.editRegisterGroupAction"
-               label="%EditRegisterGroupAction.label"
-               menubarPath="additions"
-               tooltip="%EditRegisterGroupAction.tooltip"/>
       </objectContribution>
       <viewerContribution
             id="org.eclipse.debug.ui.MemoryView.RenderingViewPane.popupMenu.1"
@@ -1065,26 +994,6 @@
             <separator name="refreshGroup"/>
             <separator name="emptyRefreshGroup"/>
          </menu>
-      </viewContribution>
-      <viewContribution
-            targetID="org.eclipse.debug.ui.ModuleView"
-            id="org.eclipse.debug.ui.modulesView.toolbar">
-         <action
-               helpContextId="load_symbols_for_all_context"
-               disabledIcon="icons/dlcl16/load_all_symbols_co.gif"
-               toolbarPath="modulesGroup"
-               label="%LoadSymbolsForAllAction.label"
-               tooltip="%LoadSymbolsForAllAction.tooltip"
-               icon="icons/elcl16/load_all_symbols_co.gif"
-               class="org.eclipse.cdt.debug.internal.ui.actions.LoadSymbolsForAllActionDelegate"
-               style="push"
-               id="org.eclipse.cdt.debug.ui.LoadSymbolsForAllAction">
-            <enablement>
-               <pluginState
-                     value="activated"
-                     id="org.eclipse.cdt.debug.ui"/>
-            </enablement>
-         </action>
       </viewContribution>
       <viewContribution
             id="org.eclipse.cdt.debug.ui.expression.toolbar"
@@ -1389,18 +1298,14 @@
       <factory
             class="org.eclipse.cdt.debug.internal.ui.actions.RetargettableActionAdapterFactory"
             adaptableType="org.eclipse.cdt.internal.ui.editor.CEditor">
-         <adapter
-               type="org.eclipse.debug.ui.actions.IRunToLineTarget">
-         </adapter>
+         <adapter type="org.eclipse.debug.ui.actions.IRunToLineTarget"/>
          <adapter type="org.eclipse.cdt.debug.internal.ui.actions.IResumeAtLineTarget"/>
          <adapter type="org.eclipse.cdt.debug.internal.ui.actions.IMoveToLineTarget"/>
       </factory>
       <factory
             class="org.eclipse.cdt.debug.internal.ui.actions.RetargettableActionAdapterFactory"
             adaptableType="org.eclipse.cdt.internal.ui.editor.asm.AsmTextEditor">
-         <adapter
-               type="org.eclipse.debug.ui.actions.IRunToLineTarget">
-         </adapter>
+         <adapter type="org.eclipse.debug.ui.actions.IRunToLineTarget"/>
          <adapter type="org.eclipse.cdt.debug.internal.ui.actions.IResumeAtLineTarget"/>
          <adapter type="org.eclipse.cdt.debug.internal.ui.actions.IMoveToLineTarget"/>
       </factory>
@@ -1888,7 +1793,9 @@
             <enablement>
             <!-- Enable the breakpoint toggle for CDT's editors and model elements -->
             <or>
-               <test property="org.eclipse.cdt.debug.ui.isCEditorSupportsCBreakpoint"/>
+               <test
+                     forcePluginActivation="true"
+                     property="org.eclipse.cdt.debug.ui.isCEditorSupportsCBreakpoint"/>
                <test property="org.eclipse.cdt.debug.ui.isAsmEditorSupportsCBreakpoint"/>
                <test property="org.eclipse.cdt.debug.ui.isDisassemblyEditorSupportsCBreakpoint" />
                <with variable="selection">
@@ -1956,6 +1863,35 @@
  </extension>
  <extension
        point="org.eclipse.ui.commands">
+    <category
+          description="%RegisterGroupingCategory.description"
+          id="org.eclipse.cdt.debug.ui.category.registerGrouping"
+          name="%RegisterGroupingCategory.name">
+    </category>
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.registerGrouping"
+          description="%AddRegisterGroup.description"
+          id="org.eclipse.cdt.debug.ui.command.addRegisterGroup"
+          name="%AddRegisterGroup.name">
+    </command>
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.registerGrouping"
+          description="%EditRegisterGroup.description"
+          id="org.eclipse.cdt.debug.ui.command.editRegisterGroup"
+          name="%EditRegisterGroup.name">
+    </command>
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.registerGrouping"
+          description="%RestoreRegisterGroups.description"
+          id="org.eclipse.cdt.debug.ui.command.restoreRegisterGroups"
+          name="%RestoreRegisterGroups.name">
+    </command>
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.registerGrouping"
+          description="%RemoveRegisterGroups.description"
+          id="org.eclipse.cdt.debug.ui.command.removeRegisterGroups"
+          name="%RemoveRegisterGroups.name">
+    </command>
     <category
           description="%ReverseDebuggingCategory.description"
           id="org.eclipse.cdt.debug.ui.category.reverseDebugging"
@@ -2061,9 +1997,115 @@
           id="org.eclipse.cdt.debug.ui.command.debugNewExecutable"
           name="%DebugNewExecutable.name">
     </command>
+    <command
+          id="org.eclipse.cdt.debug.ui.command.loadSymbols"
+          name="%LoadSymbolsAction.label">
+    </command>
+    <command
+          id="org.eclipse.cdt.debug.ui.command.loadAllSymbols"
+          name="%LoadSymbolsForAllAction.label">
+    </command>
  </extension>
  <extension
          point="org.eclipse.ui.handlers">
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.AddRegisterGroupCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.addRegisterGroup">
+            <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+                  <or>
+                     <instanceof
+                           value="org.eclipse.cdt.debug.internal.core.model.CRegisterGroup">
+                     </instanceof>
+                     <instanceof
+                           value="org.eclipse.cdt.debug.internal.core.model.CRegister">
+                     </instanceof>
+                  </or>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.EditRegisterGroupCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.editRegisterGroup">
+            <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+                     <instanceof
+                           value="org.eclipse.cdt.debug.internal.core.model.CRegisterGroup">
+                     </instanceof>
+			        </iterate>
+			        <count value="1">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.RestoreRegisterGroupsCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.restoreRegisterGroups">
+            <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+                  <or>
+                     <instanceof
+                           value="org.eclipse.cdt.debug.internal.core.model.CRegisterGroup">
+                     </instanceof>
+                     <instanceof
+                           value="org.eclipse.cdt.debug.internal.core.model.CRegister">
+                     </instanceof>
+                  </or>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.RemoveRegisterGroupsCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.removeRegisterGroups">
+            <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+                     <instanceof
+                           value="org.eclipse.cdt.debug.internal.core.model.CRegisterGroup">
+                     </instanceof>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen>
+      </handler>
+       <handler
+      		class="org.eclipse.cdt.debug.internal.ui.commands.LoadSymbolsCommandHandler"
+      		commandId="org.eclipse.cdt.debug.ui.command.loadSymbols">
+			 <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			            <instanceof value="org.eclipse.cdt.debug.core.model.ICModule">
+			            </instanceof>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen> 
+      </handler>
+      <handler
+      		class="org.eclipse.cdt.debug.internal.ui.commands.LoadAllSymbolsCommandHandler"
+      		commandId="org.eclipse.cdt.debug.ui.command.loadAllSymbols">
+			 <activeWhen>
+			    <with variable="selection">
+			        <iterate operator="and">
+			            <instanceof value="org.eclipse.cdt.debug.core.model.ICModule">
+			            </instanceof>
+			        </iterate>
+			        <count value="+">
+			        </count>
+			    </with>
+			</activeWhen> 
+      </handler>
       <handler
             class="org.eclipse.cdt.debug.internal.ui.commands.ReverseToggleCommandHandler"
             commandId="org.eclipse.cdt.debug.ui.command.reverseToggle">
@@ -2270,6 +2312,48 @@
  </extension>
  <extension
        point="org.eclipse.ui.menus">
+       
+<!-- Register Grouping contributions to the registers view popup -->      
+      <menuContribution
+            locationURI="popup:org.eclipse.debug.ui.RegisterView?after=additions">
+         <command
+               commandId="org.eclipse.cdt.debug.ui.command.restoreRegisterGroups"
+               label="%RestoreRegisterGroups.label"
+               style="push">
+            <visibleWhen checkEnabled="true">
+            </visibleWhen>
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="popup:org.eclipse.debug.ui.RegisterView?after=additions">
+         <command
+               commandId="org.eclipse.cdt.debug.ui.command.addRegisterGroup"
+               label="%AddRegisterGroup.label"
+               style="push">
+            <visibleWhen checkEnabled="true">
+            </visibleWhen>
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="popup:org.eclipse.debug.ui.RegisterView?after=additions">
+         <command
+               commandId="org.eclipse.cdt.debug.ui.command.removeRegisterGroups"
+               label="%RemoveRegisterGroups.label"
+               style="push">
+          <visibleWhen checkEnabled="true">
+           </visibleWhen>
+          </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="popup:org.eclipse.debug.ui.RegisterView?after=additions">
+         <command
+               commandId="org.eclipse.cdt.debug.ui.command.editRegisterGroup"
+               label="%EditRegisterGroup.label"
+               style="push">
+          <visibleWhen checkEnabled="true">
+           </visibleWhen>
+         </command>
+      </menuContribution>
        
  <!-- Reverse debugging contributions to Debug view -->      
     <menuContribution
@@ -2793,7 +2877,46 @@
 	          <visibleWhen checkEnabled="true">
 	          </visibleWhen>
 	       </command>	       
-     	</menuContribution>     	
+     	</menuContribution>
+		<!-- items for Module view... -->
+	   	<menuContribution 
+	          locationURI="popup:org.eclipse.debug.ui.ModuleView?after=modulesGroup">
+	       <command commandId="org.eclipse.cdt.debug.ui.command.loadSymbols"
+	           id="org.eclipse.cdt.debug.menu.command.loadSymbols"
+	           helpContextId="load_symbols_action_context"
+               label="%LoadSymbolsAction.label"
+               tooltip="%LoadSymbolsAction.tooltip"
+               icon="icons/elcl16/load_symbols_co.gif">
+	           <visibleWhen checkEnabled="true">
+	          </visibleWhen>
+	       </command>       
+     	</menuContribution>
+         <menuContribution 
+	          locationURI="popup:org.eclipse.debug.ui.ModuleView?after=modulesGroup">
+	       <command commandId="org.eclipse.cdt.debug.ui.command.loadAllSymbols"
+	           id="org.eclipse.cdt.debug.menu.command.loadAllSymbols"
+	           helpContextId="load_symbols_for_all_context"
+               label="%LoadSymbolsForAllAction.label"
+               tooltip="%LoadSymbolsForAllAction.tooltip"
+               icon="icons/elcl16/load_all_symbols_co.gif"
+               disabledIcon="icons/dlcl16/load_all_symbols_co.gif">
+	           <visibleWhen checkEnabled="true">
+	          </visibleWhen>
+	       </command>       
+     	</menuContribution> 
+     	 <menuContribution 
+	          locationURI="toolbar:org.eclipse.debug.ui.ModuleView?after=modulesGroup">
+	       <command commandId="org.eclipse.cdt.debug.ui.command.loadAllSymbols"
+	           id="org.eclipse.cdt.debug.toolbar.command.loadAllSymbols"
+	           helpContextId="load_symbols_for_all_context"
+               label="%LoadSymbolsForAllAction.label"
+               tooltip="%LoadSymbolsForAllAction.tooltip"
+               icon="icons/elcl16/load_all_symbols_co.gif"
+               disabledIcon="icons/dlcl16/load_all_symbols_co.gif">
+	           <visibleWhen checkEnabled="false">
+	          </visibleWhen>
+	       </command>       
+     	</menuContribution>           	
 	</extension>  
 	
  	<extension

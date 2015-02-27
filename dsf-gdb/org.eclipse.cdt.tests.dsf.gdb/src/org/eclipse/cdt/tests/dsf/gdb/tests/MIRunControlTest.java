@@ -1,12 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Ericsson and others.
+ * Copyright (c) 2007, 2015 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  * 
  * Contributors:
- *     Ericsson	AB		  - Initial implementation of Test cases
+ *     Ericsson AB - Initial implementation of Test cases
+ *     Simon Marchi (Ericsson) - Add and use runningOnWindows().
+ *     Simon Marchi (Ericsson) - Adapt test code to thread platform compatibility layer.
+ *     Simon Marchi (Ericsson) - Change breakpoint line numbers.
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests;
 
@@ -19,6 +22,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -51,7 +56,6 @@ import org.eclipse.cdt.tests.dsf.gdb.framework.ServiceEventWaitor;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -80,25 +84,26 @@ public class MIRunControlTest extends BaseTestCase {
 
 	private IContainerDMContext fContainerDmc;
 	private IExecutionDMContext fThreadExecDmc;
-	
-	// line numbers in MultiThread.cc
-	static final int LINE_MAIN_RETURN = 63;
-	static final int LINE_MAIN_PRINTF = 41;
-	
-	/*
-	 * Path to executable
-	 */
-	private static final String EXEC_PATH = "data/launch/bin/";
+
+	// Breakpoint tags in MultiThread.cc
+	public static final String[] LINE_TAGS = new String[] {
+			"LINE_MAIN_BEFORE_THREAD_START", // Just before StartThread
+			"LINE_MAIN_AFTER_THREAD_START", // Just after StartThread
+			"LINE_MAIN_ALL_THREADS_STARTED", // Where all threads are guaranteed to be started.
+	};
+
 	/*
 	 * Name of the executable
 	 */
 	private static final String EXEC_NAME = "MultiThread.exe";
 	private static final String SOURCE_NAME = "MultiThread.cc";
-	
+
 	@Override
 	public void doBeforeTest() throws Exception {
 		super.doBeforeTest();
-		
+
+		resolveLineTagLocations(SOURCE_NAME, LINE_TAGS);
+
 		final DsfSession session = getGDBLaunch().getSession();
 		
         Runnable runnable = new Runnable() {
@@ -141,7 +146,7 @@ public class MIRunControlTest extends BaseTestCase {
 		// for 'cygwin1.dll'. In the real world, this wouldn't cut mustard, but
 		// since this is just testing code, and we control the programs, it's a
 		// no brainer.
-	    if (Platform.getOS().equals(Platform.OS_WIN32)) {
+	    if (runningOnWindows()) {
 
 	    	// This is interesting. Our tests rely on the working directory.
 			// That is, we specify a program path in the launch configuration
@@ -187,7 +192,7 @@ public class MIRunControlTest extends BaseTestCase {
 	 * For Multi-threaded application - In case of one thread, Thread id should start with 1. 
 	 */
 	@Test
-	public void getExecutionContext() throws InterruptedException{
+	public void getExecutionContext() throws InterruptedException, ExecutionException, TimeoutException {
 	    final AsyncCompletionWaitor wait = new AsyncCompletionWaitor();
 		/*
 		 * Create a request monitor 
@@ -268,28 +273,10 @@ public class MIRunControlTest extends BaseTestCase {
             new ServiceEventWaitor<IStartedDMEvent>(
             		getGDBLaunch().getSession(),
             		IStartedDMEvent.class);
-		
-		// Run past the line that creates a thread and past the sleep that
-		// follows it. This is a bit tricky because the code that creates the
-		// thread is conditional depending on environment. Run to the printf
-		// before it (which is common), then do step operations over the
-		// non-common code (but same number of lines)
-        SyncUtil.runToLine(fContainerDmc, SOURCE_NAME, Integer.toString(LINE_MAIN_PRINTF), true);
-        
-        // Because the program is about to go multi-threaded, we have to select the thread
-        // we want to keep stepping.  If we don't, we will ask GDB to step the entire process
-        // which is not what we want.  We can fetch the thread from the stopped event
-        // but we should do that before the second thread is created, to be sure the stopped
-        // event is for the main thread.
-        MIStoppedEvent stoppedEvent = SyncUtil.step(StepType.STEP_OVER);	// over the printf
-        SyncUtil.step(stoppedEvent.getDMContext(), StepType.STEP_OVER);	// over the create-thread call
-        SyncUtil.step(stoppedEvent.getDMContext(), StepType.STEP_OVER, TestsPlugin.massageTimeout(2000));	// over the one second sleep
-        
-		// Make sure thread started event was received 
-        IStartedDMEvent startedEvent = startedEventWaitor.waitForEvent(TestsPlugin.massageTimeout(1000));
 
-        Assert.assertEquals("Thread created event is for wrong thread id", sProgramIsCygwin ? 3 : 2, ((IMIExecutionDMContext)startedEvent.getDMContext()).getThreadId());
-        
+		SyncUtil.runToLocation(SOURCE_NAME + ':'
+				+ getLineForTag("LINE_MAIN_AFTER_THREAD_START"));
+
         final IContainerDMContext containerDmc = SyncUtil.getContainerContext();
         
         /*
@@ -304,6 +291,13 @@ public class MIRunControlTest extends BaseTestCase {
         wait.waitUntilDone(TestsPlugin.massageTimeout(5000));
         Assert.assertTrue(wait.getMessage(), wait.isOK());
         wait.waitReset();
+        
+		// Make sure thread started event was received
+        // We check this _after_ we ask for the execution contexts because when running remote (i.e., with gdbserver),
+        // thread events are not sent by gdb until a request for a thread list is given (Bug 455992)
+        IStartedDMEvent startedEvent = startedEventWaitor.waitForEvent(TestsPlugin.massageTimeout(1000));
+        Assert.assertEquals("Thread created event is for wrong thread id", sProgramIsCygwin ? 3 : 2, ((IMIExecutionDMContext)startedEvent.getDMContext()).getThreadId());
+
         /*
          * Get data
          */
@@ -332,7 +326,7 @@ public class MIRunControlTest extends BaseTestCase {
 	 * Testing getModelData() for ExecutionDMC
 	 */
 	@Test
-	public void getModelDataForThread() throws InterruptedException{
+	public void getModelDataForThread() throws InterruptedException, ExecutionException, TimeoutException {
 	    final AsyncCompletionWaitor wait = new AsyncCompletionWaitor();
 		/*
 		 * Create a request monitor
@@ -432,7 +426,8 @@ public class MIRunControlTest extends BaseTestCase {
 		/* 
 		 * Add a breakpoint
 		 */
-	    SyncUtil.addBreakpoint(SOURCE_NAME + ":" + LINE_MAIN_PRINTF, false);
+		SyncUtil.addBreakpoint(SOURCE_NAME + ":"
+				+ getLineForTag("LINE_MAIN_BEFORE_THREAD_START"), false);
 		
 		/*
 		 * Resume till the breakpoint is hit
@@ -570,7 +565,7 @@ public class MIRunControlTest extends BaseTestCase {
     
      //Also test Cache after ContainerResumeEvent 
     @Test
-    public void resume() throws InterruptedException{
+    public void resume() throws InterruptedException, ExecutionException, TimeoutException {
 	    final AsyncCompletionWaitor wait = new AsyncCompletionWaitor();
 	    
         final DataRequestMonitor<MIInfo> rm = 
@@ -622,7 +617,7 @@ public class MIRunControlTest extends BaseTestCase {
     }
 
     @Test
-    public void resumeContainerContext() throws InterruptedException{
+    public void resumeContainerContext() throws InterruptedException, ExecutionException, TimeoutException {
 	    final AsyncCompletionWaitor wait = new AsyncCompletionWaitor();
 
 	    final DataRequestMonitor<MIInfo> rm = 
@@ -683,27 +678,25 @@ public class MIRunControlTest extends BaseTestCase {
         		ISuspendedDMEvent.class);
 
  
-         fRunCtrl.getExecutor().submit(new Runnable() {
-            @Override
+		fRunCtrl.getExecutor().submit(new Runnable() {
+			@Override
 			public void run() {
-           		fRunCtrl.runToLine(fThreadExecDmc, SOURCE_NAME, LINE_MAIN_RETURN, true,
-           				new RequestMonitor(fRunCtrl.getExecutor(), null) {
-           			@Override
-           			protected void handleCompleted() {
-           				wait.waitFinished(getStatus());
-           			}
-                });
-            }
-        });
+				fRunCtrl.runToLine(fThreadExecDmc, SOURCE_NAME,
+						getLineForTag("LINE_MAIN_ALL_THREADS_STARTED"), true,
+						new RequestMonitor(fRunCtrl.getExecutor(), null) {
+							@Override
+							protected void handleCompleted() {
+								wait.waitFinished(getStatus());
+							}
+						});
+			}
+		});
          
         wait.waitUntilDone(TestsPlugin.massageTimeout(1000));
         Assert.assertTrue(wait.getMessage(), wait.isOK());
         wait.waitReset();
 
-        // The program takes five seconds to run. There's five iterations of a
-		// loop that has a one second sleep in it
         suspendedEventWaitor.waitForEvent(TestsPlugin.massageTimeout(10000));
-		
         final IContainerDMContext containerDmc = SyncUtil.getContainerContext();
         
         fRunCtrl.getExecutor().submit(new Runnable() {
@@ -745,13 +738,16 @@ public class MIRunControlTest extends BaseTestCase {
                 });
             }
         });
-        wait.waitUntilDone(TestsPlugin.massageTimeout(1000));         
+        wait.waitUntilDone(TestsPlugin.massageTimeout(1000));
         Assert.assertTrue(wait.getMessage(), wait.isOK());
         wait.waitReset();
          
-		// The program takes five seconds to run. There's five iterations of a
-		// loop that has a one second sleep in it. Wait a second then attempt to
-		// interrupt the target
+		// Wait one second and attempt to interrupt the target.
+        // As of gdb 7.8, interrupting execution after a thread exit does not
+        // work well. This test works around it by interrupting before threads
+        // exit. Once the bug in gdb is fixed, we should add a test that
+        // interrupts after the threads exit.
+        // Ref: https://sourceware.org/bugzilla/show_bug.cgi?id=17627
         Thread.sleep(1000);	
         fRunCtrl.getExecutor().submit(new Runnable() {
             @Override
@@ -765,6 +761,7 @@ public class MIRunControlTest extends BaseTestCase {
                 });
             }
         });
+
         wait.waitUntilDone(TestsPlugin.massageTimeout(1000));
         Assert.assertTrue(wait.getMessage(), wait.isOK());
         wait.waitReset();

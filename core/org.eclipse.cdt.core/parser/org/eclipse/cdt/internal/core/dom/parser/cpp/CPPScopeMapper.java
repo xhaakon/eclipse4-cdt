@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2008, 2015 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Markus Schorn - initial API and implementation
+ *     Markus Schorn - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/ 
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -49,7 +50,6 @@ import org.eclipse.cdt.internal.core.index.IIndexScope;
  * scopes that can be reopened, i.e. namespaces.
  */
 public class CPPScopeMapper {
-
 	/**
 	 * Used for implicit inline directives for inline namespaces found in the index.
 	 */
@@ -118,6 +118,7 @@ public class CPPScopeMapper {
 		public IBinding[] getBindings(ScopeLookupData lookup) {
 			return fScope.getBindings(lookup);
 		}
+
 		@Override
 		public IScope getParent() throws DOMException {
 			IScope parent= fScope.getParent();
@@ -140,7 +141,7 @@ public class CPPScopeMapper {
 
 		private void initUsingDirectives() {
 			if (fUsingDirectives == null) {
-				fUsingDirectives= new ArrayList<ICPPUsingDirective>(1);
+				fUsingDirectives= new ArrayList<>(1);
 				// Insert a using directive for every inline namespace
 				for (ICPPInternalNamespaceScope inline: getInlineNamespaces()) {
 					fUsingDirectives.add(new InlineNamespaceDirective(this, inline));
@@ -175,11 +176,18 @@ public class CPPScopeMapper {
 		public ICPPInternalNamespaceScope[] getInlineNamespaces() {
 			// Obtain the inline namespaces from the index and map them to the ast
 			ICPPNamespaceScope[] pre = fScope.getInlineNamespaces();
+			if (pre.length == 0)
+				return ICPPInternalNamespaceScope.EMPTY_NAMESPACE_SCOPE_ARRAY;
 			ICPPInternalNamespaceScope[] result= new ICPPInternalNamespaceScope[pre.length];
 			for (int i = 0; i < result.length; i++) {
 				result[i]= (ICPPInternalNamespaceScope) mapToASTScope((IIndexScope) pre[i]);
 			}
 			return result;
+		}
+
+		@Override
+		public String toString() {
+			return fScope.toString();
 		}
 	}
 
@@ -212,6 +220,11 @@ public class CPPScopeMapper {
 		@Override
 		public int getPointOfDeclaration() {
 			return fOffset;
+		}
+
+		@Override
+		public String toString() {
+			return fDirective.toString();
 		}
 	}
 	
@@ -247,12 +260,11 @@ public class CPPScopeMapper {
 		}
 	}
 	
-	private final HashMap<IIndexScope, IScope> fMappedScopes= new HashMap<IIndexScope, IScope>();
-	private final HashMap<String, NamespaceScopeWrapper> fNamespaceWrappers= new HashMap<String, NamespaceScopeWrapper>();
-	private final Map<String, List<UsingDirectiveWrapper>> fPerName= new HashMap<String, List<UsingDirectiveWrapper>>();
+	private final HashMap<IIndexScope, IScope> fMappedScopes= new HashMap<>();
+	private final HashMap<String, NamespaceScopeWrapper> fNamespaceWrappers= new HashMap<>();
+	private final Map<String, List<UsingDirectiveWrapper>> fPerName= new HashMap<>();
 	private final CPPASTTranslationUnit fTu;
 	protected CharArrayMap<IASTName[]> fClasses;
-
 
 	public CPPScopeMapper(CPPASTTranslationUnit tu) {
 		fTu= tu;
@@ -303,7 +315,7 @@ public class CPPScopeMapper {
 
 	private String getReverseQualifiedName(IScope scope) throws DOMException {
 		final CPPNamespaceScope tuscope = fTu.getScope();
-		if (scope == tuscope || scope == null) {
+		if (scope == tuscope || scope == null || scope.getKind() == EScopeKind.eGlobal) {
 			return "";    //$NON-NLS-1$
 		}
 		StringBuilder buf= new StringBuilder();
@@ -312,7 +324,7 @@ public class CPPScopeMapper {
 			buf.append(scopeName.getSimpleID());
 		}
 		scope= scope.getParent();
-		while (scope != null && scope != tuscope) {
+		while (scope.getKind() != EScopeKind.eGlobal && scope != tuscope) {
 			buf.append(':');
 			scopeName= scope.getScopeName();
 			if (scopeName != null) {
@@ -327,7 +339,7 @@ public class CPPScopeMapper {
 	 * Maps namespace scopes from the index back into the AST.
 	 */
 	public IScope mapToASTScope(IIndexScope scope) {
-		if (scope == null) {
+		if (scope.getKind() == EScopeKind.eGlobal) {
 			return fTu.getScope();
 		}
 		if (scope instanceof ICPPNamespaceScope) {
@@ -385,7 +397,7 @@ public class CPPScopeMapper {
 		}
 		
 		if (fClasses == null) {
-			fClasses= new CharArrayMap<IASTName[]>();
+			fClasses= new CharArrayMap<>();
 			fTu.accept(new Visitor());
 		}
 		IASTName[] names= fClasses.get(type.getNameCharArray());

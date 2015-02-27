@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2012 QNX Software Systems and others.
+ * Copyright (c) 2002, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,7 @@
  *     QNX Software Systems - Initial API and implementation
  *     Anton Leherbauer (Wind River Systems)
  *     Sergey Prigogin (Google)
+ *     Paulo Garcia (BlackBerry)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text.c.hover;
 
@@ -78,7 +79,9 @@ import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTypeId;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
@@ -185,6 +188,10 @@ public class CSourceHover extends AbstractCEditorTextHover {
 					} else {
 						IASTName name= nodeSelector.findEnclosingName(fTextRegion.getOffset(), fTextRegion.getLength());
 						if (name != null) {
+							IASTNode parent = name.getParent();
+							if (parent instanceof ICPPASTTemplateId) {
+								name = (IASTName) parent;
+							}
 							IBinding binding= name.resolveBinding();
 							if (binding != null) {
 								// Check for implicit names first, could be an implicit constructor call.
@@ -209,6 +216,9 @@ public class CSourceHover extends AbstractCEditorTextHover {
 									}
 								} else if (binding instanceof IMacroBinding) {
 									fSource= computeSourceForMacro(ast, name, binding);
+								} else if (binding instanceof IEnumerator) {
+									// Show integer value for enumerators (bug 285126).
+									fSource= computeSourceForEnumerator(ast, (IEnumerator) binding);
 								} else {
 									fSource= computeSourceForBinding(ast, binding);
 								}
@@ -228,16 +238,18 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		}
 
 		/**
-		 * Compute the source for a macro. If the source location of the macro definition can be determined,
-		 * the source is taken from there, otherwise the source is constructed as a <code>#define</code> directive.
+		 * Compute the source for a macro. If the source location of the macro definition can be
+		 * determined, the source is taken from there, otherwise the source is constructed as
+		 * a {@code #define} directive.
 		 * 
 		 * @param ast  the AST of the translation unit
 		 * @param name  the macro occurrence in the AST
 		 * @param binding   the binding of the macro name
-		 * @return the source or <code>null</code>
+		 * @return the source or {@code null}
 		 * @throws CoreException 
 		 */
-		private String computeSourceForMacro(IASTTranslationUnit ast, IASTName name, IBinding binding) throws CoreException {
+		private String computeSourceForMacro(IASTTranslationUnit ast, IASTName name, IBinding binding)
+				throws CoreException {
 			// Search for the macro definition
 			IName[] defs = ast.getDefinitions(binding);
 			for (IName def : defs) {
@@ -250,18 +262,47 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		}
 
 		/**
+		 * Computes the source for a enumerator. If the value of the enumerator can be retrieved,
+		 * the method will return a string with the value, otherwise it will fall back showing
+		 * the enumerator constant.
+		 *
+		 * @param ast  the AST of the translation unit
+		 * @param binding   the binding of the enumerator name
+		 * @return the enumerator value, source or {@code null}
+		 * @throws CoreException
+		 */
+		private String computeSourceForEnumerator(IASTTranslationUnit ast, IEnumerator binding)
+				throws CoreException {
+			Long numValue = binding.getValue().numericalValue();
+			if (numValue != null) {
+				return numValue.toString();
+			} else {
+				// Search for the enumerator definition
+				IName[] defs = ast.getDefinitions(binding);
+				for (IName def : defs) {
+					String source= computeSourceForName(def, binding);
+					if (source != null) {
+						return source;
+					}
+				}
+			}
+			return null;
+		}
+
+		/**
 		 * Find a definition or declaration for the given binding and returns the source for it.
-		 * Definitions are preferred over declarations. In case of multiple definitions or declarations,
-		 * and the first name which yields source is taken.
+		 * Definitions are preferred over declarations. In case of multiple definitions or
+		 * declarations, and the first name which yields source is taken.
 		 * 
 		 * @param ast  the AST of the translation unit
 		 * @param binding  the binding
-		 * @return a source string or <code>null</code>, if no source could be computed
-		 * @throws CoreException  if the source file could not be loaded or if there was a
-		 *                        problem with the index
+		 * @return a source string or {@code null}, if no source could be computed
+		 * @throws CoreException  if the source file could not be loaded or if there was
+		 *                        a problem with the index
 		 * @throws DOMException  if there was an internal problem with the DOM
 		 */
-		private String computeSourceForBinding(IASTTranslationUnit ast, IBinding binding) throws CoreException, DOMException {
+		private String computeSourceForBinding(IASTTranslationUnit ast, IBinding binding)
+				throws CoreException, DOMException {
 			IName[] names = findDefsOrDecls(ast, binding);
 			
 			// In case the binding is a non-explicit specialization we need
@@ -295,11 +336,11 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		}
 
 		/**
-		 * Get the source for the given name from the underlying file.
+		 * Returns the source for the given name from the underlying file.
 		 * 
 		 * @param name  the name to get the source for
 		 * @param binding  the binding of the name
-		 * @return the source string or <code>null</code>, if the source could not be computed
+		 * @return the source string or {@code null}, if the source could not be computed
 		 * @throws CoreException  if the file could not be loaded
 		 */
 		private String computeSourceForName(IName name, IBinding binding) throws CoreException {
@@ -424,9 +465,10 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		}
 
 		/**
-		 * Determine if the name is part of a KnR function definition.
+		 * Determines if the name is part of a KnR function definition.
+		 *
 		 * @param name
-		 * @return <code>true</code> if the name is part of a KnR function
+		 * @return {@code true} if the name is part of a KnR function
 		 */
 		private boolean isKnRSource(IName name) {
 			if (name instanceof IASTName) {
@@ -621,10 +663,13 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		 * 
 		 * @param ast  the AST of the translation unit
 		 * @param binding  the binding
-		 * @return an array of definitions, never <code>null</code>
+		 * @return an array of definitions, never {@code null}
 		 * @throws CoreException
 		 */
 		private IName[] findDefinitions(IASTTranslationUnit ast, IBinding binding) throws CoreException {
+			if (binding instanceof ICPPAliasTemplateInstance) {
+				binding = ((ICPPAliasTemplateInstance) binding).getTemplateDefinition();
+			}
 			IName[] declNames= ast.getDefinitionsInAST(binding);
 			if (declNames.length == 0 && ast.getIndex() != null) {
 				// search definitions in index
@@ -638,7 +683,7 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		 * 
 		 * @param ast  the AST of the translation unit
 		 * @param binding  the binding
-		 * @return an array of declarations, never <code>null</code>
+		 * @return an array of declarations, never {@code null}
 		 * @throws CoreException
 		 */
 		private IName[] findDeclarations(IASTTranslationUnit ast, IBinding binding) throws CoreException {
@@ -651,7 +696,7 @@ public class CSourceHover extends AbstractCEditorTextHover {
 		}
 
 		/**
-		 * @return the computed source or <code>null</code>, if no source could be computed
+		 * @return the computed source or {@code null}, if no source could be computed
 		 */
 		public String getSource() {
 			return fSource;
@@ -724,7 +769,7 @@ public class CSourceHover extends AbstractCEditorTextHover {
 	 * @param doc  the document
 	 * @param start  the start of the backward search
 	 * @param bound  search boundary (exclusive)
-	 * @return the comment start offset or <code>-1</code>, if no suitable comment was found
+	 * @return the comment start offset or {@code -1}, if no suitable comment was found
 	 * @throws BadLocationException 
 	 */
 	private static int searchCommentBackward(IDocument doc, int start, int bound) throws BadLocationException {
@@ -844,7 +889,7 @@ public class CSourceHover extends AbstractCEditorTextHover {
 	 * Checks whether the given name is a known keyword.
 	 * 
 	 * @param name
-	 * @return <code>true</code> if the name is a known keyword or <code>false</code> if the
+	 * @return {@code true} if the name is a known keyword or {@code false} if the
 	 *         name is not considered a keyword
 	 */
 	private boolean selectionIsKeyword(String name) {

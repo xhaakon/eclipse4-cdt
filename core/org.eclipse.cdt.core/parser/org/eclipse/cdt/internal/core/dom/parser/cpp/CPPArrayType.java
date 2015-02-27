@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2012 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -84,9 +84,14 @@ public class CPPArrayType implements IArrayType, ITypeContainer, ISerializableTy
     	if (sizeExpression == null)
     		return value= null;
 
-    	return value= Value.create(sizeExpression, Value.MAX_RECURSION_DEPTH);
+    	return value= Value.create(sizeExpression);
     }
-    
+
+    @Override
+    public boolean hasSize() {
+    	return value == Value.NOT_INITIALIZED ? sizeExpression != null : value != null;
+    }
+
     @Override
 	@Deprecated
     public IASTExpression getArraySizeExpression() {

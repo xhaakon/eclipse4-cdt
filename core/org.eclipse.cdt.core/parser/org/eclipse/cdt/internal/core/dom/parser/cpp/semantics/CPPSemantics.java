@@ -475,14 +475,10 @@ public class CPPSemantics {
 		// binding.
 		final ASTNodeProperty namePropertyInParent = name.getPropertyInParent();
 		if (binding == null && data.skippedScope != null) {
-			if (data.hasFunctionArguments()) {
-				binding= new CPPDeferredFunction(data.skippedScope, name.getSimpleID(), null);
+			if (namePropertyInParent == IASTNamedTypeSpecifier.NAME) {
+				binding= new CPPUnknownMemberClass(data.skippedScope, name.getSimpleID());
 			} else {
-				if (namePropertyInParent == IASTNamedTypeSpecifier.NAME) {
-					binding= new CPPUnknownMemberClass(data.skippedScope, name.getSimpleID());
-				} else {
-					binding= new CPPUnknownMethod(data.skippedScope, name.getSimpleID());
-				}
+				binding= new CPPUnknownMethod(data.skippedScope, name.getSimpleID());
 			}
 		}
 
@@ -817,8 +813,8 @@ public class CPPSemantics {
 		if (binding == null)
 			return null;
         IScope scope = binding.getScope();
-        if (scope instanceof IIndexScope) {
-        	scope= tu.mapToASTScope((IIndexScope) scope);
+        if (tu != null) {
+        	scope= tu.mapToASTScope(scope);
         }
         while (scope != null && !(scope instanceof ICPPNamespaceScope)) {
             scope = getParentScope(scope, tu);
@@ -986,7 +982,7 @@ public class CPPSemantics {
 		}
 
 		while (nextScope != null || nextTmplScope != null) {
-			// when the non-template scope is no longer contained within the first template scope,
+			// When the non-template scope is no longer contained within the first template scope,
 			// we use the template scope for the next iteration.
 			boolean useTemplScope= false;
 			if (nextTmplScope != null) {
@@ -1000,8 +996,8 @@ public class CPPSemantics {
 			}
 			ICPPScope scope= useTemplScope ? nextTmplScope : nextScope;
 			CPPASTTranslationUnit tu = data.getTranslationUnit();
-			if (scope instanceof IIndexScope && tu != null) {
-				scope= (ICPPScope) tu.mapToASTScope(((IIndexScope) scope));
+			if (tu != null) {
+				scope= (ICPPScope) tu.mapToASTScope((scope));
 			}
 
 			if (!data.usingDirectivesOnly && !(data.ignoreMembers && scope instanceof ICPPClassScope)) {
@@ -1009,14 +1005,14 @@ public class CPPSemantics {
 
 				// Nominate using-directives found in this block or namespace.
 				if (scope instanceof ICPPNamespaceScope) {
-					final ICPPNamespaceScope blockScope= (ICPPNamespaceScope) scope;
+					final ICPPNamespaceScope namespaceScope= (ICPPNamespaceScope) scope;
 
-					if (data.qualified && blockScope.getKind() != EScopeKind.eLocal) {
-						lookupInlineNamespaces(data, blockScope);
+					if (data.qualified && namespaceScope.getKind() != EScopeKind.eLocal) {
+						lookupInlineNamespaces(data, namespaceScope);
 					}
 					if (data.contentAssist || !data.hasResults() || !data.qualified) {
 						// Nominate namespaces
-						nominateNamespaces(data, blockScope);
+						nominateNamespaces(data, namespaceScope);
 					}
 				}
 			}
@@ -1359,13 +1355,13 @@ public class CPPSemantics {
 
 	static ICPPScope getParentScope(IScope scope, ICPPASTTranslationUnit unit) throws DOMException {
 		IScope parentScope= scope.getParent();
-		// the index cannot return the translation unit as parent scope
+		// The index cannot return the translation unit as parent scope.
 		if (unit instanceof CPPASTTranslationUnit) {
 			if (parentScope == null
 					&& (scope instanceof IIndexScope || scope instanceof ICPPClassSpecializationScope)) {
 				parentScope = unit.getScope();
-			} else if (parentScope instanceof IIndexScope) {
-				parentScope = ((CPPASTTranslationUnit) unit).mapToASTScope((IIndexScope) parentScope);
+			} else {
+				parentScope = ((CPPASTTranslationUnit) unit).mapToASTScope(parentScope);
 			}
 		}
 		return (ICPPScope) parentScope;
@@ -1381,8 +1377,8 @@ public class CPPSemantics {
 			ICPPUsingDirective directive, Set<ICPPNamespaceScope> handled) throws DOMException {
 		ICPPNamespaceScope nominated= directive.getNominatedScope();
 		CPPASTTranslationUnit tu= data.getTranslationUnit();
-		if (nominated instanceof IIndexScope && tu != null) {
-			nominated= (ICPPNamespaceScope) tu.mapToASTScope((IIndexScope) nominated);
+		if (tu != null) {
+			nominated= (ICPPNamespaceScope) tu.mapToASTScope(nominated);
 		}
 		if (nominated == null || data.visited.containsKey(nominated) || (handled != null && !handled.add(nominated))) {
 			return;
@@ -1906,7 +1902,13 @@ public class CPPSemantics {
                 while (dtor.getParent() instanceof IASTDeclarator)
                     dtor = (IASTDeclarator) dtor.getParent();
                 IASTInitializer init = dtor.getInitializer();
-                if (init != null)
+            	// [basic.scope.pdecl]/p9: The point of declaration for a template parameter 
+            	// is immediately after its complete template-parameter.
+                // Note: can't just check "dtor.getParent() instanceof ICPPASTTemplateParameter"
+                // because function parameter declarations implement ICPPASTTemplateParameter too.
+                boolean isTemplateParameter = dtor.getParent() instanceof ICPPASTTemplateParameter
+                	&& dtor.getParent().getPropertyInParent() == ICPPASTTemplateDeclaration.PARAMETER;
+                if (init != null && !isTemplateParameter)
                     pointOfDecl = ((ASTNode) init).getOffset() - 1;
                 else
                     pointOfDecl = ((ASTNode) dtor).getOffset() + ((ASTNode) dtor).getLength();
@@ -1924,6 +1926,15 @@ public class CPPSemantics {
                 nd = (ASTNode) nd.getParent();
             	pointOfDecl = nd.getOffset();
             } else if (prop == ICPPASTNamespaceAlias.ALIAS_NAME) {
+            	nd = (ASTNode) nd.getParent();
+            	pointOfDecl = nd.getOffset() + nd.getLength();
+            } else if (prop == ICPPASTSimpleTypeTemplateParameter.PARAMETER_NAME
+            		|| prop == ICPPASTTemplatedTypeTemplateParameter.PARAMETER_NAME) {
+            	// [basic.scope.pdecl]/p9: The point of declaration for a template parameter 
+            	// is immediately after its complete template-parameter.
+            	// Type and template template parameters are handled here;
+            	// non-type template parameters are handled in the DECLARATOR_NAME
+            	// case above.
             	nd = (ASTNode) nd.getParent();
             	pointOfDecl = nd.getOffset() + nd.getLength();
             } else {

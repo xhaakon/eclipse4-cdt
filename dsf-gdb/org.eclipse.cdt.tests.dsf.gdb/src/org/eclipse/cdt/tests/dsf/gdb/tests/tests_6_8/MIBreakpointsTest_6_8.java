@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Ericsson and others.
+ * Copyright (c) 2009, 2014 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Ericsson - Initial Implementation
+ *     Simon Marchi (Ericsson) - Add and use runningOnWindows().
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests.tests_6_8;
 
@@ -22,7 +23,6 @@ import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.tests.ITestConstants;
 import org.eclipse.cdt.tests.dsf.gdb.tests.tests_6_7.MIBreakpointsTest_6_7;
-import org.eclipse.core.runtime.Platform;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -57,7 +57,7 @@ public class MIBreakpointsTest_6_8 extends MIBreakpointsTest_6_7 {
 		// Create an invalid line breakpoint
 		Map<String, Object> breakpoint = new HashMap<String, Object>();
 		breakpoint.put(BREAKPOINT_TYPE_TAG, BREAKPOINT_TAG);
-		breakpoint.put(FILE_NAME_TAG, SOURCE_FILE + "_bad");
+		breakpoint.put(FILE_NAME_TAG, SOURCE_NAME + "_bad");
 		breakpoint.put(LINE_NUMBER_TAG, LINE_NUMBER_1);
 
 		// Perform the test, which we still expect to succeed
@@ -108,7 +108,7 @@ public class MIBreakpointsTest_6_8 extends MIBreakpointsTest_6_7 {
 		// Create an invalid function breakpoint
 		Map<String, Object> breakpoint = new HashMap<String, Object>();
 		breakpoint.put(BREAKPOINT_TYPE_TAG, BREAKPOINT_TAG);
-		breakpoint.put(FILE_NAME_TAG, SOURCE_FILE);
+		breakpoint.put(FILE_NAME_TAG, SOURCE_NAME);
 		breakpoint.put(FUNCTION_TAG, "invalid-function-name");
 
 		// Perform the test, which we still expect to succeed
@@ -159,7 +159,7 @@ public class MIBreakpointsTest_6_8 extends MIBreakpointsTest_6_7 {
 		// target in a suspended state. Unfortunately, there is nothing
 		// practical CDT can do to address this issue except wait for the gdb
 		// folks to resolve it. See https://bugs.eclipse.org/bugs/show_bug.cgi?id=304096#c27
-	    if (Platform.getOS().equals(Platform.OS_WIN32)) {
+	    if (runningOnWindows()) {
 	    	return;
 	    }
 	    

@@ -55,11 +55,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 	private DsfServicesTracker fServicesTracker;    
 
 	private IMultiRunControl fMultiRun;
-		
-	/*
-	 * Path to executable
-	 */
-	private static final String EXEC_PATH = "data/launch/bin/";
+
 	/*
 	 * Name of the executable
 	 */
@@ -242,7 +238,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		assertTrue("Expected a single thread but got " + threads.length, threads.length == 1);
 
 		// Resume the program to check thread while it is running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		Boolean result;
 		
@@ -337,7 +333,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -437,12 +433,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
@@ -541,16 +537,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
 		assertTrue("Expected two threads but got " + threads.length, threads.length == 2);
@@ -676,7 +672,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		assertTrue("Expected a single thread but got " + threads.length, threads.length == 1);
 
 		// Resume the program to get thread running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 
 		// Confirm that all threads are running
 		Boolean result = runAsyncCall(new AsyncRunnable<Boolean>() { 
@@ -716,7 +712,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -771,7 +767,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -812,12 +808,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
@@ -863,16 +859,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
 		assertTrue("Expected two threads but got " + threads.length, threads.length == 2);
@@ -940,7 +936,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		assertTrue("Expected a single thread but got " + threads.length, threads.length == 1);
 
 		// Resume the program to get thread running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 
 		// Confirm that all threads are running
 		Boolean result = runAsyncCall(new AsyncRunnable<Boolean>() { 
@@ -982,7 +978,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -1018,12 +1014,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
@@ -1060,16 +1056,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
 		assertTrue("Expected two threads but got " + threads.length, threads.length == 2);
@@ -1118,16 +1114,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
 		assertTrue("Expected two threads but got " + threads.length, threads.length == 2);
@@ -1277,7 +1273,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 				new IContainerDMContext[] { SyncUtil.getContainerContext() };
 
 		// Resume the program to check thread while it is running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		Boolean result;
 		
@@ -1372,7 +1368,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -1472,13 +1468,13 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
-        eventWaitor.waitForEvent(2000); // Wait for first thread to stop
+		SyncUtil.resumeAll();
+        eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		final IContainerDMContext[] processes = 
 				new IContainerDMContext[] { SyncUtil.getContainerContext() };
@@ -1576,16 +1572,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IContainerDMContext[] processes = 
 				new IContainerDMContext[] { SyncUtil.getContainerContext() };
@@ -1783,7 +1779,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 				new IExecutionDMContext[] { SyncUtil.getContainerContext(), threads[0] };
 
 		// Resume the program to check thread while it is running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		Boolean result;
 		
@@ -1879,7 +1875,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -1983,12 +1979,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
@@ -2091,12 +2087,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
@@ -2199,16 +2195,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
 		assertTrue("Expected a single thread but got " + threads.length, threads.length == 2);
@@ -2316,7 +2312,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -2420,12 +2416,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
@@ -2528,16 +2524,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IMIExecutionDMContext[] threads = SyncUtil.getExecutionContexts();
 		assertTrue("Expected a single thread but got " + threads.length, threads.length == 2);
@@ -2666,7 +2662,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 				SyncUtil.getContainerContext() };
 
 		// Resume the program to get thread running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 
 		// Confirm that all threads are running
 		Boolean result = runAsyncCall(new AsyncRunnable<Boolean>() { 
@@ -2706,7 +2702,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -2747,12 +2743,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] processes = new IExecutionDMContext[] { 
@@ -2798,16 +2794,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IExecutionDMContext[] processes = new IExecutionDMContext[] { 
 				SyncUtil.getContainerContext() };
@@ -2886,7 +2882,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 				SyncUtil.getContainerContext() };
 
 		// Resume the program to get thread running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 
 		// Confirm that all threads are running
 		Boolean result = runAsyncCall(new AsyncRunnable<Boolean>() { 
@@ -2928,7 +2924,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -2975,12 +2971,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] processes = new IExecutionDMContext[] { 
@@ -3028,16 +3024,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IExecutionDMContext[] processes = new IExecutionDMContext[] { 
 				SyncUtil.getContainerContext() };
@@ -3145,7 +3141,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 				SyncUtil.getContainerContext(), SyncUtil.getExecutionContext(0) };
 
 		// Resume the program to get thread running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		// Confirm that all threads are running
 		Boolean result = runAsyncCall(new AsyncRunnable<Boolean>() { 
@@ -3195,7 +3191,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -3244,12 +3240,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
@@ -3297,12 +3293,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
@@ -3349,16 +3345,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
 				SyncUtil.getContainerContext(), SyncUtil.getExecutionContext(0) };
@@ -3439,7 +3435,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 				SyncUtil.getContainerContext(), SyncUtil.getExecutionContext(0) };
 
 		// Resume the program to get thread running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 
 		// Confirm that all threads are running
 		Boolean result = runAsyncCall(new AsyncRunnable<Boolean>() { 
@@ -3482,7 +3478,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -3530,12 +3526,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
@@ -3584,12 +3580,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
@@ -3638,16 +3634,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
 				SyncUtil.getContainerContext(), SyncUtil.getExecutionContext(0) };
@@ -3724,7 +3720,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -3773,12 +3769,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
@@ -3825,16 +3821,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
 				SyncUtil.getContainerContext(), SyncUtil.getExecutionContext(0), SyncUtil.getExecutionContext(1) };
@@ -3882,7 +3878,7 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
         final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
 		eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
@@ -3930,12 +3926,12 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitorStopped =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
         eventWaitorStopped.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitorStopped.waitForEvent(2000); // Wait for first thread to stop
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
@@ -3984,16 +3980,16 @@ public class GDBMultiNonStopRunControlTest_7_0 extends BaseTestCase {
 		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
                 new ServiceEventWaitor<MIStoppedEvent>(fMultiRun.getSession(), MIStoppedEvent.class);
 
-		SyncUtil.resume();		
+		SyncUtil.resumeAll();		
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
         eventWaitor.waitForEvent(2000); // Wait for second thread to stop
 		
 		// Now resume program again and wait for one of the two threads to stop
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
         eventWaitor.waitForEvent(2000); // Wait for first thread to stop
 		
 		// Now resume the thread again to have both running
-		SyncUtil.resume();
+		SyncUtil.resumeAll();
 		
 		final IExecutionDMContext[] execDmcs = new IExecutionDMContext[] { 
 				SyncUtil.getContainerContext(), SyncUtil.getExecutionContext(0), SyncUtil.getExecutionContext(1) };

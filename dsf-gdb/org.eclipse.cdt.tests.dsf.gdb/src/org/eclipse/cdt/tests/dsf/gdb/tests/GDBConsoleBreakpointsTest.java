@@ -32,7 +32,6 @@ import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsRemovedEvent;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsUpdatedEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
-import org.eclipse.cdt.dsf.gdb.internal.GdbDebugOptions;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakListInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakpoint;
@@ -55,10 +54,8 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.IBreakpointManager;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -70,26 +67,14 @@ import org.junit.runner.RunWith;
 @RunWith(BackgroundRunner.class)
 public class GDBConsoleBreakpointsTest extends BaseTestCase {
 
-	private static boolean fPreviousTraceState;
-	
-	@BeforeClass
-	public static void EnableTraces() {
-		fPreviousTraceState = GdbDebugOptions.DEBUG;
-		GdbDebugOptions.DEBUG = true;
-	}
-	
-	@AfterClass
-	public static void DisableTraces() {
-		GdbDebugOptions.DEBUG = fPreviousTraceState;	
-	}
-	
+	final static protected String SOURCE_NAME = "GDBMIGenericTestApp.cc";
 
 	final static private int DEFAULT_TIMEOUT = 20000;
 	final static private TimeUnit DEFAULT_TIME_UNIT = TimeUnit.MILLISECONDS;
 
-	final static private String FILE_NAME_VALID = new Path("data/launch/src/GDBMIGenericTestApp.cc").toFile().getAbsolutePath();
+	final static private String SOURCE_NAME_VALID = new Path(SOURCE_PATH + SOURCE_NAME).toFile().getAbsolutePath();
 	final static private int LINE_NUMBER_VALID = 8;
-	final static private String FILE_NAME_INVALID = new Path("x.c").toFile().getAbsolutePath();
+	final static private String SOURCE_NAME_INVALID = new Path("x.c").toFile().getAbsolutePath();
 	final static private int LINE_NUMBER_INVALID = 2;
 
 	final static private String FUNCTION_VALID = "main()";
@@ -322,6 +307,14 @@ public class GDBConsoleBreakpointsTest extends BaseTestCase {
 		Assert.assertTrue(miBpts.length == 1);
 		waitForBreakpointEvent(IBreakpointsAddedEvent.class);
 		Assert.assertTrue(getPlatformBreakpointCount() == 1);
+		
+		// Give a little delay to allow queued Executor operations
+		// to complete before deleting the breakpoint again.
+		// If we don't we may delete it so fast that the MIBreakpointsManager
+		// has not yet updated its data structures
+		// Bug 438934 comment 10
+		Thread.sleep(500);
+
 		plBpt = findPlatformBreakpoint(type, attributes);
 		Assert.assertTrue(plBpt instanceof CBreakpoint);
 		if (!miBpts[0].isPending()) {
@@ -551,7 +544,7 @@ public class GDBConsoleBreakpointsTest extends BaseTestCase {
   	private Map<String, Object> getLocationBreakpointAttributes(Class<? extends ICBreakpoint> type, boolean valid) {
   		Map<String, Object> map = new HashMap<String, Object>();
   		if (ICFunctionBreakpoint.class.equals(type)) {
-  			map.put(ATTR_FILE_NAME, (valid) ? FILE_NAME_VALID : FILE_NAME_INVALID);
+  			map.put(ATTR_FILE_NAME, (valid) ? SOURCE_NAME_VALID : SOURCE_NAME_INVALID);
   			map.put(ATTR_FUNCTION, (valid) ? FUNCTION_VALID : FUNCTION_INVALID);
   		}
   		else if (ICAddressBreakpoint.class.equals(type)) {
@@ -561,7 +554,7 @@ public class GDBConsoleBreakpointsTest extends BaseTestCase {
   					new Addr64("0x0").toHexAddressString());
   		}
   		else if (ICLineBreakpoint.class.equals(type)) {
-  			map.put(ATTR_FILE_NAME, (valid) ? FILE_NAME_VALID : FILE_NAME_INVALID);
+  			map.put(ATTR_FILE_NAME, (valid) ? SOURCE_NAME_VALID : SOURCE_NAME_INVALID);
   			map.put(ATTR_LINE_NUMBER, (valid) ? LINE_NUMBER_VALID : LINE_NUMBER_INVALID);
   		}
   		return map;
