@@ -4,6 +4,9 @@ eclipse-cdt (8.6.0-1) UNRELEASED; urgency=medium
   * Bump Standards-Version to 3.9.6.
   * Override incompatible-java-bytecode-format Lintian warning.
   * Remove Niels Thykier from Uploaders (Closes: #770558).
+  * Require eclipse >= 3.8.1-8
+    - CDT needs libicu4j-49-java for correct working of the debugger
+      integration.
 
  -- Jakub Adam <jakub.adam@ktknet.cz>  Fri, 27 Feb 2015 23:27:07 +0100
 
