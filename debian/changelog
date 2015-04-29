@@ -1,4 +1,4 @@
-eclipse-cdt (8.6.0-1) UNRELEASED; urgency=medium
+eclipse-cdt (8.6.0-1) unstable; urgency=medium
 
   * New upstream release.
   * Bump Standards-Version to 3.9.6.
