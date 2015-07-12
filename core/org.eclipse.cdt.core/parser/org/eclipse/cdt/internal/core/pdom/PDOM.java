@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2014 QNX Software Systems and others.
+ * Copyright (c) 2005, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -48,6 +48,7 @@ import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPEnumeration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.index.IIndexFileLocation;
@@ -256,11 +257,15 @@ public class PDOM extends PlatformObject implements IPDOM {
 	 *  CDT 8.6 development (versions not supported on the 8.5.x branch)
 	 *  180.0 - Internal types of enumerators, bug 446711.
 	 *  180.1 - Storing types of unknown members, bug 447728.
-	 *  180.2 - Do not apply significant macros to source files, bug 450888.
+	 *  180.2 - Do not apply significant macros to source files, bug 450888. <<CDT 8.6>>
+	 *  
+	 *  CDT 8.7 development (versions not supported on the 8.6.x branch)
+	 *  181.0 - C function type with varargs, bug 452416.
+	 *  182.0 - A flag added to PDOMCPPClassSpecialization, bug 466362.
 	 */
-	private static final int MIN_SUPPORTED_VERSION= version(180, 2);
-	private static final int MAX_SUPPORTED_VERSION= version(180, Short.MAX_VALUE);
-	private static final int DEFAULT_VERSION = version(180, 2);
+	private static final int MIN_SUPPORTED_VERSION= version(182, 0);
+	private static final int MAX_SUPPORTED_VERSION= version(182, Short.MAX_VALUE);
+	private static final int DEFAULT_VERSION = version(182, 0);
 
 	private static int version(int major, int minor) {
 		return (major << 16) + minor;
@@ -874,7 +879,8 @@ public class PDOM extends PlatformObject implements IPDOM {
 		return findBindings(names, true, filter, monitor);
 	}
 
-	public IIndexFragmentBinding[] findBindings(char[][] names, boolean caseSensitive, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
+	public IIndexFragmentBinding[] findBindings(char[][] names, boolean caseSensitive, IndexFilter filter,
+			IProgressMonitor monitor) throws CoreException {
 		if (names.length == 0) {
 			return IIndexFragmentBinding.EMPTY_INDEX_BINDING_ARRAY;
 		}
@@ -882,7 +888,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 			return findBindings(names[0], true, caseSensitive, filter, monitor);
 		}
 
-		IIndexFragmentBinding[] candidates = findBindings(names[names.length-1], false, caseSensitive, filter, monitor);
+		IIndexFragmentBinding[] candidates = findBindings(names[names.length - 1], false, caseSensitive, filter, monitor);
 		int j= 0;
 		for (int i = 0; i < candidates.length; i++) {
 			IIndexFragmentBinding cand = candidates[i];
@@ -890,12 +896,11 @@ public class PDOM extends PlatformObject implements IPDOM {
 				candidates[j++]= cand;
 			}
 		}
-		return ArrayUtil.trimAt(IIndexFragmentBinding.class, candidates, j-1);
+		return ArrayUtil.trimAt(IIndexFragmentBinding.class, candidates, j - 1);
 	}
 
 	private boolean matches(IIndexFragmentBinding cand, char[][] names, boolean caseSensitive) {
-		int i= names.length-1;
-		while(i >= 0) {
+		for (int i= names.length; --i >= 0; cand= cand.getOwner()) {
 			if (cand == null)
 				return false;
 
@@ -906,12 +911,13 @@ public class PDOM extends PlatformObject implements IPDOM {
 						return false;
 					// Unscoped enumerations are not part of the qualified name.
 					i++;
+				} else if (cand instanceof ICPPNamespace && name.length == 0) {
+					// Anonymous namespaces are not part of the qualified name.
+					i++;
 				} else {
 					return false;
 				}
 			}
-			cand= cand.getOwner();
-			i--;
 		}
 		return cand == null;
 	}
@@ -1123,7 +1129,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 		if (binding == null) {
 			return null;
 		}
-		PDOMNode pdomNode= (PDOMNode) binding.getAdapter(PDOMNode.class);
+		PDOMNode pdomNode= binding.getAdapter(PDOMNode.class);
 		if (pdomNode instanceof IIndexFragmentBinding && pdomNode.getPDOM() == this) {
 			return (IIndexFragmentBinding) pdomNode;
 		}
@@ -1207,8 +1213,7 @@ public class PDOM extends PlatformObject implements IPDOM {
 					names.add(name);
 				}
 			}
-			IPDOMIterator<PDOMName> iterator = pdomBinding.getExternalReferences();
-			while(iterator.hasNext()) {
+			for (IPDOMIterator<PDOMName> iterator = pdomBinding.getExternalReferences(); iterator.hasNext();) {
 				name = iterator.next();
 				if (isCommitted(name))
 					names.add(name);

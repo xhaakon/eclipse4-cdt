@@ -507,6 +507,7 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//class C {};
 
 	//source.cpp
+	//#include "h2.h"
 	//A a;
 	//B* b;
 	//C* c;
@@ -605,7 +606,7 @@ public class IncludeOrganizerTest extends IncludesTestBase {
 	//class A {};
 	//class B {};
 	//namespace ns1 {
-	//C* f(const A& a, B* b) { return nullptr; }
+	//C* f(const A& a, B* b);
 	//} // ns1
 	//} // ns2
 	//} // ns3

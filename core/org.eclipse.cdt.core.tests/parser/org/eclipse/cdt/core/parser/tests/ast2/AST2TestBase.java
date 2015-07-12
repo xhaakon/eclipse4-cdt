@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,8 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.AssertionFailedError;
-
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
@@ -41,6 +39,8 @@ import org.eclipse.cdt.core.dom.ast.IASTExpressionStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitDestructorName;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitDestructorNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
@@ -53,13 +53,13 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
-import org.eclipse.cdt.core.dom.ast.IBasicType.Kind;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.ICompositeType;
 import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
@@ -89,6 +89,9 @@ import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
 import org.eclipse.cdt.core.testplugin.util.TestSourceReader;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.AbstractGNUSourceCodeParser;
+import org.eclipse.cdt.internal.core.dom.parser.c.CBasicType;
+import org.eclipse.cdt.internal.core.dom.parser.c.CPointerType;
+import org.eclipse.cdt.internal.core.dom.parser.c.CQualifierType;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
@@ -100,6 +103,8 @@ import org.eclipse.cdt.internal.core.model.ASTStringUtil;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
 
+import junit.framework.AssertionFailedError;
+
 /**
  * @author aniefer
  */
@@ -108,8 +113,29 @@ public class AST2TestBase extends BaseTestCase {
     protected static final IParserLogService NULL_LOG = new NullLogService();
     protected static boolean sValidateCopy;
 
-    protected static class CommonTypes {
-    	public static IType int_ = new CPPBasicType(Kind.eInt, 0);
+    protected static class CommonCTypes {
+    	public static IType pointerToVoid = pointerTo(CBasicType.VOID);
+    	public static IType pointerToConstVoid = pointerTo(constOf(CBasicType.VOID));
+    	public static IType pointerToConstInt = pointerTo(constOf(CBasicType.INT));
+    	public static IType pointerToVolatileInt = pointerTo(volatileOf(CBasicType.INT));
+    	public static IType pointerToConstVolatileInt = pointerTo(constVolatileOf(CBasicType.INT));
+    	
+    	private static IType pointerTo(IType type) {
+    		return new CPointerType(type, 0);
+    	}
+    	private static IType constOf(IType type) {
+    		return new CQualifierType(type, true, false, false);
+    	}
+    	private static IType volatileOf(IType type) {
+    		return new CQualifierType(type, false, true, false);
+    	}
+    	private static IType constVolatileOf(IType type) {
+    		return new CQualifierType(type, true, true, false);
+    	}
+    }
+    
+    protected static class CommonCPPTypes {
+    	public static IType int_ = CPPBasicType.INT;
     	public static IType pointerToInt = new CPPPointerType(int_);
     	public static IType constInt = new CPPQualifierType(int_, true, false);
     }
@@ -494,6 +520,14 @@ public class AST2TestBase extends BaseTestCase {
     	assertEquals(ownerName, struct.getName());
     }
 
+	protected static void assertConstantValue(long expected, IVariable constant) {
+		IValue value = constant.getInitialValue();
+		assertNotNull(value);
+		Long numericalValue = value.numericalValue();
+		assertNotNull(numericalValue);
+		assertEquals(expected, numericalValue.longValue());
+	}
+
 	protected class BindingAssertionHelper {
 		protected IASTTranslationUnit tu;
 		protected String contents;
@@ -634,11 +668,29 @@ public class AST2TestBase extends BaseTestCase {
     		assertNull("found name \"" + selection + "\"", name);
     	}
 
+    	public IASTImplicitName[] getImplicitNames(String section) {
+    		return getImplicitNames(section, section.length());
+    	}
+
     	public IASTImplicitName[] getImplicitNames(String section, int len) {
     		IASTName name = findImplicitName(section, len);
     		IASTImplicitNameOwner owner = (IASTImplicitNameOwner) name.getParent();
 			IASTImplicitName[] implicits = owner.getImplicitNames();
 			return implicits;
+    	}
+
+    	public IASTImplicitDestructorName[] getImplicitDestructorNames(String section) {
+    		return getImplicitDestructorNames(section, section.length());
+    	}
+
+    	public IASTImplicitDestructorName[] getImplicitDestructorNames(String section, int len) {
+    		final int offset = contents.indexOf(section);
+    		assertTrue(offset >= 0);
+    		IASTNodeSelector selector = tu.getNodeSelector(null);
+    		IASTNode enclosingNode = selector.findEnclosingNode(offset, len);
+    		if (!(enclosingNode instanceof IASTImplicitDestructorNameOwner))
+    			return IASTImplicitDestructorName.EMPTY_NAME_ARRAY;
+   			return ((IASTImplicitDestructorNameOwner) enclosingNode).getImplicitDestructorNames();
     	}
 
     	public IASTName findName(String section, int len) {
@@ -664,7 +716,7 @@ public class AST2TestBase extends BaseTestCase {
     		return findName(contents, name);
     	}
 
-    	public IASTName findImplicitName(String section, int len) {
+    	public IASTImplicitName findImplicitName(String section, int len) {
     		final int offset = contents.indexOf(section);
     		assertTrue(offset >= 0);
     		IASTNodeSelector selector = tu.getNodeSelector(null);

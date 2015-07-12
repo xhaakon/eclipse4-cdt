@@ -86,7 +86,7 @@ public class LaunchUtils {
 			return null;
 		}
 		ICProject cproject = getCProject(configuration);
-		if (cproject == null && name.length() > 0) {
+		if (cproject == null && !name.isEmpty()) {
 			IProject proj = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
 			if (!proj.exists()) {
 				abort(LaunchMessages.getFormattedString("AbstractCLaunchDelegate.Project_NAME_does_not_exist", name), null, //$NON-NLS-1$
@@ -110,14 +110,14 @@ public class LaunchUtils {
 		String programName = configuration.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, (String)null);
 		if (programName == null) {
 			abort(LaunchMessages.getString("AbstractCLaunchDelegate.Program_file_not_specified"), null, //$NON-NLS-1$
-				  ICDTLaunchConfigurationConstants.ERR_NOT_A_C_PROJECT);
+				  ICDTLaunchConfigurationConstants.ERR_UNSPECIFIED_PROGRAM);
 		}
         programName = VariablesPlugin.getDefault().getStringVariableManager().performStringSubstitution(programName);
 
 		IPath programPath = new Path(programName);    			 
 		if (programPath.isEmpty()) {
 			abort(LaunchMessages.getString("AbstractCLaunchDelegate.Program_file_does_not_exist"), null, //$NON-NLS-1$
-				  ICDTLaunchConfigurationConstants.ERR_NOT_A_C_PROJECT);
+				  ICDTLaunchConfigurationConstants.ERR_PROGRAM_NOT_EXIST);
 		}
 		
 		if (!programPath.isAbsolute() && cproject != null) {
@@ -203,7 +203,7 @@ public class LaunchUtils {
 		String projectName = getProjectName(configuration);
 		if (projectName != null) {
 			projectName = projectName.trim();
-			if (projectName.length() > 0) {
+			if (!projectName.isEmpty()) {
 				IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 				ICProject cProject = CCorePlugin.getDefault().getCoreModel().create(project);
 				if (cProject != null && cProject.exists()) {

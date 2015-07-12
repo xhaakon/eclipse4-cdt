@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2005, 2011 IBM Corporation and others.
+ *  Copyright (c) 2005, 2015 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -732,7 +732,7 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
                     		// if the list of VMNodes. If we decide to make the patch more generic ( allow recursive 
                     		// node to be at different index) we need to remove this simplification.
                     		//
-                    		if( isDeltaElementOfType(delta, childNode)) {
+                    		if (isDeltaElementOfType(delta, childNode)) {
                     			childNode.buildDelta(
                 					event, delta, 0,   
                 					new RequestMonitor(getVMProvider().getExecutor(), multiRm) {
@@ -740,7 +740,7 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
                 						protected void handleSuccess() {
                 							buildChildDeltas( 
                 								childNode, event, delta, 0,  
-                								new RequestMonitor(getVMProvider().getExecutor(), multiRm) );
+                								new RequestMonitor(getVMProvider().getExecutor(), multiRm));
                 						}
                         		});
                         		multiRmCount++;
@@ -757,7 +757,7 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
                                 protected void handleSuccess() {
                                     buildChildDeltas( 
                                         childNode, event, delta, nodeOffset, 
-                                        new RequestMonitor(getVMProvider().getExecutor(), multiRm) );
+                                        new RequestMonitor(getVMProvider().getExecutor(), multiRm));
                                 }
                             });
                         multiRmCount++;
@@ -855,7 +855,7 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
     }
 
     /**
-     * Returns whether DefaultVMModelProxyStrategy allows to handles recursive VMNdoes hierarchy.
+     * Returns whether DefaultVMModelProxyStrategy allows to handle recursive VMNodes hierarchy.
      *  
      * @see setAllowRecursiveVMNodes()
      * @return true if this DefaultVMModelProxyStrategy allows recursive containers.  
@@ -865,7 +865,7 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
     }
     
     /**
-     * Allow DefaultVMModelProxyStrategy to handles recursive VMNdoes hierarchy.
+     * Allow DefaultVMModelProxyStrategy to handle recursive VMNodes hierarchy.
      * 	
      * For example if the client wants the debug view to display container nodes that  
      * have containers this flag has to be set.  
@@ -881,15 +881,15 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
      * This will allow the client to setup a VMNode to be in the list of its children. 
      * 		addChildNodes(containerNode, new IVMNode[] { containerNode, threadsNode });
      * 
-     * The client also need to make sure the recursive VMNodes and their immediate children: 
-     * 1. Handles buildDelta() by building one level at a time by examining the delta passed as parameter.   
-     * 2. Returns the correct level container inside getContextsForEvent() based on the delta passed. 
+     * The client also needs to make sure the recursive VMNodes and their immediate children: 
+     * 1. Handle buildDelta() by building one level at a time by examining the delta passed as parameter.   
+     * 2. Return the correct level container inside getContextsForEvent() based on the delta passed. 
      * 
      * See org.eclipse.cdt.dsf.gdb.internal.ui.viewmodel.launch.ContainerVMNode for sample implementation. 
      * 
      * @param allow - whether to allow or not recursive containment of VMNodes. 
      */
-    public void setAllowRecursiveVMNodes( boolean allow) {
+    public void setAllowRecursiveVMNodes(boolean allow) {
     	fAllowRecursiveVMNodes = allow;
     }
     
@@ -900,8 +900,8 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
      * @param node - the IVMNode we want to compare to.
      * @return if the VMNode of element of the provided delta is the same as the provided IVMNode.
      */
-	protected boolean isDeltaElementOfType( VMDelta delta, IVMNode node) {
-		if( delta.getElement() instanceof IDMVMContext) {
+	protected boolean isDeltaElementOfType(VMDelta delta, IVMNode node) {
+		if (delta.getElement() instanceof IDMVMContext) {
 			IDMVMContext dmvmContext = (IDMVMContext)delta.getElement();
 			return dmvmContext.getVMNode().equals(node);
 		}

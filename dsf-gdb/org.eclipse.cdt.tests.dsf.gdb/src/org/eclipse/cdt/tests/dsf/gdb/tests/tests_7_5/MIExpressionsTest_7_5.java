@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Ericsson and others.
+ * Copyright (c) 2012, 2015 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  * 
  * Contributors:
  *     Marc Khouzam (Ericsson) - Initial implementation of Test cases
+ *     Simon Marchi (Ericsson) - Adapt to name change of assertChildrenCount
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests.tests_7_5;
 
@@ -43,7 +44,7 @@ public class MIExpressionsTest_7_5 extends MIExpressionsTest_7_4 {
 	    
 	    // Now, the expression should be type VirtualBase
 	    getExpressionType(exprDmc, "VirtualBase *");
-	    getChildrenCount(exprDmc, 2);
+	    assertChildrenCount(exprDmc, 2);
 	    // get all children
 	    String[] expectedValues = new String[2];
 	    expectedValues[0] = "a";
@@ -54,7 +55,7 @@ public class MIExpressionsTest_7_5 extends MIExpressionsTest_7_4 {
 	    SyncUtil.step(1, StepType.STEP_OVER);
 	    // Now, the expression should be type Derived
 	    getExpressionType(exprDmc, "Derived *");
-	    getChildrenCount(exprDmc, 5);
+	    assertChildrenCount(exprDmc, 5);
 	    // get all children
 	    expectedValues = new String[5];
 	    expectedValues[0] = "VirtualBase";
@@ -68,7 +69,7 @@ public class MIExpressionsTest_7_5 extends MIExpressionsTest_7_4 {
 	    SyncUtil.step(1, StepType.STEP_OVER);
 	    // Now, the expression should be type OtherDerived
 	    getExpressionType(exprDmc, "OtherDerived *");
-	    getChildrenCount(exprDmc, 4);
+	    assertChildrenCount(exprDmc, 4);
 	    // get all children
 	    expectedValues = new String[4];
 	    expectedValues[0] = "VirtualBase";

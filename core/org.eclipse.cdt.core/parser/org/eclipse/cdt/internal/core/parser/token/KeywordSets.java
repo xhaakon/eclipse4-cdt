@@ -370,6 +370,8 @@ public class KeywordSets {
 		ALL_C.add(Keywords.VOID);
 		ALL_C.add(Keywords.VOLATILE);
 		ALL_C.add(Keywords.WHILE);
+		ALL_C.add(Keywords._ALIGNAS);
+		ALL_C.add(Keywords._ALIGNOF);
 		ALL_C.add(Keywords._BOOL);
 		ALL_C.add(Keywords._COMPLEX);
 		ALL_C.add(Keywords._IMAGINARY);
@@ -378,6 +380,8 @@ public class KeywordSets {
 	private static final Set<String> ALL_CPP;
 	static {
 		ALL_CPP = new TreeSet<String>(PP_DIRECTIVES_CPP);
+		ALL_CPP.add(Keywords.ALIGNAS);
+		ALL_CPP.add(Keywords.ALIGNOF);
 		ALL_CPP.add(Keywords.AND);
 		ALL_CPP.add(Keywords.AND_EQ);
 		ALL_CPP.add(Keywords.ASM);
@@ -472,6 +476,8 @@ public class KeywordSets {
 	private static final Set<String> KEYWORDS_CPP;
 	static {
 		KEYWORDS_CPP = new TreeSet<String>();
+		KEYWORDS_CPP.add(Keywords.ALIGNAS);
+		KEYWORDS_CPP.add(Keywords.ALIGNOF);
 		KEYWORDS_CPP.add(Keywords.AND);
 		KEYWORDS_CPP.add(Keywords.AND_EQ);
 		KEYWORDS_CPP.add(Keywords.ASM);
@@ -573,6 +579,8 @@ public class KeywordSets {
 		KEYWORDS_C.add(Keywords.UNION);
 		KEYWORDS_C.add(Keywords.VOLATILE);
 		KEYWORDS_C.add(Keywords.WHILE);
+		KEYWORDS_C.add(Keywords._ALIGNAS);
+		KEYWORDS_C.add(Keywords._ALIGNOF);
 	}
 
 	private static final Map<ParserLanguage, Set<String>> KEYWORDS_TABLE;

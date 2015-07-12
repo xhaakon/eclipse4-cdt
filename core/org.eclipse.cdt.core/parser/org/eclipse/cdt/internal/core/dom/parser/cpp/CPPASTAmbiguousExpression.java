@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,10 +8,12 @@
  * Contributors:
  *     IBM - Initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitDestructorName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTExpression;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
@@ -21,7 +23,7 @@ import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousExpression;
 public class CPPASTAmbiguousExpression extends ASTAmbiguousNode
 		implements IASTAmbiguousExpression, ICPPASTExpression {
     private IASTExpression[] exp = new IASTExpression[2];
-    private int expPos= -1;
+    private int expPos;
     
     public CPPASTAmbiguousExpression(IASTExpression... expressions) {
 		for (IASTExpression e : expressions) {
@@ -43,7 +45,7 @@ public class CPPASTAmbiguousExpression extends ASTAmbiguousNode
 	public void addExpression(IASTExpression e) {
         assertNotFrozen();
     	if (e != null) {
-    		exp = ArrayUtil.appendAt(IASTExpression.class, exp, ++expPos, e);
+    		exp = ArrayUtil.appendAt(exp, expPos++, e);
     		e.setParent(this);
 			e.setPropertyInParent(SUBEXPRESSION);
     	}
@@ -51,7 +53,7 @@ public class CPPASTAmbiguousExpression extends ASTAmbiguousNode
 
     @Override
 	public IASTExpression[] getExpressions() {
-        exp = ArrayUtil.trimAt(IASTExpression.class, exp, expPos);
+        exp = ArrayUtil.trim(exp, expPos);
     	return exp;
     }
 
@@ -59,4 +61,9 @@ public class CPPASTAmbiguousExpression extends ASTAmbiguousNode
 	public IASTNode[] getNodes() {
         return getExpressions();
     }
+
+	@Override
+	public IASTImplicitDestructorName[] getImplicitDestructorNames() {
+		throw new UnsupportedOperationException();
+	}
 }

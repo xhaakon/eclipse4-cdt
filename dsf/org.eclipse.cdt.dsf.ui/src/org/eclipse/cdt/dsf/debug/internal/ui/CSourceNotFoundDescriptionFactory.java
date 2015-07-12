@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010, 2014 Nokia and others.
+ * Copyright (c) 2010, 2015 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -40,13 +40,13 @@ import com.ibm.icu.text.MessageFormat;
 public class CSourceNotFoundDescriptionFactory implements IAdapterFactory {
 
 	@Override
-	@SuppressWarnings("rawtypes")
-	public Object getAdapter(Object adaptableObject, Class adapterType) {
+	@SuppressWarnings("unchecked")
+	public <T> T getAdapter(Object adaptableObject, Class<T> adapterType) {
 		if (adapterType.equals(ICSourceNotFoundDescription.class) &&
 				adaptableObject instanceof IFrameDMContext)
 		{
 			final IFrameDMContext frameDMC = (IFrameDMContext) adaptableObject;
-			return new ICSourceNotFoundDescription() {
+			return (T)new ICSourceNotFoundDescription() {
 
 				@Override
 				public String getDescription() {
@@ -84,8 +84,7 @@ public class CSourceNotFoundDescriptionFactory implements IAdapterFactory {
 	}
 
 	@Override
-	@SuppressWarnings("rawtypes")
-	public Class[] getAdapterList() {
+	public Class<?>[] getAdapterList() {
 		return new Class[] { ICSourceNotFoundDescription.class };
 	}
 	
@@ -105,7 +104,7 @@ public class CSourceNotFoundDescriptionFactory implements IAdapterFactory {
 		String file = (String)properties.get(ILaunchVMConstants.PROP_FRAME_FILE);
 		String function = (String)properties.get(ILaunchVMConstants.PROP_FRAME_FUNCTION);
 		String module = (String)properties.get(ILaunchVMConstants.PROP_FRAME_MODULE);
-		if (line != null && line >= 0 && file != null && file.length() > 0)
+		if (line != null && line >= 0 && file != null && !file.isEmpty())
 		{
 			if (function != null && function.contains(")")) //$NON-NLS-1$
 				formatString = MessagesForLaunchVM.StackFramesVMNode_No_columns__text_format;
@@ -119,7 +118,7 @@ public class CSourceNotFoundDescriptionFactory implements IAdapterFactory {
                     ILaunchVMConstants.PROP_FRAME_COLUMN, 
                     ILaunchVMConstants.PROP_FRAME_MODULE};
 		}
-		else if (function != null && function.length() > 0 && module != null && module.length() > 0)
+		else if (function != null && !function.isEmpty() && module != null && !module.isEmpty())
 		{
 			if (function.contains(")")) //$NON-NLS-1$
 				formatString = MessagesForLaunchVM.StackFramesVMNode_No_columns__No_line__text_format;
@@ -130,14 +129,14 @@ public class CSourceNotFoundDescriptionFactory implements IAdapterFactory {
                     ILaunchVMConstants.PROP_FRAME_FUNCTION, 
                     ILaunchVMConstants.PROP_FRAME_MODULE};
 		}
-		else if (module != null && module.length() > 0)
+		else if (module != null && !module.isEmpty())
 		{
 			formatString = MessagesForLaunchVM.StackFramesVMNode_No_columns__No_function__text_format;
 			propertyNames = new String[] { 
                     ILaunchVMConstants.PROP_FRAME_ADDRESS, 
                     ILaunchVMConstants.PROP_FRAME_MODULE};
 		}
-		else if (function != null && function.length() > 0)
+		else if (function != null && !function.isEmpty())
 		{
 			if (function.contains(")")) //$NON-NLS-1$
 				formatString = MessagesForLaunchVM.StackFramesVMNode_No_columns__No_module__text_format;

@@ -16,8 +16,6 @@ package org.eclipse.cdt.internal.index.tests;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.TestSuite;
-
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
 import org.eclipse.cdt.core.dom.ast.EScopeKind;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -69,6 +67,8 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 import org.eclipse.core.runtime.CoreException;
+
+import junit.framework.TestSuite;
 
 /**
  * Tests for exercising resolution of template bindings against IIndex
@@ -467,7 +467,7 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	struct A {
 	//	  typedef T t;
 	//	};
-	
+
 	//	template<typename T>
 	//	struct B {};
 	//
@@ -740,6 +740,40 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
  		assertInstance(bar.getType().getReturnType(), ICPPBasicType.class);
  		assertEquals(((ICPPBasicType)bar.getType().getReturnType()).getType(), IBasicType.t_void);
  	}
+
+	// 	template<class T>
+	// 	auto trailing_return_type(T& p) -> decltype(p.m());
+
+	// 	template<typename T>
+	// 	struct A {
+	// 	  typedef T type;
+	// 	};
+	//
+	// 	template<typename T>
+	// 	typename A<T>::type declval();
+	//
+	// 	template<class T>
+	// 	class B {};
+	//
+	// 	template <typename T>
+	// 	using C = decltype(trailing_return_type(declval<T&>()));
+	//
+	// 	template <typename T>
+	// 	B<C<T>> waldo(T& q);
+	//
+	// 	template<typename T>
+	// 	struct D {
+	// 	  T* m();
+	// 	};
+	//
+	// 	D<int> b;
+	//
+	// 	void test() {
+	// 	  waldo(b);
+	// 	}
+	public void testTrailingReturnType_460183() throws Exception {
+		checkBindings();
+	}
 
 	// template<typename T> class A {
 	//    public:
@@ -2415,14 +2449,14 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	public void testNPE_407497() throws Exception {
 		checkBindings();
 	}
-	
+
 	//  template <typename>
 	//  struct basic_A {
 	//      bool eof() const;
 	//  };
 	//
 	//  typedef basic_A<char> A;
-	
+
 	//  class B : public A {};
 	//
 	//  class C : public A, public B {};
@@ -2497,7 +2531,23 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	public void testFriendFunctionOfClassSpecialization_419301b() throws Exception {
 		checkBindings();
 	}
-	
+
+	//	template <typename T>
+	//	struct A {
+	//	  static T* get();
+	//	};
+
+	//	class B {
+	//	  friend class A<B>;
+	//	};
+	//
+	//	void test() {
+	//	  A<B>::get();
+	//	}
+	public void testFriendClassSpecialization_466362() throws Exception {
+		checkBindings();
+	}
+
 	//	template <typename T>
 	//	constexpr T t(T) {
 	//	    return 0;
@@ -2507,12 +2557,12 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	constexpr unsigned t<unsigned>(unsigned) {
 	//	    return 1 + 1;
 	//	}
-	
+
 	//	// empty source file
 	public void testSpecializationOfConstexprFunction_420995() throws Exception {
 		checkBindings();
 	}
-	
+
 	//	template <class TYPE>
 	//	class waldo {
 	//	    enum {
@@ -2533,46 +2583,46 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//
 	//	template <>
 	//	struct meta<int> {};
-	
+
 	//	int z;
 	public void testEnumerationWithMultipleEnumerators_434467() throws Exception {
 		checkBindings();
 	}
-	
+
 	//	template <typename ResultT, ResultT (*Func)()>
 	//	struct Base {
 	//	  ResultT operator()() const;
 	//	};
-	//	
+	//
 	//	struct S {};
-	//	
+	//
 	//	template <typename T>
 	//	class B {};
-	//	
+	//
 	//	template<typename T>
 	//	B<T> f();
-	//	
+	//
 	//	template <typename T>
 	//	class Derived : public Base<B<S>, f<T> > {};
 
 	//	const Derived<S> decl;
-	//	
+	//
 	//	void bar(const B<S>&);
-	//	
+	//
 	//	void foo() {
 	//	    bar(decl());  // ERROR HERE: Invalid arguments
 	//	}
 	public void testInstantiationOfFunctionInstance_437675() throws Exception {
 		checkBindings();
 	}
-	
+
 	//	struct IID { };
-	//	
+	//
 	//	struct IUnknown {};
-	//	
+	//
 	//	template<class T>
 	//	class IID_DUMMY : IID { };
-	//	
+	//
 	//	template<class T>
 	//	const IID &__uuidof(T x) { return IID_DUMMY<T>(); }
 	//
@@ -2583,16 +2633,34 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//
 	//	template <class T, const IID* piid = &__uuidof<T> >
 	//	class MYCComQIPtr : public MYCComPtr<T> {};
-	//	
+	//
 	//	template<>
 	//	class MYCComQIPtr<IUnknown, &IID_IUnknown> : public MYCComPtr<IUnknown> {};
-	
+
 	//	// source file is deliberately empty
 	public void testInfiniteRecursionMarshallingTemplateDefinition_439923() throws Exception {
 		checkBindings();
 	}
-	
-	
+
+	//	// Empty header file
+
+	//	typedef unsigned long size_t;
+	//
+	//	template <size_t... Is> struct int_pack { typedef int_pack type; };
+	//
+	//	template <class Pack, size_t I> struct append;
+	//
+	//	template <size_t... Is, size_t I>
+	//	struct append<int_pack<Is...>, I> : int_pack<Is..., I> {};
+	//
+	//	template <size_t C>
+	//	struct make_int_pack : append<typename make_int_pack<C - 1>::type, C - 1> {};
+	//
+	//	template <> struct make_int_pack<0> : int_pack<> {};
+	public void testRecursiveInheritance_466362() throws Exception {
+		checkBindings();
+	}
+
 	//	template <typename T>
 	//	struct Bar {};
 	//
@@ -2601,11 +2669,11 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	    Bar<decltype(t.foo)> bar; // bogus `invalid template arguments` error here
 	//		return bar;
 	//	}
-	//	
+	//
 	//	struct S {
 	//		int foo;
 	//	};
-	
+
 	//	int main() {
 	//		Bar<int> var1;
 	//		auto var2 = foo(S());

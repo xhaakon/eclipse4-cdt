@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011 Texas Instruments, Inc. and others.
+ * Copyright (c) 2011, 2015 Texas Instruments, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,20 +20,19 @@ import org.eclipse.debug.core.commands.IDebugCommandHandler;
 /**
  * @since 2.2
  */
-@SuppressWarnings("restriction")
-public class DsfGroupDebugContextsCommand extends DsfDebugViewLayoutCommand implements IDebugCommandHandler{
+public class DsfGroupDebugContextsCommand extends DsfDebugViewLayoutCommand implements IDebugCommandHandler {
 	
+	public DsfGroupDebugContextsCommand(DsfSession session) {
+		super(session);
+	}    
+
 	@Override
-	void executeOnDsfThread( IExecutionContextTranslator translator, IExecutionDMContext[] contexts, RequestMonitor requestMonitor) {
-		translator.group(contexts, requestMonitor);
+	void executeOnDsfThread(IExecutionContextTranslator translator, IExecutionDMContext[] contexts, RequestMonitor rm) {
+		translator.group(contexts, rm);
 	}
 	
 	@Override
-	void canExecuteOnDsfThread( IExecutionContextTranslator translator, IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
+	void canExecuteOnDsfThread(IExecutionContextTranslator translator, IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
 		translator.canGroup(contexts, rm);
 	}
-	
-    public DsfGroupDebugContextsCommand(DsfSession session) {
-    	super( session);
-    }    
 }

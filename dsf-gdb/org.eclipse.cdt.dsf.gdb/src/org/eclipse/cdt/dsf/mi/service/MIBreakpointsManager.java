@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2014 Wind River and others.
+ * Copyright (c) 2007, 2015 Wind River and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -158,8 +158,16 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     // - Augmented on breakpointAdded()
     // - Modified on breakpointChanged()
     // - Diminished on breakpointRemoved()
-    private Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Map<String, Object>>> fPlatformBPs =
-        new HashMap<IBreakpointsTargetDMContext, Map<ICBreakpoint, Map<String, Object>>>();
+    private Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Map<String, Object>>> fPlatformToAttributesMaps = new HashMap<>();
+
+	/**
+	 * Returns the structure that maps each breakpoint target to a map of platform breakpoints 
+	 * and their corresponding back-end attributes.
+	 * @since 4.7
+	 */
+	protected Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Map<String, Object>>> getPlatformToAttributesMaps() {
+		return fPlatformToAttributesMaps;
+	}
 
     // Holds the set of target breakpoints, per execution context, and their
     // mapping to the corresponding platform breakpoint. In a given execution
@@ -170,9 +178,17 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     // - We start/stop tracking an execution context
     // - A platform breakpoint is added/removed
     // - A thread filter is applied/removed
-    private Map<IBreakpointsTargetDMContext, Map<IBreakpointDMContext, ICBreakpoint>> fTargetBPs =
-        new HashMap<IBreakpointsTargetDMContext, Map<IBreakpointDMContext, ICBreakpoint>>();
+    private Map<IBreakpointsTargetDMContext, Map<IBreakpointDMContext, ICBreakpoint>> fBPToPlatformMaps = new HashMap<>();
 
+    /**
+	 * Returns the structure that maps each breakpoint target to a map of back-end breakpoints 
+	 * and their corresponding platform breakpoint.
+	 * @since 4.7
+	 */
+    protected Map<IBreakpointsTargetDMContext, Map<IBreakpointDMContext, ICBreakpoint>> getBPToPlatformMaps() {
+    	return fBPToPlatformMaps;
+    }
+    
     // Holds the mapping from platform breakpoint to the corresponding target
     // breakpoint(s), per context. There can be multiple back-end BPs for a
     // single platform BP in the case of [1] multiple target contexts, and/or
@@ -181,8 +197,16 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     // - We start/stop tracking an execution context
     // - A platform breakpoint is added/removed
     // - A thread filter is applied/removed
-    private Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Vector<IBreakpointDMContext>>> fBreakpointIDs =
-        new HashMap<IBreakpointsTargetDMContext, Map<ICBreakpoint, Vector<IBreakpointDMContext>>>();
+    private Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Vector<IBreakpointDMContext>>> fPlatformToBPsMaps = new HashMap<>();
+
+    /**
+	 * Returns the structure that maps each breakpoint target to a map of platform breakpoints 
+	 * and their corresponding vector of back-end breakpoints.
+	 * @since 4.7
+	 */
+    protected Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Vector<IBreakpointDMContext>>> getPlatformToBPsMaps() {
+    	return fPlatformToBPsMaps;
+    }
 
     // Holds the mapping from platform breakpoint to the corresponding target
     // breakpoint threads, per context.
@@ -190,17 +214,24 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     // - We start/stop tracking an execution context
     // - A platform breakpoint is added/removed
     // - A thread filter is applied/removed
-    private Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Set<String>>> fBreakpointThreads =
-        new HashMap<IBreakpointsTargetDMContext, Map<ICBreakpoint, Set<String>>>();
+    private Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Set<String>>> fPlatformToBPThreadsMaps = new HashMap<>();
+
+    /**
+	 * Returns the structure that maps each breakpoint target to a map of platform breakpoints 
+	 * and their corresponding back-end breakpoint thread ids.
+	 * @since 4.7
+	 */
+    protected Map<IBreakpointsTargetDMContext, Map<ICBreakpoint, Set<String>>> getPlatformToBPThreadsMaps() {
+    	return fPlatformToBPThreadsMaps;
+    }
 
     // Due to the very asynchronous nature of DSF, a new breakpoint request can
     // pop up at any time before an ongoing one is completed. The following set
     // is used to store requests until the ongoing operation completes.
-    private Set<IBreakpoint> fPendingRequests    = new HashSet<IBreakpoint>();
-    private Set<IBreakpoint> fPendingBreakpoints = new HashSet<IBreakpoint>();
+    private Set<IBreakpoint> fPendingRequests    = new HashSet<>();
+    private Set<IBreakpoint> fPendingBreakpoints = new HashSet<>();
 
-    private Map<ICBreakpoint, IMarker> fBreakpointMarkerProblems =
-        new HashMap<ICBreakpoint, IMarker>();
+    private Map<ICBreakpoint, IMarker> fBreakpointMarkerProblems = new HashMap<>();
 
     private ListenerList fTrackingListeners = new ListenerList();
 
@@ -324,8 +355,8 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             }
         };
 
-        List<IBreakpointsTargetDMContext> targetBPKeys = new ArrayList<IBreakpointsTargetDMContext>(fTargetBPs.size());
-        targetBPKeys.addAll(0, fTargetBPs.keySet());
+        List<IBreakpointsTargetDMContext> targetBPKeys = new ArrayList<>(fBPToPlatformMaps.size());
+        targetBPKeys.addAll(0, fBPToPlatformMaps.keySet());
         for (IBreakpointsTargetDMContext dmc : targetBPKeys) {
             stopTrackingBreakpoints(dmc, countingRm);
         }
@@ -362,7 +393,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 		final IBreakpointsTargetDMContext targetBpDmc = DMContexts.getAncestorOfType(containerDmc,
 				IBreakpointsTargetDMContext.class);
 
-		IBreakpoint[] breakpoints = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints(fDebugModelId);
+		IBreakpoint[] breakpoints = fBreakpointManager.getBreakpoints(fDebugModelId);
 		for (IBreakpoint breakpoint : breakpoints) {
 			if (breakpoint instanceof ICBreakpoint && supportsBreakpoint(breakpoint)) {
 				setTargetFilter((ICBreakpoint) breakpoint, containerDmc);
@@ -395,10 +426,10 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             return;
         }
 
-        Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformBPs.get(dmc);
-        Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fBreakpointIDs.get(dmc);
-        Map<IBreakpointDMContext, ICBreakpoint> targetIDs = fTargetBPs.get(dmc);
-        Map<ICBreakpoint, Set<String>> threadIDs = fBreakpointThreads.get(dmc);
+        Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformToAttributesMaps.get(dmc);
+        Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fPlatformToBPsMaps.get(dmc);
+        Map<IBreakpointDMContext, ICBreakpoint> targetIDs = fBPToPlatformMaps.get(dmc);
+        Map<ICBreakpoint, Set<String>> threadIDs = fPlatformToBPThreadsMaps.get(dmc);
         if ((platformBPs != null) || (breakpointIDs != null) || (targetIDs != null) || (threadIDs != null)) {
         	// If the maps already contains this context we can simply ignore this request.
         	// This happens when we start or attach to another process with GDB >= 7.4
@@ -409,10 +440,10 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
         // Create entries in the breakpoint tables for the new context. These entries should only
         // be removed when this service stops tracking breakpoints for the given context.
-        fPlatformBPs.put(dmc, new HashMap<ICBreakpoint, Map<String, Object>>());
-        fBreakpointIDs.put(dmc, new HashMap<ICBreakpoint, Vector<IBreakpointDMContext>>());
-        fTargetBPs.put(dmc, new HashMap<IBreakpointDMContext, ICBreakpoint>());
-        fBreakpointThreads.put(dmc, new HashMap<ICBreakpoint, Set<String>>());
+        fPlatformToAttributesMaps.put(dmc, new HashMap<ICBreakpoint, Map<String, Object>>());
+        fPlatformToBPsMaps.put(dmc, new HashMap<ICBreakpoint, Vector<IBreakpointDMContext>>());
+        fBPToPlatformMaps.put(dmc, new HashMap<IBreakpointDMContext, ICBreakpoint>());
+        fPlatformToBPThreadsMaps.put(dmc, new HashMap<ICBreakpoint, Set<String>>());
 
         // Install the platform breakpoints (stored in fPlatformBPs) on the target.
         new Job("DSF BreakpointsManager: Install initial breakpoints on target") { //$NON-NLS-1$
@@ -451,7 +482,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     private void installInitialBreakpoints(final IBreakpointsTargetDMContext dmc, final RequestMonitor rm)
     {
         // Retrieve the set of platform breakpoints for this context
-        final Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformBPs.get(dmc);
+        final Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformToAttributesMaps.get(dmc);
         if (platformBPs == null) {
             rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, INVALID_CONTEXT, null));
             rm.done();
@@ -461,7 +492,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         // Read current breakpoints from platform and copy their augmented
         // attributes into the local reference map
         try {
-            IBreakpoint[] breakpoints = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints(fDebugModelId);
+            IBreakpoint[] breakpoints = fBreakpointManager.getBreakpoints(fDebugModelId);
             for (IBreakpoint breakpoint : breakpoints) {
                 if (supportsBreakpoint(breakpoint)) {
                     Map<String, Object> attributes = breakpoint.getMarker().getAttributes();
@@ -519,7 +550,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         }
 
         // Retrieve the set of platform breakpoints for this context
-        final Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformBPs.get(dmc);
+        final Map<ICBreakpoint,Map<String, Object>> platformBPs = fPlatformToAttributesMaps.get(dmc);
         if (platformBPs == null) {
             rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, INVALID_CONTEXT, null));
             rm.done();
@@ -532,10 +563,10 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         final CountingRequestMonitor countingRm = new CountingRequestMonitor(getExecutor(), rm) {
             @Override
             protected void handleCompleted() {
-                fPlatformBPs.remove(dmc);
-                fBreakpointIDs.remove(dmc);
-                fTargetBPs.remove(dmc);
-                fBreakpointThreads.remove(dmc);
+                fPlatformToAttributesMaps.remove(dmc);
+                fPlatformToBPsMaps.remove(dmc);
+                fBPToPlatformMaps.remove(dmc);
+                fPlatformToBPThreadsMaps.remove(dmc);
         		// Notify breakpoints tracking listeners that the tracking is stopped.
         		for (Object o : fTrackingListeners.getListeners()) {
         			((IMIBreakpointsTrackingListener)o).breakpointTrackingStopped(dmc);
@@ -579,16 +610,16 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         final Map<String, Object> attributes, final RequestMonitor rm)
     {
         // Retrieve the breakpoint maps
-        final Map<ICBreakpoint,Map<String,Object>> platformBPs = fPlatformBPs.get(dmc);
+        final Map<ICBreakpoint,Map<String,Object>> platformBPs = fPlatformToAttributesMaps.get(dmc);
         assert platformBPs != null;
 
-        final Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fBreakpointIDs.get(dmc);
+        final Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fPlatformToBPsMaps.get(dmc);
         assert breakpointIDs != null;
 
-        final Map<IBreakpointDMContext, ICBreakpoint> targetBPs = fTargetBPs.get(dmc);
+        final Map<IBreakpointDMContext, ICBreakpoint> targetBPs = fBPToPlatformMaps.get(dmc);
         assert targetBPs != null;
 
-        final Map<ICBreakpoint, Set<String>> threadsIDs = fBreakpointThreads.get(dmc);
+        final Map<ICBreakpoint, Set<String>> threadsIDs = fPlatformToBPThreadsMaps.get(dmc);
         assert threadsIDs != null;
 
         // Ensure the breakpoint has a valid debugger source path
@@ -625,8 +656,8 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
                     protected void handleSuccess() {
                         // Add the new back-end breakpoint to the map
                         Vector<IBreakpointDMContext> list = breakpointIDs.get(breakpoint);
-                        if (list == null)
-                            list = new Vector<IBreakpointDMContext>();
+                        if (list == null) list = new Vector<>();
+                        
                         IBreakpointDMContext targetBP = getData();
                         list.add(targetBP);
                         breakpointIDs.put(breakpoint, list);
@@ -636,8 +667,8 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
                         // And update the corresponding thread list
                         Set<String> thrds = threadsIDs.get(breakpoint);
-                        if (thrds == null)
-                            thrds = new HashSet<String>();
+                        if (thrds == null) thrds = new HashSet<>();
+                        
                         thrds.add(thread);
                         threadsIDs.put(breakpoint, thrds);
 
@@ -779,16 +810,16 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             final ICBreakpoint breakpoint, final RequestMonitor rm)
     {
         // Retrieve the breakpoint maps
-        final Map<ICBreakpoint,Map<String,Object>> platformBPs = fPlatformBPs.get(dmc);
+        final Map<ICBreakpoint,Map<String,Object>> platformBPs = fPlatformToAttributesMaps.get(dmc);
         assert platformBPs != null;
 
-        final Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fBreakpointIDs.get(dmc);
+        final Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fPlatformToBPsMaps.get(dmc);
         assert breakpointIDs != null;
 
-        final Map<IBreakpointDMContext, ICBreakpoint> targetBPs = fTargetBPs.get(dmc);
+        final Map<IBreakpointDMContext, ICBreakpoint> targetBPs = fBPToPlatformMaps.get(dmc);
         assert targetBPs != null;
 
-        final Map<ICBreakpoint, Set<String>> threadsIDs = fBreakpointThreads.get(dmc);
+        final Map<ICBreakpoint, Set<String>> threadsIDs = fPlatformToBPThreadsMaps.get(dmc);
         assert threadsIDs != null;
 
         // Remove all relevant target filters
@@ -885,16 +916,16 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             final Map<String,Object> attributes, final IMarkerDelta oldValues, final RequestMonitor rm)
     {
         // Retrieve the breakpoint maps
-        final Map<ICBreakpoint,Map<String,Object>> platformBPs = fPlatformBPs.get(dmc);
+        final Map<ICBreakpoint,Map<String,Object>> platformBPs = fPlatformToAttributesMaps.get(dmc);
         assert platformBPs != null;
 
-        final Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fBreakpointIDs.get(dmc);
+        final Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fPlatformToBPsMaps.get(dmc);
         assert breakpointIDs != null;
 
-        final Map<IBreakpointDMContext, ICBreakpoint> targetBPs = fTargetBPs.get(dmc);
+        final Map<IBreakpointDMContext, ICBreakpoint> targetBPs = fBPToPlatformMaps.get(dmc);
         assert targetBPs != null;
 
-        final Map<ICBreakpoint, Set<String>> threadsIDs = fBreakpointThreads.get(dmc);
+        final Map<ICBreakpoint, Set<String>> threadsIDs = fPlatformToBPThreadsMaps.get(dmc);
         assert threadsIDs != null;
 
         boolean filtered = isBreakpointEntirelyFiltered(dmc, breakpoint);
@@ -939,17 +970,17 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         }
 
         // Determine the attributes delta
-        final Map<String,Object> oldAttributes = new HashMap<String,Object>(original_attributes);
+        final Map<String,Object> oldAttributes = new HashMap<>(original_attributes);
         oldAttributes.put(ATTR_THREAD_FILTER, threadsIDs.get(breakpoint));
 
         final Set<String> newThreads = extractThreads(dmc, breakpoint);
-        Map<String,Object> newAttributes = new HashMap<String,Object>(attributes);
+        Map<String,Object> newAttributes = new HashMap<>(attributes);
         newAttributes.put(ATTR_THREAD_FILTER, newThreads);
 
         final Map<String,Object> attributesDelta = determineAttributesDelta(oldAttributes, newAttributes);
 
         // Get the list of back-end breakpoints
-        final Vector<IBreakpointDMContext> oldTargetBPs = new Vector<IBreakpointDMContext>(breakpointIDs.get(breakpoint));
+        final Vector<IBreakpointDMContext> oldTargetBPs = new Vector<>(breakpointIDs.get(breakpoint));
         if (oldTargetBPs.isEmpty()) {
             rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, INVALID_BREAKPOINT, null));
             rm.done();
@@ -998,12 +1029,12 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         };
 
         // Everything OK: remove the old back-end breakpoints
-        final Vector<IBreakpointDMContext> newTargetBPs = new Vector<IBreakpointDMContext>();
+        final Vector<IBreakpointDMContext> newTargetBPs = new Vector<>();
         final CountingRequestMonitor removeRM = new CountingRequestMonitor(getExecutor(), rm) {
             @Override
             protected void handleSuccess() {
                 // All right! Save the new list and perform the final update
-                Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fBreakpointIDs.get(dmc);
+                Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpointIDs = fPlatformToBPsMaps.get(dmc);
                 if (breakpointIDs == null) {
                     rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, INVALID_BREAKPOINT, null));
                     rm.done();
@@ -1080,7 +1111,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             final Map<String,Object> attributes, Set<String> threads, final DataRequestMonitor<Vector<IBreakpointDMContext>> drm)
     {
         // Our new list of back-end breakpoints. Built as we go.
-        final Vector<IBreakpointDMContext> breakpointList = new Vector<IBreakpointDMContext>();
+        final Vector<IBreakpointDMContext> breakpointList = new Vector<>();
 
         // Counting monitor for the new back-end breakpoints to install
         // Once we're done, return the new list of back-end breakpoints contexts
@@ -1160,14 +1191,14 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     public void breakpointManagerEnablementChanged(boolean enabled) {
 
         // Only modify enabled breakpoints
-        for (IBreakpointsTargetDMContext context : fBreakpointIDs.keySet()) {
-            for (ICBreakpoint breakpoint : fBreakpointIDs.get(context).keySet()) {
+        for (IBreakpointsTargetDMContext context : fPlatformToBPsMaps.keySet()) {
+            for (ICBreakpoint breakpoint : fPlatformToBPsMaps.get(context).keySet()) {
                 try {
                     // Note that Tracepoints and dynamic printf are not affected by "skip-all"
                     if (!(breakpoint instanceof ICTracepoint) && !(breakpoint instanceof ICDynamicPrintf)
                     		&& breakpoint.isEnabled()) {
-                        for (IBreakpointDMContext ref : fBreakpointIDs.get(context).get(breakpoint)) {
-                            Map<String,Object> delta = new HashMap<String,Object>();
+                        for (IBreakpointDMContext ref : fPlatformToBPsMaps.get(context).get(breakpoint)) {
+                            Map<String,Object> delta = new HashMap<>();
                             delta.put(MIBreakpoints.IS_ENABLED, enabled);
                             fBreakpoints.updateBreakpoint(ref, delta, new RequestMonitor(getExecutor(), null));
                         }
@@ -1236,9 +1267,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
                 					}
                 				};
-                				countingRm.setDoneCount(fPlatformBPs.size());
+                				countingRm.setDoneCount(fPlatformToAttributesMaps.size());
 
-                				for (final IBreakpointsTargetDMContext dmc : fPlatformBPs.keySet()) {
+                				for (final IBreakpointsTargetDMContext dmc : fPlatformToAttributesMaps.keySet()) {
                 					determineDebuggerPath(dmc, attrs,
                 							new RequestMonitor(getExecutor(), countingRm) {
                 						@Override
@@ -1263,8 +1294,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
      * @param bp
      * @return
      * @throws CoreException
+     * @since 4.7
      */
-    private IDsfBreakpointExtension getFilterExtension(ICBreakpoint bp) throws CoreException {
+    protected IDsfBreakpointExtension getFilterExtension(ICBreakpoint bp) throws CoreException {
         return (IDsfBreakpointExtension) bp.getExtension(GDB_DEBUG_MODEL_ID, ICBreakpointExtension.class);
     }
 
@@ -1317,13 +1349,13 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
                                 }
                             }
                         };
-                        countingRm.setDoneCount(fPlatformBPs.size());
+                        countingRm.setDoneCount(fPlatformToAttributesMaps.size());
 
                         // Mark the breakpoint as being updated and go
                         fPendingRequests.add(breakpoint);
                         
                         // Modify the breakpoint in all the execution contexts
-                        for (final IBreakpointsTargetDMContext dmc : fPlatformBPs.keySet()) {
+                        for (final IBreakpointsTargetDMContext dmc : fPlatformToAttributesMaps.keySet()) {
                             determineDebuggerPath(dmc, attrs,
                                 new RequestMonitor(getExecutor(), countingRm) {
                                     @Override
@@ -1359,11 +1391,11 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
                                 }
                             }
                         };
-                        countingRm.setDoneCount(fPlatformBPs.size());
+                        countingRm.setDoneCount(fPlatformToAttributesMaps.size());
 
                         // Remove the breakpoint in all the execution contexts
-                        for (IBreakpointsTargetDMContext dmc : fPlatformBPs.keySet()) {
-                            if (fPlatformBPs.get(dmc).containsKey(breakpoint)) {
+                        for (IBreakpointsTargetDMContext dmc : fPlatformToAttributesMaps.keySet()) {
+                            if (fPlatformToAttributesMaps.get(dmc).containsKey(breakpoint)) {
                                 uninstallBreakpoint(dmc, (ICBreakpoint) breakpoint, countingRm);
                             }
                         }
@@ -1463,9 +1495,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
     // FIXME: (Bug228703) Need a way to identify the correct context where the BP was hit
     private ICBreakpoint findPlatformBreakpoint(int targetBreakpointID) {
-        Set<IBreakpointsTargetDMContext> targets = fTargetBPs.keySet();
+        Set<IBreakpointsTargetDMContext> targets = fBPToPlatformMaps.keySet();
         for (IBreakpointsTargetDMContext target : targets) {
-            Map<IBreakpointDMContext, ICBreakpoint> bps = fTargetBPs.get(target);
+            Map<IBreakpointDMContext, ICBreakpoint> bps = fBPToPlatformMaps.get(target);
             Set<IBreakpointDMContext> contexts = bps.keySet();
             for (IBreakpointDMContext context : contexts) {
                 if (context instanceof MIBreakpointDMContext) {
@@ -1488,7 +1520,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
         if (bpContext instanceof MIBreakpointDMContext) {
         	IBreakpointsTargetDMContext targetCtx = DMContexts.getAncestorOfType(bpContext, IBreakpointsTargetDMContext.class);
         	if (targetCtx != null) {
-                Map<IBreakpointDMContext, ICBreakpoint> bps = fTargetBPs.get(targetCtx);
+                Map<IBreakpointDMContext, ICBreakpoint> bps = fBPToPlatformMaps.get(targetCtx);
                 if (bps != null)
                 	return bps.get(bpContext);
         	}
@@ -1540,7 +1572,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 	public void removeTargetFilter(IContainerDMContext containerDMC) {
 		// We must get the list of breakpoints from the platform because our different
 		// maps might already have been cleaned up
-		IBreakpoint[] allBreakpoints = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints(fDebugModelId);
+		IBreakpoint[] allBreakpoints = fBreakpointManager.getBreakpoints(fDebugModelId);
 		for (IBreakpoint bp : allBreakpoints) {
 			if (supportsBreakpoint(bp)) {
 				removeTargetFilter((ICBreakpoint) bp, containerDMC);
@@ -1585,13 +1617,13 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
     private void terminated() {
     	// Reset the breakpoint install count
-    	for (IBreakpointsTargetDMContext ctx : fPlatformBPs.keySet()) {
-    		Map<ICBreakpoint, Map<String, Object>> breakpoints = fPlatformBPs.get(ctx);
+    	for (IBreakpointsTargetDMContext ctx : fPlatformToAttributesMaps.keySet()) {
+    		Map<ICBreakpoint, Map<String, Object>> breakpoints = fPlatformToAttributesMaps.get(ctx);
             clearBreakpointStatus(breakpoints.keySet().toArray(new ICBreakpoint[breakpoints.size()]), ctx);
     	}
     	// This will prevent Shutdown() from trying to remove bps from a
     	// backend that has already shutdown
-        fPlatformBPs.clear();
+        fPlatformToAttributesMaps.clear();
     }
 
     /**
@@ -1606,7 +1638,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
             	// we must decrement the install count, for every target breakpoint.
             	// Note that we cannot simply call resetInstallCount() because another
             	// launch may be using the same platform breakpoint.
-            	Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpoints = fBreakpointIDs.get(ctx);
+            	Map<ICBreakpoint, Vector<IBreakpointDMContext>> breakpoints = fPlatformToBPsMaps.get(ctx);
             	for (ICBreakpoint breakpoint : breakpoints.keySet()) {
             		Vector<IBreakpointDMContext> targetBps = breakpoints.get(breakpoint);
             		for (IBreakpointDMContext targetBp : targetBps) {
@@ -1618,7 +1650,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 
         // Create the scheduling rule to clear all bp planted.
         ISchedulingRule rule = null;
-        List<ISchedulingRule> markerRules = new ArrayList<ISchedulingRule>();
+        List<ISchedulingRule> markerRules = new ArrayList<>();
         for (ICBreakpoint bp : bps) {
             IMarker marker = bp.getMarker();
             if (marker != null) {
@@ -1676,8 +1708,9 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 	 * 
 	 * @param bp the platform breakpoint
 	 * @return true if we support it; false otherwise
+	 * @since 4.7
 	 */
-    private boolean supportsBreakpoint(IBreakpoint bp) {
+    protected boolean supportsBreakpoint(IBreakpoint bp) {
         if (bp instanceof ICBreakpoint && bp.getModelIdentifier().equals(fDebugModelId)) {
             IMarker marker = bp.getMarker();
             if (marker != null) {
@@ -1751,14 +1784,14 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
      */
     private Map<String, Object> determineAttributesDelta(Map<String, Object> oldAttributes, Map<String, Object> newAttributes) {
 
-        Map<String, Object> delta = new HashMap<String,Object>();
+        Map<String, Object> delta = new HashMap<>();
 
         Set<String> oldKeySet = oldAttributes.keySet();
         Set<String> newKeySet = newAttributes.keySet();
 
-        Set<String> commonKeys  = new HashSet<String>(newKeySet); commonKeys.retainAll(oldKeySet);
-        Set<String> addedKeys   = new HashSet<String>(newKeySet); addedKeys.removeAll(oldKeySet);
-        Set<String> removedKeys = new HashSet<String>(oldKeySet); removedKeys.removeAll(newKeySet);
+        Set<String> commonKeys  = new HashSet<>(newKeySet); commonKeys.retainAll(oldKeySet);
+        Set<String> addedKeys   = new HashSet<>(newKeySet); addedKeys.removeAll(oldKeySet);
+        Set<String> removedKeys = new HashSet<>(oldKeySet); removedKeys.removeAll(newKeySet);
 
         // Add the modified attributes
         for (String key : commonKeys) {
@@ -1855,7 +1888,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
     private Set<String> getThreads(Map<String, Object> attributes) {
         Set<String> threads = (Set<String>) attributes.get(ATTR_THREAD_FILTER);
         if (threads == null) {
-            threads = new HashSet<String>();
+            threads = new HashSet<>();
             threads.add("0");    // Thread 0 means all threads //$NON-NLS-1$
         }
         return threads;
@@ -1868,10 +1901,10 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
      * @return
      */
     private Set<String> extractThreads(IBreakpointsTargetDMContext bpTargetDmc, ICBreakpoint breakpoint) {
-        Set<String> results = new HashSet<String>();
+        Set<String> results = new HashSet<>();
 
         if (supportsThreads(breakpoint)) {
-        	List<IExecutionDMContext[]> threads = new ArrayList<IExecutionDMContext[]>(1);
+        	List<IExecutionDMContext[]> threads = new ArrayList<>(1);
 
         	try {
         		// Retrieve all existing targets.
@@ -1961,7 +1994,7 @@ public class MIBreakpointsManager extends AbstractDsfService implements IBreakpo
 	 */
     protected Map<String,Object> convertToTargetBreakpoint(ICBreakpoint breakpoint, Map<String,Object> attributes) {
 
-        Map<String, Object> properties = new HashMap<String, Object>();
+        Map<String, Object> properties = new HashMap<>();
 
         if (breakpoint instanceof ICWatchpoint) {
             properties.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.WATCHPOINT);

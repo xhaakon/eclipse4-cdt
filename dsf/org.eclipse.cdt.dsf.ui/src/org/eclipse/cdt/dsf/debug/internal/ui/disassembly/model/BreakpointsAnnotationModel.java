@@ -160,7 +160,7 @@ public class BreakpointsAnnotationModel extends DisassemblyAnnotationModel imple
 	}
 	
 	private Position createPositionFromBreakpoint(IBreakpoint breakpoint) throws CoreException {
-		IBreakpointLocationProvider locationProvider = (IBreakpointLocationProvider) breakpoint.getAdapter(IBreakpointLocationProvider.class);
+		IBreakpointLocationProvider locationProvider = breakpoint.getAdapter(IBreakpointLocationProvider.class);
 			
 		/* if there is a location provider, than use the provider to retrieve the location */
 		if (locationProvider != null) {
@@ -241,7 +241,7 @@ public class BreakpointsAnnotationModel extends DisassemblyAnnotationModel imple
 				if (string.startsWith("0x")) { //$NON-NLS-1$
 					return new BigInteger(string.substring(2), 16);
 				}
-				if (string.length() > 0) {
+				if (!string.isEmpty()) {
 					return new BigInteger(string);
 				}
 			} catch (NumberFormatException nfe) {
@@ -263,7 +263,7 @@ public class BreakpointsAnnotationModel extends DisassemblyAnnotationModel imple
 	 */
 	@Override
 	public void documentChanged(DocumentEvent event) {
-		if (fCatchup == null && event.fText != null && event.fText.length() > 0) {
+		if (fCatchup == null && event.fText != null && !event.fText.isEmpty()) {
 			fCatchup= new Runnable() {
 				@Override
 				public void run() {

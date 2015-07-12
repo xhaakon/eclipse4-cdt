@@ -59,9 +59,9 @@ public class DisassemblyDisplayModeHandler extends AbstractHandler implements IE
      * @see org.eclipse.ui.commands.IElementUpdater#updateElement(org.eclipse.ui.menus.UIElement, java.util.Map)
      */
     @Override
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
     public void updateElement( UIElement element, Map parameters ) {
-        IWorkbenchPartSite site = (IWorkbenchPartSite)element.getServiceLocator().getService( IWorkbenchPartSite.class );
+        IWorkbenchPartSite site = element.getServiceLocator().getService( IWorkbenchPartSite.class );
         if ( site != null ) {
             IWorkbenchPart part = site.getPart();
             if ( part instanceof ITextEditor ) {

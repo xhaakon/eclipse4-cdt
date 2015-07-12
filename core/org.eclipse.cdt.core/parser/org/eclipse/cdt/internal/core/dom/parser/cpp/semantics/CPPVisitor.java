@@ -549,8 +549,9 @@ public class CPPVisitor extends ASTQueries {
         		}
         	}
         	if (scope instanceof ICPPClassScope && isFriend && !qualified) {
-        		while (scope instanceof ICPPClassScope)
+        		while (scope instanceof ICPPClassScope) {
         			scope = (ICPPScope) getParentScope(scope, elabType.getTranslationUnit());
+        		}
         	}
         	if (scope != null) {
         		binding = scope.getBinding(elabType.getName(), false);
@@ -1296,10 +1297,10 @@ public class CPPVisitor extends ASTQueries {
 			if (parent instanceof ICPPASTFieldReference) {
 				final ICPPASTFieldReference fieldReference = (ICPPASTFieldReference) parent;
 				IType type = fieldReference.getFieldOwnerType();
-				type= getUltimateTypeUptoPointers(type);
 				if (type instanceof ICPPParameterPackType) {
 					type = ((ICPPParameterPackType) type).getType();
 				}
+				type= getUltimateTypeUptoPointers(type);
 				if (type instanceof ICPPClassType) {
 					type= SemanticUtil.mapToAST(type, fieldReference);
 					return ((ICPPClassType) type).getCompositeScope();
@@ -1362,10 +1363,8 @@ public class CPPVisitor extends ASTQueries {
 	public static IASTNode getContainingBlockItem(IASTNode node) {
 	    if (node == null) return null;
 	    if (node.getPropertyInParent() == null) return null;
-		IASTNode parent = node.getParent();
-		if (parent == null)
-		    return null;
-		while (parent != null) {
+
+		for (IASTNode parent = node.getParent(); parent != null; parent = parent.getParent()) {
 			if (parent instanceof IASTDeclaration) {
 				IASTNode p = parent.getParent();
 				if (p instanceof IASTDeclarationStatement)
@@ -1387,7 +1386,6 @@ public class CPPVisitor extends ASTQueries {
 			    return parent;
 			}
 			node = parent;
-			parent = node.getParent();
 		}
 		return null;
 	}
@@ -2503,8 +2501,9 @@ public class CPPVisitor extends ASTQueries {
 
 	private static IScope getParentScope(IScope scope, IASTTranslationUnit unit) throws DOMException {
 		IScope parentScope= scope.getParent();
-		// the index cannot return the translation unit as parent scope
-		if (parentScope == null && scope instanceof IIndexScope && unit != null) {
+		// Replace the global scope from index with the global scope of the translation unit.
+		if ((parentScope == null || parentScope.getKind() == EScopeKind.eGlobal) &&
+				scope instanceof IIndexScope && unit != null) {
 			parentScope= unit.getScope();
 		}
 		return parentScope;

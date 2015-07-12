@@ -53,11 +53,13 @@ public class TriggerCellModifier implements ICellModifier {
         fSession = session;
     }
 
+    @Override
     public boolean canModify(Object element, String property) {
         return TimersViewColumnPresentation.COL_VALUE.equals(property) && 
             getAlarmDMC(element) != null; 
     }
 
+    @Override
     public Object getValue(Object element, String property) {
         if (!TimersViewColumnPresentation.COL_VALUE.equals(property)) return ""; 
         
@@ -86,6 +88,7 @@ public class TriggerCellModifier implements ICellModifier {
     }
 
     
+    @Override
     public void modify(Object element, String property, Object value) {
         if (!TimersViewColumnPresentation.COL_VALUE.equals(property)) return;
 
@@ -98,7 +101,7 @@ public class TriggerCellModifier implements ICellModifier {
         Shell shell = getShell();
         if (shell == null) return;
         
-        Integer intValue = null;
+        Integer intValue = 0;
         if (value instanceof String) {
             try {
                 intValue = new Integer(((String)value).trim());
@@ -152,7 +155,7 @@ public class TriggerCellModifier implements ICellModifier {
 
     private TriggerDMContext getAlarmDMC(Object element) {
         if (element instanceof IAdaptable) {
-            return (TriggerDMContext)((IAdaptable)element).getAdapter(TriggerDMContext.class);
+            return ((IAdaptable)element).getAdapter(TriggerDMContext.class);
         }
         return null;
     }

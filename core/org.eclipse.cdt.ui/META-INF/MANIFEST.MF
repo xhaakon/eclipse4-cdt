@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %pluginName
 Bundle-SymbolicName: org.eclipse.cdt.ui; singleton:=true
-Bundle-Version: 5.9.0.qualifier
+Bundle-Version: 5.10.0.qualifier
 Bundle-Activator: org.eclipse.cdt.ui.CUIPlugin
 Bundle-Vendor: %providerName
 Bundle-Localization: plugin
@@ -36,6 +36,7 @@ Export-Package: org.eclipse.cdt.internal.corext;x-internal:=true,
  org.eclipse.cdt.internal.ui.preferences;x-internal:=true,
  org.eclipse.cdt.internal.ui.preferences.formatter;x-internal:=true,
  org.eclipse.cdt.internal.ui.refactoring;x-friends:="org.eclipse.cdt.ui.tests",
+ org.eclipse.cdt.internal.ui.refactoring.changes;x-internal:=true,
  org.eclipse.cdt.internal.ui.refactoring.dialogs;x-internal:=true,
  org.eclipse.cdt.internal.ui.refactoring.extractconstant;x-friends:="org.eclipse.cdt.ui.tests",
  org.eclipse.cdt.internal.ui.refactoring.extractfunction;x-friends:="org.eclipse.cdt.ui.tests",

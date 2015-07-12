@@ -62,11 +62,10 @@ public class BuildGroup extends CViewActionGroup {
 	        super(shell, kind);
 	    }
 	    @Override
-	    @SuppressWarnings("unchecked")
 	    public void run() {
 	    	// Ensure we correctly save files in all referenced projects before build
 	    	Set<IProject> prjs = new HashSet<IProject>();
-	    	for (IResource resource : (List<IResource>)getSelectedResources()) {
+	    	for (IResource resource : getSelectedResources()) {
 	    		IProject project = resource.getProject();
 	    		if (project != null) {
 	    			prjs.add(project);
@@ -183,7 +182,7 @@ public class BuildGroup extends CViewActionGroup {
 			if (next instanceof IProject) {
 				project = (IProject) next;
 			} else if (next instanceof IAdaptable) {
-				IResource res = (IResource)((IAdaptable)next).getAdapter(IResource.class);
+				IResource res = ((IAdaptable)next).getAdapter(IResource.class);
 				if (res instanceof IProject) {
 					project = (IProject) res;
 				}

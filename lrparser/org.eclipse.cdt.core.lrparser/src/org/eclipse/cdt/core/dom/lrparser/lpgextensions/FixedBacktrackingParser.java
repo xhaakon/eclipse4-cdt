@@ -47,6 +47,7 @@ public class FixedBacktrackingParser extends Stacks
     //
     // Override the getToken function in Stacks.
     //
+    @Override
     public final int getToken(int i)
     {
         return tokens.get(locationStack[stateStackTop + (i - 1)]);
@@ -65,7 +66,7 @@ public class FixedBacktrackingParser extends Stacks
     public FixedBacktrackingParser(TokenStream tokStream, ParseTable prs, RuleAction ra) throws BadParseSymFileException,
                                                                                            NotBacktrackParseTableException
     {
-        this.tokStream = (PrsStream) tokStream;
+        this.tokStream = tokStream;
         this.prs = prs;
         this.ra = ra;
 

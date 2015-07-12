@@ -4,12 +4,13 @@
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Contributors:
  *     Ericsson	AB		  - Initial implementation of Test cases
  *     Alvaro Sanchez-Leon (Ericsson) - Bug 437562 - Split the dsf-gdb tests to a plug-in and fragment pair
  *     Simon Marchi (Ericsson) - Make canRestart and restart throw Exception instead of Throwable.
  *     Simon Marchi (Ericsson) - Add getThreadData.
+ *     Alvaro Sanchez-Leon (Ericsson AB) - [Memory] Make tests run with different values of addressable size (Bug 460241)
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.framework;
 
@@ -18,6 +19,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
@@ -42,6 +45,8 @@ import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.IFormattedDataDMContext;
+import org.eclipse.cdt.dsf.debug.service.IMemory;
+import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMData;
@@ -53,6 +58,7 @@ import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack.IVariableDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IVariableDMData;
 import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
+import org.eclipse.cdt.dsf.gdb.service.IGDBMemory2;
 import org.eclipse.cdt.dsf.gdb.service.IGDBProcesses;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
@@ -73,43 +79,45 @@ import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.debug.core.model.MemoryByte;
 
 /**
  * Timeout wait values are in milliseconds, or WAIT_FOREVER.
  */
 public class SyncUtil {
-    
-    private static IGDBControl fGdbControl;
-    private static IMIRunControl fRunControl;
-    private static MIStack fStack;
-    private static IExpressions fExpressions;
-    private static DsfSession fSession;
-	
-    private static CommandFactory fCommandFactory;
+
+	private static IGDBControl fGdbControl;
+	private static IMIRunControl fRunControl;
+	private static MIStack fStack;
+	private static IExpressions fExpressions;
+	private static DsfSession fSession;
+	private static IMemory fMemory;
+
+	private static CommandFactory fCommandFactory;
 	private static IGDBProcesses fProcessesService;
-    
-    // Initialize some common things, once the session has been established
-    public static void initialize(DsfSession session) throws Exception {
-    	fSession = session;
-    	
-        Runnable runnable = new Runnable() {
-            @Override
+
+	// Initialize some common things, once the session has been established
+	public static void initialize(DsfSession session) throws Exception {
+		fSession = session;
+
+		Runnable runnable = new Runnable() {
+			@Override
 			public void run() {
-	        	DsfServicesTracker tracker = 
-	        		new DsfServicesTracker(TestsPlugin.getBundleContext(), 
-	        				fSession.getId());
-	        	
-	        	fGdbControl = tracker.getService(IGDBControl.class);		   		
-	        	fRunControl = tracker.getService(IMIRunControl.class);
-	        	fStack = tracker.getService(MIStack.class);
-	        	fExpressions = tracker.getService(IExpressions.class);
-	        	fProcessesService = tracker.getService(IGDBProcesses.class);
-	        	fCommandFactory = fGdbControl.getCommandFactory();
-	        		        		        	
-	        	tracker.dispose();
-            }
-	    };
-	    fSession.getExecutor().submit(runnable).get();
+				DsfServicesTracker tracker = new DsfServicesTracker(
+						TestsPlugin.getBundleContext(), fSession.getId());
+
+				fGdbControl = tracker.getService(IGDBControl.class);
+				fRunControl = tracker.getService(IMIRunControl.class);
+				fStack = tracker.getService(MIStack.class);
+				fExpressions = tracker.getService(IExpressions.class);
+				fProcessesService = tracker.getService(IGDBProcesses.class);
+				fMemory = tracker.getService(IMemory.class);
+				fCommandFactory = fGdbControl.getCommandFactory();
+
+				tracker.dispose();
+			}
+		};
+		fSession.getExecutor().submit(runnable).get();
 	}
 
 	public static MIStoppedEvent step(int numSteps, StepType stepType) throws Throwable {
@@ -361,7 +369,7 @@ public class SyncUtil {
                     MIStoppedEvent.class);
 
 		// Wait for the execution to suspend
-    	return eventWaitor.waitForEvent(timeout);			
+		return eventWaitor.waitForEvent(TestsPlugin.massageTimeout(timeout));
 	}
 	
 	public static MIStoppedEvent runToLocation(String location) throws Throwable {
@@ -376,7 +384,7 @@ public class SyncUtil {
 		return resumeUntilStopped(timeout);
 	}
 	
-    public static IFrameDMContext getStackFrame(final IExecutionDMContext execCtx, final int level) throws Throwable {
+    public static IFrameDMContext getStackFrame(final IExecutionDMContext execCtx, final int level) throws Exception {
     	Query<IFrameDMContext> query = new Query<IFrameDMContext>() {
             @Override
             protected void execute(final DataRequestMonitor<IFrameDMContext> rm) {
@@ -801,4 +809,119 @@ public class SyncUtil {
     	IVariableDMData[] result = query.get(500, TimeUnit.MILLISECONDS);
     	return result;
     }
+
+	/**
+	 * Read data from memory.
+	 *
+	 * @param dmc		the data model context
+	 * @param address	the memory block address
+	 * @param offset	the offset in the buffer
+	 * @param wordSize	the size of a word, in octets
+	 * @param count		the number of bytes to read
+	 * @return			the memory content
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public static MemoryByte[] readMemory(final IMemoryDMContext dmc,
+			final IAddress address, final long offset, final int wordSize,
+			final int count) throws InterruptedException, ExecutionException {
+		Query<MemoryByte[]> query = new Query<MemoryByte[]>() {
+			@Override
+			protected void execute(DataRequestMonitor<MemoryByte[]> rm) {
+				fMemory.getMemory(dmc, address, offset, wordSize, count, rm);
+			}
+		};
+
+		fMemory.getExecutor().execute(query);
+
+		return query.get();
+	}
+
+	/**
+	 * Write data to memory.
+	 *
+	 * @param dmc		the data model context
+	 * @param address	the memory block address (could be an expression)
+	 * @param offset	the offset from address
+	 * @param wordSize	the word size, in octets
+	 * @param count		the number of bytes to write
+	 * @param buffer	the byte buffer to write from
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public static void writeMemory(final IMemoryDMContext dmc,
+			final IAddress address, final long offset, final int wordSize,
+			final int count, final byte[] buffer) throws InterruptedException,
+			ExecutionException {
+		Query<Void> query = new Query<Void>() {
+			@Override
+			protected void execute(DataRequestMonitor<Void> rm) {
+				fMemory.setMemory(dmc, address, offset, wordSize, count,
+						buffer, rm);
+			}
+		};
+
+		fMemory.getExecutor().execute(query);
+
+		query.get();
+	}
+
+	/**
+	 * Fill memory with a pattern.
+	 *
+	 * @param dmc		the data model context
+	 * @param address	the memory block address (could be an expression)
+	 * @param offset	the offset from address
+	 * @param wordSize	the word size, in octets
+	 * @param count		the number of times the pattern is to be written
+	 * @param pattern	the pattern to write
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public static void fillMemory(final IMemoryDMContext dmc,
+			final IAddress address, final long offset, final int wordSize,
+			final int count, final byte[] pattern) throws InterruptedException,
+			ExecutionException {
+		Query<Void> query = new Query<Void>() {
+			@Override
+			protected void execute(DataRequestMonitor<Void> rm) {
+				fMemory.fillMemory(dmc, address, offset, wordSize, count,
+						pattern, rm);
+			}
+		};
+
+		fMemory.getExecutor().execute(query);
+
+		query.get();
+	}
+
+	/**
+	 * Get the addressable size of a memory context, in octets. The addressable
+	 * size is the number of octets in each memory "cell".
+	 *
+	 * @param dmc
+	 *            the memory data model context
+	 * @return the addressable size, in octets.
+	 */
+	public static int readAddressableSize(final IMemoryDMContext dmc) {
+		assert (fMemory instanceof IGDBMemory2);
+		final IGDBMemory2 memoryService = (IGDBMemory2) fMemory;
+
+		return memoryService.getAddressableSize(dmc);
+	}
+
+	/**
+	 * Get the byte order of a memory context.
+	 *
+	 * @param dmc
+	 *            the memory data model context
+	 * @return the byte order
+	 */
+	public static ByteOrder getMemoryByteOrder(final IMemoryDMContext dmc) {
+		assert (fMemory instanceof IGDBMemory2);
+		final IGDBMemory2 memoryService = (IGDBMemory2) fMemory;
+
+		return memoryService.isBigEndian(dmc) ? ByteOrder.BIG_ENDIAN
+				: ByteOrder.LITTLE_ENDIAN;
+	}
 }

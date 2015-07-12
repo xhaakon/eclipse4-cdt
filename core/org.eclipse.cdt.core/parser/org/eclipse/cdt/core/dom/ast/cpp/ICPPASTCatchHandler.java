@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,7 @@ package org.eclipse.cdt.core.dom.ast.cpp;
 
 import org.eclipse.cdt.core.dom.ast.ASTNodeProperty;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitDestructorNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IScope;
 
@@ -23,7 +24,7 @@ import org.eclipse.cdt.core.dom.ast.IScope;
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.
  */
-public interface ICPPASTCatchHandler extends IASTStatement {
+public interface ICPPASTCatchHandler extends IASTStatement, IASTImplicitDestructorNameOwner {
 	public static final ICPPASTCatchHandler[] EMPTY_CATCHHANDLER_ARRAY = {};
 
 	/**
@@ -49,27 +50,27 @@ public interface ICPPASTCatchHandler extends IASTStatement {
 	public boolean isCatchAll();
 
 	/**
-	 * Set the catch body.
+	 * Sets the catch body.
 	 */
 	public void setCatchBody(IASTStatement compoundStatement);
 
 	/**
-	 * Get the catch body.
+	 * Returns the catch body.
 	 */
 	public IASTStatement getCatchBody();
 
 	/**
-	 * Set the declaration.
+	 * Sets the declaration.
 	 */
 	public void setDeclaration(IASTDeclaration decl);
 
 	/**
-	 * Get the declaration.
+	 * Returns the declaration.
 	 */
 	public IASTDeclaration getDeclaration();
 
 	/**
-	 * Get the scope represented by this catch handler.
+	 * Returns the scope represented by this catch handler.
 	 * @since 5.1
 	 */
 	public IScope getScope();

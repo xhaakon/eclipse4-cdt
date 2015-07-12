@@ -22,7 +22,6 @@ import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplatePartialSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
@@ -46,9 +45,10 @@ public class AccessContext {
 
 	/**
 	 * Checks if a binding is accessible from a given name.
+	 *
 	 * @param binding  A binding to check access for.
 	 * @param from A name corresponding to the binding.
-	 * @return <code>true</code> if the binding is accessible.
+	 * @return {@code true} if the binding is accessible.
 	 */
 	public static boolean isAccessible(IBinding binding, IASTName from) {
 		return new AccessContext(from).isAccessible(binding);
@@ -56,11 +56,12 @@ public class AccessContext {
 
 	/**
 	 * Checks if a binding is accessible from a given name.
+	 *
 	 * @param binding  A binding to check access for.
 	 * @param bindingVisibility visibility of the binding in the containing composite type.
 	 *     Used instead of calling {@link ICPPMember#getVisibility()}.
 	 * @param from A name corresponding to the binding.
-	 * @return <code>true</code> if the binding is accessible.
+	 * @return {@code true} if the binding is accessible.
 	 */
 	public static boolean isAccessible(IBinding binding, int bindingVisibility, IASTName from) {
 		return new AccessContext(from).isAccessible(binding, bindingVisibility);
@@ -68,9 +69,10 @@ public class AccessContext {
 
 	private final IASTName name;
 	/**
-	 * A chain of nested classes or/and a function that determine accessibility of private/protected members
-	 * by participating in friendship or class inheritance relationships. If both, classes and a function
-	 * are present in the context, the outermost class has to be local to the function.
+	 * A chain of nested classes or/and a function that determine accessibility of private/protected
+	 * members by participating in friendship or class inheritance relationships. If both, classes
+	 * and a function are present in the context, the outermost class has to be local to
+	 * the function.
 	 * {@link "http://www.open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#45"}
 	 */
 	private IBinding[] context;
@@ -78,7 +80,7 @@ public class AccessContext {
 	 * A class through which the bindings are accessed (11.2.4).
 	 */
 	private boolean isUnqualifiedLookup;
-	private ICPPClassType namingClass;  // depends on the binding for which we check the access
+	private ICPPClassType namingClass;  // Depends on the binding for which we check the access.
 	// The first candidate is independent of the binding for which we do the access-check.
 	private ICPPClassType firstCandidateForNamingClass;
 	private DOMException initializationException;
@@ -89,8 +91,9 @@ public class AccessContext {
 
 	/**
 	 * Checks if a binding is accessible in a given context.
+	 *
 	 * @param binding A binding to check access for.
-	 * @return <code>true</code> if the binding is accessible.
+	 * @return {@code true} if the binding is accessible.
 	 */
 	public boolean isAccessible(IBinding binding) {
 		if (binding instanceof ICPPTemplateParameter)
@@ -123,10 +126,11 @@ public class AccessContext {
 
 	/**
 	 * Checks if a binding is accessible in a given context.
+	 *
 	 * @param binding A binding to check access for.
 	 * @param bindingVisibility visibility of the binding in the containing composite type.
 	 *     Used instead of calling {@link ICPPMember#getVisibility()}.
-	 * @return <code>true</code> if the binding is accessible.
+	 * @return {@code true} if the binding is accessible.
 	 */
 	public boolean isAccessible(IBinding binding, int bindingVisibility) {
 		IBinding owner;
@@ -137,21 +141,22 @@ public class AccessContext {
 		if (!(owner instanceof ICPPClassType)) {
 			return true; // The binding is not a class member.
 		}
-		ICPPClassType accessOwner= (ICPPClassType) owner;
-		if (!initialize(accessOwner)) {
+		if (!initialize()) {
 			return true; // Assume visibility if anything goes wrong.
 		}
+		ICPPClassType accessOwner= (ICPPClassType) owner;
+		namingClass = getNamingClass(accessOwner);
 		if (namingClass == null) {
 			return true;
 		}
-		return isAccessible(binding, bindingVisibility, (ICPPClassType) owner, namingClass,
+		return isAccessible(binding, bindingVisibility, accessOwner, namingClass,
 				v_public, 0);
 	}
 
 	/**
-	 * @return <code>true</code> if initialization succeeded.
+	 * @return {@code true} if initialization succeeded.
 	 */
-	private boolean initialize(ICPPClassType accessOwner) {
+	private boolean initialize() {
 		if (context == null) {
 			if (initializationException != null) {
 				return false;
@@ -165,19 +170,30 @@ public class AccessContext {
 				return false;
 			}
 		}
-		namingClass = getNamingClass(accessOwner);
 		return true;
 	}
 
+	// Return true if 'c' is the same type as 'target', or a specialization of 'target'.
+	private static boolean isSameTypeOrSpecialization(ICPPClassType c, ICPPClassType target) {
+		if (!(c instanceof ICPPSpecialization)) {
+			while (target instanceof ICPPSpecialization) {
+				IBinding specialized = ((ICPPSpecialization) target).getSpecializedBinding();
+				if (specialized instanceof ICPPClassType) {
+					target = (ICPPClassType) specialized;
+				}
+			}
+		}
+		return c.isSameType(target);
+	}
+	
 	private boolean isAccessible(IBinding binding, int bindingVisibility, ICPPClassType owner,
 			ICPPClassType derivedClass, int accessLevel, int depth) {
 		if (depth > CPPSemantics.MAX_INHERITANCE_DEPTH)
 			return false;
 
 		accessLevel = getMemberAccessLevel(derivedClass, accessLevel);
-		if (owner.isSameType(derivedClass) ||
-				(derivedClass instanceof ICPPClassSpecialization &&
-						owner.equals(((ICPPClassSpecialization) derivedClass).getSpecializedBinding()))) {
+	
+		if (isSameTypeOrSpecialization(owner, derivedClass)) {
 			return isAccessible(bindingVisibility, accessLevel);
 		}
 
@@ -266,9 +282,9 @@ public class AccessContext {
 				if (scopeType instanceof ICPPDeferredClassInstance) {
 					return ((ICPPDeferredClassInstance) scopeType).getClassTemplate();
 				}
-			} else {
-				scope = CPPSemantics.getParentScope(scope, data.getTranslationUnit());
 			}
+
+			scope = CPPSemantics.getParentScope(scope, data.getTranslationUnit());
 		}
 		if (scope instanceof ICPPClassScope) {
 			return ((ICPPClassScope) scope).getClassType();
@@ -276,7 +292,6 @@ public class AccessContext {
 		return null;
 	}
 
-	
 	private ICPPClassType getNamingClass(ICPPClassType accessOwner) {
 		ICPPClassType classType = firstCandidateForNamingClass;
 		if (classType != null && isUnqualifiedLookup) {
@@ -297,12 +312,14 @@ public class AccessContext {
 		}
 		if (maxdepth > 0) {
 			for (ICPPBase cppBase : ClassTypeHelper.getBases(derived, point)) {
-				IBinding base= cppBase.getBaseClass();
-				if (base instanceof ICPPSpecialization) {
-					base = ((ICPPSpecialization) base).getSpecializedBinding();
+				IBinding base = cppBase.getBaseClass();
+				if (!(target instanceof ICPPSpecialization)) {
+					while (base instanceof ICPPSpecialization) {
+						base = ((ICPPSpecialization) base).getSpecializedBinding();
+					}
 				}
 				if (base instanceof ICPPClassType) {
-					ICPPClassType tbase= (ICPPClassType) base;
+					ICPPClassType tbase = (ICPPClassType) base;
 					if (tbase.isSameType(target)) {
 						return true;
 					}
@@ -333,9 +350,10 @@ public class AccessContext {
 
 	/**
 	 * Checks if objects with the given visibility are accessible at the given access level.
+	 *
 	 * @param visibility one of: v_public, v_protected, v_private.
 	 * @param accessLevel one of: v_public, v_protected, v_private.
-	 * @return <code>true</code> if the access level is sufficiently high.
+	 * @return {@code true} if the access level is sufficiently high.
 	 */
 	private static boolean isAccessible(int visibility, int accessLevel) {
 		// Note the ordering of numeric visibility values: v_public < v_protected < v_private.

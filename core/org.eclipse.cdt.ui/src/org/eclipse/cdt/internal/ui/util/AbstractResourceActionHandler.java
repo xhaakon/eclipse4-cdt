@@ -55,6 +55,7 @@ public abstract class AbstractResourceActionHandler extends AbstractHandler {
   @Override
   public void setEnabled(Object evaluationContext) {
     this.evaluationContext = (IEvaluationContext) evaluationContext;
+    selection = convertSelection(this.evaluationContext, null);
   }
 
   protected IStructuredSelection getSelection() {
@@ -119,7 +120,7 @@ public abstract class AbstractResourceActionHandler extends AbstractHandler {
     if (activeWindow == null) {
       return null;
     }
-    IHandlerService service = (IHandlerService) activeWindow.getService(IHandlerService.class);
+    IHandlerService service = activeWindow.getService(IHandlerService.class);
     return service.getCurrentState();
   }
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     John Camelon (IBM) - Initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -15,6 +16,7 @@ import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.LVALUE;
 import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.PRVALUE;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitDestructorName;
 import org.eclipse.cdt.core.dom.ast.IBasicType;
 import org.eclipse.cdt.core.dom.ast.IBasicType.Kind;
 import org.eclipse.cdt.core.dom.ast.IScope;
@@ -40,16 +42,17 @@ public class CPPASTLiteralExpression extends ASTNode implements ICPPASTLiteralEx
 	public static final CPPASTLiteralExpression INT_ZERO =
 			new CPPASTLiteralExpression(lk_integer_constant, new char[] {'0'});
 	
-    private int kind;
-    private char[] value = CharArrayUtils.EMPTY;
+    private int fKind;
+    private char[] fValue = CharArrayUtils.EMPTY;
+    private int fStringLiteralSize = -1;  // Accounting for escape sequences and the null terminator.
 	private ICPPEvaluation fEvaluation;
 
     public CPPASTLiteralExpression() {
 	}
 
 	public CPPASTLiteralExpression(int kind, char[] value) {
-		this.kind = kind;
-		this.value = value;
+		this.fKind = kind;
+		this.fValue = value;
 	}
 
 	@Override
@@ -60,36 +63,41 @@ public class CPPASTLiteralExpression extends ASTNode implements ICPPASTLiteralEx
 	@Override
 	public CPPASTLiteralExpression copy(CopyStyle style) {
 		CPPASTLiteralExpression copy =
-				new CPPASTLiteralExpression(kind, value == null ? null : value.clone());
+				new CPPASTLiteralExpression(fKind, fValue == null ? null : fValue.clone());
 		return copy(copy, style);
 	}
 
 	@Override
 	public int getKind() {
-        return kind;
+        return fKind;
     }
 
     @Override
 	public void setKind(int value) {
         assertNotFrozen();
-        kind = value;
+        fKind = value;
     }
 
     @Override
 	public char[] getValue() {
-    	return value;
+    	return fValue;
     }
 
     @Override
 	public void setValue(char[] value) {
         assertNotFrozen();
-    	this.value= value;
+    	this.fValue= value;
     }
     
     @Override
 	public String toString() {
-        return new String(value);
+        return new String(fValue);
     }
+
+	@Override
+	public IASTImplicitDestructorName[] getImplicitDestructorNames() {
+		return IASTImplicitDestructorName.EMPTY_NAME_ARRAY; // Literal expression does not call destructors.
+	}
 
     @Override
 	public boolean accept(ASTVisitor action) {
@@ -110,31 +118,73 @@ public class CPPASTLiteralExpression extends ASTNode implements ICPPASTLiteralEx
         return true;
     }
     
-	private IValue getStringLiteralSize() {
-		char[] value= getValue();
-		int length= value.length-1;
-		boolean isRaw= false;
-		for (int i = 0; i < length; i++) {
-			final char c = value[i];
-			if (c == '"') {
-				if (isRaw) {
-					for (int j = i + 1; j < length; j++) {
-						final char d= value[j];
-						if (d == '(') {
-							length -= 2*(j-i);
-							break;
-						}
-					}
-				}
-				length -= i;
-				if (length < 0)
-					length = 0;
-				break;
-			} else if (c == 'R') {
-				isRaw = true;
+    private int computeStringLiteralSize() {
+    	int start = 0, end = fValue.length - 1;
+    	boolean isRaw = false;
+    	
+    	// Skip past a prefix affecting the character type.
+    	if (fValue[0] == 'L' || fValue[0] == 'u' || fValue[0] == 'U') {
+    		++start;
+    	}
+    	
+    	// If there is an 'R' prefix, skip past it but take note of it.
+    	if (fValue[start] == 'R') {
+    		++start;
+    		isRaw = true;
+    	}
+    	
+    	// Now we should have a quote-enclosed string. Skip past the quotes.
+    	if (!(fValue[start] == '"' && fValue[end] == '"')) {
+    		// Unexpected!
+    		return 0;
+    	}
+    	++start;
+    	--end;
+    	
+    	// If we have a raw string, skip past the raw prefix.
+    	if (isRaw) {
+    		while (fValue[start] != '(' && start <= end) {
+    			++start;
+    			--end;
+    		}
+    		
+    		// Now we should have a parenthesis-enclosed string.
+    		if (!(fValue[start] == '(' && fValue[end] == ')')) {
+    			// Unexpected!
+    			return 0;
+    		}
+    		
+    		// Since the string is raw, we don't need to process
+    		// escape sequences, so the size is just the number
+    		// of remaining characters, plus 1 for the null terminator.
+    		return (end - start + 1) + 1;
+    	}
+    	
+    	// Otherwise, we have a non-raw string and we need to
+    	// process escape sequences.
+    	int length = 0;
+    	boolean escaping = false;
+    	for (; start <= end; ++start) {
+    		if (escaping) {
+    			escaping = false;
+    			++length;
+    		} else if (fValue[start] == '\\') {
+				escaping = true;
+			} else {
+				++length;
 			}
+    		// TODO: Handle fancier things like octal literals.
+    	}
+    	
+    	// + 1 for null terminator.
+    	return length + 1;
+    }
+    
+	private IValue getStringLiteralSize() {
+		if (fStringLiteralSize == -1) {
+			fStringLiteralSize = computeStringLiteralSize();
 		}
-		return Value.create(length);
+		return Value.create(fStringLiteralSize);
 	}
 
 	private Kind getCharType() {
@@ -210,7 +260,7 @@ public class CPPASTLiteralExpression extends ASTNode implements ICPPASTLiteralEx
 	@Deprecated
 	public void setValue(String value) {
         assertNotFrozen();
-        this.value = value.toCharArray();
+        this.fValue = value.toCharArray();
     }
 
     /**
@@ -229,7 +279,7 @@ public class CPPASTLiteralExpression extends ASTNode implements ICPPASTLiteralEx
 	}
 	
 	private ICPPEvaluation createEvaluation() {
-    	switch (kind) {
+    	switch (fKind) {
     		case lk_this: {
     			IScope scope = CPPVisitor.getContainingScope(this);
     			IType type= CPPVisitor.getImpliedObjectType(scope);

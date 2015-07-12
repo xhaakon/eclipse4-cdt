@@ -51,7 +51,6 @@ import org.eclipse.cdt.internal.core.pdom.db.Database;
 import org.eclipse.cdt.internal.core.pdom.db.IBTreeComparator;
 import org.eclipse.cdt.internal.core.pdom.db.IBTreeVisitor;
 import org.eclipse.cdt.internal.core.pdom.db.IString;
-import org.eclipse.cdt.internal.core.pdom.db.TypeMarshalBuffer;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 
@@ -204,7 +203,7 @@ public abstract class PDOMLinkage extends PDOMNamedNode implements IIndexLinkage
 	}
 	
 	protected final PDOMBinding attemptFastAdaptBinding(final IBinding binding) throws CoreException {
-		PDOMBinding pdomBinding= (PDOMBinding) binding.getAdapter(PDOMBinding.class);
+		PDOMBinding pdomBinding= binding.getAdapter(PDOMBinding.class);
 		// There is no guarantee, that the binding is from the same PDOM object.
 		if (pdomBinding != null && pdomBinding.getPDOM() == getPDOM()) {
 			return pdomBinding;

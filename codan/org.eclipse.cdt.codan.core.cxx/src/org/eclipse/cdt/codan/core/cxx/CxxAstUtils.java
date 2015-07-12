@@ -1,14 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Alena Laskavaia, Tomasz Wesolowski
+ * Copyright (c) 2009, 2015 Alena Laskavaia, Tomasz Wesolowski
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Alena Laskavaia  - initial API and implementation
- *    Tomasz Wesolowski - extension
- *    Marc-Andre Laperle
+ *     Alena Laskavaia  - initial API and implementation
+ *     Tomasz Wesolowski - extension
+ *     Marc-Andre Laperle
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.codan.core.cxx;
 
@@ -31,6 +32,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTNode.CopyStyle;
@@ -48,7 +50,6 @@ import org.eclipse.cdt.core.dom.ast.IFunction;
 import org.eclipse.cdt.core.dom.ast.INodeFactory;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
-import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.rewrite.DeclarationGenerator;
 import org.eclipse.cdt.core.index.IIndex;
@@ -56,10 +57,11 @@ import org.eclipse.cdt.core.index.IIndexFile;
 import org.eclipse.cdt.core.index.IIndexName;
 import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.core.runtime.CoreException;
 
 /**
- * Useful functions for doing code analysis on c/c++ AST
+ * Useful functions for doing code analysis on C/C++ AST.
  */
 public final class CxxAstUtils {
 	public static class NameFinderVisitor extends ASTVisitor {
@@ -82,11 +84,32 @@ public final class CxxAstUtils {
 		
 		@Override
 		public int visit(IASTExpression expression) {
-			if(expression instanceof IASTFieldReference) {
+			if (expression instanceof IASTFieldReference) {
 				this.name = ((IASTFieldReference) expression).getFieldName();
 				return PROCESS_ABORT;
 			}
 			return super.visit(expression);
+		}	
+	}
+	
+	private static class NoReturnImplicitCallFinder extends ASTVisitor {
+		boolean noReturn;
+
+		NoReturnImplicitCallFinder() {
+			shouldVisitImplicitNames = true;
+			shouldVisitImplicitDestructorNames = true;
+		}
+		
+		@Override
+		public int visit(IASTName name) {
+			if (name instanceof IASTImplicitName) {
+				IBinding binding = name.resolveBinding();
+				if (binding instanceof IFunction && ((IFunction) binding).isNoReturn()) {
+					noReturn = true;
+					return PROCESS_ABORT;
+				}
+			}
+			return PROCESS_CONTINUE;
 		}	
 	}
 	
@@ -95,22 +118,7 @@ public final class CxxAstUtils {
 	}
 
 	public static IType unwindTypedef(IType type) {
-		if (!(type instanceof IBinding))
-			return type;
-		IBinding typeName = (IBinding) type;
-		// unwind typedef chain
-		try {
-			while (typeName instanceof ITypedef) {
-				IType t = ((ITypedef) typeName).getType();
-				if (t instanceof IBinding)
-					typeName = (IBinding) t;
-				else
-					return t;
-			}
-		} catch (Exception e) { // in CDT 6.0 getType throws DOMException
-			Activator.log(e);
-		}
-		return (IType) typeName;
+		return SemanticUtil.getNestedType(type, SemanticUtil.TDEF);
 	}
 
 	public static boolean isInMacro(IASTNode node) {
@@ -145,33 +153,32 @@ public final class CxxAstUtils {
 	}
 
 	/**
-	 * @param astName
-	 *        a name for the declaration
-	 * @param factory
-	 *        the factory
-	 * @param index
-	 * @return
+	 * @param astName the name for the declaration
+	 * @param factory the factory
+	 * @param index the index
+	 * @return the created declaration
 	 */
 	public static IASTDeclaration createDeclaration(IASTName astName, INodeFactory factory, IIndex index) {
-		// Depending on context, either a type or a declaration is easier to
-		// infer
+		// Depending on context, either a type or a declaration is easier to infer.
 		IType inferredType = null;
 		IASTSimpleDeclaration declaration = null;
 		inferredType = tryInferTypeFromBinaryExpr(astName);
 		if (inferredType == null)
 			declaration = tryInferTypeFromFunctionCall(astName, factory, index);
-		// After the inference, create the statement is needed
-		if (declaration != null) { // A declaration was generated
+		// After the inference, create the statement is needed.
+		if (declaration != null) {
+			// A declaration was generated.
 			return declaration;
-		} else if (inferredType != null) { // A type was inferred, create the
-											// declaration and return it
+		} else if (inferredType != null) {
+			// A type was inferred, create the declaration and return it.
 			DeclarationGenerator generator = DeclarationGenerator.create(factory);
 			IASTDeclarator declarator = generator.createDeclaratorFromType(inferredType, astName.toCharArray());
 			IASTDeclSpecifier declspec = generator.createDeclSpecFromType(inferredType);
 			IASTSimpleDeclaration simpleDeclaration = factory.newSimpleDeclaration(declspec);
 			simpleDeclaration.addDeclarator(declarator);
 			return simpleDeclaration;
-		} else { // Fallback - return a `void` declaration
+		} else {
+			// Fallback - return a `void` declaration.
 			IASTDeclarator declarator = factory.newDeclarator(astName.copy(CopyStyle.withLocations));
 			IASTSimpleDeclSpecifier declspec = factory.newSimpleDeclSpecifier();
 			declspec.setType(Kind.eInt);
@@ -185,14 +192,14 @@ public final class CxxAstUtils {
 	 * For any BinaryExpression, guess the type from the other operand. (A good
 	 * guess for =, ==; hard to get a better guess for others)
 	 * 
-	 * @return inferred type or null if couldn't infer
+	 * @return inferred type or {@code null} if couldn't infer
 	 */
 	private static IType tryInferTypeFromBinaryExpr(IASTName astName) {
 		if (astName.getParent() instanceof IASTIdExpression && astName.getParent().getParent() instanceof IASTBinaryExpression) {
 			IASTNode binaryExpr = astName.getParent().getParent();
 			for (IASTNode node : binaryExpr.getChildren()) {
 				if (node != astName.getParent()) {
-					// use this expression as type source
+					// Use this expression as type source.
 					return ((IASTExpression) node).getExpressionType();
 				}
 			}
@@ -204,9 +211,8 @@ public final class CxxAstUtils {
 	 * For a function call, tries to find a matching function declaration.
 	 * Checks the argument count.
 	 * 
-	 * @param index
-	 * 
-	 * @return a generated declaration or null if not suitable
+	 * @param index the index
+	 * @return a generated declaration or {@code null} if not suitable
 	 */
 	private static IASTSimpleDeclaration tryInferTypeFromFunctionCall(IASTName astName, INodeFactory factory, IIndex index) {
 		if (astName.getParent() instanceof IASTIdExpression && astName.getParent().getParent() instanceof IASTFunctionCallExpression
@@ -239,7 +245,7 @@ public final class CxxAstUtils {
 			}
 			try {
 				index.acquireReadLock();
-				Set<IIndexName> declSet = new HashSet<IIndexName>();
+				Set<IIndexName> declSet = new HashSet<>();
 				// fill declSet with proper declarations
 				for (IBinding b : bindings) {
 					if (b instanceof IFunction) {
@@ -251,7 +257,7 @@ public final class CxxAstUtils {
 						}
 					}
 				}
-				HashMap<ITranslationUnit, IASTTranslationUnit> astCache = new HashMap<ITranslationUnit, IASTTranslationUnit>();
+				HashMap<ITranslationUnit, IASTTranslationUnit> astCache = new HashMap<>();
 				for (IIndexName decl : declSet) {
 					// for now, just use the first overload found
 					ITranslationUnit tu = getTranslationUnitFromIndexName(decl);
@@ -260,7 +266,7 @@ public final class CxxAstUtils {
 					}
 					
 					IASTTranslationUnit ast = null;
-					if(astCache.containsKey(tu)) {
+					if (astCache.containsKey(tu)) {
 						ast = astCache.get(tu);
 					} else {
 						ast = tu.getAST(index, ITranslationUnit.AST_SKIP_INDEXED_HEADERS);
@@ -319,18 +325,16 @@ public final class CxxAstUtils {
 
 	/**
 	 * If the function definition belongs to a class, returns the class.
-	 * Otherwise, returns null.
+	 * Otherwise, returns {@code null}.
 	 * 
-	 * @param function
-	 *        the function definition to check
-	 * @param index
-	 *        the index to use for name lookup
-	 * @return Either a type specifier or null
+	 * @param function the function definition to check
+	 * @param index the index to use for name lookup
+	 * @return either a type specifier or {@code null}
 	 */
 	public static IASTCompositeTypeSpecifier getCompositeTypeFromFunction(final IASTFunctionDefinition function, final IIndex index) {
-		// return value to be set via visitor
+		// Return value to be set via visitor.
 		final IASTCompositeTypeSpecifier returnSpecifier[] = { null };
-		final HashMap<ITranslationUnit, IASTTranslationUnit> astCache = new HashMap<ITranslationUnit, IASTTranslationUnit>();
+		final HashMap<ITranslationUnit, IASTTranslationUnit> astCache = new HashMap<>();
 		function.accept(new ASTVisitor() {
 			{
 				shouldVisitDeclarators = true;
@@ -342,8 +346,7 @@ public final class CxxAstUtils {
 				if (!(name instanceof ICPPASTQualifiedName && name.getParent().getParent() == function))
 					return PROCESS_CONTINUE;
 				ICPPASTQualifiedName qname = (ICPPASTQualifiedName) name;
-				// A qualified name may have 1 name, but in our case needs to
-				// have 2.
+				// A qualified name may have 1 name, but in our case needs to have 2.
 				// The pre-last name is either a namespace or a class.
 				if (qname.getChildren().length < 2) {
 					return PROCESS_CONTINUE;
@@ -388,31 +391,32 @@ public final class CxxAstUtils {
 		return returnSpecifier[0];
 	}
 
-	/**
-	 * @param body
-	 * @return
-	 */
-	public static boolean isThrowStatement(IASTNode body) {
-		if (!(body instanceof IASTExpressionStatement))
+	public static boolean isThrowStatement(IASTNode statement) {
+		if (!(statement instanceof IASTExpressionStatement))
 			return false;
-		IASTExpression expression = ((IASTExpressionStatement) body).getExpression();
+		IASTExpression expression = ((IASTExpressionStatement) statement).getExpression();
 		if (!(expression instanceof IASTUnaryExpression))
 			return false;
 		return ((IASTUnaryExpression) expression).getOperator() == IASTUnaryExpression.op_throw;
 	}
 
-	public static boolean isExitStatement(IASTNode body) {
-		if (!(body instanceof IASTExpressionStatement))
+	public static boolean isExitStatement(IASTNode statement) {
+		NoReturnImplicitCallFinder noReturnFinder = new NoReturnImplicitCallFinder();
+		statement.accept(noReturnFinder);
+		if (noReturnFinder.noReturn)
+			return true;
+
+		if (!(statement instanceof IASTExpressionStatement))
 			return false;
-		IASTExpression expression = ((IASTExpressionStatement) body).getExpression();
+		IASTExpression expression = ((IASTExpressionStatement) statement).getExpression();
 		if (!(expression instanceof IASTFunctionCallExpression))
 			return false;
 		IASTExpression functionNameExpression = ((IASTFunctionCallExpression) expression).getFunctionNameExpression();
 		if (functionNameExpression instanceof IASTIdExpression) {
-			IASTName name = ((IASTIdExpression)functionNameExpression).getName();
+			IASTName name = ((IASTIdExpression) functionNameExpression).getName();
 			
 			IBinding binding = name.resolveBinding();
-			if (binding!=null && binding instanceof IFunction && ((IFunction)binding).isNoReturn()) {
+			if (binding instanceof IFunction && ((IFunction) binding).isNoReturn()) {
 				return true;
 			}
 		}

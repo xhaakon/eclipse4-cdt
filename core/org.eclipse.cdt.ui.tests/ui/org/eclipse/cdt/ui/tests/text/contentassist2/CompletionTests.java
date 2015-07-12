@@ -38,7 +38,6 @@ import org.eclipse.jface.text.IDocument;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.testplugin.TestScannerProvider;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
-import org.eclipse.cdt.ui.CUIPlugin;
 
 import org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistPreference;
 
@@ -259,19 +258,25 @@ public class CompletionTests extends AbstractContentAssistTest {
 	protected void assertParameterHint(String[] expected) throws Exception {
 		assertContentAssistResults(fCursorOffset, expected, false, CONTEXT);
 	}
+	
+	protected void assertDotReplacedWithArrow() throws Exception {
+		assertEquals("->", getDocument().get(fCursorOffset - 1, 2));
+	}
 
 	private static void setDisplayDefaultArguments(boolean value) {
 		IPreferenceStore preferenceStore = getPreferenceStore();
 		preferenceStore.setValue(ContentAssistPreference.DEFAULT_ARGUMENT_DISPLAY_ARGUMENTS, value);
 	}
 
+	private void setReplaceDotWithArrow(boolean value) {
+		IPreferenceStore preferenceStore = getPreferenceStore();
+		preferenceStore.setValue(ContentAssistPreference.AUTOACTIVATION_TRIGGERS_REPLACE_DOT_WITH_ARROW, value);
+		fProcessorNeedsConfiguring = true;  // to pick up the modified auto-activation preference
+	}
+	
 	private static void setDisplayDefaultedParameters(boolean value) {
 		IPreferenceStore preferenceStore = getPreferenceStore();
 		preferenceStore.setValue(ContentAssistPreference.DEFAULT_ARGUMENT_DISPLAY_PARAMETERS_WITH_DEFAULT_ARGUMENT, value);
-	}
-
-	private static IPreferenceStore getPreferenceStore() {
-		return CUIPlugin.getDefault().getPreferenceStore();
 	}
 
 	//void gfunc() {C1 v; v.m/*cursor*/
@@ -770,6 +775,24 @@ public class CompletionTests extends AbstractContentAssistTest {
 	public void testNestedBaseTemplateMembersFromUnknownScope_456752() throws Exception {
 		final String[] expected = { "NestedProtected", "NestedPublic" };
 		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	//	template <typename T>
+	//	struct A {
+	//		template <typename U>
+	//		struct AA {
+	//			template <typename V>
+	//			struct AAA {
+	//			};
+	//		};
+	//	};
+	//
+	//	struct B : A<B> {
+	//		AA<B>::/*cursor*/
+	//	};
+	public void testMemebersForDeeplyNestedTemplates_459389() throws Exception {
+		final String[] expected = { "AAA<typename V>" };
+		assertCompletionResults(fCursorOffset, expected, DISPLAY);
 	}
 
 	//	struct A {};
@@ -1473,6 +1496,40 @@ public class CompletionTests extends AbstractContentAssistTest {
 		assertContentAssistResults(fCursorOffset, expected, true, DISPLAY);
 	}
 
+	// struct Wrapper {
+	// 	template<typename T>
+	// 	struct A {
+	// 		static void test();
+	// 	};
+	//
+	// 	struct B : A<B> {
+	// 		void run(){ te/*cursor*/ }
+	// 	};
+	// };
+	public void testTemplateInstanceMemberAccess_459047() throws Exception {
+		final String[] expected = { "test(void)" };
+		assertContentAssistResults(fCursorOffset, expected, true, ID);
+	}
+
+	// template <int T>
+	// struct A {
+	// 	template <int TT>
+	// 	struct AA {
+	// 		template <typename TTT>
+	// 		using Type = TTT;
+	// 	};
+	// };
+	//
+	// struct B{
+	// 	static int i;
+	// };
+	//
+	// A<0>::AA<0>::Type<B>::/*cursor*/
+	public void testNestedTemplateSpecialization_460341() throws Exception {
+		final String[] expected = { "i" };
+		assertContentAssistResults(fCursorOffset, expected, true, ID);
+	}
+
 	//	void foo() { Specialization<int, /*cursor*/
 	public void testTemplateArgumentList() throws Exception {
 		setCommaAfterFunctionParameter(CCorePlugin.INSERT);
@@ -1615,5 +1672,54 @@ public class CompletionTests extends AbstractContentAssistTest {
 		setDisplayDefaultArguments(true);
 		final String[] expectedDisplay = { "other_tpl<typename T1, typename T2 = tpl<T1>>" };
 		assertContentAssistResults(fCursorOffset, expectedDisplay, true, DISPLAY);
+	}
+	
+	//	struct A {
+	//	    void foo();
+	//	};
+	//
+	//	template <typename>
+	//	struct B {
+	//	    A val;
+	//	};
+	//
+	//	template <typename T>
+	//	void test(B<T> b) {
+	//	    b.val./*cursor*/
+	//	}
+	public void testFieldOfDeferredClassInstance_bug402617() throws Exception {
+		final String[] expected = { "A", "foo(void)" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+	
+	//	struct A {
+	//		int foo;
+	//	};
+	//	typedef A* B;
+	//	int main() {
+	//		B waldo;
+	//		waldo./*cursor*/
+	//	}
+	public void testDotToArrowConversionForTypedef_bug461527() throws Exception {
+		setReplaceDotWithArrow(true);
+		final String[] expected = { "A", "foo : int" };
+		assertCompletionResults(fCursorOffset, expected, DISPLAY);
+		assertDotReplacedWithArrow();
+	}
+	
+	//	struct A {
+	//	    void foo();
+	//	};
+	//
+	//	template <class T>
+	//	class C : public T {};
+	//
+	//	int main() {
+	//	    C<A> c;
+	//	    c./*cursor*/
+	//	}
+	public void testInheritanceFromTemplateParameter_bug466861() throws Exception {
+		final String[] expected = { "A", "C", "foo(void)" };
+		assertCompletionResults(fCursorOffset, expected, ID);
 	}
 }

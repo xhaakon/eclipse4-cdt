@@ -70,6 +70,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.core.index.IIndexFileSet;
 import org.eclipse.cdt.core.index.IIndexMacro;
 import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.index.IIndexName;
@@ -97,10 +98,9 @@ import org.eclipse.cdt.internal.core.model.ASTCache.ASTRunnable;
 import org.eclipse.cdt.internal.core.model.ext.CElementHandleFactory;
 import org.eclipse.cdt.internal.core.model.ext.ICElementHandle;
 
-import org.eclipse.cdt.internal.ui.actions.OpenActionUtil;
 import org.eclipse.cdt.internal.ui.editor.ASTProvider;
 import org.eclipse.cdt.internal.ui.editor.CEditorMessages;
-import org.eclipse.cdt.internal.ui.viewsupport.CElementLabels;
+import org.eclipse.cdt.internal.ui.search.actions.OpenDeclarationsAction.ITargetDisambiguator;
 import org.eclipse.cdt.internal.ui.viewsupport.IndexUI;
 
 class OpenDeclarationsJob extends Job implements ASTRunnable {
@@ -112,13 +112,16 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 	private IIndex fIndex;
 	private final ITextSelection fTextSelection;
 	private final String fSelectedText;
+	private final ITargetDisambiguator fTargetDisambiguator;
 
-	OpenDeclarationsJob(SelectionParseAction action, ITranslationUnit editorInput, ITextSelection textSelection, String text) {
+	OpenDeclarationsJob(SelectionParseAction action, ITranslationUnit editorInput, 
+			ITextSelection textSelection, String text, ITargetDisambiguator targetDisambiguator) {
 		super(CEditorMessages.OpenDeclarations_dialog_title);
 		fAction= action;
 		fTranslationUnit= editorInput;
 		fTextSelection= textSelection;
 		fSelectedText= text;
+		fTargetDisambiguator= targetDisambiguator;
 	}
 
 	@Override
@@ -227,7 +230,7 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 			} else {
 				// Leave old method as fallback for local variables, parameters and
 				// everything else not covered by ICElementHandle.
-				found = navigateOneLocation(targets);
+				found = navigateOneLocation(ast, targets);
 			}
 			if (!found && !navigationFallBack(ast, sourceName, kind)) {
 				fAction.reportSymbolLookupFailure(new String(sourceName.toCharArray()));
@@ -526,20 +529,19 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 					if (uniqueElements.size() == 2) {
 						final ICElement e0 = uniqueElements.get(0);
 						final ICElement e1 = uniqueElements.get(1);
-						if (e0 instanceof IStructureDeclaration && e1 instanceof IMethodDeclaration) {
+						// Prefer a method of a class, to the class itself.
+						if (isMethodOfClass(e1, e0)) {
 							target= (ISourceReference) e1;
-						} else if (e1 instanceof IStructureDeclaration && e0 instanceof IMethodDeclaration) {
+						} else if (isMethodOfClass(e0, e1)) {
 							target= (ISourceReference) e0;
 						}
 					}
 					if (target == null) {
-						if (OpenDeclarationsAction.sIsJUnitTest) {
+						if (OpenDeclarationsAction.sDisallowAmbiguousInput) {
 							throw new RuntimeException("ambiguous input: " + uniqueElements.size()); //$NON-NLS-1$
 						}
 						ICElement[] elemArray= uniqueElements.toArray(new ICElement[uniqueElements.size()]);
-						target = (ISourceReference) OpenActionUtil.selectCElement(elemArray, fAction.getSite().getShell(),
-								CEditorMessages.OpenDeclarationsAction_dialog_title, CEditorMessages.OpenDeclarationsAction_selectMessage,
-								CElementLabels.ALL_DEFAULT | CElementLabels.ALL_FULLY_QUALIFIED | CElementLabels.MF_POST_FILE_QUALIFIED, 0);
+						target = (ISourceReference) fTargetDisambiguator.disambiguateTargets(elemArray, fAction);
 					}
 				}
 				if (target != null) {
@@ -554,6 +556,13 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 						CUIPlugin.log(e);
 					}
 				}
+			}
+			
+			private boolean isMethodOfClass(ICElement method, ICElement clazz) {
+				return method instanceof IMethodDeclaration
+					&& clazz instanceof IStructureDeclaration
+					&& method.getParent() != null
+					&& method.getParent().equals(clazz);
 			}
 		});
 		return true;
@@ -573,7 +582,33 @@ class OpenDeclarationsJob extends Job implements ASTRunnable {
 		return null;
 	}
 
-	private boolean navigateOneLocation(IName[] names) {
+	private IName[] filterNamesByIndexFileSet(IASTTranslationUnit ast, IName[] names) {
+		IIndexFileSet indexFileSet = ast.getIndexFileSet();
+		if (indexFileSet == null) {
+			return names;
+		}
+		IName[] result = IName.EMPTY_ARRAY;
+		for (IName name : names) {
+			if (name instanceof IIndexName) {
+				try {
+					if (!indexFileSet.contains(((IIndexName) name).getFile()))
+						continue;
+				} catch (CoreException e) {}
+			}
+			result = ArrayUtil.append(result, name);
+		}
+		return result;
+	}
+	
+	private boolean navigateOneLocation(IASTTranslationUnit ast, IName[] names) {
+		// If there is more than one name, try to filter out
+		// ones defined in a file not in the AST's index file set.
+		if (names.length > 1) {
+			IName[] filteredNames = filterNamesByIndexFileSet(ast, names);
+			if (filteredNames.length > 0) {
+				names = filteredNames;
+			}
+		}
 		for (IName name : names) {
 			if (navigateToName(name)) {
 				return true;

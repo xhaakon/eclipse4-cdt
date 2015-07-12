@@ -713,6 +713,10 @@ public class CPPTemplates {
 			IASTName templateName = id.getTemplateName();
 			IBinding template = templateName.resolvePreBinding();
 
+			while (template instanceof CPPTypedefSpecialization) {
+				template = ((CPPTypedefSpecialization) template).getSpecializedBinding();
+			}
+
 			// Alias template.
 			if (template instanceof ICPPAliasTemplate) {
 				ICPPAliasTemplate aliasTemplate = (ICPPAliasTemplate) template;
@@ -1214,9 +1218,8 @@ public class CPPTemplates {
 			ICPPTemplateArgument origArg = args[i];
 			ICPPTemplateArgument newArg;
 			if (origArg.isPackExpansion()) {
-				ICPPTemplateArgument unexpanded= origArg;
-				origArg= origArg.getExpansionPattern();
-				int packSize= determinePackSize(origArg, tpMap);
+				ICPPTemplateArgument pattern= origArg.getExpansionPattern();
+				int packSize= determinePackSize(pattern, tpMap);
 				if (packSize == PACK_SIZE_FAIL || packSize == PACK_SIZE_NOT_FOUND) {
 					throw new DOMException(new ProblemBinding(point, IProblemBinding.SEMANTIC_INVALID_TEMPLATE_ARGUMENTS, null));
 				} else if (packSize == PACK_SIZE_DEFER) {
@@ -1226,11 +1229,11 @@ public class CPPTemplates {
 					ICPPTemplateArgument[] newResult= new ICPPTemplateArgument[args.length + resultShift + shift];
 					System.arraycopy(result, 0, newResult, 0, i + resultShift);
 					for (int j= 0; j < packSize; j++) {
-						newArg = instantiateArgument(origArg, tpMap, j, within, point);
+						newArg = instantiateArgument(pattern, tpMap, j, within, point);
 						if (!isValidArgument(newArg)) {
 							if (strict)
 								return null;
-							result[i + resultShift] = unexpanded;
+							result[i + resultShift] = origArg;
 							newResult = result;
 							shift = 0;
 							break;

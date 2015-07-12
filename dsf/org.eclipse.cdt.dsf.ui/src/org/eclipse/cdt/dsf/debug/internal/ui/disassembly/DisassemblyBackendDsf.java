@@ -109,7 +109,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 	}
 
     public static boolean supportsDebugContext_(IAdaptable context) {
-        IDMVMContext dmvmContext = (IDMVMContext) context.getAdapter(IDMVMContext.class);
+        IDMVMContext dmvmContext = context.getAdapter(IDMVMContext.class);
         return dmvmContext != null && hasDisassemblyService(dmvmContext.getDMContext());
     }
     
@@ -166,7 +166,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 	@Override
 	public SetDebugContextResult setDebugContext(IAdaptable context) {
 		assert supportsDebugContext(context) : "caller should not have invoked us"; //$NON-NLS-1$
-		IDMVMContext vmContext = (IDMVMContext) context.getAdapter(IDMVMContext.class);
+		IDMVMContext vmContext = context.getAdapter(IDMVMContext.class);
 		IDMContext dmContext = vmContext.getDMContext();
 		
 		SetDebugContextResult result = new SetDebugContextResult();
@@ -716,7 +716,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 				String compilationPath= null;
 				// insert symbol label
 				final String functionName= instruction.getFuntionName();
-				if (functionName != null && functionName.length() > 0 && instruction.getOffset() == 0) {
+				if (functionName != null && !functionName.isEmpty() && instruction.getOffset() == 0) {
 					p = fCallback.getDocument().insertLabel(p, address, functionName, showSymbols && (!hasSource || showDisassembly));
 				}
 				// determine instruction byte length
@@ -735,7 +735,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 				}
 				final String functionOffset; // Renamed from opCode to avoid confusion
 				// insert function name+offset instead of opcode bytes
-				if (functionName != null && functionName.length() > 0) {
+				if (functionName != null && !functionName.isEmpty()) {
 					functionOffset= functionName + '+' + instruction.getOffset();
 				} else {
 					functionOffset= ""; //$NON-NLS-1$
@@ -843,7 +843,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 					}
 					// insert symbol label
 					final String functionName= instruction.getFuntionName();
-					if (functionName != null && functionName.length() > 0 && instruction.getOffset() == 0) {
+					if (functionName != null && !functionName.isEmpty() && instruction.getOffset() == 0) {
 						p = fCallback.getDocument().insertLabel(p, address, functionName, showSymbols && (!hasSource || showDisassembly));
 					}
 					// determine instruction byte length
@@ -875,7 +875,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 					}
 					final String funcOffset;
 					// insert function name+offset instead of opcode bytes
-					if (functionName != null && functionName.length() > 0) {
+					if (functionName != null && !functionName.isEmpty()) {
 						funcOffset= functionName + '+' + instruction.getOffset();
 					} else {
 						funcOffset= ""; //$NON-NLS-1$

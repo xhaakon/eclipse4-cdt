@@ -27,7 +27,7 @@ default_jlevel="4"
 jlevel="${default_jlevel}"
 
 # Supported versions
-default_versions="6.6 6.7.1 6.8 7.0.1 7.1 7.2 7.3.1 7.4.1 7.5.1 7.6.2 7.7.1 7.8.2"
+default_versions="6.6 6.7.1 6.8 7.0.1 7.1 7.2 7.3.1 7.4.1 7.5.1 7.6.2 7.7.1 7.8.2 7.9"
 
 # Is set to "echo" if we are doing a dry-run.
 dryrun=""
@@ -56,6 +56,12 @@ function help_and_exit() {
   echo "Supported versions:"
   echo "  ${default_versions}"
   echo ""
+  echo "Examples:"
+  echo "  Build versions 7.7.1 and 7.8.2:"
+  echo "    $ $0 7.7.1 7.8.2"
+  echo "  Build all supported versions:"
+  echo "    $ $0 all"
+  echo ""
 
   exit $1
 }
@@ -80,8 +86,9 @@ function check_supported() {
       # Supported, do nothing.
       ;;
     *)
-      echo "Version ${version} is not supported, sorry."
-      exit 1
+      echo "Error: version ${version} is not supported by this script."
+      echo ""
+      help_and_exit
       ;;
   esac
 }
