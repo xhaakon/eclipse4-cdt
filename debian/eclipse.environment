@@ -87,3 +87,5 @@ remote/*
 # Needed for org.eclipse.cdt.qt
 
 qt/*
+
+native/*
