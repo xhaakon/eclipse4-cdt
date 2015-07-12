@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2014 IBM Corporation and others.
+ * Copyright (c) 2002, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,6 +15,7 @@
  *     Sergey Prigogin (Google)
  *     Thomas Corbat (IFS)
  *     Anders Dahlberg (Ericsson) - bug 84144
+ *     Nathan Ridge
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTAlignmentSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.IASTArraySubscriptExpression;
@@ -261,7 +263,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     		try {
     			return nameSpecifier(ctx, strat);
     		} catch (BacktrackException e) {
-    			if (strat.setNextAlternative()) {
+    			if (strat.setNextAlternative(true /* previous alternative failed to parse */)) {
     				backup(m);
     			} else {
     				throw e;
@@ -342,14 +344,14 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 				final int haveArgs = haveTemplateArguments(inBinaryExpression);
             	boolean templateID= true;
             	if (!keywordTemplate) {
-					if (haveArgs == -1) {
+					if (haveArgs == NO_TEMPLATE_ID) {
 						templateID= false;
-					} else if (haveArgs == 0) {
+					} else if (haveArgs == AMBIGUOUS_TEMPLATE_ID) {
 						templateID= strat.shallParseAsTemplateID(name);
 					}
             	}
             	if (templateID) {
-            		if (haveArgs == -1)
+            		if (haveArgs == NO_TEMPLATE_ID)
             			throwBacktrack(LA(1));
 
             		nameSpec= (ICPPASTName) addTemplateArguments(name, strat);
@@ -560,7 +562,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         			break;
         		}
         	}
-        	return 0;
+        	return AMBIGUOUS_TEMPLATE_ID;
         } finally {
         	backup(mark);
         }
@@ -1156,11 +1158,11 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 				if (variants != null) {
 					variants = new Variant(variants, e, strat.getTemplateNames(), lastToken.getOffset());
 				}
-				if (!strat.setNextAlternative()) {
+				if (!strat.setNextAlternative(false /* previous alternative parsed ok */)) {
 					break;
 				}
 			} catch (BacktrackException e) {
-				if (!strat.setNextAlternative()) {
+				if (!strat.setNextAlternative(true /* previous alternative failed to parse */)) {
 					if (lastToken == null)
 						throw e;
 
@@ -1839,6 +1841,11 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         case IToken.tBITCOMPLEMENT:
         case IToken.t_decltype: {
             IASTName name = qualifiedName(ctx, strat);
+            // A qualified-name's last name can sometimes be empty in a declaration (e.g. in "int A::*x",
+            // "A::" is a valid qualified-name with an empty last name), but not in an expression
+            // (unless we are invoking code completion at the '::').
+            if (name.getLookupKey().length == 0 && LT(1) != IToken.tEOC)
+                throwBacktrack(LA(1));
             IASTIdExpression idExpression = nodeFactory.newIdExpression(name);
             return setRange(idExpression, name);
         }
@@ -1951,7 +1958,12 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         final int optype= consume().getType();
         consume(IToken.tLT);
         final IASTTypeId typeID = typeId(DeclarationOptions.TYPEID);
-        consumeOrEOC(IToken.tGT);
+        final IToken gt = LA(1);
+        if (gt.getType() == IToken.tGT || gt.getType() == IToken.tGT_in_SHIFTR) {
+        	consume();
+        } else if (gt.getType() != IToken.tEOC) {
+        	throwBacktrack(gt);
+        }
         consumeOrEOC(IToken.tLPAREN);
         IASTExpression operand= null;
         if (LT(1) != IToken.tEOC) {
@@ -2228,7 +2240,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     			try {
     				return templateParameterList(result);
     			} catch (BacktrackException e) {
-    				if (!fTemplateParameterListStrategy.setNextAlternative()) {
+    				if (!fTemplateParameterListStrategy.setNextAlternative(true /* previous alternative failed to parse */)) {
     					fTemplateParameterListStrategy= null;
     					throw e;
     				}
@@ -2886,6 +2898,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
     	ICPPASTDeclSpecifier result= null;
     	ICPPASTDeclSpecifier altResult= null;
     	List<IASTAttributeSpecifier> attributes = null;
+    	IASTAlignmentSpecifier[] alignmentSpecifiers = IASTAlignmentSpecifier.EMPTY_ALIGNMENT_SPECIFIER_ARRAY;
         try {
         	IASTName identifier= null;
         	IASTExpression typeofExpression= null;
@@ -3085,6 +3098,27 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         			encounteredRawType= true;
         			endOffset= consume().getEndOffset();
         			break;
+        		case IGCCToken.t_decimal32:
+        			if (encounteredTypename)
+        				break declSpecifiers;
+        			simpleType = IASTSimpleDeclSpecifier.t_decimal32;
+        			encounteredRawType= true;
+        			endOffset= consume().getEndOffset();
+        			break;
+        		case IGCCToken.t_decimal64:
+        			if (encounteredTypename)
+        				break declSpecifiers;
+        			simpleType = IASTSimpleDeclSpecifier.t_decimal64;
+        			encounteredRawType= true;
+        			endOffset= consume().getEndOffset();
+        			break;
+        		case IGCCToken.t_decimal128:
+        			if (encounteredTypename)
+        				break declSpecifiers;
+        			simpleType = IASTSimpleDeclSpecifier.t_decimal128;
+        			encounteredRawType= true;
+        			endOffset= consume().getEndOffset();
+        			break;
         		case IToken.t_void:
         			if (encounteredTypename)
         				break declSpecifiers;
@@ -3151,6 +3185,10 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         			}
         			endOffset= calculateEndOffset(result);
         			encounteredTypename= true;
+        			break;
+        			
+        		case IToken.t_alignas:
+        			alignmentSpecifiers = ArrayUtil.append(alignmentSpecifiers, alignmentSpecifier());
         			break;
 
         		case IGCCToken.t__attribute__: // if __attribute__ is after the declSpec
@@ -3252,6 +3290,7 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
         		result= buildSimpleDeclSpec(storageClass, simpleType, options, isLong, typeofExpression, offset, endOffset);
         	}
         	addAttributeSpecifiers(attributes, result);
+        	result.setAlignmentSpecifiers(ArrayUtil.trim(alignmentSpecifiers));
         } catch (BacktrackException e) {
         	if (returnToken != null) {
         		backup(returnToken);
@@ -5109,4 +5148,30 @@ public class GNUCPPSourceParser extends AbstractGNUSourceCodeParser {
 
         return setRange(nodeFactory.newReturnStatement(expr), offset, endOffset);
     }
+
+	@Override
+	protected IASTExpression expressionWithOptionalTrailingEllipsis() throws BacktrackException,
+			EndOfFileException {
+		IASTExpression result = expression();
+		if (LT(1) == IToken.tELLIPSIS) {
+			result = addPackExpansion(result, consume());
+		}
+		return result;
+	}
+
+	@Override
+	protected IASTTypeId typeIdWithOptionalTrailingEllipsis(DeclarationOptions option)
+			throws EndOfFileException, BacktrackException {
+		ICPPASTTypeId result = typeId(option);
+		if (LT(1) == IToken.tELLIPSIS) {
+			addPackExpansion(result, consume());
+		}
+		return result;
+	}
+
+	@Override
+	protected IASTAlignmentSpecifier createAmbiguousAlignmentSpecifier(IASTAlignmentSpecifier expression,
+			IASTAlignmentSpecifier typeId) {
+		return new CPPASTAmbiguousAlignmentSpecifier(expression, typeId);
+	}
 }

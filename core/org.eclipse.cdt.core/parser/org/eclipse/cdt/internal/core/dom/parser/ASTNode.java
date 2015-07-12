@@ -137,7 +137,7 @@ public abstract class ASTNode implements IASTNode {
 	        if (length != 0) {
 	        	final IASTTranslationUnit tu= getTranslationUnit();
 	        	if (tu != null) {
-	        		ILocationResolver l= (ILocationResolver) tu.getAdapter(ILocationResolver.class);
+	        		ILocationResolver l= tu.getAdapter(ILocationResolver.class);
 	        		if (l != null) {
 	        			locations= l.getLocations(getOffset(), length);
 	        		}
@@ -152,7 +152,7 @@ public abstract class ASTNode implements IASTNode {
     public IASTImageLocation getImageLocation() {
     	final IASTTranslationUnit tu= getTranslationUnit();
     	if (tu != null) {
-    		ILocationResolver l= (ILocationResolver) tu.getAdapter(ILocationResolver.class);
+    		ILocationResolver l= tu.getAdapter(ILocationResolver.class);
     		if (l != null) {
     			return l.getImageLocation(getOffset(), length);
     		}
@@ -165,7 +165,7 @@ public abstract class ASTNode implements IASTNode {
     	final IASTFileLocation floc= originalNode.getFileLocation();
         final IASTTranslationUnit ast = originalNode.getTranslationUnit();
         if (floc != null && ast != null) {
-        	ILocationResolver lr= (ILocationResolver) ast.getAdapter(ILocationResolver.class);
+        	ILocationResolver lr= ast.getAdapter(ILocationResolver.class);
         	if (lr != null) {
         		return lr.getUnpreprocessedSignature(floc);
         	}
@@ -206,7 +206,7 @@ public abstract class ASTNode implements IASTNode {
         }
         IASTTranslationUnit ast = getTranslationUnit();
         if (ast != null) {
-        	ILocationResolver lr= (ILocationResolver) ast.getAdapter(ILocationResolver.class);
+        	ILocationResolver lr= ast.getAdapter(ILocationResolver.class);
         	if (lr != null) {
         		fileLocation= lr.getMappedFileLocation(offset, length);
         	} else {
@@ -221,7 +221,7 @@ public abstract class ASTNode implements IASTNode {
 	public boolean isPartOfTranslationUnitFile() {
         IASTTranslationUnit ast = getTranslationUnit();
         if (ast != null) {
-        	ILocationResolver lr= (ILocationResolver) ast.getAdapter(ILocationResolver.class);
+        	ILocationResolver lr= ast.getAdapter(ILocationResolver.class);
         	if (lr != null) {
         		return lr.isPartOfTranslationUnitFile(getOffset());
         	}
@@ -232,7 +232,7 @@ public abstract class ASTNode implements IASTNode {
     public boolean isPartOfSourceFile() {
         IASTTranslationUnit ast = getTranslationUnit();
         if (ast != null) {
-        	ILocationResolver lr= (ILocationResolver) ast.getAdapter(ILocationResolver.class);
+        	ILocationResolver lr= ast.getAdapter(ILocationResolver.class);
         	if (lr != null) {
         		return lr.isPartOfSourceFile(getOffset());
         	}
@@ -310,7 +310,7 @@ public abstract class ASTNode implements IASTNode {
     	if (!(tu instanceof ASTNode))
     		throw new UnsupportedOperationException();
 
-    	ILocationResolver lr= (ILocationResolver) tu.getAdapter(ILocationResolver.class);
+    	ILocationResolver lr= tu.getAdapter(ILocationResolver.class);
     	if (lr == null)
     		throw new UnsupportedOperationException();
 
@@ -341,7 +341,7 @@ public abstract class ASTNode implements IASTNode {
     	}
 
     	char[] txt= lr.getUnpreprocessedSignature(total);
-    	Lexer lex= new Lexer(txt, (LexerOptions) tu.getAdapter(LexerOptions.class), ILexerLog.NULL, null);
+    	Lexer lex= new Lexer(txt, tu.getAdapter(LexerOptions.class), ILexerLog.NULL, null);
     	try {
 			Token result= null;
 			Token last= null;
@@ -393,5 +393,28 @@ public abstract class ASTNode implements IASTNode {
 			node = ((ASTCopyLocation) locations[0]).getOriginalNode();
 		}
 		return node;
+	}
+
+	/**
+	 * If ambiguity resolution is in progress, and processing of this node has been deferred,
+	 * process it now. Has no effect if ambiguity resolution is not in progress.
+	 */
+	public void resolvePendingAmbiguities() {
+		((ASTTranslationUnit) getTranslationUnit()).resolvePendingAmbiguities(this);
+	}
+
+	/**
+	 * Helper method for use in {{@link #accept(ASTVisitor)} methods.
+	 * 
+	 * @param action the visitor to accept
+	 * @param nodes the array of nodes accepting the visitor
+	 * @return continue on ({@code true}) or quit ({@code false})
+	 */
+	protected static <T extends IASTNode> boolean acceptByNodes(T[] nodes, ASTVisitor action) {
+		for (T node : nodes) {
+			if (!node.accept(action))
+				return false;
+		}
+		return true;
 	}
 }

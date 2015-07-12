@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2014 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTAlignmentSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.IASTArraySubscriptExpression;
@@ -612,7 +613,7 @@ public class GNUCSourceParser extends AbstractGNUSourceCodeParser {
         case IToken.t_sizeof:
         	return parseTypeidInParenthesisOrUnaryExpression(false, consume().getOffset(), 
         			IASTTypeIdExpression.op_sizeof, IASTUnaryExpression.op_sizeof, ctx, strat);
-        case IToken.t_alignof:
+        case IToken.t__Alignof:
         case IGCCToken.t___alignof__:
         	return parseTypeidInParenthesisOrUnaryExpression(false, consume().getOffset(), 
         			IASTTypeIdExpression.op_alignof, IASTUnaryExpression.op_alignOf, ctx, strat);
@@ -918,6 +919,7 @@ public class GNUCSourceParser extends AbstractGNUSourceCodeParser {
         IToken returnToken= null;
     	IASTDeclSpecifier result= null;
     	IASTDeclSpecifier altResult= null;
+    	IASTAlignmentSpecifier[] alignmentSpecifiers = IASTAlignmentSpecifier.EMPTY_ALIGNMENT_SPECIFIER_ARRAY;
     	try {
     		IASTName identifier= null;
     		IASTExpression typeofExpression= null;
@@ -1040,6 +1042,27 @@ public class GNUCSourceParser extends AbstractGNUSourceCodeParser {
     				encounteredRawType= true;
     				endOffset= consume().getEndOffset();
     				break;
+    			case IGCCToken.t_decimal32:
+    				if (encounteredTypename)
+    					break declSpecifiers;
+    				simpleType = IASTSimpleDeclSpecifier.t_decimal32;
+    				encounteredRawType= true;
+    				endOffset= consume().getEndOffset();
+    				break;
+    			case IGCCToken.t_decimal64:
+    				if (encounteredTypename)
+    					break declSpecifiers;
+    				simpleType = IASTSimpleDeclSpecifier.t_decimal64;
+    				encounteredRawType= true;
+    				endOffset= consume().getEndOffset();
+    				break;
+    			case IGCCToken.t_decimal128:
+    				if (encounteredTypename)
+    					break declSpecifiers;
+    				simpleType = IASTSimpleDeclSpecifier.t_decimal128;
+    				encounteredRawType= true;
+    				endOffset= consume().getEndOffset();
+    				break;
     			case IToken.t_signed:
     				if (encounteredTypename)
     					break declSpecifiers;
@@ -1119,6 +1142,10 @@ public class GNUCSourceParser extends AbstractGNUSourceCodeParser {
     				encounteredTypename= true;
     				break;
 
+    			case IToken.t__Alignas:
+        			alignmentSpecifiers = ArrayUtil.append(alignmentSpecifiers, alignmentSpecifier());
+        			break;
+
     			case IGCCToken.t__attribute__: // if __attribute__ is after the declSpec
 	    			if (!supportAttributeSpecifiers)
 	    				throwBacktrack(LA(1));
@@ -1182,6 +1209,7 @@ public class GNUCSourceParser extends AbstractGNUSourceCodeParser {
     		} else {
     			result= buildSimpleDeclSpec(storageClass, simpleType, options, isLong, typeofExpression, offset, endOffset);
     		}
+        	result.setAlignmentSpecifiers(ArrayUtil.trim(alignmentSpecifiers));
         } catch (BacktrackException e) {
         	if (returnToken != null) {
         		backup(returnToken);
@@ -2157,4 +2185,24 @@ public class GNUCSourceParser extends AbstractGNUSourceCodeParser {
         }
         return for_statement;
     }
+
+	@Override
+	protected IASTExpression expressionWithOptionalTrailingEllipsis() throws BacktrackException,
+			EndOfFileException {
+		// No pack expansions in C.
+		return expression();
+	}
+
+	@Override
+	protected IASTTypeId typeIdWithOptionalTrailingEllipsis(DeclarationOptions option)
+			throws EndOfFileException, BacktrackException {
+		// No pack expansions in C.
+		return typeId(option);
+	}
+
+	@Override
+	protected IASTAlignmentSpecifier createAmbiguousAlignmentSpecifier(IASTAlignmentSpecifier expression,
+			IASTAlignmentSpecifier typeId) {
+		return new CASTAmbiguousAlignmentSpecifier(expression, typeId);
+	}
 }

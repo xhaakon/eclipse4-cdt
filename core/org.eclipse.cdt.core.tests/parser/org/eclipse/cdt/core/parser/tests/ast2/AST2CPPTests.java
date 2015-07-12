@@ -21,6 +21,7 @@ import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.LVALUE;
 import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.XVALUE;
 import static org.eclipse.cdt.core.parser.ParserLanguage.CPP;
 import static org.eclipse.cdt.core.parser.tests.VisibilityAsserts.assertVisibility;
+import static org.junit.Assert.assertNotEquals;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -255,7 +256,7 @@ public class AST2CPPTests extends AST2TestBase {
 		assertNotNull(second);
 		assertTrue("Expected types to be the same, but first was: '" + first.toString() + "' and second was: '" + second + "'", first.isSameType(second));
 	}
-
+	
 	// int *zzz1 (char);
 	// int (*zzz2) (char);
 	// int ((*zzz3)) (char);
@@ -6422,16 +6423,16 @@ public class AST2CPPTests extends AST2TestBase {
 		assertEquals(0, ors.length);
 		ors= ClassTypeHelper.findOverridden(m2, null);
 		assertEquals(1, ors.length);
-		assertSame(ors[0], m1);
+		assertEquals(ors[0], m1);
 		ors= ClassTypeHelper.findOverridden(m3, null);
 		assertEquals(0, ors.length);
 		ors= ClassTypeHelper.findOverridden(m4, null);
 		assertEquals(2, ors.length);
-		assertSame(ors[0], m2);
-		assertSame(ors[1], m1);
+		assertEquals(ors[0], m2);
+		assertEquals(ors[1], m1);
 		ors= ClassTypeHelper.findOverridden(m5, null);
 		assertEquals(1, ors.length);
-		assertSame(ors[0], m1);
+		assertEquals(ors[0], m1);
 	}
 
 	//  struct A {
@@ -9061,6 +9062,13 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testSizeofReference_397342() throws Exception {
 		parseAndCheckBindings();
 	}
+	
+	//	constexpr int waldo = sizeof("cat\b\\\n");
+	public void testSizeofStringLiteralWithEscapeCharacters_459279() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPVariable waldo = helper.assertNonProblem("waldo");
+		assertConstantValue(7, waldo);  // "cat" + backspace + slash + newline + null terminator
+	}
 
 	//	struct A {
 	//	  char a[100];
@@ -9078,6 +9086,15 @@ public class AST2CPPTests extends AST2TestBase {
 		long pointerSize = SizeofCalculator.getSizeAndAlignment(ptrToA, namep).size;
 		long BSize = SizeofCalculator.getSizeAndAlignment(B, nameB).size;
 		assertEquals(pointerSize, BSize);
+	}
+	
+	//	struct waldo {};
+	public void testSizeofEmptyStruct_457770() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+		IASTName nameWaldo = bh.findName("waldo");
+		ICPPClassType waldo = (ICPPClassType) nameWaldo.resolveBinding();
+		long waldoSize = SizeofCalculator.getSizeAndAlignment(waldo, nameWaldo).size;
+		assertNotEquals(0, waldoSize);
 	}
 
 	//	template <bool> struct B {};
@@ -10634,6 +10651,19 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testThrowExpressionInConditional_396663() throws Exception {
 		parseAndCheckBindings(getAboveComment(), CPP, true);
 	}
+	
+	//	struct A {};
+	//
+	//	struct B : A {};
+	//
+	//	void foo(A*);
+	//
+	//	int main() {
+	//	    foo(true ? new A() : new B());
+	//	}
+	public void testBasePointerConverstionInConditional_462705() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	//	template <bool>
 	//	struct enable_if {
@@ -10656,7 +10686,7 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testIsBaseOf_409100() throws Exception {
 		BindingAssertionHelper b = getAssertionHelper();
 		IVariable var = b.assertNonProblem("value");
-		assertEquals(1 /*true */, var.getInitialValue().numericalValue().longValue());
+		assertConstantValue(1 /*true */, var);
 	}
 
 	//  namespace NS {
@@ -10972,7 +11002,7 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testConditionalExpressionFolding_429891() throws Exception {
 		BindingAssertionHelper helper = getAssertionHelper();
 		IVariable waldo = helper.assertNonProblem("waldo");
-		assertEquals(5, waldo.getInitialValue().numericalValue().longValue());
+		assertConstantValue(5, waldo);
 	}
 	
 	//	constexpr int naive_fibonacci(int x) {
@@ -10999,7 +11029,7 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testNameLookupInDefaultArgument_432701() throws Exception {
 		BindingAssertionHelper helper = getAssertionHelper();
 		IVariable waldo = helper.assertNonProblem("waldo");
-		assertEquals(42, waldo.getInitialValue().numericalValue().longValue());
+		assertConstantValue(42, waldo);
 	}
 	
 	//	struct S1 { S1(int); };
@@ -11035,8 +11065,8 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPVariable waldo1 = helper.assertNonProblem("waldo1");
 		ICPPVariable waldo2 = helper.assertNonProblem("waldo2");
 		// constexpr on a variable *should* make it const
-		assertSameType(waldo1.getType(), CommonTypes.constInt);
-		assertSameType(waldo2.getType(), CommonTypes.constInt);
+		assertSameType(waldo1.getType(), CommonCPPTypes.constInt);
+		assertSameType(waldo2.getType(), CommonCPPTypes.constInt);
 	}
 	
 	//	constexpr int waldo1();
@@ -11048,15 +11078,43 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPFunction waldo2 = helper.assertNonProblem("waldo2");
 		ICPPFunction waldo3 = helper.assertNonProblem("waldo3");
 		// constexpr on a function *should not* make its return type const
-		assertSameType(waldo1.getType().getReturnType(), CommonTypes.int_);
+		assertSameType(waldo1.getType().getReturnType(), CommonCPPTypes.int_);
 		assertSameType(waldo2.getType().getReturnType(),
-				new CPPPointerType(new CPPFunctionType(CommonTypes.int_, new IType[]{ CommonTypes.int_ })));
+				new CPPPointerType(new CPPFunctionType(CommonCPPTypes.int_, new IType[]{ CommonCPPTypes.int_ })));
 		// constexpr on a method *should not* make the method const
-		assertSameType(waldo3.getType(), new CPPFunctionType(CommonTypes.int_, new IType[]{}));
+		assertSameType(waldo3.getType(), new CPPFunctionType(CommonCPPTypes.int_, new IType[]{}));
 	}
 	
 	//	void waldo() noexcept;
 	public void testASTCopyForNoexceptDefault_bug456207() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename> struct waldo { waldo(int); };
+	//	auto x = static_cast<waldo<int>>(0);
+	public void testTemplateIdInsideCastOperator_460080() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	alignas(8) int x;
+	//	alignas(int) char y;
+	//	alignas(16) struct { int x; int y; };
+	//	alignas(8) enum { A, B, C };
+	//	struct S {
+	//		alignas(long long) int x;
+	//		alignas(decltype(x)) int y;
+	//	};
+	//	alignas(32) S s;
+	//	template <typename... T>
+	//	struct U {
+	//		alignas(S) int x;
+	//		alignas(T...) char y;
+	//	};
+	//	template <int... N>
+	//	struct Y {
+	//		alignas(N...) char x;
+	//	};
+	public void testAlignas_451082() throws Exception {
 		parseAndCheckBindings();
 	}
 }

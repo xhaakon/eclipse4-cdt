@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
  *     Bryan Wilkinson (QNX)
  *     Markus Schorn (Wind River Systems)
  *     Thomas Corbat (IFS)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.ui.tests.text.contentassist2;
 
@@ -20,6 +21,7 @@ import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.TextUtilities;
 import org.eclipse.jface.text.contentassist.ContentAssistant;
@@ -34,16 +36,19 @@ import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.testplugin.CTestPlugin;
 import org.eclipse.cdt.ui.testplugin.EditorTestHelper;
 import org.eclipse.cdt.ui.tests.BaseUITestCase;
 import org.eclipse.cdt.ui.text.ICCompletionProposal;
 import org.eclipse.cdt.ui.text.ICPartitions;
+import org.eclipse.cdt.ui.text.contentassist.ContentAssistInvocationContext;
 
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNameBase;
 
 import org.eclipse.cdt.internal.ui.text.contentassist.CCompletionProposal;
 import org.eclipse.cdt.internal.ui.text.contentassist.CContentAssistProcessor;
+import org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistPreference;
 import org.eclipse.cdt.internal.ui.text.contentassist.RelevanceConstants;
 
 public abstract class AbstractContentAssistTest extends BaseUITestCase {
@@ -55,6 +60,7 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 	private IFile fCFile;
 	protected ITextEditor fEditor;
 	private final boolean fIsCpp;
+	protected boolean fProcessorNeedsConfiguring;
 
 	public AbstractContentAssistTest(String name, boolean isCpp) {
 		super(name);
@@ -72,23 +78,23 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 		fCFile= setUpProjectContent(fCProject.getProject());
 		assertNotNull(fCFile);
 		waitForIndexer(fCProject);
-		fEditor= (ITextEditor)EditorTestHelper.openInEditor(fCFile, true);
+		fEditor= (ITextEditor) EditorTestHelper.openInEditor(fCFile, true);
 		assertNotNull(fEditor);
 		CPPASTNameBase.sAllowNameComputation= true;
 
-//		EditorTestHelper.joinBackgroundActivities((AbstractTextEditor)fEditor);
+//		EditorTestHelper.joinBackgroundActivities((AbstractTextEditor) fEditor);
 	}
 
 	/**
 	 * Setup the project's content.
 	 * @param project
 	 * @return  the file to be opened in the editor
-	 * @throws Exception 
 	 */
 	protected abstract IFile setUpProjectContent(IProject project) throws Exception;
 
 	@Override
 	protected void tearDown() throws Exception {
+		ContentAssistInvocationContext.assertNoUndisposedContexts();
 		EditorTestHelper.closeEditor(fEditor);
 		fEditor= null;
 		CProjectHelper.delete(fCProject);
@@ -97,22 +103,31 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 		super.tearDown();
 	}
 
-	protected void assertContentAssistResults(int offset, int length, String[] expected, boolean isCompletion, boolean isTemplate, boolean filterResults, CompareType compareType) throws Exception {
+	protected static IPreferenceStore getPreferenceStore() {
+		return CUIPlugin.getDefault().getPreferenceStore();
+	}
+
+	protected void assertContentAssistResults(int offset, int length, String[] expected,
+			boolean isCompletion, boolean isTemplate, boolean filterResults, CompareType compareType) throws Exception {
 		if (CTestPlugin.getDefault().isDebugging())  {
-			System.out.println("\n\n\n\n\nTesting "+this.getClass().getName());
+			System.out.println("\n\n\n\n\nTesting " + this.getClass().getName());
 		}
 
-		//Call the CContentAssistProcessor
+		// Call the CContentAssistProcessor
 		ISourceViewer sourceViewer= EditorTestHelper.getSourceViewer((AbstractTextEditor)fEditor);
 		String contentType= TextUtilities.getContentType(sourceViewer.getDocument(), ICPartitions.C_PARTITIONING, offset, true);
 		boolean isCode= IDocument.DEFAULT_CONTENT_TYPE.equals(contentType);
 		ContentAssistant assistant = new ContentAssistant();
 		CContentAssistProcessor processor = new CContentAssistProcessor(fEditor, assistant, contentType);
+		assistant.setContentAssistProcessor(processor, contentType);
+		if (fProcessorNeedsConfiguring) {
+			ContentAssistPreference.configure(assistant, getPreferenceStore());
+		}
 		long startTime= System.currentTimeMillis();
 		sourceViewer.setSelectedRange(offset, length);
-		Object[] results = isCompletion
-			? (Object[]) processor.computeCompletionProposals(sourceViewer, offset)
-			: (Object[]) processor.computeContextInformation(sourceViewer, offset);
+		Object[] results = isCompletion ?
+				(Object[]) processor.computeCompletionProposals(sourceViewer, offset) :
+				(Object[]) processor.computeContextInformation(sourceViewer, offset);
 		long endTime= System.currentTimeMillis();
 		assertTrue(results != null);
 
@@ -128,13 +143,13 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 		Arrays.sort(resultStrings);
 
 		if (CTestPlugin.getDefault().isDebugging())  {
-			System.out.println("Time (ms): " + (endTime-startTime));
+			System.out.println("Time: " + (endTime - startTime) + " ms");
 			for (String proposal : resultStrings) {
 				System.out.println("Result: " + proposal);
 			}
 		}
 
-		boolean allFound = true;  // for the time being, let's be optimistic
+		boolean allFound = true;  // For the time being, let's be optimistic.
 
 		for (String element : expected) {
 			boolean found = false;
@@ -177,14 +192,14 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 	 * @return filtered proposals
 	 */
 	private Object[] filterResults(Object[] results, boolean isCodeCompletion) {
-		List<Object> filtered= new ArrayList<Object>();
+		List<Object> filtered= new ArrayList<>();
 		for (Object result : results) {
 			if (result instanceof TemplateProposal) {
 				continue;
 			}
 			if (result instanceof ICCompletionProposal) {
 				if (isCodeCompletion) {
-					// check for keywords proposal
+					// Check for keywords proposal.
 					int relevance = ((ICCompletionProposal)result).getRelevance();
 					if (relevance >= RelevanceConstants.CASE_MATCH_RELEVANCE) {
 						relevance -= RelevanceConstants.CASE_MATCH_RELEVANCE;
@@ -205,7 +220,7 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 	 * Filter out proposals, keep only templates
 	 */
 	private Object[] filterResultsKeepTemplates(Object[] results) {
-		List<Object> filtered= new ArrayList<Object>();
+		List<Object> filtered= new ArrayList<>();
 		for (Object result : results) {
 			if (result instanceof TemplateProposal) {
 				filtered.add(result);
@@ -260,7 +275,7 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 	}
 	
 	private String toString(String[] strings) {
-		StringBuffer buf= new StringBuffer();
+		StringBuilder buf= new StringBuilder();
 		for (String string : strings) {
 			buf.append(string).append('\n');
 		}
@@ -288,15 +303,13 @@ public abstract class AbstractContentAssistTest extends BaseUITestCase {
 		return EditorTestHelper.getDocument(fEditor);
 	}
 
-
-
 	protected void setCommaAfterFunctionParameter(String value) {
 		fCProject.setOption(
-						DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_COMMA_IN_METHOD_DECLARATION_PARAMETERS, value);
+				DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_COMMA_IN_METHOD_DECLARATION_PARAMETERS, value);
 	}
 
 	protected void setCommaAfterTemplateParameter(String value) {
 		fCProject.setOption(
-						DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_COMMA_IN_TEMPLATE_PARAMETERS, value);
+				DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_COMMA_IN_TEMPLATE_PARAMETERS, value);
 	}
 }

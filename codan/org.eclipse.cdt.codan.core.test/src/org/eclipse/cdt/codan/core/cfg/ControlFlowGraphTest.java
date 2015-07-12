@@ -34,7 +34,7 @@ import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 
 /**
- * TODO: add description
+ * Tests for ControlFlowGraph
  */
 public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 	ControlFlowGraph graph;
@@ -111,7 +111,7 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 				fail("Block " + node + " inconsitent next/prev " + b);
 		}
 		if (node instanceof IDecisionNode && decision) {
-			assertTrue("decision node outgoing size " + node.getOutgoingSize(), node.getOutgoingSize() > 1);
+			assertTrue("decision node outgoing size " + node.getOutgoingSize(), node.getOutgoingSize() >= 1);
 			assertNotNull(((IDecisionNode) node).getMergeNode());
 		}
 	}
@@ -159,10 +159,12 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 		parse(code, ParserLanguage.C, true);
 		processAst(tu);
 	}
+
 	private void buildCfg_CPP(String code) {
 		parse(code, ParserLanguage.CPP, true);
 		processAst(tu);
 	}
+
 	/**
 	 * @param des
 	 * @return
@@ -434,17 +436,16 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 		IBasicBlock bElse = branchEnd(des, IBranchNode.ELSE);
 		IBasicBlock m2 = jumpEnd(branchEnd(des, IBranchNode.THEN));
 		IBasicBlock m1 = jumpEnd(bElse);
-
 		assertNull(m2);
 		assertNotNull(m1);
 	}
 
-//	int test1_f()
-//	{
-//	    while (1)
-//	    {
-//	    }
-//	}
+	//	int test1_f()
+	//	{
+	//	    while (1)
+	//	    {
+	//	    }
+	//	}
 	public void test_infiniloop() {
 		buildCfg_C(getAboveComment());
 		checkCfg(false);
@@ -456,7 +457,6 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 		IBasicBlock bThen = branchEnd(des, IBranchNode.THEN);
 		IBasicBlock m2 = jumpEnd(bThen);
 		IBasicBlock m1 = jumpEnd(bElse);
-
 		assertNotNull(m2);
 		assertNull(m1);
 	}
@@ -469,7 +469,6 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 	public void test_for() {
 		buildCfg_CPP(getAboveComment());
 		checkCfg(false);
-
 		IStartNode startNode = graph.getStartNode();
 		IPlainNode decl = (IPlainNode) startNode.getOutgoing();
 		IConnectorNode conn = (IConnectorNode) decl.getOutgoing();
@@ -478,7 +477,6 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 		IPlainNode bThen = (IPlainNode) branchEnd(des, IBranchNode.THEN);
 		assertEquals("bar();", data(bThen));
 		IBasicBlock bElse = branchEnd(des, IBranchNode.ELSE);
-
 		IBasicBlock m1 = jumpEnd(bElse);
 		IBasicBlock m2 = bThen.getOutgoing();
 		assertNotNull(m1);
@@ -494,7 +492,6 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 	public void test_range_loop() {
 		buildCfg_CPP(getAboveComment());
 		checkCfg(false);
-
 		IStartNode startNode = graph.getStartNode();
 		IPlainNode decl = (IPlainNode) startNode.getOutgoing();
 		IConnectorNode conn = (IConnectorNode) decl.getOutgoing();
@@ -511,24 +508,23 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 		assertEquals("", data(((IConnectorNode) m2).getOutgoing())); // increment
 	}
 
-//		 int main() {
-//		   goto b;
-//	     a:
-//	      return 2;
-//	     b:
-//	      goto a;
-//		 }
+	//		 int main() {
+	//		   goto b;
+	//	     a:
+	//	      return 2;
+	//	     b:
+	//	      goto a;
+	//		 }
 	public void test_bad_labels() {
 		buildAndCheck(getAboveComment());
 		assertEquals(0, graph.getUnconnectedNodeSize());
 		IStartNode startNode = graph.getStartNode();
-		IJumpNode gotoB =  (IJumpNode) startNode.getOutgoing();
+		IJumpNode gotoB = (IJumpNode) startNode.getOutgoing();
 		IConnectorNode bConn = gotoB.getJumpNode();
-		IJumpNode gotoA =  (IJumpNode) bConn.getOutgoing();
+		IJumpNode gotoA = (IJumpNode) bConn.getOutgoing();
 		IConnectorNode aConn = gotoA.getJumpNode();
-		IExitNode ret =  (IExitNode) aConn.getOutgoing();
+		IExitNode ret = (IExitNode) aConn.getOutgoing();
 		assertEquals("return 2;", data(ret));
-
 	}
 
 	//	 int main(int a) {
@@ -549,5 +545,133 @@ public class ControlFlowGraphTest extends CodanFastCxxAstTestCase {
 	public void test_goto() {
 		buildAndCheck(getAboveComment());
 		assertEquals(0, graph.getUnconnectedNodeSize());
+	}
+
+	//	 int main() {
+	//	   return 1;
+	//  a:
+	//   return 2;
+	//  b:
+	//   goto a;
+	//	 }
+	public void test_dead_labels() {
+		buildAndCheck(getAboveComment());
+		assertEquals(1, graph.getUnconnectedNodeSize());
+		IStartNode startNode = graph.getStartNode();
+		IExitNode ret = (IExitNode) startNode.getOutgoing();
+		assertEquals("return 1;", data(ret));
+		IBranchNode labelB = (IBranchNode) graph.getUnconnectedNodeIterator().next(); // BranchNode: b:
+		Collection<IBasicBlock> res = graph.getDeadNodes();
+		assertEquals(6, res.size());
+
+		IJumpNode gotoA = (IJumpNode) ((IConnectorNode) labelB.getOutgoing()).getOutgoing();
+		IConnectorNode aConn = gotoA.getJumpNode();
+		IExitNode ret2 = (IExitNode) aConn.getOutgoing();
+		assertEquals("return 2;", data(ret2));
+		assertTrue(res.contains(gotoA));// goto a;
+		assertTrue(res.contains(aConn));
+		assertTrue(res.contains(ret2)); // return 2;
+		assertTrue(res.contains(ret2.getIncoming())); // Branch Node: a:
+	}
+
+	//	 int main(int a) {
+	//      if (a) {
+	//         return 1;
+	//      } else {
+	//         return 2;
+	//      }
+	//      a++;
+	//	 }
+	public void test_dead_connector() {
+		buildAndCheck(getAboveComment());
+		assertEquals(1, graph.getUnconnectedNodeSize());
+		IConnectorNode connIf = (IConnectorNode) graph.getUnconnectedNodeIterator().next();
+		assertEquals("a++;", data(connIf.getOutgoing()));
+	}
+
+	//	 int main(int a) {
+	//      for (;1;a++) {
+	//         return 1;
+	//      }
+	//      a--;
+	//	 }
+	public void test_dead_connector_for() {
+		buildAndCheck(getAboveComment());
+		assertEquals(2, graph.getUnconnectedNodeSize());
+		IConnectorNode conn = (IConnectorNode) graph.getUnconnectedNodeIterator().next();
+		assertEquals("a++", data(conn.getOutgoing()));
+	}
+
+	//	 int main(int a) {
+	//      while (0) {
+	//         return 1;
+	//      }
+	//
+	//      a++;
+	//	 }
+	public void test_dead_connector_while() {
+		buildAndCheck(getAboveComment());
+		assertEquals(1, graph.getUnconnectedNodeSize());
+		IBranchNode trueBranch = (IBranchNode) graph.getUnconnectedNodeIterator().next();
+		assertEquals("return 1;", data(trueBranch.getOutgoing()));
+	}
+
+	//	int foo(int x) {
+	//	    switch (x) {
+	//	        case 0:
+	//	            return 42;;
+	//	        default:
+	//	    }
+	//	}
+	public void test_dead_statement_in_switch() throws Exception {
+		buildAndCheck(getAboveComment());
+		IDecisionNode swittch = (IDecisionNode) graph.getStartNode().getOutgoing();
+		Collection<IBasicBlock> deadNodes = graph.getDeadNodes();
+		// Make sure the switch statement's merge node has not been marked as dead.
+		assertFalse(deadNodes.contains(swittch.getMergeNode()));
+	}
+
+	//	int main(int a) {
+	//		switch (a) {
+	//			case 1: {
+	//				break;
+	//			}
+	//			case 2: {
+	//				break;
+	//			}
+	//		}
+	//	}
+	public void test_switch_break_in_compound_statement() {
+		// Test that the target node of the jump for the 'break' in a case
+		// is the connector node at the end of the switch, not the connector
+		// node for the next case.
+		buildAndCheck(getAboveComment());
+		IDecisionNode swittch = (IDecisionNode) graph.getStartNode().getOutgoing();
+		IPlainNode case1Branch = (IPlainNode) swittch.getOutgoingNodes()[0];
+		IJumpNode case1Jump = (IJumpNode) case1Branch.getOutgoing();
+		assertEquals(swittch.getMergeNode(), case1Jump.getJumpNode());
+	}
+
+	//	int main(int a) {
+	//		switch (a) {
+	//		}
+	//	}
+	public void test_empty_switch() {
+		buildAndCheck(getAboveComment());
+		// Decision node should be optimized away entirely
+		assertFalse(graph.getStartNode() instanceof IDecisionNode);
+	}
+
+	//	int main(int a) {
+	//		switch (a) {
+	//			case 1: {
+	//				break;
+	//			}
+	//		}
+	//	}
+	public void test_switch_no_explicit_default() {
+		buildAndCheck(getAboveComment());
+		IDecisionNode swittch = (IDecisionNode) graph.getStartNode().getOutgoing();
+		assertTrue(swittch.getOutgoingSize() == 2);
 	}
 }

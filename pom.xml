@@ -10,7 +10,7 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>8.6.0-SNAPSHOT</version>
+	<version>8.7.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
@@ -19,12 +19,14 @@
 		<tycho-extras-version>0.22.0</tycho-extras-version>
 		<sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
 		<cdt-site>http://hudson.eclipse.org/cdt/job/cdt-master/lastSuccessfulBuild/artifact/releng/org.eclipse.cdt.repo/target/repository</cdt-site>
-		<repo-path>tools/cdt/builds/8.6/nightly</repo-path>
+		<repo-path>tools/cdt/builds/8.7/nightly</repo-path>
 		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
 		<sonar.jacoco.reportPath>${project.basedir}/../../target/jacoco.exec</sonar.jacoco.reportPath>
-		<target-platform>cdt-e4.4</target-platform>
+		<sonar.java.source>1.7</sonar.java.source>
+		<target-platform>cdt-e4.5</target-platform>
 		<help-docs-eclipserun-repo>http://download.eclipse.org/eclipse/updates/4.4</help-docs-eclipserun-repo>
 		<tycho.scmUrl>scm:git:git://git.eclipse.org/gitroot/cdt/org.eclipse.cdt.git</tycho.scmUrl>
+		<base.test.vmargs>-Xms256m -Xmx512m -XX:MaxPermSize=256m -ea</base.test.vmargs>
 	</properties>
 
 	<licenses>
@@ -53,6 +55,7 @@
 		<module>core/org.eclipse.cdt.core.macosx</module>
 		<module>core/org.eclipse.cdt.core.aix</module>
 		<module>core/org.eclipse.cdt.core.solaris</module>
+		<module>native/org.eclipse.cdt.native.serial</module>
 		<module>releng/org.eclipse.cdt.native-feature</module>
 		<module>releng/org.eclipse.cdt.native.source-feature</module>
 
@@ -96,6 +99,7 @@
 		<module>debug/org.eclipse.cdt.debug.application.doc</module>
 		<module>debug/org.eclipse.cdt.debug.standalone-feature</module>
 		<module>debug/org.eclipse.cdt.debug.standalone.source-feature</module>
+		<module>debug/org.eclipse.cdt.debug.application.tests</module>
 
 		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb</module>
 		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb.ui</module>
@@ -180,6 +184,7 @@
 		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb.tests</module>
 		<module>dsf-gdb/org.eclipse.cdt.tests.dsf.gdb</module>
 		<module>dsf-gdb/org.eclipse.cdt.examples.dsf.gdb</module>
+		<module>dsf-gdb/org.eclipse.cdt.dsf.gdb.multicorevisualizer.ui.tests</module>
 		
 		<module>build/org.eclipse.cdt.autotools.core</module>
 		<module>build/org.eclipse.cdt.autotools.docs</module>
@@ -189,6 +194,10 @@
 		<module>build/org.eclipse.cdt.autotools-feature</module>
 		<module>build/org.eclipse.cdt.autotools.source-feature</module>
 		<module>build/org.eclipse.linuxtools.cdt.autotools.core</module>
+
+		<module>launch/org.eclipse.cdt.docker.launcher</module>
+		<module>launch/org.eclipse.cdt.docker.launcher-feature</module>
+		<module>launch/org.eclipse.cdt.docker.launcher.source-feature</module>
 
 		<module>testsrunner/org.eclipse.cdt.testsrunner</module>
 		<module>testsrunner/org.eclipse.cdt.testsrunner.boost</module>
@@ -211,6 +220,10 @@
 		<module>remote/org.eclipse.cdt.remote.core</module>
 		<module>remote/org.eclipse.cdt.remote-feature</module>
 		
+		<module>toolchains/arduino/org.eclipse.cdt.arduino.core</module>
+		<module>toolchains/arduino/org.eclipse.cdt.arduino.ui</module>
+		<module>toolchains/arduino/org.eclipse.cdt.arduino-feature</module>
+
 <!-- 
 		<module>lrparser/org.eclipse.cdt.core.lrparser.tests</module>
 		<module>upc/org.eclipse.cdt.core.parser.upc.tests</module>
@@ -243,6 +256,12 @@
 			</repositories>
 		</profile>
 		<profile>
+			<id>build-standalone-debugger-rcp</id>
+			<modules>
+				<module>debug/org.eclipse.cdt.debug.application.product</module>
+			</modules>
+		</profile>
+		<profile>
 			<id>macosx</id>
 			<activation>
 				<os>
@@ -250,7 +269,7 @@
 				</os>
 			</activation>
 			<properties>
-				<base.ui.test.vmargs>-XstartOnFirstThread</base.ui.test.vmargs>
+				<base.ui.test.vmargs>${base.test.vmargs} -XstartOnFirstThread</base.ui.test.vmargs>
 			</properties>
 		</profile>
 		<profile>
@@ -261,7 +280,7 @@
 				</os>
 			</activation>
 			<properties>
-				<base.ui.test.vmargs></base.ui.test.vmargs>
+				<base.ui.test.vmargs>${base.test.vmargs}</base.ui.test.vmargs>
 			</properties>
 		</profile>
 		<profile>
@@ -293,7 +312,7 @@
 					<plugin>
 						<groupId>org.eclipse.cbi.maven.plugins</groupId>
 						<artifactId>eclipse-jarsigner-plugin</artifactId>
-						<version>1.1.1</version>
+						<version>1.1.2</version>
 						<executions>
 							<execution>
 								<id>sign</id>
@@ -508,7 +527,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.7.1.201405082137</version>
+				<version>0.7.4.201502262128</version>
 				<executions>
 					<execution>
 						<id>pre-test</id>
@@ -571,7 +590,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>
-					<version>2.4.1</version>
+					<version>2.7</version>
 					<configuration>
 						<encoding>ISO-8859-1</encoding>
 					</configuration>
@@ -579,14 +598,15 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-antrun-plugin</artifactId>
-					<version>1.3</version>
+					<version>1.8</version>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>findbugs-maven-plugin</artifactId>
-					<version>2.3.2</version>
+					<version>3.0.0</version>
 					<configuration>
-						<findbugsXmlOutput>true</findbugsXmlOutput>
+						<xmlOutput>true</xmlOutput>
+						<excludeFilterFile>releng/findbugs-exclude.xml</excludeFilterFile>
 						<failOnError>false</failOnError>
 					</configuration>
 					<executions>
@@ -600,11 +620,11 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-pmd-plugin</artifactId>
-					<version>2.5</version>
+					<version>3.4</version>
 					<configuration>
 						<sourceEncoding>utf-8</sourceEncoding>
 						<minimumTokens>100</minimumTokens>
-						<targetJdk>1.6</targetJdk>
+						<targetJdk>1.7</targetJdk>
 						<format>xml</format>
 						<failOnViolation>false</failOnViolation>
 					</configuration>

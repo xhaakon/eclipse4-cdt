@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Wind River Systems and others.
+ * Copyright (c) 2009, 2015 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -31,7 +31,9 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationCont
 import org.eclipse.debug.internal.ui.viewers.model.provisional.ITreeModelViewer;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.ModelDelta;
 import org.eclipse.jface.viewers.TreePath;
+
 import static org.junit.Assert.*;
+
 import org.osgi.framework.BundleContext;
 
 /**
@@ -93,11 +95,11 @@ public class TestModel extends AbstractDsfService implements IFormattedValues {
             return fModel;
         }
         
-        @SuppressWarnings("rawtypes")
-        @Override
-        public Object getAdapter(Class adapter) {
+        @SuppressWarnings("unchecked")
+		@Override
+        public <T> T getAdapter(Class<T> adapter) {
             if (adapter.isInstance(fModel)) {
-                return fModel;
+                return (T)fModel;
             }
             return null;
         }
@@ -177,7 +179,8 @@ public class TestModel extends AbstractDsfService implements IFormattedValues {
     }
     
     private static final IFormattedValuesListener NULL_LISTENER = new IFormattedValuesListener() {
-        public void formattedValueUpdated(FormattedValueDMContext formattedValueDmc) {}
+        @Override
+	public void formattedValueUpdated(FormattedValueDMContext formattedValueDmc) {}
     };
     
     private TestElement fRoot;
@@ -583,11 +586,13 @@ public class TestModel extends AbstractDsfService implements IFormattedValues {
         return null;
     }
     
+    @Override
     public void getAvailableFormats(IFormattedDataDMContext dmc, DataRequestMonitor<String[]> rm) {
         rm.setData(new String[] { HEX_FORMAT, DECIMAL_FORMAT, OCTAL_FORMAT, BINARY_FORMAT, NATURAL_FORMAT });
         rm.done();
     }
     
+    @Override
     public void getFormattedExpressionValue(FormattedValueDMContext dmc, DataRequestMonitor<FormattedValueDMData> rm) {
         TestElement te = DMContexts.getAncestorOfType(dmc, TestElement.class);
         rm.setData(new FormattedValueDMData( getFormattedValueText(te, dmc.getFormatID())));
@@ -595,6 +600,7 @@ public class TestModel extends AbstractDsfService implements IFormattedValues {
         fListener.formattedValueUpdated(dmc);
     }
     
+    @Override
     public FormattedValueDMContext getFormattedValueContext(IFormattedDataDMContext dmc, String formatId) {
         // Creates a context that can be used to retrieve a formatted value.
         return new FormattedValueDMContext(this, dmc, formatId);

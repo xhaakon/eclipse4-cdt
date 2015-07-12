@@ -7574,4 +7574,39 @@ public class AST2Tests extends AST2TestBase {
     public void testAtomicBuiltin_bug456131() throws Exception {
     	parseAndCheckBindings(true);
     }
+    
+    //	void waldo(...);
+    public void testVariadicCFunction_452416() throws Exception {
+    	String code= getAboveComment();
+		BindingAssertionHelper bh= new BindingAssertionHelper(code, false /* not C++ */);
+		IFunction waldo = bh.assertNonProblem("waldo");
+		assertTrue(waldo.getType().takesVarArgs());		
+    }
+    
+	//	struct Foo {
+	//	  struct Foo* a;
+	//	};
+	//	
+	//	int main() {
+	//	  struct Foo * f = 0;
+	//	  (f ? f->a : ((void*) 0))->a; // second 'a' cannot be resolved
+	//	  return 0;
+	//	}
+    public void testVoidPointerInTernaryOperator_460741() throws Exception {
+    	parseAndCheckBindings(getAboveComment(), C);
+    }
+    
+    //	_Alignas(8) int x;
+    //	_Alignas(int) char y;
+	//	_Alignas(16) struct { int x; int y; };
+	//	_Alignas(8) enum { A, B, C };
+	//	struct S {
+	//		int x;
+	//		_Alignas(8) int y;
+	//	};
+	//	_Alignas(32) struct S s;
+    //	_Alignas(struct S) int t;
+    public void testAlignas_451082() throws Exception {
+    	parseAndCheckBindings(getAboveComment(), C);
+    }
 }

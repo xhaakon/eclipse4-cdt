@@ -14,7 +14,6 @@ package org.eclipse.cdt.codan.internal.checkers;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 
 import org.eclipse.cdt.codan.core.cxx.CxxAstUtils;
 import org.eclipse.cdt.codan.core.cxx.model.AbstractAstFunctionChecker;
@@ -192,14 +191,8 @@ public class ReturnChecker extends AbstractAstFunctionChecker {
 	}
 	
 	public Collection<IBasicBlock> getDeadBlocks(IASTFunctionDefinition func) {
-		Collection<IBasicBlock> result = new LinkedHashSet<IBasicBlock>();
 		IControlFlowGraph graph = getModelCache().getControlFlowGraph(func);
-		Iterator<IBasicBlock> unconnectedNodeIterator = graph.getUnconnectedNodeIterator();
-		for (Iterator<IBasicBlock> iterator = unconnectedNodeIterator; iterator.hasNext();) {
-			IBasicBlock block = iterator.next();
-			((ControlFlowGraph) graph).getNodes(block, result);
-		}
-		return result;
+		return ((ControlFlowGraph) graph).getDeadNodes();
 	}
 
 	protected void reportNoRet(IASTFunctionDefinition func, boolean hasRet) {

@@ -88,6 +88,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.ICompositeType;
 import org.eclipse.cdt.core.dom.ast.IEnumeration;
 import org.eclipse.cdt.core.dom.ast.IEnumerator;
+import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.IFunction;
 import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IPointerType;
@@ -230,6 +231,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.Conversions.UDCMod
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.Cost.Rank;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 
 /**
  * Name resolution
@@ -324,12 +326,21 @@ public class CPPSemantics {
 	}
 
     private static IBinding postResolution(IBinding binding, LookupData data) {
-        if (binding instanceof IProblemBinding)
-        	return binding;
-
-        final IASTName lookupName = data.getLookupName();
-        if (lookupName == null)
-        	return binding;
+		final IASTName lookupName = data.getLookupName();
+		if (lookupName == null)
+			return binding;
+		
+		// If this is the unqualified name of a function in a function call in a template and some
+		// of the function arguments are dependent, a matching function could be found via
+		// argument-dependent lookup at the point of instantiation.
+		if (binding == null || binding instanceof IProblemBinding) {
+			if (!data.qualified && data.isFunctionCall() && CPPTemplates.containsDependentType(data.getFunctionArgumentTypes())) {
+				binding = CPPDeferredFunction.createForName(lookupName.getSimpleID());
+			}
+		}
+		
+		if (binding instanceof IProblemBinding)
+			return binding;
 
 		IASTNode lookupPoint = data.getLookupPoint();
 
@@ -535,15 +546,6 @@ public class CPPSemantics {
 				if (declaration.getPropertyInParent() != IASTCompositeTypeSpecifier.MEMBER_DECLARATION) {
 					ASTInternal.addDefinition(binding, lookupName);
 				}
-			}
-		}
-
-		// If this is the unqualified name of a function in a function call in a template and some
-		// of the function arguments are dependent, the name could be resolved via
-		// argument-dependent lookup at the point of instantiation.
-		if (binding == null) {
-			if (!data.qualified && data.isFunctionCall() && CPPTemplates.containsDependentType(data.getFunctionArgumentTypes())) {
-				binding = CPPDeferredFunction.createForName(lookupName.getSimpleID());
 			}
 		}
 
@@ -1074,12 +1076,24 @@ public class CPPSemantics {
     	return false;
 	}
 
-	private static void lookupInlineNamespaces(LookupData data, ICPPNamespaceScope namespace) throws DOMException {
+	private static void lookupInlineNamespaces(LookupData data, ICPPNamespaceScope namespace) 
+			throws DOMException {
+		lookupInlineNamespaces(data, namespace, new HashSet<ICPPInternalNamespaceScope>());
+	}
+	
+	private static void lookupInlineNamespaces(LookupData data, ICPPNamespaceScope namespace,
+			Set<ICPPInternalNamespaceScope> visited) throws DOMException {
 		if (namespace instanceof ICPPInternalNamespaceScope) {
 			ICPPInternalNamespaceScope ns= (ICPPInternalNamespaceScope) namespace;
+			visited.add(ns);
 			for (ICPPInternalNamespaceScope inline : ns.getInlineNamespaces()) {
+				if (visited.contains(inline)) {
+					CCorePlugin.log(IStatus.WARNING, 
+							"Detected circular reference between inline namespaces");  //$NON-NLS-1$
+					continue;
+				}
 				mergeResults(data, getBindingsFromScope(inline, data), true);
-				lookupInlineNamespaces(data, inline);
+				lookupInlineNamespaces(data, inline, visited);
 				nominateNamespaces(data, inline);
 			}
 		}
@@ -3950,5 +3964,49 @@ public class CPPSemantics {
 			binding = new ProblemBinding(new CPPASTName(unknownName), point, IProblemBinding.SEMANTIC_NAME_NOT_FOUND);
 
 		return binding;
+	}
+	
+	/**
+	 * Given a dependent type, heuristically try to find a concrete scope (i.e. not an unknown scope) for it.
+	 * @param point the point of instantiation for name lookups
+	 */
+	public static IScope heuristicallyFindConcreteScopeForType(IType type, IASTNode point) {
+		if (type instanceof ICPPDeferredClassInstance) {
+			// If this scope is for a deferred-class-instance, use the scope of the primary template.
+			ICPPDeferredClassInstance instance = (ICPPDeferredClassInstance) type;
+			return instance.getClassTemplate().getCompositeScope();
+		} else if (type instanceof TypeOfDependentExpression) {
+			// If this scope is for the id-expression of a field reference, and the field owner
+			// is a deferred-class-instance, look up the field in the scope of the primary template,
+			// and use the scope of the resulting field type.
+			ICPPEvaluation evaluation = ((TypeOfDependentExpression) type).getEvaluation();
+			if (evaluation instanceof EvalID) {
+				EvalID evalId = (EvalID) evaluation;
+				ICPPEvaluation fieldOwner = evalId.getFieldOwner();
+				if (fieldOwner != null) {
+					IType fieldOwnerType = fieldOwner.getTypeOrFunctionSet(point);
+					if (fieldOwnerType instanceof ICPPDeferredClassInstance) {
+						ICPPDeferredClassInstance instance = (ICPPDeferredClassInstance) fieldOwnerType;
+						IScope scope = instance.getClassTemplate().getCompositeScope();
+						LookupData lookup = new LookupData(evalId.getName(), evalId.getTemplateArgs(), point);
+						lookup.qualified = evalId.isQualified();
+						try {
+							CPPSemantics.lookup(lookup, scope);
+						} catch (DOMException e) {
+							return null;
+						}
+						IBinding[] bindings = lookup.getFoundBindings();
+						if (bindings.length == 1 && bindings[0] instanceof IField) {
+							IType fieldType = ((IField) bindings[0]).getType();
+							if (fieldType instanceof ICompositeType) {
+								return ((ICompositeType) fieldType).getCompositeScope(); 
+							}
+						}
+					}
+				}
+			}
+		}
+		// TODO(nathanridge): Handle more cases.
+		return null;
 	}
 }

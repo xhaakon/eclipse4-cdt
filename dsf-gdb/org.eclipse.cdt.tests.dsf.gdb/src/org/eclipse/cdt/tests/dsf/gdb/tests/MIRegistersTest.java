@@ -155,14 +155,7 @@ public class MIRegistersTest extends BaseTestCase {
 		fSession.getExecutor().submit(runnable).get();
 
 		//resolve the execution context
-		MIStoppedEvent stoppedEvent = getInitialStoppedEvent();
-		IFrameDMContext frameDmc = null;
-		try {
-			frameDmc = SyncUtil.getStackFrame(stoppedEvent.getDMContext(), 0);
-		} catch (Throwable e1) {
-			e1.printStackTrace();
-			fail("Initialization problem");
-		}
+		IFrameDMContext frameDmc = SyncUtil.getStackFrame(getInitialStoppedEvent().getDMContext(), 0);
 
 		//resolve the container context
 		IContainerDMContext containerDmc = DMContexts.getAncestorOfType(getInitialStoppedEvent().getDMContext(), IContainerDMContext.class);
@@ -634,7 +627,7 @@ public class MIRegistersTest extends BaseTestCase {
 			}
 
 			@Override
-			public Object getAdapter(@SuppressWarnings("rawtypes") Class adapter) {
+			public <T> T getAdapter(Class<T> adapter) {
 				return null;
 			}
 		};

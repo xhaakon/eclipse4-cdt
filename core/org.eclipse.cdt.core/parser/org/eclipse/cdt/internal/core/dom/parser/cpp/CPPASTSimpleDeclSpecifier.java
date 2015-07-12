@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,10 +17,9 @@ import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBasicType.Kind;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
-import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
 
 public class CPPASTSimpleDeclSpecifier extends CPPASTBaseDeclSpecifier
-		implements ICPPASTSimpleDeclSpecifier, IASTAmbiguityParent {
+		implements ICPPASTSimpleDeclSpecifier {
     private int type;
     private boolean isSigned;
     private boolean isUnsigned;
@@ -94,6 +93,12 @@ public class CPPASTSimpleDeclSpecifier extends CPPASTBaseDeclSpecifier
 			return t_float;
 		case eFloat128:
 			return t_float128;
+		case eDecimal32:
+			return t_decimal32;
+		case eDecimal64:
+			return t_decimal64;
+		case eDecimal128:
+			return t_decimal128;
 		case eInt:
 			return t_int;
 		case eInt128:
@@ -217,6 +222,10 @@ public class CPPASTSimpleDeclSpecifier extends CPPASTBaseDeclSpecifier
 		if (!acceptByAttributeSpecifiers(action))
 			return false;
 
+		if (!visitAlignmentSpecifiers(action)) {
+			return false;
+		}
+
         if (action.shouldVisitDeclSpecifiers) {
 		    switch (action.leave(this)) {
 	            case ASTVisitor.PROCESS_ABORT: return false;
@@ -233,6 +242,8 @@ public class CPPASTSimpleDeclSpecifier extends CPPASTBaseDeclSpecifier
 			other.setPropertyInParent(child.getPropertyInParent());
 			other.setParent(child.getParent());
 			fDeclTypeExpression= (IASTExpression) other;
+			return;
 		}
+		super.replace(child, other);		
 	}
 }

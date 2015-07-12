@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMManager;
@@ -47,7 +48,7 @@ public class CodanTestCase extends BaseTestCase {
 	protected File currentFile;
 	protected ICElement currentCElem;
 	protected IFile currentIFile;
-	protected ArrayList<Integer> errLines= new ArrayList<Integer>();
+	protected ArrayList<Integer> errLines = new ArrayList<Integer>();
 
 	/**
 	 *
@@ -83,7 +84,7 @@ public class CodanTestCase extends BaseTestCase {
 	}
 
 	@Override
-	public void tearDown() throws CoreException {
+	public void tearDown() throws Exception {
 		if (cproject != null) {
 			try {
 				cproject.getProject().delete(IResource.FORCE | IResource.ALWAYS_DELETE_PROJECT_CONTENT, new NullProgressMonitor());
@@ -91,19 +92,24 @@ public class CodanTestCase extends BaseTestCase {
 				throw e;
 			}
 		}
+		super.tearDown();
 	}
 
 	/**
 	 * @throws CoreException
 	 */
 	private void removeLeftOverProjects() throws CoreException {
-		final IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		IProject[] projects = workspace.getRoot().getProjects();
-		for (int i = 0; i < projects.length; i++) {
-			IProject p = projects[i];
-			if (p.getName().startsWith("Codan")) {
-				p.delete(IResource.FORCE | IResource.ALWAYS_DELETE_PROJECT_CONTENT, new NullProgressMonitor());
+		try {
+			final IWorkspace workspace = ResourcesPlugin.getWorkspace();
+			IProject[] projects = workspace.getRoot().getProjects();
+			for (int i = 0; i < projects.length; i++) {
+				IProject p = projects[i];
+				if (p.getName().startsWith("Codan")) {
+					p.delete(IResource.FORCE | IResource.ALWAYS_DELETE_PROJECT_CONTENT, new NullProgressMonitor());
+				}
 			}
+		} catch (Throwable e) {
+			// moving on...
 		}
 	}
 
@@ -173,8 +179,7 @@ public class CodanTestCase extends BaseTestCase {
 
 	protected StringBuilder[] getContents(int sections) {
 		try {
-			return TestSourceReader.getContentsForTest(getPlugin().getBundle(), getSourcePrefix(),
-					getClass(), getName(), sections);
+			return TestSourceReader.getContentsForTest(getPlugin().getBundle(), getSourcePrefix(), getClass(), getName(), sections);
 		} catch (IOException e) {
 			fail(e.getMessage());
 			return null;
@@ -213,11 +218,6 @@ public class CodanTestCase extends BaseTestCase {
 		return loadcode(code, testFile);
 	}
 
-	public File loadcode(String code, String filename) {
-		File testFile = new File(tmpDir, filename);
-		return loadcode(code, testFile);
-	}
-
 	private File loadcode(String code, File testFile) {
 		try {
 			tempFiles.add(testFile);
@@ -244,14 +244,14 @@ public class CodanTestCase extends BaseTestCase {
 			return null;
 		}
 	}
+	private static Pattern COMMENT_TAG_PATTERN = Pattern.compile("//\\s*(err|ERR|ERROR|error)\\b");
 
 	private void loadErrorComments(String trim) {
 		String[] lines = trim.split("\n");
 		for (int i = 0; i < lines.length; i++) {
 			String string = lines[i];
-			if (string.matches(".*//\\s*err\\s*")) {
-
-				errLines.add(i+1);
+			if (COMMENT_TAG_PATTERN.matcher(string).find()) {
+				errLines.add(i + 1);
 			}
 		}
 	}
@@ -266,5 +266,13 @@ public class CodanTestCase extends BaseTestCase {
 
 	public File loadcode(String code) {
 		return loadcode(code, isCpp());
+	}
+
+	public File loadcode(CharSequence... more) {
+		File file = null;
+		for (CharSequence cseq : more) {
+			file = loadcode(cseq.toString(), isCpp());
+		}
+		return file;
 	}
 }

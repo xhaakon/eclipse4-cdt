@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River and others.
+ * Copyright (c) 2007, 2015 Wind River and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -69,7 +69,7 @@ public class BreakpointsMediator extends AbstractDsfService implements IBreakpoi
 
     /**
      * The attribute translator that this service will use to map the platform
-     * breakpiont attributes to the corresponding target attributes, and vice
+     * breakpoint attributes to the corresponding target attributes, and vice
      * versa.
      */
     private IBreakpointAttributeTranslator fAttributeTranslator;
@@ -562,11 +562,6 @@ public class BreakpointsMediator extends AbstractDsfService implements IBreakpoi
 
         // Get the list of corresponding back-end breakpoints 
         final List<IBreakpointDMContext> oldBpContexts = new ArrayList<IBreakpointDMContext>(breakpointIDs.get(breakpoint));
-        if (oldBpContexts == null) {
-            rm.setStatus(new Status(IStatus.ERROR, DsfPlugin.PLUGIN_ID, INVALID_HANDLE, "Invalid breakpoint", null)); //$NON-NLS-1$
-            rm.done();
-            return;
-        }
 
         // Calculate the list of attributes maps that have not changed.  
         // Immediately add these to the list of new breakpoint contexts,
@@ -587,7 +582,7 @@ public class BreakpointsMediator extends AbstractDsfService implements IBreakpoi
         }
         oldAttrsList.removeAll(commonAttrsList);
         
-        // Create a list of attribute changes.  The lenghth of this list will
+        // Create a list of attribute changes.  The length of this list will
         // always be max(oldAttrList.size(), newAttrsList.size()), padded with
         // null's if oldAttrsList was longer.
         final List<Map<String, Object>> attrDeltasList = getAttributesDeltas(oldAttrsList, newAttrsList);

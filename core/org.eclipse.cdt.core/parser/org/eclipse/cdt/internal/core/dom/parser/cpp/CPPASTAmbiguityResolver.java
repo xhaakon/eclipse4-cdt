@@ -14,6 +14,7 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.Iterator;
 
 import org.eclipse.cdt.core.dom.ast.ASTNodeProperty;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
@@ -216,6 +217,29 @@ final class CPPASTAmbiguityResolver extends ASTVisitor {
 		IScope scope= CPPVisitor.getContainingNonTemplateScope(declaration);
 		if (scope instanceof ICPPASTInternalScope) {
 			CPPSemantics.populateCache((ICPPASTInternalScope) scope, declaration);
+		}
+	}
+
+	/**
+	 * If 'node' has been deferred for later processing, process it now. 
+	 */
+	public void resolvePendingAmbiguities(IASTNode node) {
+		Iterator<Deque<IASTNode>> iterator = fDeferredNodes.descendingIterator();
+		while (iterator.hasNext()) {
+			Deque<IASTNode> deferred = iterator.next();
+			for (IASTNode deferredNode : deferred) {
+				if (deferredNode == node) {
+					int deferFunctions = fDeferFunctions;
+					fDeferFunctions = 0;
+					try {
+						deferredNode.accept(this);
+					} finally {
+						fDeferFunctions = deferFunctions;
+					}
+					deferred.remove(deferredNode);
+					break;
+				}
+			}
 		}
 	}
 }

@@ -146,14 +146,11 @@ public class ControlFlowGraphBuilder {
 		return node;
 	}
 
-	private IBasicBlock createSubGraph(IBasicBlock prev, IASTNode body) {
+	private IBasicBlock createSubGraph(IBasicBlock prev, IASTStatement body) {
 		if (body instanceof IASTCompoundStatement) {
 			IASTCompoundStatement comp = (IASTCompoundStatement) body;
-			IASTNode[] children = comp.getChildren();
-			for (int i = 0; i < children.length; i++) {
-				IASTNode node = children[i];
-				IBasicBlock last = createSubGraph(prev, node);
-				prev = last;
+			for (IASTStatement statement : comp.getStatements()) {
+				prev = createSubGraph(prev, statement);
 			}
 		} else if (body instanceof IASTExpressionStatement || body instanceof IASTDeclarationStatement || body instanceof IASTNullStatement) {
 			if (isThrowStatement(body) || isExitStatement(body)) {
@@ -315,51 +312,68 @@ public class ControlFlowGraphBuilder {
 		addOutgoing(ifNode, elseNode);
 		IBasicBlock els = createSubGraph(elseNode, body.getElseClause());
 		addJump(els, mergeNode);
+		fixConnector(mergeNode);
 		return mergeNode;
+	}
+
+	protected void fixConnector(IConnectorNode mergeNode) {
+		if (mergeNode.getIncomingSize()==0)
+			dead.add(mergeNode); // dead connector node
 	}
 
 	private IBasicBlock createSwitch(IBasicBlock prev, IASTSwitchStatement body) {
 		DecisionNode node = factory.createDecisionNode(body.getControllerExpression());
 		addOutgoing(prev, node);
-		IConnectorNode conn = factory.createConnectorNode();
-		node.setMergeNode(conn);
-		createSwitchBody(node, conn, body.getBody());
-		return conn;
+		IConnectorNode mergeNode = factory.createConnectorNode();
+		node.setMergeNode(mergeNode);
+		createSwitchBody(node, mergeNode, body.getBody());
+		fixConnector(mergeNode);
+		return mergeNode;
 	}
 
-	private void createSwitchBody(DecisionNode switchNode, IConnectorNode mergeNode, IASTStatement body) {
+	private void createSwitchBody(IDecisionNode switchNode, IConnectorNode mergeNode, IASTStatement body) {
 		if (!(body instanceof IASTCompoundStatement))
 			return; // bad
 		IASTCompoundStatement comp = (IASTCompoundStatement) body;
-		IASTNode[] children = comp.getChildren();
 		IBasicBlock prev = switchNode;
-		for (int i = 0; i < children.length; i++) {
-			IASTNode elem = children[i];
-			if (elem instanceof IASTCaseStatement || elem instanceof IASTDefaultStatement) {
-				IBranchNode lbl = null;
-				if (elem instanceof IASTCaseStatement) {
-					IASTCaseStatement caseSt = (IASTCaseStatement) elem;
-					lbl = factory.createBranchNode(caseSt);
-				} else if (elem instanceof IASTDefaultStatement) {
-					lbl = factory.createBranchNode(IBranchNode.DEFAULT);
+		IConnectorNode savedBreak = outerBreak;
+		outerBreak = mergeNode;
+		boolean encounteredDefault = false;
+		try {
+			for (IASTStatement statement : comp.getStatements()) {
+				if (statement instanceof IASTCaseStatement || statement instanceof IASTDefaultStatement) {
+					IBranchNode lbl = null;
+					if (statement instanceof IASTCaseStatement) {
+						lbl = factory.createBranchNode(statement);
+					} else if (statement instanceof IASTDefaultStatement) {
+						lbl = factory.createBranchNode(IBranchNode.DEFAULT);
+						encounteredDefault = true;
+					}
+					if (!(prev instanceof IExitNode) && prev != switchNode) {
+						IConnectorNode here = factory.createConnectorNode();
+						addJump(prev, here);
+						addOutgoing(lbl, here);
+						prev = here;
+					} else {
+						prev = lbl;
+					}
+					addOutgoing(switchNode, lbl);
+					continue;
 				}
-				if (!(prev instanceof IExitNode) && prev != switchNode) {
-					IConnectorNode here = factory.createConnectorNode();
-					addJump(prev, here);
-					addOutgoing(lbl, here);
-					prev = here;
-				} else {
-					prev = lbl;
-				}
-				addOutgoing(switchNode, lbl);
-				continue;
+				prev = createSubGraph(prev, statement);
 			}
-			if (elem instanceof IASTBreakStatement) {
-				prev = addJump(prev, mergeNode);
-				continue;
+		} finally {
+			outerBreak = savedBreak;
+		}
+		// If the switch didn't have an explicit 'default' case, we still have to
+		// add an edge for the situation where no case was matched.
+		if (!encounteredDefault) {
+			if (!(prev instanceof IExitNode) && prev != switchNode) {
+				addJump(prev, mergeNode);
 			}
-			IBasicBlock last = createSubGraph(prev, elem);
-			prev = last;
+			IBranchNode defaultBranch = factory.createBranchNode(IBranchNode.DEFAULT);
+			addOutgoing(switchNode, defaultBranch);
+			prev = defaultBranch;
 		}
 		addJump(prev, mergeNode);
 	}
@@ -387,9 +401,13 @@ public class ControlFlowGraphBuilder {
 		IConnectorNode savedBreak = outerBreak;
 		outerContinue = nContinue;
 		outerBreak = nBreak;
-		IBasicBlock endBody = createSubGraph(loopStart, forNode.getBody());
-		outerContinue = savedContinue;
-		outerBreak = savedBreak;
+		IBasicBlock endBody = decision;
+		try {
+			endBody = createSubGraph(loopStart, forNode.getBody());
+		} finally {
+			outerContinue = savedContinue;
+			outerBreak = savedBreak;
+		}
 		// inc
 		IPlainNode inc = factory.createPlainNode(forNode.getIterationExpression());
 		addOutgoing(endBody, nContinue);
@@ -400,6 +418,7 @@ public class ControlFlowGraphBuilder {
 		IBranchNode loopEnd = factory.createBranchNode(IBranchNode.ELSE);
 		addOutgoing(decision, loopEnd);
 		addJump(loopEnd, nBreak);
+		fixConnector(nBreak);
 		return nBreak;
 	}
 
@@ -439,6 +458,7 @@ public class ControlFlowGraphBuilder {
 		IBranchNode loopEnd = factory.createBranchNode(IBranchNode.ELSE);
 		addOutgoing(decision, loopEnd);
 		addJump(loopEnd, nBreak);
+		fixConnector(nBreak);
 		return nBreak;
 	}
 
@@ -460,16 +480,21 @@ public class ControlFlowGraphBuilder {
 		IConnectorNode savedBreak = outerBreak;
 		outerContinue = nContinue;
 		outerBreak = nBreak;
-		IBasicBlock endBody = createSubGraph(loopStart, body.getBody());
-		// Restore
-		outerContinue = savedContinue;
-		outerBreak = savedBreak;
+		IBasicBlock endBody = decision;
+		try {
+			endBody = createSubGraph(loopStart, body.getBody());
+		} finally {
+			// Restore
+			outerContinue = savedContinue;
+			outerBreak = savedBreak;
+		}
 		// Backward jump
 		addJump(endBody, nContinue, true);
 		// Connect with else branch
 		IBranchNode loopEnd = factory.createBranchNode(IBranchNode.ELSE);
 		addOutgoing(decision, loopEnd);
 		addJump(loopEnd, nBreak);
+		fixConnector(nBreak);
 		return nBreak;
 	}
 
@@ -507,6 +532,7 @@ public class ControlFlowGraphBuilder {
 		// Add break connector
 		decision.setMergeNode(nBreak);
 		addJump(loopEnd, nBreak);
+		fixConnector(nBreak);
 		return nBreak;
 	}
 

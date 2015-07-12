@@ -96,8 +96,8 @@ public interface IToken {
 	 */
 	int tGT_in_SHIFTR= 5201;
 
-	/** @since 5.9 */ int t_alignas = 5900;
-	/** @since 5.9 */ int t_alignof = 5901;
+	/** @since 5.10*/ int t_alignas = 5900;
+	/** @since 5.10*/ int t_alignof = 5901;
 	/** @deprecated use {@link #tAND} */ @Deprecated int t_and = 54;
 	/** @deprecated use {@link #tAMPERASSIGN} */ @Deprecated int t_and_eq = 55;
 	int t_asm = 56;
@@ -194,6 +194,8 @@ public interface IToken {
 	/** @since 5.1 */ int tUTF16CHAR = 5002;
 	/** @since 5.1 */ int tUTF32CHAR = 5003;
 
+	/** @since 5.10 */ int t__Alignas = 51000;
+	/** @since 5.10 */ int t__Alignof = 51001;
 	int t__Bool = 134;
 	int t__Complex = 135;
 	int t__Imaginary = 136;

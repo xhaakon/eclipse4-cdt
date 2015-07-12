@@ -26,8 +26,6 @@ import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUti
 
 import java.io.IOException;
 
-import junit.framework.TestSuite;
-
 import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
@@ -106,6 +104,8 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalUnknownScope;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.cdt.internal.core.parser.ParserException;
+
+import junit.framework.TestSuite;
 
 public class AST2TemplateTests extends AST2TestBase {
 
@@ -360,7 +360,7 @@ public class AST2TemplateTests extends AST2TestBase {
 
 		assertInstances(col, T1, 6);
 	}
-	
+
 	//	template<typename _A_>
 	//	struct A : public _A_::member_t {};
 	//
@@ -3071,7 +3071,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		ICPPVariable _256= ba.assertNonProblem("_256=0x100", 4, ICPPVariable.class);
 		IQualifierType qt1= assertInstance(_256.getType(), IQualifierType.class);
 		ICPPBasicType bt1= assertInstance(qt1.getType(), ICPPBasicType.class);
-		assertEquals(256, _256.getInitialValue().numericalValue().intValue());
+		assertConstantValue(256, _256);
 
 		ICPPVariable t= ba.assertNonProblem("t;", 1, ICPPVariable.class);
 		ICPPTemplateInstance ci1= assertInstance(t.getType(), ICPPTemplateInstance.class, ICPPClassType.class);
@@ -3280,7 +3280,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testDependentBaseLookup_408314a() throws Exception {
 		BindingAssertionHelper bh = getAssertionHelper();
 		ITypedef waldo = bh.assertNonProblem("waldo");
-		assertSameType(waldo.getType(), CommonTypes.int_);
+		assertSameType(waldo.getType(), CommonCPPTypes.int_);
 	}
 
 	//	template <typename T>
@@ -3302,7 +3302,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testDependentBaseLookup_408314b() throws Exception {
 		BindingAssertionHelper bh = getAssertionHelper();
 		ITypedef waldo = bh.assertNonProblem("waldo");
-		assertSameType(waldo.getType(), CommonTypes.int_);
+		assertSameType(waldo.getType(), CommonCPPTypes.int_);
 	}
 
 	//	template <typename T>
@@ -3324,7 +3324,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testDependentBaseLookup_408314c() throws Exception {
 		BindingAssertionHelper bh = getAssertionHelper();
 		ITypedef waldo = bh.assertNonProblem("waldo");
-		assertSameType(waldo.getType(), CommonTypes.int_);
+		assertSameType(waldo.getType(), CommonCPPTypes.int_);
 	}
 
 	//	template <class T>
@@ -5858,17 +5858,17 @@ public class AST2TemplateTests extends AST2TestBase {
 		assertSame(template, inst.getTemplateDefinition());
 	}
 
-	//	template<typename T1,typename T2> class A{};
-	//	template<typename T1> class A<T1, int>{};
-	//	template<typename T2> class A<int, T2>{};
+	//	template<typename T1, typename T2> class A {};
+	//	template<typename T1> class A<T1, int> {};
+	//	template<typename T2> class A<int, T2> {};
 	//	template<> class A<int, int>;
 	//  A<int, int> fooA();
     //
-	//	template<typename T1,typename T2> class B{};
-	//	template<typename T1> class B<T1, int>{};
-	//	template<typename T2> class B<int, T2>{};
+	//	template<typename T1, typename T2> class B {};
+	//	template<typename T1> class B<T1, int> {};
+	//	template<typename T2> class B<int, T2> {};
 	//	template<> class B<int, int> {};
-	//  A<int, int> fooB();
+	//  B<int, int> fooB();
 	public void testExplicitSpecializationOfForbiddenAsImplicit_356818() throws Exception {
 		parseAndCheckBindings();
 	}
@@ -6087,6 +6087,13 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	template<int, int> struct a {};
+	//	const int b = 0, c = 1;
+	//	int a<b<c,b<c>::*mp6;  // syntax error here
+	public void testTemplateIDAmbiguity_445177() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	template <typename T> void foo(T);
 	//	template <typename T> void foo(T, typename T::type* = 0);
 	//	int main() {
@@ -6132,8 +6139,8 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	auto x2 = begin2(v);
 	public void testResolvingAutoTypeWithDependentExpression_402409a() throws Exception {
 		BindingAssertionHelper helper = new BindingAssertionHelper(getAboveComment(), true);
-		helper.assertVariableType("x1", CommonTypes.pointerToInt);
-		helper.assertVariableType("x2", CommonTypes.pointerToInt);
+		helper.assertVariableType("x1", CommonCPPTypes.pointerToInt);
+		helper.assertVariableType("x2", CommonCPPTypes.pointerToInt);
 	}
 
 	//	struct vector {
@@ -6307,7 +6314,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testSpecializationOfBaseClass_409078() throws Exception {
 		BindingAssertionHelper bh = getAssertionHelper();
 		ITypedef waldo = bh.assertNonProblem("waldo");
-		assertSameType(waldo.getType(), CommonTypes.int_);
+		assertSameType(waldo.getType(), CommonCPPTypes.int_);
 	}
 
 	//struct A {
@@ -7320,7 +7327,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		assertEquals("bool", ASTTypeUtil.getType(td.getType()));
 		ah.assertProblem("B<int*>::type", "type");
 	}
-	
+
 	//	constexpr int f() { return 1; }
 	//
 	//	template <int>
@@ -7383,9 +7390,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testSfinaeInNestedTypeInTemplateArgument_402257() throws Exception {
 		BindingAssertionHelper helper = new BindingAssertionHelper(getAboveComment(), true);
 		ICPPVariable B = helper.assertNonProblem("B");
-		Long val = B.getInitialValue().numericalValue();
-		assertNotNull(val);
-		assertEquals(0 /* false */, val.longValue());
+		assertConstantValue(0 /* false */, B);
 	}
 
 	//	struct S {
@@ -7412,7 +7417,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testSfinaeInTemplatedConversionOperator_409056() throws Exception {
 		parseAndCheckImplicitNameBindings();
 	}
-	
+
 	//	template<typename T>
 	//	struct A {
 	//	  static constexpr bool value = false;
@@ -7546,13 +7551,38 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	static int test(...);
 	//
 	//	struct A {
-	//	  A() = delete; 
+	//	  A() = delete;
 	//	};
 	//
 	//	int waldo(int p);
 	//
 	//	int x = waldo(test<A>(0));
 	public void testSfinaeInNewExpressionWithDeletedConstructor_430230() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename _From>
+	//	struct is_convertible {};
+	//
+	//	class function {
+	//	public:
+	//	  template<typename _Functor, bool = is_convertible<_Functor>::type::value>
+	//	  function(_Functor);
+	//	};
+	//
+	//	class A {};
+	//
+	//	struct B {
+	//	  B(const char* s);
+	//	};
+	//
+	//	template <class T> void waldo(const B& b);
+	//	template <class T> void waldo(function f);
+	//
+	//	void test() {
+	//	    waldo<A>(""); // problem on waldo
+	//	}
+	public void testSfinaeInIdExpression_459940() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -7806,7 +7836,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testInstantiationOfConstMemberAccess_409107() throws Exception {
 		BindingAssertionHelper bh = getAssertionHelper();
 		IType waldo = bh.assertNonProblem("waldo");
-		assertSameType(waldo, CommonTypes.int_);
+		assertSameType(waldo, CommonCPPTypes.int_);
 	}
 
 	//    template <typename _Tp>
@@ -7864,6 +7894,41 @@ public class AST2TemplateTests extends AST2TestBase {
     public void testVariadicTemplatesAndFunctionObjects_401479() throws Exception {
     	parseAndCheckBindings();
     }
+
+	//	template<typename _Tp>
+	//	_Tp declval() noexcept;
+	//
+	//	template<typename _From>
+	//	struct is_convertible {};
+	//
+	//	template<typename _Signature>
+	//	class function;
+	//
+	//	template<typename _Res, typename... _ArgTypes>
+	//	class function<_Res(_ArgTypes...)> {
+	//	  template<typename _Functor>
+	//	  using _Invoke = decltype(declval<_Functor&>()(declval<_ArgTypes>()...));
+	//
+	//	public:
+	//	  template<typename _Functor, typename = typename is_convertible<_Invoke<_Functor>>::type>
+	//	  function(_Functor);
+	//	};
+	//
+	//	class A {};
+	//
+	//	struct B {
+	//	  B(const char* s);
+	//	};
+	//
+	//	template <class T> void waldo(const B& response);
+	//	template <class T> void waldo(function<T()> generator);
+	//
+	//	void test() {
+	//	    waldo<A>("");  // problem on waldo
+	//	}
+	public void testPackExpansionInNestedTemplate_459844() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	// struct S {
 	//     void kind();
@@ -7953,7 +8018,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper helper = new BindingAssertionHelper(getAboveComment(), true);
 		helper.assertProblem("bind(s, 0, foo)", "bind");
     }
-	
+
 	//	struct a3 {
 	//	    int xxx;
 	//	};
@@ -8031,9 +8096,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testSizeofParameterPackOnTypeid_401973() throws Exception {
 		BindingAssertionHelper helper = new BindingAssertionHelper(getAboveComment(), true);
 		ICPPVariable bar = helper.assertNonProblem("bar");
-		Long barValue = bar.getInitialValue().numericalValue();
-		assertNotNull(barValue);
-		assertEquals(2,  barValue.longValue());
+		assertConstantValue(2, bar);
 	}
 
 	//	template <int...> struct tuple_indices {};
@@ -8076,7 +8139,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testParameterPackInNestedTemplate_441028() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	template <typename... Args>
 	//	void waldo(Args...);
 	//
@@ -8087,7 +8150,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper helper = getAssertionHelper();
 		helper.assertProblem("waldo<int>()", "waldo<int>");
 	}
-	
+
 	//	// Example 1
 	//	template <typename... T>
 	//	void foo1(T... t) {
@@ -8095,12 +8158,40 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	}
 	//
 	//	// Example 2
-	//	template <typename> struct A {}; 
+	//	template <typename> struct A {};
 	//	template <typename... T>
 	//	void foo2(A<T>... t) {
 	//		bar(t.waldo...);
 	//	}
 	public void testMemberAccessInPackExpansion_442213() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	// Example 1
+	//	template <typename... T>
+	//	void foo1(T&... t) {
+	//		bar(t.waldo...);
+	//	}
+	//
+	//	// Example 2
+	//	template <typename> struct A {};
+	//	template <typename... T>
+	//	void foo2(A<T>&... t) {
+	//		bar(t.waldo...);
+	//	}
+	//
+	//	// Example 3
+	//	template <typename... T>
+	//	void foo1(T&&... t) {
+	//		bar(t.waldo...);
+	//	}
+	//
+	//	// Example 4
+	//	template <typename... T>
+	//	void foo1(const T&... t) {
+	//		bar(t.waldo...);
+	//	}
+	public void testMemberAccessViaReferenceInPackExpansion_466845() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -8190,7 +8281,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	    auto x = foo(N::A());
 	//	}
 	public void testUnqualifiedFunctionCallInTemplate_402498b() throws Exception {
-		new BindingAssertionHelper(getAboveComment(), true).assertVariableType("x", CommonTypes.int_);
+		new BindingAssertionHelper(getAboveComment(), true).assertVariableType("x", CommonCPPTypes.int_);
 	}
 
 	//	template <typename T>
@@ -8212,7 +8303,37 @@ public class AST2TemplateTests extends AST2TestBase {
 		// analyzer is too lenient and makes it a TypeOfDependentExpression if it
 		// can't instantiate the return type of foo() properly.
 		// That's another bug for another day.
-		assertFalse(x.getType().isSameType(CommonTypes.int_));
+		assertFalse(x.getType().isSameType(CommonCPPTypes.int_));
+	}
+
+	//	void bar();
+	//
+	//	template <typename T>
+	//	void foo(T t) {
+	//	    bar(t);
+	//	}
+	public void testUnqualifiedFunctionCallInTemplate_458316a() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	void bar();
+	//
+	//	template <typename T>
+	//	auto foo(T t) -> decltype(bar(t));
+	//
+	//	struct Cat { void meow(); };
+	//
+	//	namespace N {
+	//	    struct S {};
+	//
+	//	    Cat bar(S);
+	//	}
+	//
+	//	int main() {
+	//	    foo(N::S()).meow();
+	//	}
+	public void testUnqualifiedFunctionCallInTemplate_458316b() throws Exception {
+		parseAndCheckBindings();
 	}
 
 	//	template <typename>
@@ -8233,7 +8354,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	auto b = foo(a);
 	public void testQualifiedNameLookupInTemplate_402854() throws Exception {
 		BindingAssertionHelper helper = new BindingAssertionHelper(getAboveComment(), true);
-		helper.assertVariableType("b", CommonTypes.int_);
+		helper.assertVariableType("b", CommonCPPTypes.int_);
 	}
 
 	//	template<typename T> struct A {
@@ -8411,7 +8532,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testDependentDecltypeInNameQualifier_415198() throws Exception {
 		BindingAssertionHelper helper = getAssertionHelper();
 		helper.assertNonProblem("decltype(foo(T()))::type");
-		assertSameType((ITypedef) helper.assertNonProblem("U<S>::type"), CommonTypes.int_);
+		assertSameType((ITypedef) helper.assertNonProblem("U<S>::type"), CommonCPPTypes.int_);
 	}
 
 	//	template <typename T>
@@ -8426,7 +8547,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	decltype(B::c)::type x;
 	public void testDependentDecltypeInNameQualifier_429837() throws Exception {
 		BindingAssertionHelper helper = getAssertionHelper();
-		assertSameType((ITypedef) helper.assertNonProblem("decltype(B::c)::type"), CommonTypes.int_);
+		assertSameType((ITypedef) helper.assertNonProblem("decltype(B::c)::type"), CommonCPPTypes.int_);
 	}
 
 	//	namespace N {
@@ -8504,7 +8625,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper helper = getAssertionHelper();
 		helper.assertNonProblem("waldo<T>", ICPPDeferredFunction.class);
 	}
-	
+
 	//	template <typename>
 	//	struct C {
 	//	    friend bool operator==(C, C);
@@ -8521,7 +8642,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testStrayFriends_419301() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	template <typename T>
 	//	constexpr T t(T) {
 	//	    return 0;
@@ -8536,9 +8657,9 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testSpecializationOfConstexprFunction_420995() throws Exception {
 		BindingAssertionHelper helper = getAssertionHelper();
 		ICPPVariable waldo = helper.assertNonProblem("waldo");
-		assertEquals(2, waldo.getInitialValue().numericalValue().longValue());
+		assertConstantValue(2, waldo);
 	}
-	
+
 	//	struct Test {
 	//        static constexpr unsigned calc_sig(const char *s, unsigned n) {
 	//                return (n == 0 || *s == '\0' ? 0 :
@@ -8561,7 +8682,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testConstexprFunctionCallWithNonConstexprArguments_429891() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	template <typename> class A {};
 	//	template <int>      class B {};
 	//	const int D = 4;
@@ -8611,7 +8732,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testLocalTypeAsTemplateArgument_442832() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
 	//	template <typename T>
 	//	struct Bar {};
 	//
@@ -8620,11 +8741,11 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	    Bar<decltype(t.foo)> bar; // bogus `invalid template arguments` error here
 	//		return bar;
 	//	}
-	//	
+	//
 	//	struct S {
 	//		int foo;
 	//	};
-	//	
+	//
 	//	int main() {
 	//		Bar<int> var1;
 	//		auto var2 = foo(S());
@@ -8635,7 +8756,7 @@ public class AST2TemplateTests extends AST2TestBase {
 		IVariable var2 = helper.assertNonProblem("var2");
 		assertSameType(var1.getType(), var2.getType());
 	}
-	
+
 	//	template <bool>
 	//	struct integral_constant {
 	//	    static const bool value = true;
@@ -8667,6 +8788,32 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	    s.waldo = 42;
 	//	}
 	public void testClassSpecializationInEnumerator_457511() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template <typename> struct TypeTemplate {};
+	//	template <int> struct Size_tTemplate {};
+	//
+	//	template <typename... ParameterPack> struct Test {
+	//	  static constexpr int packSize() { return sizeof...(ParameterPack); }
+	//
+	//	  using type = TypeTemplate<Size_tTemplate<packSize()>>;
+	//	};
+	public void testAmbiguityResolutionOrder_462348a() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template <typename> struct TypeTemplate {};
+	//	template <int> struct Size_tTemplate {};
+	//
+	//	template <typename... ParameterPack> struct Test {
+	//	  static constexpr int packSize() { return sizeof...(ParameterPack); }
+	//
+	//	  struct nested {
+	//	    using type = TypeTemplate<Size_tTemplate<packSize()>>;
+	//	  };
+	//	};
+	public void testAmbiguityResolutionOrder_462348b() throws Exception {
 		parseAndCheckBindings();
 	}
 }

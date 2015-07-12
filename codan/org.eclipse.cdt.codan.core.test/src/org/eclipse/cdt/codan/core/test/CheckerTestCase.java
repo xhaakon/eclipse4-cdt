@@ -220,6 +220,10 @@ public class CheckerTestCase extends CodanTestCase {
 		}
 	}
 
+	/**
+	 * Enable given problems and disable the rest
+	 * @param ids
+	 */
 	protected void enableProblems(String... ids) {
 		IProblemProfile profile = CodanRuntime.getInstance().getCheckersRegistry().getWorkspaceProfile();
 		IProblem[] problems = profile.getProblems();
@@ -243,5 +247,15 @@ public class CheckerTestCase extends CodanTestCase {
 			((CodanProblem) p).setEnabled(enabled);
 		}
 		CodanRuntime.getInstance().getCheckersRegistry().updateProfile(cproject.getProject(), profile);
+	}
+
+	protected void checkSampleAbove() {
+		loadCodeAndRun(getAboveComment());
+		checkErrorComments();
+	}
+
+	protected void checkSampleAboveCpp() {
+		loadCodeAndRunCpp(getAboveComment());
+		checkErrorComments();
 	}
 }

@@ -1154,35 +1154,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
                 	
 					@Override
                     protected void handleSuccess() {
-                        IExpressionDMData.BasicType basicType = null;
-
-                        GDBType gdbType = getData().getGDBType();
-                        
-                        if (gdbType != null) {
-                            switch (gdbType.getType()) {
-                            case GDBType.ARRAY:
-                                basicType = IExpressionDMData.BasicType.array;
-                                break;
-                            case GDBType.FUNCTION:
-                                basicType = IExpressionDMData.BasicType.function;
-                                break;
-                            case GDBType.POINTER:
-                            case GDBType.REFERENCE:
-                                basicType =  IExpressionDMData.BasicType.pointer;
-                                break;
-                            case GDBType.GENERIC:
-                            default:
-                            	// The interesting question is not hasChildren,
-                            	// but canHaveChildren. E.g. an empty
-                            	// collection still is a composite.
-                            	if (getData().hasChildren() || getData().getCollectionHint()) {
-                                    basicType =  IExpressionDMData.BasicType.composite;
-                                } else {
-                                    basicType =  IExpressionDMData.BasicType.basic;
-                                }
-                                break;
-                            }
-                        }
+                        IExpressionDMData.BasicType basicType = getBasicType(getData());
                         
                         String relativeExpr = getData().getExpr();
                         String alias = fReturnValueAliases.getAlias(relativeExpr);
@@ -1204,6 +1176,42 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 	    }
 	}
 	
+	/**
+	 * @since 4.7
+	 */
+	protected IExpressionDMData.BasicType getBasicType(ExprMetaGetVarInfo varInfo) {
+		IExpressionDMData.BasicType basicType = null;
+
+		GDBType gdbType = varInfo.getGDBType();
+
+		if (gdbType != null) {
+		    switch (gdbType.getType()) {
+		    case GDBType.ARRAY:
+		        basicType = IExpressionDMData.BasicType.array;
+		        break;
+		    case GDBType.FUNCTION:
+		        basicType = IExpressionDMData.BasicType.function;
+		        break;
+		    case GDBType.POINTER:
+		    case GDBType.REFERENCE:
+		        basicType =  IExpressionDMData.BasicType.pointer;
+		        break;
+		    case GDBType.GENERIC:
+		    default:
+		    	// The interesting question is not hasChildren,
+		    	// but canHaveChildren. E.g. an empty
+		    	// collection still is a composite.
+		    	if (varInfo.hasChildren() || varInfo.getCollectionHint()) {
+		            basicType =  IExpressionDMData.BasicType.composite;
+		        } else {
+		            basicType =  IExpressionDMData.BasicType.basic;
+		        }
+		        break;
+		    }
+		}
+		return basicType;
+	}
+
 	/**
 	 * Obtains the address of an expression and the size of its type. 
 	 * 
@@ -1765,7 +1773,7 @@ public class MIExpressions extends AbstractDsfService implements IMIExpressions,
 			int castingIndex = castInfo.getArrayStartIndex();
 		 
 			// cast to type 
-			if (castType != null && castType.length() > 0) {
+			if (castType != null && !castType.isEmpty()) {
 				StringBuffer buffer = new StringBuffer();
 				buffer.append('(').append(castType).append(')');
 				buffer.append('(').append(castExpression).append(')');
