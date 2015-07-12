@@ -3,7 +3,7 @@
 set -e
 
 NAME=eclipse-cdt
-VERSION=8.6.0
+VERSION=8.7.0
 DEB_VERSION=${VERSION}
 
 CDT_GIT_WEB=http://git.eclipse.org/c/cdt/org.eclipse.cdt.git/
@@ -49,6 +49,7 @@ rm -rf core/org.eclipse.cdt.core.solaris/os \
 rm -rf core/org.eclipse.cdt.core.win32.x86/os \
        core/org.eclipse.cdt.core.win32.x86_64/os \
        core/org.eclipse.cdt.core.win32/cdt_win32.jar
+rm -rf toolchains/arduino/org.eclipse.cdt.arduino.core/libs/freemarker-*.jar
 
 find core/org.eclipse.cdt.core.tests/resources/exe -type f \
      \( -name exe -o -name exe_g -o -name *.o \) -delete
@@ -56,6 +57,9 @@ find core/org.eclipse.cdt.core.tests/resources/exebig -type f \
      \( -name exebig_g -o -name *.o \) -delete
 find core/org.eclipse.cdt.core.tests/resources/testlib/x86 -type f \
      \( -name *.a -o -name *.o -o -name *.so \) -delete
+
+find native/org.eclipse.cdt.native.serial/os -type f \
+     \( -name *.so -o -name *.dll -o -name *.jnilib \) -delete
 
 cd ..
 
