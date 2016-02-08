@@ -2,7 +2,7 @@
 <feature
       id="org.eclipse.cdt.testsrunner.source.feature"
       label="%featureName"
-      version="8.7.0.qualifier"
+      version="8.8.0.qualifier"
       provider-name="%providerName"
       license-feature="org.eclipse.license"
       license-feature-version="0.0.0">
@@ -42,6 +42,13 @@
 
    <plugin
          id="org.eclipse.cdt.testsrunner.qttest.source"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.eclipse.cdt.testsrunner.tap.source"
          download-size="0"
          install-size="0"
          version="0.0.0"

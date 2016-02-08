@@ -19,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.EScopeKind;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
@@ -30,7 +31,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
 import org.eclipse.cdt.core.index.IIndexFileSet;
 import org.eclipse.cdt.core.parser.util.CharArrayObjectMap;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.HeuristicResolver;
 
 /**
  * Models the scope represented by an unknown type (e.g.: typeof(template type parameter)).
@@ -76,6 +77,11 @@ public class CPPUnknownTypeScope implements ICPPInternalUnknownScope {
     	if (fScopeType instanceof IBinding)
     		return ((IBinding) fScopeType).getScope();
     	return null;
+    }
+
+    @Override
+	public IBinding[] find(String name, IASTTranslationUnit tu) {
+        return IBinding.EMPTY_BINDING_ARRAY;
     }
 
     @Override
@@ -150,7 +156,7 @@ public class CPPUnknownTypeScope implements ICPPInternalUnknownScope {
     	if (lookup.isPrefixLookup()) {
 			// If name lookup is performed for the purpose of code completion in a dependent context,
 			// try to give some useful results heuristically.
-			IScope scope = CPPSemantics.heuristicallyFindConcreteScopeForType(fScopeType, 
+			IScope scope = HeuristicResolver.findConcreteScopeForType(fScopeType, 
 					lookup.getLookupPoint());
 			if (scope != null) {
 				return scope.getBindings(lookup);

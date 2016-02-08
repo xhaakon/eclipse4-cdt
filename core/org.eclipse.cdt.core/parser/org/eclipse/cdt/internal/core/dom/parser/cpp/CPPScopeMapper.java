@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplate;
@@ -61,14 +62,17 @@ public class CPPScopeMapper {
 			fContainer= container;
 			fNominated= inline;
 		}
+
 		@Override
 		public IScope getContainingScope() {
 			return fContainer;
 		}
+
 		@Override
 		public ICPPNamespaceScope getNominatedScope() throws DOMException {
 			return fNominated;
 		}
+
 		@Override
 		public int getPointOfDeclaration() {
 			return 0;
@@ -94,21 +98,30 @@ public class CPPScopeMapper {
 		}
 
 		@Override
+		public IBinding[] find(String name, IASTTranslationUnit tu) {
+			return fScope.find(name, tu);
+		}
+
+		@Override @Deprecated
 		public IBinding[] find(String name) {
 			return fScope.find(name);
 		}
+
 		@Override
 		public IBinding getBinding(IASTName name, boolean resolve) {
 			return fScope.getBinding(name, resolve);
 		}
+
 		@Override
 		public IBinding getBinding(IASTName name, boolean resolve, IIndexFileSet acceptLocalBindings) {
 			return fScope.getBinding(name, resolve, acceptLocalBindings);
 		}
+
 		@Override @Deprecated
 		public IBinding[] getBindings(IASTName name, boolean resolve, boolean prefixLookup) {
 			return fScope.getBindings(name, resolve, prefixLookup);
 		}
+
 		@Override @Deprecated
 		public IBinding[] getBindings(IASTName name, boolean resolve, boolean prefixLookup,	IIndexFileSet acceptLocalBindings) {
 			return getBindings(name, resolve, prefixLookup, acceptLocalBindings);
@@ -174,7 +187,7 @@ public class CPPScopeMapper {
 
 		@Override
 		public ICPPInternalNamespaceScope[] getInlineNamespaces() {
-			// Obtain the inline namespaces from the index and map them to the ast
+			// Obtain the inline namespaces from the index and map them to the AST.
 			ICPPNamespaceScope[] pre = fScope.getInlineNamespaces();
 			if (pre.length == 0)
 				return ICPPInternalNamespaceScope.EMPTY_NAMESPACE_SCOPE_ARRAY;
