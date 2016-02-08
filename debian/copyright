@@ -1,5 +1,25 @@
-Format: http://anonscm.debian.org/viewvc/dep/web/deps/dep5.mdwn?revision=202
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Eclipse-CDT
+Files-Excluded: build/org.eclipse.cdt.autotools.ui/macros
+ core/org.eclipse.cdt.core.aix
+ core/org.eclipse.cdt.core.linux.*
+ core/org.eclipse.cdt.core.macosx
+ core/org.eclipse.cdt.core.qnx
+ core/org.eclipse.cdt.core.solaris
+ core/org.eclipse.cdt.core.win32*
+ core/org.eclipse.cdt.core.tests/resources/exe
+ core/org.eclipse.cdt.core.tests/resources/exe/x86/o/exe
+ core/org.eclipse.cdt.core.tests/resources/*/exe_g
+ core/org.eclipse.cdt.core.tests/resources/*.a
+ core/org.eclipse.cdt.core.tests/resources/*.o
+ core/org.eclipse.cdt.core.tests/resources/*.so
+ core/org.eclipse.cdt.core.tests/resources/exebig
+ core/org.eclipse.cdt.core.tests/resources/exebig/x86/o.g/exebig_g
+ native/org.eclipse.cdt.native.serial/*.dll
+ native/org.eclipse.cdt.native.serial/*.so
+ native/org.eclipse.cdt.native.serial/*.jnilib
+ toolchains/arduino/org.eclipse.cdt.arduino.core/libs/freemarker-*.jar
+ */.gitignore
 
 Files: *
 Copyright: 2007-2011, ARM Limited and others

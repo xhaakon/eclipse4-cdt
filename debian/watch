@@ -1,4 +1,4 @@
 version=3
 opts=dversionmangle=s/\+dfsg\d?// \
 http://git.eclipse.org/c/cdt/org.eclipse.cdt.git/refs/ \
-/c/cdt/org.eclipse.cdt.git/snapshot/CDT_(\d+)_(\d+)_(\d+).tar.bz2
+.*/snapshot/CDT_(\d+)_(\d+)(?:_(\d+))?.tar.xz

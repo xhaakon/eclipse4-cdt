@@ -75,5 +75,6 @@ override_dh_clean:
 	dh_clean
 	rm -rf debian/docs/*.xml
 
+VERSION=$(shell dpkg-parsechangelog -S Version | cut -d- -f1)
 get-orig-source:
-	debian/fetch-cdt.sh
+	uscan --force-download --download-version $(VERSION)
