@@ -29,17 +29,57 @@ endif
 BUILD_DIR:=debian/.eclipse-build
 
 %:
-	dh $@ --with eclipse-helper
+	dh $@
 
 # There is 'build' directory in the source tree colliding with 'build' target
 .PHONY: build
 build:
-	dh $@ --with eclipse-helper
+	dh $@
 
 override_dh_auto_clean:
 	# Do not use the auto-clean with ant.
-override_dh_auto_build:
-	# Do not use the auto-build with ant.
+
+override_dh_auto_build-indep:
+	jh_generateorbitdir
+	dh_auto_build -i
+
+	#build_bundle releng/org.eclipse.cdt
+	build_bundle core/org.eclipse.cdt.core.native
+	build_bundle core/org.eclipse.cdt.core
+	build_bundle codan/org.eclipse.cdt.codan.core
+	build_bundle core/org.eclipse.cdt.ui
+	build_bundle codan/org.eclipse.cdt.codan.ui
+	build_bundle codan/org.eclipse.cdt.codan.core.cxx
+	build_bundle codan/org.eclipse.cdt.codan.ui.cxx
+	build_bundle codan/org.eclipse.cdt.codan.checkers
+	build_bundle codan/org.eclipse.cdt.codan.checkers.ui
+	build_bundle debug/org.eclipse.cdt.debug.core
+	build_bundle debug/org.eclipse.cdt.debug.ui
+	build_bundle build/org.eclipse.cdt.make.core
+	build_bundle build/org.eclipse.cdt.make.ui
+	build_bundle build/org.eclipse.cdt.managedbuilder.core
+	build_bundle build/org.eclipse.cdt.managedbuilder.ui
+	#build_bundle doc/org.eclipse.cdt.doc.user
+	build_bundle dsf/org.eclipse.cdt.dsf
+	build_bundle dsf/org.eclipse.cdt.dsf.ui
+	build_bundle native/org.eclipse.cdt.native.serial
+	build_bundle build/org.eclipse.cdt.managedbuilder.gnu.ui
+	build_bundle debug/org.eclipse.cdt.gdb
+	build_bundle debug/org.eclipse.cdt.gdb.ui
+	build_bundle debug/org.eclipse.cdt.debug.mi.core
+	build_bundle debug/org.eclipse.cdt.debug.mi.ui
+	build_bundle launch/org.eclipse.cdt.launch
+	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb
+	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
+	build_bundle memory/org.eclipse.cdt.debug.ui.memory.search
+	build_bundle memory/org.eclipse.cdt.debug.ui.memory.traditional
+	build_bundle memory/org.eclipse.cdt.debug.ui.memory.floatingpoint
+	build_bundle memory/org.eclipse.cdt.debug.ui.memory.transport
+	build_bundle memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
+	build_bundle visualizer/org.eclipse.cdt.visualizer.core
+	build_bundle visualizer/org.eclipse.cdt.visualizer.ui
+	build_bundle qt/org.eclipse.cdt.qt.core
+	build_bundle qt/org.eclipse.cdt.qt.ui
 
 MACROS_DIR=debian/.eclipse-build/org.eclipse.cdt.autotools.ui/macros
 override_jh_setupenvironment:
@@ -54,9 +94,6 @@ override_jh_compilefeatures-arch:
 
 	cd $(BUILD_DIR)/org.eclipse.cdt.native.serial/jni/posix && \
 		gcc -shared -fPIC -I/usr/lib/jvm/default-java/include -o serial.so serial.c
-
-override_jh_compilefeatures-indep:
-	jh_compilefeatures --build-opts="-DjavacTarget=1.7 -DjavacSource=1.7 -DbuildId=$(BUILD_ID) -DforceContextQualifier=$(BUILD_ID)";
 
 jnidir := /usr/lib/$(DEB_HOST_MULTIARCH)/jni
 
@@ -73,6 +110,7 @@ override_jh_installeclipse-indep:
 
 override_dh_clean:
 	dh_clean
+	jh_clean
 	rm -rf debian/docs/*.xml
 
 VERSION=$(shell dpkg-parsechangelog -S Version | cut -d- -f1)
