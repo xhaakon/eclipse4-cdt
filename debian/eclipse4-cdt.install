@@ -1,0 +1,14 @@
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt_* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.codan* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.core* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.debug* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.doc* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.dsf* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.gdb* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.launch* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.make* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.managedbuilder* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.native* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.ui* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.visualizer* /usr/share/eclipse4/plugins
+
