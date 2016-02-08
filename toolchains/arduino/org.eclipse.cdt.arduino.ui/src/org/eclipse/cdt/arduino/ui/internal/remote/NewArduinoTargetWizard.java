@@ -2,7 +2,7 @@ package org.eclipse.cdt.arduino.ui.internal.remote;
 
 import java.util.Set;
 
-import org.eclipse.cdt.arduino.core.IArduinoRemoteConnection;
+import org.eclipse.cdt.arduino.core.internal.remote.ArduinoRemoteConnection;
 import org.eclipse.cdt.arduino.ui.internal.Activator;
 import org.eclipse.jface.wizard.Wizard;
 import org.eclipse.remote.core.IRemoteConnectionType;
@@ -27,9 +27,8 @@ public class NewArduinoTargetWizard extends Wizard implements IRemoteUIConnectio
 		if (getConnection() == null) {
 			return false;
 		}
-		
-		workingCopy.setAttribute(IArduinoRemoteConnection.PORT_NAME, page.portName);
-		workingCopy.setAttribute(IArduinoRemoteConnection.BOARD_ID, page.board.getId());
+
+		page.performFinish(workingCopy);
 		return true;
 	}
 
@@ -42,7 +41,7 @@ public class NewArduinoTargetWizard extends Wizard implements IRemoteUIConnectio
 	public IRemoteConnectionWorkingCopy getConnection() {
 		if (workingCopy == null) {
 			IRemoteServicesManager remoteManager = Activator.getService(IRemoteServicesManager.class);
-			IRemoteConnectionType connectionType = remoteManager.getConnectionType(IArduinoRemoteConnection.TYPE_ID);
+			IRemoteConnectionType connectionType = remoteManager.getConnectionType(ArduinoRemoteConnection.TYPE_ID);
 			try {
 				workingCopy = connectionType.newConnection(page.name);
 			} catch (RemoteConnectionException e) {

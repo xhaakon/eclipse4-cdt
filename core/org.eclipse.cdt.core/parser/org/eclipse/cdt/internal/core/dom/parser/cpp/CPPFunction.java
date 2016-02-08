@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -64,7 +64,12 @@ import org.eclipse.core.runtime.PlatformObject;
  * Binding for C++ function
  */
 public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInternalFunction {
-	public static final ICPPFunction UNINITIALIZED_FUNCTION = new CPPFunction(null);
+	public static final ICPPFunction UNINITIALIZED_FUNCTION = new CPPFunction(null) {
+		@Override
+		public String toString() {
+			return "UNINITIALIZED_FUNCTION"; //$NON-NLS-1$
+		}
+	};
 
 	protected IASTDeclarator[] declarations;
 	protected ICPPASTFunctionDeclarator definition;
@@ -592,7 +597,7 @@ public class CPPFunction extends PlatformObject implements ICPPFunction, ICPPInt
 		StringBuilder result = new StringBuilder();
 		result.append(getName());
 		IFunctionType t = getType();
-		result.append(t != null ? ASTTypeUtil.getParameterTypeString(t) : "()"); //$NON-NLS-1$
+		result.append(t != null ? ASTTypeUtil.getParameterTypeStringAndQualifiers(t) : "()"); //$NON-NLS-1$
 		return result.toString();
 	}
 

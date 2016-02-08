@@ -445,7 +445,6 @@ public class ContainerTab extends AbstractLaunchConfigurationTab implements
 
 	@Override
 	public void performApply(ILaunchConfigurationWorkingCopy configuration) {
-		setWarningMessage(null);
 		String[] dirs = directoriesList.getItems();
 		configuration.setAttribute(ILaunchConstants.ATTR_ADDITIONAL_DIRS,
 				Arrays.asList(dirs));

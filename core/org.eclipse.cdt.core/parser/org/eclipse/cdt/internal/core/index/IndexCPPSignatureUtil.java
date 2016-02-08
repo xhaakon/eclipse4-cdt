@@ -1,15 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2011 QNX Software Systems and others.
+ * Copyright (c) 2007, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Bryan Wilkinson (QNX) - Initial API and implementation
- *    Andrew Ferguson (Symbian)
- *    Markus Schorn (Wind River Systems)
- *    Sergey Prigogin (Google)
+ *     Bryan Wilkinson (QNX) - Initial API and implementation
+ *     Andrew Ferguson (Symbian)
+ *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.index;
 
@@ -42,15 +42,12 @@ import org.eclipse.core.runtime.CoreException;
  * siblings with the same name.
  */
 public class IndexCPPSignatureUtil {
-	
 	/**
 	 * Returns the signature for the binding.  Returns an empty string if
 	 * a signature is not required for the binding.
-	 * 
-	 * @param binding
+	 *
+	 * @param binding the binding
 	 * @return the signature or an empty string
-	 * @throws CoreException
-	 * @throws DOMException
 	 */
 	public static String getSignature(IBinding binding) throws CoreException, DOMException {
 		StringBuilder buffer = new StringBuilder();
@@ -66,8 +63,8 @@ public class IndexCPPSignatureUtil {
 		} else if (binding instanceof ICPPClassTemplatePartialSpecialization) {
 			ICPPClassTemplatePartialSpecialization partial = (ICPPClassTemplatePartialSpecialization) binding;
 			buffer.append(getTemplateArgString(partial.getTemplateArguments(), false));
-		} 
-		
+		}
+
 		if (binding instanceof ICPPFunction) {
 			IFunction function = (ICPPFunction) binding;
 			final IFunctionType ftype = function.getType();
@@ -84,11 +81,16 @@ public class IndexCPPSignatureUtil {
 				buffer.append('c');
 			if (ft.isVolatile())
 				buffer.append('v');
+			if (ft.hasRefQualifier()) {
+				buffer.append('&');
+				if (ft.isRValueReference())
+					buffer.append('&');
+			}
 		}
-		
+
 		return buffer.toString();
 	}
-	
+
 	private static void appendTemplateParameters(ICPPTemplateParameter[] tpars,	StringBuilder buffer) {
 		buffer.append('<');
 		for (ICPPTemplateParameter tpar : tpars) {
@@ -119,7 +121,7 @@ public class IndexCPPSignatureUtil {
 			throws CoreException, DOMException {
 		return ASTTypeUtil.getArgumentListString(args, true);
 	}
-	
+
 	/**
 	 * Constructs a string in the format:
 	 *   (paramName1,paramName2,...)
@@ -146,14 +148,12 @@ public class IndexCPPSignatureUtil {
 		result.append(')');
 		return result.toString();
 	}
-	
+
 	/**
-	 * Gets the signature hash for the passed binding.
-	 * 
-	 * @param binding
+	 * Returns the signature hash for the passed binding.
+	 *
+	 * @param binding the binding
 	 * @return the hash code of the binding's signature string
-	 * @throws CoreException
-	 * @throws DOMException
 	 */
 	public static Integer getSignatureHash(IBinding binding) throws CoreException, DOMException {
 		String sig = getSignature(binding);
@@ -161,19 +161,18 @@ public class IndexCPPSignatureUtil {
 	}
 
 	/**
-	 * @return compares two bindings for signature information. Signature information covers
-	 * function signatures, or template specialization/instance arguments.
-	 * @param a
-	 * @param b
+	 * Compares signature hashes of the two given bindings.
+	 *
+	 * @param a the first binding
+	 * @param b the second binding
+	 * @return sgn(signature_hash(a) - signature_hash(b))
 	 */
 	public static int compareSignatures(IBinding a, IBinding b) {
 		try {
 			int siga= getSignature(a).hashCode();
 			int sigb= getSignature(b).hashCode();
 			return siga < sigb ? -1 : siga > sigb ? 1 : 0;
-		} catch (CoreException e) {
-			CCorePlugin.log(e);
-		} catch (DOMException e) {
+		} catch (CoreException | DOMException e) {
 			CCorePlugin.log(e);
 		}
 		return 0;

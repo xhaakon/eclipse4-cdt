@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2012 QNX Software Systems and others.
+ * Copyright (c) 2004, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,9 +10,11 @@
  * Nokia - https://bugs.eclipse.org/bugs/show_bug.cgi?id=145606
  * QNX Software Systems - Catchpoints support https://bugs.eclipse.org/bugs/show_bug.cgi?id=226689
  *  Scott Tepavich (WindRiver) -  Fixed bad reference to messages.properties string (Bug 393178)
+ * Jonah Graham (Kichwa Coders) - Create "Add Line Breakpoint (C/C++)" action (Bug 464917)
  *******************************************************************************/
 package org.eclipse.cdt.debug.internal.ui.breakpoints;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,12 +36,17 @@ import org.eclipse.cdt.debug.ui.breakpoints.CBreakpointUIContributionFactory;
 import org.eclipse.cdt.debug.ui.breakpoints.ICBreakpointContext;
 import org.eclipse.cdt.debug.ui.breakpoints.ICBreakpointsUIContribution;
 import org.eclipse.cdt.debug.ui.preferences.ReadOnlyFieldEditor;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.model.IBreakpoint;
 import org.eclipse.debug.core.model.IDebugElement;
 import org.eclipse.debug.core.model.IDebugModelProvider;
 import org.eclipse.debug.core.model.ILineBreakpoint;
@@ -52,20 +59,27 @@ import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.IntegerFieldEditor;
 import org.eclipse.jface.preference.StringFieldEditor;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbenchPropertyPage;
+import org.eclipse.ui.dialogs.FilteredResourcesSelectionDialog;
 import org.eclipse.ui.model.IWorkbenchAdapter;
 
 /**
@@ -144,6 +158,19 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 			super( name, labelText, parent );
 		}
 
+		@Override
+		protected void doFillIntoGrid(Composite parent, int numColumns) {
+			super.doFillIntoGrid(parent, numColumns);
+			// also validate on mouse clicks, eg. middle-mouse-paste
+			Text textControl = getTextControl();
+			textControl.addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseUp(MouseEvent e) {
+					valueChanged();
+				}
+			});
+		}
+
 		/**
 		 * @see StringFieldEditor#checkState()
 		 */
@@ -164,6 +191,7 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 				super.doStore();
 			}
 		}
+		@Override
 		protected void doLoad()  {
 			String value = getPreferenceStore().getString(getPreferenceName());
             setStringValue(value);
@@ -194,6 +222,94 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 				}
 			}
 		}
+	}
+
+	class BreakpointFileNameFieldEditor extends BreakpointStringFieldEditor {
+
+		private Composite composite;
+
+		public BreakpointFileNameFieldEditor(String name, String labelText, Composite parent) {
+			super(name, labelText, parent);
+		}
+
+		@Override
+		protected void adjustForNumColumns(int numColumns) {
+			super.adjustForNumColumns(numColumns);
+			((GridData) composite.getLayoutData()).horizontalSpan = numColumns;
+		}
+
+		@Override
+		protected void doFillIntoGrid(Composite parent, int numColumns) {
+			super.doFillIntoGrid(parent, numColumns);
+
+			composite = new Composite(parent, SWT.NONE);
+			composite.setLayoutData(GridDataFactory.fillDefaults().grab(true, false).span(getNumberOfControls(), 1).align(SWT.END, SWT.FILL).create());
+			composite.setLayout(new FillLayout());
+			Button browseWorkspace = new Button(composite, SWT.PUSH);
+			browseWorkspace.setText(BreakpointsMessages.getString("CBreakpointPropertyPage.workspace_button")); //$NON-NLS-1$
+			browseWorkspace.setFont(parent.getFont());
+			browseWorkspace.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent evt) {
+					FilteredResourcesSelectionDialog dialog = new FilteredResourcesSelectionDialog(getShell(), false, ResourcesPlugin.getWorkspace().getRoot(), IResource.FILE);
+					String text = getTextControl().getText();
+					IPath path = Path.fromOSString(text);
+					String filename;
+					if (path.segmentCount() > 0) {
+						filename = path.segment(path.segmentCount() - 1);
+					} else {
+						filename = "*.c"; //$NON-NLS-1$
+					}
+					dialog.setInitialPattern(filename);
+					if (dialog.open() == Window.OK) {
+						Object[] result = dialog.getResult();
+						if (result.length == 0)
+							return;
+						if (result[0] instanceof IFile) {
+							IFile file = (IFile) result[0];
+							IPath location = file.getRawLocation();
+							if (location != null) {
+								String newValue = location.makeAbsolute().toOSString();
+								setStringValue(newValue);
+							}
+						}
+					}
+				}
+			});
+
+
+			Button browseFileSystem = new Button(composite, SWT.PUSH);
+			browseFileSystem.setText(BreakpointsMessages.getString("CBreakpointPropertyPage.file_system_button")); //$NON-NLS-1$
+			browseFileSystem.setFont(parent.getFont());
+			browseFileSystem.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent evt) {
+					FileDialog dialog = new FileDialog(getShell(), SWT.OPEN | SWT.SHEET);
+					dialog.setFileName(getTextControl().getText());
+					String newValue = dialog.open();
+					if (newValue != null) {
+						setStringValue(newValue);
+					}
+				}
+			});
+		}
+
+		@Override
+		protected boolean doCheckState() {
+			// Check that the file name supplied is absolute and exists so that we can 
+			// associate it to an IResource later for creating a breakpoint marker.
+			String stringValue = getStringValue();
+			if (stringValue == null) {
+				return false;
+			}
+			File sourceFile = new File(stringValue);
+			if (!sourceFile.isAbsolute() || !sourceFile.exists() || !sourceFile.isFile()) {
+				return false;
+			}
+
+			return super.doCheckState();
+		}
+		
 	}
 
     class WatchpointRangeFieldEditor extends IntegerFieldEditor {
@@ -454,9 +570,17 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 
 	private Text fIgnoreCountTextControl;
 
+	private BreakpointFileNameFieldEditor fFileEditor;
+	private BreakpointIntegerFieldEditor fLineEditor;
 	private BreakpointIntegerFieldEditor fIgnoreCount;
-
+	
 	private IAdaptable fElement;
+
+	/** 
+	 * Indicates if the page currently aims to create
+	 * a breakpoint that already exits.
+	 */
+	private boolean fDuplicateBreakpoint;
 
 	/**
 	 * The preference store used to interface between the breakpoint and the 
@@ -479,11 +603,6 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 //		fCBreakpointPreferenceStore = new CBreakpointPreferenceStore();
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.jface.preference.FieldEditorPreferencePage#createFieldEditors()
-	 */
 	@Override
 	protected void createFieldEditors() {
 		ICBreakpoint breakpoint = getBreakpoint();
@@ -542,15 +661,7 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 			
 		}
 		else if ( breakpoint instanceof ILineBreakpoint ) {
-		    String fileName = getPreferenceStore().getString(ICBreakpoint.SOURCE_HANDLE);
-			if ( fileName != null ) {
-				addField( createLabelEditor( getFieldEditorParent(), BreakpointsMessages.getString( "CBreakpointPropertyPage.sourceHandle_label" ), fileName ) ); //$NON-NLS-1$
-			}
-			int lNumber = getPreferenceStore().getInt(IMarker.LINE_NUMBER);
-			if (lNumber > 0) {
-				getPreferenceStore().setValue( IMarker.LINE_NUMBER, lNumber);
-				createLineNumberEditor(getFieldEditorParent());
-			}
+			createFileLineNumberEditor(getFieldEditorParent());
 		}
 		else if ( breakpoint instanceof CEventBreakpoint ) {
 			createEventBreakpointEditor( breakpoint, ICBreakpointsUIContribution.BREAKPOINT_LABELS);
@@ -596,14 +707,45 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
                 function = BreakpointsMessages.getString( "CBreakpointPropertyPage.function_valueNotAvailable_label" ); //$NON-NLS-1$
             }
             addField( createLabelEditor( getFieldEditorParent(), BreakpointsMessages.getString( "CBreakpointPropertyPage.function_label" ), function ) ); //$NON-NLS-1$
-        }
-    }
+		}
+	}
+
+	protected void createFileLineNumberEditor( Composite parent ) {
+		String title = BreakpointsMessages.getString( "CBreakpointPropertyPage.sourceHandle_label" ); //$NON-NLS-1$
+		ICBreakpoint breakpoint = getBreakpoint();
+
+		boolean isNewBreakpoint = breakpoint == null || breakpoint.getMarker() == null;
+		String fileName = getPreferenceStore().getString(ICBreakpoint.SOURCE_HANDLE);
+		boolean isFilenameEditable = fileName != null && fileName.isEmpty();
+
+		if (isNewBreakpoint && isFilenameEditable) {
+			fFileEditor = new BreakpointFileNameFieldEditor(
+					ICLineBreakpoint.SOURCE_HANDLE, title, parent);
+			fFileEditor.setErrorMessage(BreakpointsMessages.getString("CBreakpointPropertyPage.fileName_errorMessage")); //$NON-NLS-1$
+			fFileEditor.setEmptyStringAllowed(false);
+			addField(fFileEditor);
+		} else {
+			if (fileName != null) {
+				addField(createLabelEditor(parent, title, fileName));
+			}
+		}
+
+		int lNumber = getPreferenceStore().getInt(IMarker.LINE_NUMBER);
+		if (lNumber > 0 || isNewBreakpoint) {
+			if (lNumber < 1) {
+				lNumber = 1;
+			}
+			getPreferenceStore().setValue(IMarker.LINE_NUMBER, lNumber);
+			createLineNumberEditor(parent);
+		}
+	}
 	
 	protected void createLineNumberEditor( Composite parent ) {
 		 String title = BreakpointsMessages.getString( "CBreakpointPropertyPage.lineNumber_label" ); //$NON-NLS-1$
-		 BreakpointIntegerFieldEditor labelFieldEditor =new BreakpointIntegerFieldEditor( IMarker.LINE_NUMBER ,title, parent);
-		 labelFieldEditor.setValidRange( 1, Integer.MAX_VALUE );
-		 addField( labelFieldEditor );
+		 fLineEditor = new BreakpointIntegerFieldEditor(IMarker.LINE_NUMBER ,title, parent);
+		 fLineEditor.setValidRange(1, Integer.MAX_VALUE);
+		 fLineEditor.setErrorMessage(BreakpointsMessages.getString("CBreakpointPropertyPage.lineNumber_errorMessage")); //$NON-NLS-1$
+		 addField(fLineEditor);
 	}
 
     protected void createWatchExpressionEditor( Composite parent ) {
@@ -703,6 +845,86 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
 		return new LabelFieldEditor( parent, title, value );
 	}
 
+	@Override
+	public boolean isValid() {
+		// Don't allow to create a duplicate breakpoint
+		return super.isValid() && !fDuplicateBreakpoint;
+	}
+	
+	@Override
+	public void propertyChange(PropertyChangeEvent event) {
+		super.propertyChange(event);
+
+		ICBreakpoint currentBp = getBreakpoint();
+		if (!(currentBp instanceof ICFunctionBreakpoint) &&
+				!(currentBp instanceof ICAddressBreakpoint) &&
+				!(currentBp instanceof ICWatchpoint) &&
+				!(currentBp instanceof ICEventBreakpoint)) {
+			// Check for duplication of line breakpoints
+			if (event.getProperty().equals(FieldEditor.VALUE)) {
+				if (super.isValid()) {
+					// For every change, if all the fields are valid
+					// we then check if we are dealing with a duplicate
+					// breakpoint.
+					boolean oldValue = fDuplicateBreakpoint;
+					fDuplicateBreakpoint = isDuplicateBreakpoint();
+					if (oldValue != fDuplicateBreakpoint) {
+						if (fDuplicateBreakpoint) {
+							setErrorMessage(BreakpointsMessages.getString("CBreakpointPropertyPage.breakpoint_already_exists_errorMessage")); //$NON-NLS-1$
+						} else {
+							setErrorMessage(null);
+						}
+						// update container state
+						if (getContainer() != null) {
+							getContainer().updateButtons();
+						}
+						// update page state
+						updateApplyButton();
+					}
+				}
+			}
+		}
+	}
+	
+	private boolean isDuplicateBreakpoint() {
+		String source = null;
+		if (fFileEditor != null) {
+			source = fFileEditor.getStringValue();
+		} else {
+			// If the source file is not editable, we should fetch
+			// it from the preference store
+			source = getPreferenceStore().getString(ICBreakpoint.SOURCE_HANDLE);
+		}
+		
+		// We only check duplicates for Breakpoints with lines numbers
+		if (fLineEditor == null) {
+			return false;
+		}
+		
+ 		int line = fLineEditor.getIntValue();
+
+		// Look for any breakpoint that has the same source file and line number as what
+		// is currently being inputed.  Careful not to compare with the current breakpoint
+		// in the case of modifying the breakpoint properties of an existing breakpoint; in
+		// that case we of course have this particular bp at this file and line.
+		ICBreakpoint currentBp = getBreakpoint();
+		IBreakpoint[] breakpoints = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints();
+		for (IBreakpoint bp : breakpoints) {
+			if (!bp.equals(currentBp) && bp instanceof ICBreakpoint) {
+				IMarker marker = bp.getMarker();
+				if (marker != null) {
+					String markerFile = marker.getAttribute(ICBreakpoint.SOURCE_HANDLE, ""); //$NON-NLS-1$
+					int markerLine = marker.getAttribute(IMarker.LINE_NUMBER, -1);
+					if (source.equals(markerFile) && line == markerLine) {
+						// Woops, we already have another breakpoint at this file:line
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	protected ICBreakpoint getBreakpoint() {
 		IAdaptable element = getElement();
 		if (element instanceof ICBreakpoint) {
@@ -740,6 +962,7 @@ public class CBreakpointPropertyPage extends FieldEditorPreferencePage implement
         return null;
 	}
 
+	@Override
 	public IPreferenceStore getPreferenceStore() {
 	    IAdaptable element = getElement();
 	    if (element instanceof ICBreakpointContext) {
