@@ -17,17 +17,17 @@ Vcs-Git: git://anonscm.debian.org/pkg-java/eclipse-cdt.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-java/eclipse-cdt.git
 Homepage: http://www.eclipse.org/cdt/
 
-Package: eclipse-cdt
+Package: eclipse4-cdt
 Architecture: all
-Depends: eclipse-platform (>= 3.8~),
-         eclipse-cdt-jni (>= ${source:Version}),
+Depends: eclipse4-platform,
          gcc,
          make,
          ${misc:Depends},
          ${orbit:Depends}
 Suggests: g++,
-          eclipse-cdt-autotools,
-          eclipse-cdt-launch-remote
+          eclipse4-cdt-autotools,
+          eclipse4-cdt-launch-remote,
+          eclipse4-cdt-jni (>= ${source:Version})
 Description: C/C++ Development Tools for Eclipse
  The eclipse-cdt package contains Eclipse features and plugins that are
  useful for C and C++ development.
@@ -43,7 +43,7 @@ Description: C/C++ Development Tools for Eclipse
   * Content Assist Provider
   * Makefile generator
 
-Package: eclipse-cdt-jni
+Package: eclipse4-cdt-jni
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
@@ -65,52 +65,52 @@ Description: C/C++ Development Tools for Eclipse (JNI)
  .
  This package contains architecture specific JNI libraries
 
-Package: eclipse-cdt-autotools
-Architecture: all
-Depends: eclipse-cdt (= ${source:Version}),
-         eclipse-remote-services-api,
-         autoconf,
-         automake,
-         ${misc:Depends},
-         ${orbit:Depends}
-Description: Autotools support for Eclipse CDT
- The Autotools suite of plugins adds to the CDT a support for building and
- maintaining C/C++ projects that use Autotools. With this additional support,
- a vast repository of C/C++ code can be checked out, built, and maintained
- under the CDT rather easily without having to resort to the command line.
- .
- In conjunction with the CDT, the plugin can do the following:
-  * Build a C/C++ project that uses a configure script or an autogen
-    script or a Makefile.cvs script
-  * Create a simple C or C++ hello world Autotools project via a template
-  * Allow configuration parameters to be set via a gui and to rebuild when
-    configuration parameters are changed
-  * Colorized editing of configuration files such as configure.in, configure.ac,
-    Makefile.am, and Makefile.in with full hover help for autoconf/automake
-    macros
-  * Allow specification of multiple build configurations for a single project
-  * Run autotools such as autoconf, automake, or aclocal directly using a gui
-    interface
-  * Includes hover help for autoconf and automake macros in the editors
+#Package: eclipse-cdt-autotools
+#Architecture: all
+#Depends: eclipse-cdt (= ${source:Version}),
+#         eclipse-remote-services-api,
+#         autoconf,
+#         automake,
+#         ${misc:Depends},
+#         ${orbit:Depends}
+#Description: Autotools support for Eclipse CDT
+# The Autotools suite of plugins adds to the CDT a support for building and
+# maintaining C/C++ projects that use Autotools. With this additional support,
+# a vast repository of C/C++ code can be checked out, built, and maintained
+# under the CDT rather easily without having to resort to the command line.
+# .
+# In conjunction with the CDT, the plugin can do the following:
+#  * Build a C/C++ project that uses a configure script or an autogen
+#    script or a Makefile.cvs script
+#  * Create a simple C or C++ hello world Autotools project via a template
+#  * Allow configuration parameters to be set via a gui and to rebuild when
+#    configuration parameters are changed
+#  * Colorized editing of configuration files such as configure.in, configure.ac,
+#    Makefile.am, and Makefile.in with full hover help for autoconf/automake
+#    macros
+#  * Allow specification of multiple build configurations for a single project
+#  * Run autotools such as autoconf, automake, or aclocal directly using a gui
+#    interface
+#  * Includes hover help for autoconf and automake macros in the editors
 
-Package: eclipse-cdt-launch-remote
-Architecture: all
-Depends: eclipse-cdt (= ${source:Version}),
-         eclipse-rse,
-         ${misc:Depends},
-         ${orbit:Depends}
-Breaks: eclipse-cdt (<< 8.1.2-1)
-Replaces: eclipse-cdt (<< 8.1.2-1)
-Description: Remote launch and debug support for Eclipse CDT
- The eclipse-cdt package contains Eclipse features and plugins that are
- useful for C and C++ development.
- .
- This package allows one to upload and launch a C/C++ application on a remote
- host machine from within CDT. Remote debugging is also supported.
+#Package: eclipse-cdt-launch-remote
+#Architecture: all
+#Depends: eclipse-cdt (= ${source:Version}),
+#         eclipse-rse,
+#         ${misc:Depends},
+#         ${orbit:Depends}
+#Breaks: eclipse-cdt (<< 8.1.2-1)
+#Replaces: eclipse-cdt (<< 8.1.2-1)
+#Description: Remote launch and debug support for Eclipse CDT
+# The eclipse-cdt package contains Eclipse features and plugins that are
+# useful for C and C++ development.
+# .
+# This package allows one to upload and launch a C/C++ application on a remote
+# host machine from within CDT. Remote debugging is also supported.
 
-Package: eclipse-cdt-qt
+Package: eclipse4-cdt-qt
 Architecture: all
-Depends: eclipse-cdt (= ${source:Version}),
+Depends: eclipse4-cdt (= ${source:Version}),
          ${misc:Depends},
          ${orbit:Depends}
 Description: Qt framework support for Eclipse CDT
