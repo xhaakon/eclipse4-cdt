@@ -1,3 +1,2 @@
 use-default-cppflags.patch
 autotools-add-distro-version-to-list.patch
-build-without-e4.patch
