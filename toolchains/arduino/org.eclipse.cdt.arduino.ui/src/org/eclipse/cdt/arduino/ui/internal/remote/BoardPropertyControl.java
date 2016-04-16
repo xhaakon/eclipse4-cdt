@@ -50,7 +50,7 @@ public class BoardPropertyControl extends Composite {
 		Label portLabel = new Label(this, SWT.NONE);
 		portLabel.setText(Messages.NewArduinoTargetWizardPage_4);
 
-		portCombo = new Combo(this, SWT.READ_ONLY);
+		portCombo = new Combo(this, SWT.NONE);
 		portCombo.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		try {
 			portNames = SerialPort.list();
@@ -64,12 +64,13 @@ public class BoardPropertyControl extends Composite {
 		if (portNames.length > 0) {
 			portCombo.select(0);
 			portName = portNames[0];
+		} else {
+			portName = ""; //$NON-NLS-1$
 		}
 		portCombo.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				int index = portCombo.getSelectionIndex();
-				portName = index < 0 ? null : portNames[index];
+				portName = portCombo.getText();
 				fireSelection();
 			}
 		});
@@ -80,7 +81,7 @@ public class BoardPropertyControl extends Composite {
 		boardCombo = new Combo(this, SWT.READ_ONLY);
 		boardCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		try {
-			List<ArduinoBoard> boardList = ArduinoManager.instance.getInstalledBoards();
+			List<ArduinoBoard> boardList = Activator.getService(ArduinoManager.class).getInstalledBoards();
 			Collections.sort(boardList, new Comparator<ArduinoBoard>() {
 				@Override
 				public int compare(ArduinoBoard o1, ArduinoBoard o2) {

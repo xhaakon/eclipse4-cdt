@@ -1,8 +1,6 @@
 package org.eclipse.cdt.arduino.core.internal.board;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -15,6 +13,7 @@ import java.util.Set;
 public class LibraryIndex {
 
 	private List<ArduinoLibrary> libraries;
+	public static final String UNCATEGORIZED = "Uncategorized"; //$NON-NLS-1$
 
 	// category name to library name
 	private Map<String, Set<String>> categories = new HashMap<>();
@@ -22,31 +21,12 @@ public class LibraryIndex {
 	private Map<String, ArduinoLibrary> latestLibs = new HashMap<>();
 
 	public void resolve() throws IOException {
-		// Add in platform libraries
-		for (PackageIndex index : ArduinoManager.instance.getPackageIndices()) {
-			for (ArduinoPackage pkg : index.getPackages()) {
-				for (ArduinoPlatform platform : pkg.getPlatforms()) {
-					if (platform.isInstalled()) {
-						File[] libraryDirs = platform.getInstallPath().resolve("libraries").toFile().listFiles(); //$NON-NLS-1$
-						if (libraryDirs != null) {
-							for (File libraryDir : libraryDirs) {
-								Path propsPath = libraryDir.toPath().resolve("library.properties"); //$NON-NLS-1$
-								if (propsPath.toFile().exists()) {
-									libraries.add(new ArduinoLibrary(propsPath));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
 		for (ArduinoLibrary library : libraries) {
 			String name = library.getName();
 
 			String category = library.getCategory();
 			if (category == null) {
-				category = "Uncategorized"; //$NON-NLS-1$
+				category = UNCATEGORIZED;
 			}
 
 			Set<String> categoryLibs = categories.get(category);
@@ -58,7 +38,7 @@ public class LibraryIndex {
 
 			ArduinoLibrary current = latestLibs.get(name);
 			if (current != null) {
-				if (ArduinoPackage.compareVersions(library.getVersion(), current.getVersion()) > 0) {
+				if (ArduinoManager.compareVersions(library.getVersion(), current.getVersion()) > 0) {
 					latestLibs.put(name, library);
 				}
 			} else {

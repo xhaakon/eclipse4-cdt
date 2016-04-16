@@ -9,8 +9,11 @@ package org.eclipse.cdt.arduino.core.internal.board;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
@@ -27,11 +30,11 @@ import java.util.Properties;
 import org.eclipse.cdt.arduino.core.internal.Activator;
 import org.eclipse.cdt.arduino.core.internal.ArduinoPreferences;
 import org.eclipse.cdt.arduino.core.internal.HierarchicalProperties;
+import org.eclipse.cdt.arduino.core.internal.Messages;
 import org.eclipse.cdt.arduino.core.internal.build.ArduinoBuildConfiguration;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 
@@ -52,6 +55,7 @@ public class ArduinoPlatform {
 	private HierarchicalProperties boardsProperties;
 	private Properties platformProperties;
 	private Map<String, String> menus = new HashMap<>();
+	private Map<String, ArduinoLibrary> libraries;
 
 	void setOwner(ArduinoPackage pkg) {
 		this.pkg = pkg;
@@ -99,13 +103,15 @@ public class ArduinoPlatform {
 		return size;
 	}
 
-	public List<ArduinoBoard> getBoards() throws CoreException {
+	public List<ArduinoBoard> getBoards() {
 		if (isInstalled() && boardsProperties == null) {
 			Properties boardProps = new Properties();
-			try (Reader reader = new FileReader(getInstallPath().resolve("boards.txt").toFile())) { //$NON-NLS-1$
+
+			try (InputStream is = new FileInputStream(getInstallPath().resolve("boards.txt").toFile()); //$NON-NLS-1$
+					Reader reader = new InputStreamReader(is, "UTF-8")) { //$NON-NLS-1$
 				boardProps.load(reader);
 			} catch (IOException e) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.getId(), "Loading boards.txt", e)); //$NON-NLS-1$
+				Activator.log(e);
 			}
 
 			boardsProperties = new HierarchicalProperties(boardProps);
@@ -186,8 +192,27 @@ public class ArduinoPlatform {
 	}
 
 	public Path getInstallPath() {
-		return ArduinoPreferences.getArduinoHome().resolve("hardware").resolve(pkg.getName()).resolve(architecture) //$NON-NLS-1$
+		// TODO remove migration in Neon
+		Path oldPath = ArduinoPreferences.getArduinoHome().resolve("hardware").resolve(pkg.getName()) //$NON-NLS-1$
+				.resolve(architecture).resolve(version);
+		Path newPath = getPackage().getInstallPath().resolve("hardware").resolve(pkg.getName()).resolve(architecture) //$NON-NLS-1$
 				.resolve(version);
+		if (Files.exists(oldPath)) {
+			try {
+				Files.createDirectories(newPath.getParent());
+				Files.move(oldPath, newPath);
+				for (Path parent = oldPath.getParent(); parent != null; parent = parent.getParent()) {
+					if (Files.newDirectoryStream(parent).iterator().hasNext()) {
+						break;
+					} else {
+						Files.delete(parent);
+					}
+				}
+			} catch (IOException e) {
+				Activator.log(e);
+			}
+		}
+		return newPath;
 	}
 
 	public List<Path> getIncludePath() {
@@ -210,19 +235,84 @@ public class ArduinoPlatform {
 		}
 	}
 
-	public Collection<String> getSources(String core) {
+	public Collection<String> getSources(String core, String variant) {
 		List<String> sources = new ArrayList<>();
 		Path srcPath = getInstallPath().resolve("cores").resolve(core); //$NON-NLS-1$
 		if (srcPath.toFile().isDirectory()) {
 			getSources(sources, srcPath, true);
 		}
+		Path variantPath = getInstallPath().resolve("variants").resolve(variant); //$NON-NLS-1$
+		if (variantPath.toFile().isDirectory()) {
+			getSources(sources, variantPath, true);
+		}
 		return sources;
+	}
+
+	private void initLibraries() throws CoreException {
+		libraries = new HashMap<>();
+		File[] libraryDirs = getInstallPath().resolve("libraries").toFile().listFiles(); //$NON-NLS-1$
+		if (libraryDirs != null) {
+			for (File libraryDir : libraryDirs) {
+				Path propsPath = libraryDir.toPath().resolve("library.properties"); //$NON-NLS-1$
+				if (propsPath.toFile().exists()) {
+					try {
+						ArduinoLibrary lib = new ArduinoLibrary(propsPath);
+						libraries.put(lib.getName(), lib);
+					} catch (IOException e) {
+						throw new CoreException(
+								new Status(IStatus.ERROR, Activator.getId(), "Loading " + propsPath, e)); //$NON-NLS-1$
+					}
+				}
+			}
+		}
+	}
+
+	public synchronized Collection<ArduinoLibrary> getLibraries() throws CoreException {
+		if (libraries == null && isInstalled()) {
+			initLibraries();
+		}
+		return libraries.values();
+	}
+
+	public synchronized ArduinoLibrary getLibrary(String name) throws CoreException {
+		if (libraries == null && isInstalled()) {
+			initLibraries();
+		}
+		return libraries != null ? libraries.get(name) : null;
 	}
 
 	public IStatus install(IProgressMonitor monitor) {
 		// Check if we're installed already
 		if (isInstalled()) {
-			return Status.OK_STATUS;
+			try {
+				ArduinoManager.recursiveDelete(getInstallPath());
+			} catch (IOException e) {
+				// just log it, shouldn't break the install
+				Activator.log(e);
+			}
+		}
+
+		// Install the tools
+		for (ToolDependency toolDep : toolsDependencies) {
+			IStatus status = toolDep.install(monitor);
+			if (!status.isOK()) {
+				return status;
+			}
+		}
+
+		// On Windows install make from bintray
+		if (Platform.getOS().equals(Platform.OS_WIN32)) {
+			try {
+				Path makePath = ArduinoPreferences.getArduinoHome().resolve("make.exe"); //$NON-NLS-1$
+				if (!makePath.toFile().exists()) {
+					Files.createDirectories(makePath.getParent());
+					URL makeUrl = new URL("https://bintray.com/artifact/download/cdtdoug/tools/make.exe"); //$NON-NLS-1$
+					Files.copy(makeUrl.openStream(), makePath);
+					makePath.toFile().setExecutable(true, false);
+				}
+			} catch (IOException e) {
+				return new Status(IStatus.ERROR, Activator.getId(), Messages.ArduinoPlatform_0, e);
+			}
 		}
 
 		// Download platform archive
@@ -231,39 +321,17 @@ public class ArduinoPlatform {
 			return status;
 		}
 
-		// Install the tools
-		MultiStatus mstatus = null;
-		for (ToolDependency toolDep : toolsDependencies) {
-			status = toolDep.install(monitor);
-			if (!status.isOK()) {
-				if (mstatus == null) {
-					mstatus = new MultiStatus(status.getPlugin(), status.getCode(), status.getMessage(),
-							status.getException());
-				} else {
-					mstatus.add(status);
-				}
-			}
+		return Status.OK_STATUS;
+	}
+
+	public IStatus uninstall(IProgressMonitor monitor) {
+		try {
+			ArduinoManager.recursiveDelete(getInstallPath());
+			// TODO delete tools that aren't needed any more
+			return Status.OK_STATUS;
+		} catch (IOException e) {
+			return new Status(IStatus.ERROR, Activator.getId(), Messages.ArduinoPlatform_1, e);
 		}
-
-		// On Windows install make from bintray
-		if (Platform.getOS().equals(Platform.OS_WIN32)) {
-			try {
-				Path makePath = ArduinoPreferences.getArduinoHome().resolve("tools/make/make.exe"); //$NON-NLS-1$
-				if (!makePath.toFile().exists()) {
-					Files.createDirectories(makePath.getParent());
-					URL makeUrl = new URL("https://bintray.com/artifact/download/cdtdoug/tools/make.exe"); //$NON-NLS-1$
-					Files.copy(makeUrl.openStream(), makePath);
-					makePath.toFile().setExecutable(true, false);
-				}
-			} catch (IOException e) {
-				mstatus.add(new Status(IStatus.ERROR, Activator.getId(), "downloading make.exe", e)); //$NON-NLS-1$
-			}
-		}
-
-		// Reload the library index to pick up platform libraries
-		ArduinoManager.instance.loadLibraryIndex(false);
-
-		return mstatus != null ? mstatus : Status.OK_STATUS;
 	}
 
 	@Override

@@ -8691,6 +8691,27 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testStrayFriends_419301() throws Exception {
 		parseAndCheckBindings();
 	}
+	
+	//	template <typename>
+	//	struct A {
+	//	  struct B {
+	//	      friend B foo(B, long);
+	//	      friend long foo(B, B);
+	//	  };
+	//	};
+	//
+	//	template <typename T>
+	//	void waldo(T);
+	//
+	//	A<int>::B c;
+	//	A<int>::B d;
+	//
+	//	void test() {
+	//	  waldo(foo(c, d)); // problem on waldo
+	//	}
+	public void testInstantiationOfFriendOfNestedClassInsideTemplate_484162() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	//	template <typename T>
 	//	constexpr T t(T) {
@@ -8866,6 +8887,56 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 	
+	//	template<typename T>
+	//	struct remove_reference {
+	//	  typedef T type;
+	//	};
+	//
+	//	template<typename T>
+	//	struct remove_reference<T&> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template<typename T>
+	//	struct remove_reference<T&&> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template<typename T>
+	//	T&& waldo(typename remove_reference<T>::type& t);
+	//
+	//	template <class T>
+	//	struct D {
+	//	  T t;
+	//	};
+	//
+	//	template <class T, class U>
+	//	T f(U p);
+	//
+	//	template <class T, class U>
+	//	auto g(U&& t) -> decltype(f<T, D<U>>(D<U>{waldo<U>(t)})) {
+	//	  return f<T, D<U>>(D<U>{waldo<U>(t)});
+	//	}
+	//
+	//	struct A {};
+	//
+	//	template <typename T>
+	//	struct B {
+	//	  A a;
+	//
+	//	  void method() {
+	//	    g<A>(a);
+	//	  }
+	//	};
+	//
+	//	void test() {
+	//	  B<int> b;
+	//	  b.method();
+	//	}
+	public void testAmbiguityResolution_469788() throws Exception {
+		parseAndCheckBindings();
+	}
+	
 	//	template <typename>
 	//	struct Base {
 	//	    template <typename>
@@ -8881,6 +8952,32 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	  }
 	//	};
 	public void testRegression_421823() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename E>
+	//	class G {};
+	//
+	//	template<typename E>
+	//	void waldo(G<E>);
+	//
+	//	template <typename T>
+	//	struct A {
+	//	  typedef G<T> type;
+	//	};
+	//
+	//	template <typename... T>
+	//	using B = typename A<T...>::type;
+	//
+	//	template <typename T>
+	//	class C : public B<T> {
+	//	};
+	//
+	//	void test() {
+	//	  C<int> a;
+	//	  waldo(a);
+	//	}
+	public void testRecursiveTemplateClass_484786() throws Exception {
 		parseAndCheckBindings();
 	}
 }

@@ -55,6 +55,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
+import org.eclipse.cdt.core.dom.ast.cpp.SemanticQueries;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.index.IndexFilter;
@@ -608,6 +609,25 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	}
 	public void testInstanceInheritance_258745() throws Exception {
 		getBindingFromFirstIdentifier("a", ICPPField.class);
+	}
+	
+	//	template <typename>
+	//	struct Base {
+	//	    virtual void foo() = 0;
+	//	};
+	//
+	//	struct Derived : Base<int> {
+	//	    virtual void foo();
+	//	};
+	
+	//	Derived waldo;
+	public void testMethodOveriddenFromTemplateInstanceBase_480892() throws Exception {
+		IVariable waldo = getBindingFromFirstIdentifier("waldo");
+		IType derived = waldo.getType();
+		assertInstance(derived, ICPPClassType.class);
+		ICPPClassType derivedClass = (ICPPClassType) derived;
+		ICPPMethod[] pureVirtualMethods = SemanticQueries.getPureVirtualMethods(derivedClass, null);
+		assertEquals(0, pureVirtualMethods.length);
 	}
 
 	// class A {}; class B {}; class C {};
@@ -2193,6 +2213,68 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 		assertNotNull(num);
 		assertEquals(1, num.longValue());
 	}
+	
+	//	template<typename T>
+	//	struct meta {
+	//	  enum { 
+	//	      a = T::value,
+	//	      b = a
+	//	  };
+	//	};
+	
+	//	struct S {
+	//	    static const int value = 42;
+	//	};
+	//
+	//	template <int> struct waldo;
+	//
+	//	template <>
+	//	struct waldo<42> {
+	//	    double operator()();
+	//	};
+	//
+	//	template <typename>
+	//	struct C : public waldo<meta<S>::b> {};
+	//
+	//	void bar(double);
+	//
+	//	void foo(C<S> x){
+	//	    bar(x());
+	//	}
+	public void testDependentEnumerator_482421a() throws Exception {
+		checkBindings();
+	}
+
+	//	template<typename T>
+	//	struct meta {
+	//	  enum { 
+	//	      b = T::value,
+	//	      a = b
+	//	  };
+	//	};
+	
+	//	struct S {
+	//	    static const int value = 42;
+	//	};
+	//
+	//	template <int> struct waldo;
+	//
+	//	template <>
+	//	struct waldo<42> {
+	//	    double operator()();
+	//	};
+	//
+	//	template <typename>
+	//	struct C : public waldo<meta<S>::a> {};
+	//
+	//	void bar(double);
+	//
+	//	void foo(C<S> x){
+	//	    bar(x());
+	//	}
+	public void testDependentEnumerator_482421b() throws Exception {
+		checkBindings();
+	}
 
 	//	template<typename U>
 	//	struct A {
@@ -2700,6 +2782,92 @@ public class IndexCPPTemplateResolutionTest extends IndexBindingResolutionTestBa
 	//	    item.waldo = 5;
 	//	}
 	public void testRedeclarationWithUnnamedTemplateParameter_472199() throws Exception {
+		checkBindings();
+	}
+
+	//	template<long _Ax> struct _GcdX {	
+	//		static const long value = _GcdX<_Ax - 1>::value;
+	//	};
+	//	
+	//	template<> struct _GcdX<0> {
+	//		static const long value = 0;
+	//	};
+	//	
+	//	template<long _Ax> struct R {
+	//	// static const long value = _Ax;
+	//	};
+	//	
+	//	template<class _R1>	struct Operation {	
+	//		static const long _N1 = _R1::value;
+	//		typedef R<_GcdX<_N1>::value> value;
+	//	};
+	//	
+	//	typedef Operation< R<1> >::value MYTYPE;
+	
+	//	// empty file
+	public void testRecursiveTemplateInstantiation_479138a() throws Exception {
+		// This tests that a template metaprogram whose termination depends on
+		// its inputs being known, doesn't cause a stack overflow when its
+		// inputs are not known.
+		checkBindings();
+	}
+	
+	//	template<long _Ax, long _Bx> struct _GcdX {	
+	//		static const long value = _GcdX<_Bx, _Ax % _Bx>::value;
+	//	};
+	//	
+	//	template<long _Ax> struct _GcdX<_Ax, 0> {
+	//		static const long value = _Ax;
+	//	};
+	//	
+	//	template<long _Ax, long _Bx> struct _Gcd {
+	//		static const long value = _GcdX<_Ax, _Bx>::value;
+	//	};
+	//	
+	//	template<> struct _Gcd<0, 0> {	
+	//		static const long value = 1;
+	//	};
+	//	
+	//	template<long _Ax> struct R {
+	//	// static const long value = _Ax;
+	//	};
+	//	
+	//	template<class _R1>	struct Operation {	
+	//		static const long _N1 = _R1::value;
+	//		typedef R<_Gcd<_N1, _N1>::value> value;
+	//	};
+	//	
+	//	
+	//	typedef Operation< R<1> >::value MYTYPE;
+ 
+	//	// empty file
+	public void testRecursiveTemplateInstantiation_479138b() throws Exception {
+		// This is similar to 479138a, but the metaprogram additionally has
+		// exponential memory usage when the inputs are unknown and thus
+		// intermediate results cannot be collapsed into a single value.
+		checkBindings();
+	}
+	
+	//	template<long _Ax> struct _GcdX {	
+	//		static const long value = _GcdX<_Ax - 1>::value;
+	//	};
+	//	
+	//	template<long _Ax> struct R {
+	//		static const long value = _Ax;
+	//	};
+	//	
+	//	template<class _R1>	struct Operation {	
+	//		static const long _N1 = _R1::value;
+	//		typedef R<_GcdX<_N1>::value> value;
+	//	};
+	//	
+	//	typedef Operation< R<1> >::value MYTYPE;
+	
+	//	// empty file
+	//	// special:allowRecursionBindings
+	public void testRecursiveTemplateInstantiation_479138c() throws Exception {
+		// This tests that a template metaprogram that doesn't terminate at all
+		// (e.g. because the author omitted a base case) doesn't cause a stack overflow.
 		checkBindings();
 	}
 }

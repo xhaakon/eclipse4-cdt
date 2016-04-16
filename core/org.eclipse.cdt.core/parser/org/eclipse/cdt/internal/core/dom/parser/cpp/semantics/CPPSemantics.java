@@ -246,7 +246,7 @@ public class CPPSemantics {
 	/**
 	 * The maximum depth to search ancestors before assuming infinite looping.
 	 */
-	public static final int MAX_INHERITANCE_DEPTH= 16;
+	public static final int MAX_INHERITANCE_DEPTH= 40;
 
 	public static final String EMPTY_NAME = ""; //$NON-NLS-1$
 	public static final char[] OPERATOR_ = new char[] {'o','p','e','r','a','t','o','r',' '};
@@ -805,16 +805,18 @@ public class CPPSemantics {
 			// * ... types of the template arguments for template type parameters
 			//       (excluding template template parameters);
 			// * ... owners of which any template template arguments are members;
-			if (ct instanceof ICPPTemplateInstance) {
+			if (ct instanceof ICPPSpecialization) {
 				for (IBinding friend : ClassTypeHelper.getFriends(ct, tu)) {
 					if (friend instanceof ICPPFunction) {
 						friendFns.add((ICPPFunction) friend);
 					}
 				}
-				ICPPTemplateArgument[] args = ((ICPPTemplateInstance) ct).getTemplateArguments();
-				for (ICPPTemplateArgument arg : args) {
-					if (arg.isTypeValue()) {
-						getAssociatedScopes(arg.getTypeValue(), namespaces, friendFns, handled, tu);
+				if (ct instanceof ICPPTemplateInstance) {
+					ICPPTemplateArgument[] args = ((ICPPTemplateInstance) ct).getTemplateArguments();
+					for (ICPPTemplateArgument arg : args) {
+						if (arg.isTypeValue()) {
+							getAssociatedScopes(arg.getTypeValue(), namespaces, friendFns, handled, tu);
+						}
 					}
 				}
 			}
@@ -1965,6 +1967,11 @@ public class CPPSemantics {
             } else if (prop == ICPPASTNamespaceAlias.ALIAS_NAME) {
             	nd = (ASTNode) nd.getParent();
             	pointOfDecl = nd.getOffset() + nd.getLength();
+            } else if (prop == ICPPASTAliasDeclaration.ALIAS_NAME) {
+            	// [basic.scope.pdecl]/p3: The point of declaration of an alias or alias template
+            	// immediately follows the type-id to which the alias refers.
+            	ASTNode targetType = (ASTNode) ((ICPPASTAliasDeclaration) nd.getParent()).getMappingTypeId();
+            	pointOfDecl = targetType.getOffset() + targetType.getLength();
             } else if (prop == ICPPASTSimpleTypeTemplateParameter.PARAMETER_NAME
             		|| prop == ICPPASTTemplatedTypeTemplateParameter.PARAMETER_NAME) {
             	// [basic.scope.pdecl]/p9: The point of declaration for a template parameter 
@@ -2013,6 +2020,7 @@ public class CPPSemantics {
 	    ObjectSet<ICPPFunction> fns= ObjectSet.emptySet();
 	    IBinding type = null;
 	    IBinding obj = null;
+	    boolean ambiguous = false;
 	    IBinding temp = null;
 
 	    final CPPASTTranslationUnit tu = data.getTranslationUnit();
@@ -2083,25 +2091,28 @@ public class CPPSemantics {
 
 	        	if (type == null) {
 	                type = temp;
+        			ambiguous = false;
 	        	} else if (!type.equals(temp)) {
 					int c = compareByRelevance(tu, type, temp);
 	        		if (c < 0) {
         				type= temp;
+	        			ambiguous = false;
 	        		} else if (c == 0) {
         				if (((IType) type).isSameType((IType) temp)) {
         					if (type instanceof ITypedef && !(temp instanceof ITypedef)) {
         						// Between same types prefer non-typedef.
         						type= temp;
+        	        			ambiguous = false;
         					}
         				} else {
-        					return new ProblemBinding(lookupName, lookupPoint,
-        							IProblemBinding.SEMANTIC_AMBIGUOUS_LOOKUP, data.getFoundBindings());
+    	        			ambiguous = true;
         				}
         			}
 	            }
 	        } else {
 	        	if (obj == null) {
 	        		obj = temp;
+        			ambiguous = false;
 	        	} else if (!obj.equals(temp)) {
 	        		if (obj instanceof ICPPNamespace && temp instanceof ICPPNamespace &&
 	        				SemanticUtil.isSameNamespace((ICPPNamespace) obj, (ICPPNamespace) temp)) {
@@ -2110,13 +2121,18 @@ public class CPPSemantics {
 	        		int c = compareByRelevance(tu, obj, temp);
 	        		if (c < 0) {
 	        			obj= temp;
+	        			ambiguous = false;
 	        		} else if (c == 0) {
-	        			return new ProblemBinding(lookupName, lookupPoint,
-	        					IProblemBinding.SEMANTIC_AMBIGUOUS_LOOKUP, data.getFoundBindings());
+	        			ambiguous = true;
 	        		}
 	        	}
 	        }
 	    }
+		if (ambiguous) {
+			return new ProblemBinding(lookupName, lookupPoint,
+					IProblemBinding.SEMANTIC_AMBIGUOUS_LOOKUP, data.getFoundBindings());
+		}
+
 	    if (data.forUsingDeclaration) {
         	int cmp= -1;
 	        if (obj != null) {
