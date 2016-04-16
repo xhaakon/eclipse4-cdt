@@ -67,17 +67,23 @@ override_dh_auto_build-indep:
 	build_bundle debug/org.eclipse.cdt.debug.mi.core
 	build_bundle debug/org.eclipse.cdt.debug.mi.ui
 	build_bundle launch/org.eclipse.cdt.launch
+	build_bundle visualizer/org.eclipse.cdt.visualizer.core
+	build_bundle visualizer/org.eclipse.cdt.visualizer.ui
 	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb
 	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
+	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb.multicorevisualizer.ui
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.search
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.traditional
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.floatingpoint
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.transport
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
-	build_bundle visualizer/org.eclipse.cdt.visualizer.core
-	build_bundle visualizer/org.eclipse.cdt.visualizer.ui
 	build_bundle qt/org.eclipse.cdt.qt.core
 	build_bundle qt/org.eclipse.cdt.qt.ui
+	build_bundle testsrunner/org.eclipse.cdt.testsrunner
+	build_bundle testsrunner/org.eclipse.cdt.testsrunner.boost
+	build_bundle testsrunner/org.eclipse.cdt.testsrunner.gtest
+	build_bundle testsrunner/org.eclipse.cdt.testsrunner.qttest
+	build_bundle testsrunner/org.eclipse.cdt.testsrunner.tap
 
 MACROS_DIR=debian/.eclipse-build/org.eclipse.cdt.autotools.ui/macros
 override_jh_setupenvironment:

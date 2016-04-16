@@ -11,4 +11,7 @@ debian/.eclipse-build/orbitdeps/org.eclipse.cdt.managedbuilder* /usr/share/eclip
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.native* /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.ui* /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.visualizer* /usr/share/eclipse4/plugins
-
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner_*.jar /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.boost_*.jar /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.gtest_*.jar /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.tap_*.jar /usr/share/eclipse4/plugins
