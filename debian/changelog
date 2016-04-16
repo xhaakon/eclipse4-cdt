@@ -1,8 +1,8 @@
-eclipse-cdt (8.8.0-1) UNRELEASED; urgency=medium
+eclipse-cdt (8.8.1-1) UNRELEASED; urgency=medium
 
   * New upstream release.
 
- -- Jakub Adam <jakub.adam@ktknet.cz>  Mon, 08 Feb 2016 16:48:35 +0100
+ -- Jakub Adam <jakub.adam@ktknet.cz>  Sat, 16 Apr 2016 21:03:05 +0200
 
 eclipse-cdt (8.6.0-1) unstable; urgency=medium
 
