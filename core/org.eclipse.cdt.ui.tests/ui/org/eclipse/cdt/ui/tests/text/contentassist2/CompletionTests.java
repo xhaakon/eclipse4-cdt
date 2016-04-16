@@ -1401,6 +1401,13 @@ public class CompletionTests extends AbstractContentAssistTest {
 		assertCompletionResults(fCursorOffset, expected, ID);
 	}
 
+	//	int par1;
+	//	auto x = [](int par2) { return par/*cursor*/
+	public void testLambdaParameter_481070() throws Exception {
+		final String[] expected= { "par1", "par2" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
 	//	#define fooBar
 	//  #define foo_bar
 	//  fB/*cursor*/
@@ -1629,7 +1636,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 		final String[] expectedDisplay = { "default_argument() : void" };
 		assertContentAssistResults(fCursorOffset, expectedDisplay, true, DISPLAY);
 	}
-
+    
 	//	template<typename T = int>
 	//	struct default_argument {};
 	//	default_arg/*cursor*/
@@ -1720,6 +1727,12 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//	}
 	public void testInheritanceFromTemplateParameter_bug466861() throws Exception {
 		final String[] expected = { "A", "C", "foo(void)" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	//	int [[f(./*cursor*/)]] i;
+	public void testCompletionInsideAttribute_bug477359() throws Exception {
+		final String[] expected = {};
 		assertCompletionResults(fCursorOffset, expected, ID);
 	}
 }

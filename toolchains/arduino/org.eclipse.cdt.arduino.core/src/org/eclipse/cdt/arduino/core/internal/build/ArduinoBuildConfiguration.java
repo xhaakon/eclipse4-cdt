@@ -66,6 +66,8 @@ public class ArduinoBuildConfiguration {
 
 	private final IBuildConfiguration config;
 
+	private static ArduinoManager manager = Activator.getService(ArduinoManager.class);
+
 	private ArduinoBoard board;
 	private Properties properties;
 
@@ -109,9 +111,11 @@ public class ArduinoBuildConfiguration {
 
 		// return it if it exists already
 		for (IBuildConfiguration config : project.getBuildConfigs()) {
-			ArduinoBuildConfiguration arduinoConfig = config.getAdapter(ArduinoBuildConfiguration.class);
-			if (arduinoConfig.matches(target)) {
-				return arduinoConfig;
+			if (!config.getName().equals(IBuildConfiguration.DEFAULT_CONFIG_NAME)) {
+				ArduinoBuildConfiguration arduinoConfig = config.getAdapter(ArduinoBuildConfiguration.class);
+				if (arduinoConfig.matches(target)) {
+					return arduinoConfig;
+				}
 			}
 		}
 
@@ -231,31 +235,41 @@ public class ArduinoBuildConfiguration {
 			String packageName = settings.get(PACKAGE_NAME, ""); //$NON-NLS-1$
 			String platformName = settings.get(PLATFORM_NAME, ""); //$NON-NLS-1$
 			String boardName = settings.get(BOARD_NAME, ""); //$NON-NLS-1$
-			board = ArduinoManager.instance.getBoard(boardName, platformName, packageName);
+			board = manager.getBoard(boardName, platformName, packageName);
+
+			if (board == null) {
+				// Default to Uno or first one we find
+				board = manager.getBoard("Arduino/Genuino Uno", "Arduino AVR Boards", "arduino"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				if (board == null) {
+					List<ArduinoBoard> boards = manager.getInstalledBoards();
+					if (!boards.isEmpty()) {
+						board = boards.get(0);
+					}
+				}
+			}
 		}
 		return board;
 	}
 
-	private Properties getProperties() throws CoreException {
+	private synchronized Properties getProperties() throws CoreException {
 		if (properties == null) {
-			// Board
-			ArduinoBoard board = getBoard();
-			properties = board.getBoardProperties();
+			ArduinoPlatform platform = board.getPlatform();
 
-			// Menus
-			IEclipsePreferences settings = getSettings();
-			HierarchicalProperties menus = board.getMenus();
-			if (menus != null) {
-				for (String menuId : menus.getChildren().keySet()) {
-					String value = settings.get(ArduinoBoard.MENU_QUALIFIER, ""); //$NON-NLS-1$
-					if (!value.isEmpty()) {
-						properties.putAll(board.getMenuProperties(menuId, value));
-					}
-				}
+			// IDE generated properties
+			properties = new Properties();
+			properties.put("runtime.platform.path", platform.getInstallPath().toString()); //$NON-NLS-1$
+			properties.put("runtime.ide.version", "10607"); //$NON-NLS-1$ //$NON-NLS-2$
+			properties.put("software", "ARDUINO"); //$NON-NLS-1$ //$NON-NLS-2$
+			properties.put("build.arch", platform.getArchitecture().toUpperCase()); //$NON-NLS-1$
+			String configName = config.getName();
+			if (configName.equals(IBuildConfiguration.DEFAULT_CONFIG_NAME)) {
+				configName = "default"; //$NON-NLS-1$
 			}
+			properties.put("build.path", configName); //$NON-NLS-1$
+			properties.put("build.variant.path", //$NON-NLS-1$
+					platform.getInstallPath().resolve("variants").resolve("{build.variant}").toString()); //$NON-NLS-1$ //$NON-NLS-2$
 
 			// Platform
-			ArduinoPlatform platform = board.getPlatform();
 			properties.putAll(board.getPlatform().getPlatformProperties());
 
 			// Tools
@@ -263,11 +277,23 @@ public class ArduinoBuildConfiguration {
 				properties.putAll(toolDep.getTool().getToolProperties());
 			}
 
-			properties.put("runtime.platform.path", platform.getInstallPath().toString()); //$NON-NLS-1$
-			properties.put("runtime.ide.version", "10607"); //$NON-NLS-1$ //$NON-NLS-2$
-			properties.put("build.arch", platform.getArchitecture().toUpperCase()); //$NON-NLS-1$
-			properties.put("build.path", config.getName()); //$NON-NLS-1$
+			// Board
+			ArduinoBoard board = getBoard();
+			properties.putAll(board.getBoardProperties());
+
+			// Menus
+			IEclipsePreferences settings = getSettings();
+			HierarchicalProperties menus = board.getMenus();
+			if (menus != null) {
+				for (String menuId : menus.getChildren().keySet()) {
+					String value = settings.get(ArduinoBoard.MENU_QUALIFIER + menuId, ""); //$NON-NLS-1$
+					if (!value.isEmpty()) {
+						properties.putAll(board.getMenuProperties(menuId, value));
+					}
+				}
+			}
 		}
+
 		// always do this in case the project changes names
 		properties.put("build.project_name", config.getProject().getName()); //$NON-NLS-1$
 		return properties;
@@ -295,6 +321,7 @@ public class ArduinoBuildConfiguration {
 		IFolder buildFolder = getBuildFolder();
 		if (!buildFolder.exists()) {
 			buildFolder.create(true, true, monitor);
+			buildFolder.setDerived(true, monitor);
 			ICProject cproject = CoreModel.getDefault().create(project);
 			IOutputEntry output = CoreModel.newOutputEntry(buildFolder.getFullPath());
 			IPathEntry[] oldEntries = cproject.getRawPathEntries();
@@ -334,7 +361,7 @@ public class ArduinoBuildConfiguration {
 
 		// The list of library sources
 		List<String> librarySources = new ArrayList<>();
-		for (ArduinoLibrary lib : ArduinoManager.instance.getLibraries(project)) {
+		for (ArduinoLibrary lib : manager.getLibraries(project)) {
 			librarySources.addAll(lib.getSources());
 		}
 		buildModel.put("libraries_srcs", librarySources); //$NON-NLS-1$
@@ -355,7 +382,7 @@ public class ArduinoBuildConfiguration {
 			}
 			includes += '"' + pathString(include) + '"';
 		}
-		for (ArduinoLibrary lib : ArduinoManager.instance.getLibraries(project)) {
+		for (ArduinoLibrary lib : manager.getLibraries(project)) {
 			for (Path include : lib.getIncludePath()) {
 				includes += " -I\"" + pathString(include) + '"'; //$NON-NLS-1$
 			}
@@ -363,12 +390,14 @@ public class ArduinoBuildConfiguration {
 		properties.put("includes", includes); //$NON-NLS-1$
 
 		Path platformPath = platform.getInstallPath();
-		buildModel.put("platform_path", pathString(platformPath)); //$NON-NLS-1$
-		buildModel.put("platform_srcs", platform.getSources(properties.getProperty("build.core"))); //$NON-NLS-1$ //$NON-NLS-2$
+		buildModel.put("platform_path", pathString(platformPath).replace("+", "\\+")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		buildModel.put("platform_srcs", //$NON-NLS-1$
+				platform.getSources(properties.getProperty("build.core"), properties.getProperty("build.variant"))); //$NON-NLS-1$ //$NON-NLS-2$
 
 		properties.put("object_file", "$@"); //$NON-NLS-1$ //$NON-NLS-2$
 		properties.put("source_file", "$<"); //$NON-NLS-1$ //$NON-NLS-2$
 		properties.put("archive_file", "core.a"); //$NON-NLS-1$ //$NON-NLS-2$
+		properties.put("archive_file_path", "{build.path}/{archive_file}"); //$NON-NLS-1$ //$NON-NLS-2$
 		properties.put("object_files", "$(PROJECT_OBJS) $(LIBRARIES_OBJS)"); //$NON-NLS-1$ //$NON-NLS-2$
 
 		buildModel.put("recipe_cpp_o_pattern", resolveProperty("recipe.cpp.o.pattern", properties)); //$NON-NLS-1$ //$NON-NLS-2$
@@ -378,6 +407,7 @@ public class ArduinoBuildConfiguration {
 		buildModel.put("recipe_c_combine_pattern", resolveProperty("recipe.c.combine.pattern", properties)); //$NON-NLS-1$ //$NON-NLS-2$
 		buildModel.put("recipe_objcopy_eep_pattern", resolveProperty("recipe.objcopy.eep.pattern", properties)); //$NON-NLS-1$ //$NON-NLS-2$
 		buildModel.put("recipe_objcopy_hex_pattern", resolveProperty("recipe.objcopy.hex.pattern", properties)); //$NON-NLS-1$ //$NON-NLS-2$
+		buildModel.put("recipe_objcopy_bin_pattern", resolveProperty("recipe.objcopy.bin.pattern", properties)); //$NON-NLS-1$ //$NON-NLS-2$
 		buildModel.put("recipe_size_pattern", resolveProperty("recipe.size.pattern", properties)); //$NON-NLS-1$ //$NON-NLS-2$
 
 		ArduinoTemplateGenerator templateGen = new ArduinoTemplateGenerator();
@@ -430,7 +460,15 @@ public class ArduinoBuildConfiguration {
 	}
 
 	public String getMakeCommand() {
-		return isWindows ? ArduinoPreferences.getArduinoHome().resolve("tools/make/make").toString() : "make"; //$NON-NLS-1$ //$NON-NLS-2$
+		if (isWindows) {
+			Path makePath = ArduinoPreferences.getArduinoHome().resolve("tools/make/make.exe"); //$NON-NLS-1$
+			if (!Files.exists(makePath)) {
+				makePath = ArduinoPreferences.getArduinoHome().resolve("make.exe"); //$NON-NLS-1$
+			}
+			return makePath.toString();
+		} else {
+			return "make"; //$NON-NLS-1$
+		}
 	}
 
 	public String[] getBuildCommand() throws CoreException {
@@ -471,6 +509,15 @@ public class ArduinoBuildConfiguration {
 		Properties properties = getProperties();
 
 		properties.put("serial.port", serialPort); //$NON-NLS-1$
+		if (serialPort.startsWith("/dev/")) {
+			properties.put("serial.port.file", serialPort.substring(5)); //$NON-NLS-1$
+		} else {
+			properties.put("serial.port.file", serialPort); //$NON-NLS-1$
+		}
+		// to make up for some cheating in the platform.txt file
+		properties.put("path", "{tools." + toolName + ".path}"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		properties.put("cmd.path", "{tools." + toolName + ".cmd.path}"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		properties.put("config.path", "{tools." + toolName + ".config.path}"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 
 		// properties for the tool flattened
 		HierarchicalProperties toolsProps = new HierarchicalProperties(getBoard().getPlatform().getPlatformProperties())
@@ -548,7 +595,7 @@ public class ArduinoBuildConfiguration {
 			for (Path include : platform.getIncludePath()) {
 				includes += " -I\"" + pathString(include) + '"'; //$NON-NLS-1$
 			}
-			Collection<ArduinoLibrary> libs = ArduinoManager.instance.getLibraries(config.getProject());
+			Collection<ArduinoLibrary> libs = manager.getLibraries(config.getProject());
 			for (ArduinoLibrary lib : libs) {
 				for (Path path : lib.getIncludePath()) {
 					includes += " -I\"" + pathString(path) + '"'; //$NON-NLS-1$

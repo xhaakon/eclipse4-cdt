@@ -44,11 +44,13 @@
             name="Arduino"
             selectionFilter="single">
          <enabledWhen>
-            <test
-                  forcePluginActivation="false"
-                  property="org.eclipse.cdt.arduino.ui.isArduinoRemote">
-            </test>
-         </enabledWhen>
+             <adapt type="org.eclipse.remote.core.IRemoteConnection">
+                <test
+                      forcePluginActivation="false"
+                      property="org.eclipse.cdt.arduino.ui.isArduinoRemote">
+                </test>
+             </adapt>
+          </enabledWhen>
       </page>
       <page
             class="org.eclipse.cdt.arduino.ui.internal.project.LibrariesPropertyPage"
@@ -96,6 +98,12 @@
             id="org.eclipse.cdt.arduino.preference.page.boards"
             name="Boards">
       </page>
+      <page
+            category="org.eclipse.cdt.arduino.preference.page"
+            class="org.eclipse.cdt.arduino.ui.internal.preferences.ArduinoPlatformsPreferencePage"
+            id="org.eclipse.cdt.arduino.ui.page.platforms"
+            name="Platforms">
+      </page>
    </extension>
    <extension
          point="org.eclipse.ui.perspectiveExtensions">
@@ -119,5 +127,13 @@
             properties="isArduinoRemote"
             type="org.eclipse.remote.core.IRemoteConnection">
       </propertyTester>
+   </extension>
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+      <launchConfigurationTabGroup
+            class="org.eclipse.cdt.arduino.ui.internal.launch.ArduinoLaunchConfigurationTabGroup"
+            id="org.eclipse.cdt.arduino.ui.launchConfigurationTabGroup"
+            type="org.eclipse.cdt.arduino.core.launchConfigurationType">
+      </launchConfigurationTabGroup>
    </extension>
 </plugin>

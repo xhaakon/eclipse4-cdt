@@ -13,7 +13,7 @@
  *     Sergey Prigogin (Google)
  *     Thomas Corbat (IFS)
  *     Anders Dahlberg (Ericsson) - bug 84144
- *     Justin You (Synopsys) - bug 84144
+ *     Alexander Nyßen (itemis AG) - bug 475908
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser;
 
@@ -2462,6 +2462,11 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 		IToken t;
 		while ((t = LA(1)).getType() != endType) {
 			t = consume();
+			
+			if (t.getType() == IToken.tCOMPLETION || t.getType() == IToken.tEOC) {
+				break;
+			}
+			
 			result.addToken(createASTToken(t));
 
 			IASTToken token;
@@ -2557,6 +2562,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 			skipBrackets(IToken.tLPAREN, IToken.tRPAREN, IToken.tSEMI);
 			switch (LTcatchEOF(1)) {
 			case IToken.tAMPERASSIGN:
+			case IToken.tAND:
 			case IToken.tARROW:
 			case IToken.tARROWSTAR:
 			case IToken.tASSIGN:
@@ -2669,6 +2675,9 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 		while (true) {
 			final int lt1= LT(1);
 
+			if (lt1 == IToken.tEOC)
+				throwBacktrack(LA(1));
+
 			// Ignore passages inside braces (such as for a statement-expression),
 			// as they can basically contain tokens of any kind.
 			if (lt1 == IToken.tLBRACE) {
@@ -2681,7 +2690,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 				continue;
 			}
 
-			if (lt1 == IToken.tEOC || lt1 == terminator)
+			if (lt1 == terminator)
 				throwBacktrack(LA(1));
 
 			consume();
