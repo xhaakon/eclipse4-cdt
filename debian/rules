@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 
 export JAVA_HOME:=/usr/lib/jvm/default-java
+export JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8"
+
 BUILD_ID:=dist
 
 DEB_HOST_ARCH_CPU ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_CPU)
