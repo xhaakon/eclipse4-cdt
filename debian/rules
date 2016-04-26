@@ -106,6 +106,7 @@ override_dh_clean:
 	dh_clean
 	jh_clean
 	rm -rf debian/docs/*.xml
+	find -name *.o -o -name *.so -delete
 
 VERSION=$(shell dpkg-parsechangelog -S Version | cut -d- -f1)
 get-orig-source:
