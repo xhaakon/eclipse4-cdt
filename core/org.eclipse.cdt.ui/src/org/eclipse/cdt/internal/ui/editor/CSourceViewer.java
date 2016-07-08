@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2009 QNX Software Systems and others.
+ * Copyright (c) 2006, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -185,7 +185,7 @@ public class CSourceViewer extends ProjectionViewer implements IPropertyChangeLi
 			if (fMacroExplorationPresenter != null) {
 				fMacroExplorationPresenter.install(this);
 			}
-			String[] defaultIndentPrefixes= (String[])fIndentChars.get(IDocument.DEFAULT_CONTENT_TYPE);
+			String[] defaultIndentPrefixes= fIndentChars.get(IDocument.DEFAULT_CONTENT_TYPE);
 			if (defaultIndentPrefixes != null && defaultIndentPrefixes.length > 0) {
 				final int indentWidth= cConfiguration.getIndentWidth(this);
 				final boolean useSpaces= cConfiguration.useSpacesOnly(this);
@@ -409,7 +409,7 @@ public class CSourceViewer extends ProjectionViewer implements IPropertyChangeLi
 	public void prependTextPresentationListener(ITextPresentationListener listener) {
 		Assert.isNotNull(listener);
 
-		@SuppressWarnings("unchecked") // using list from base class
+		// using list from base class
 		List<ITextPresentationListener> textPresentationListeners= fTextPresentationListeners;
 		
 		if (textPresentationListeners == null) 

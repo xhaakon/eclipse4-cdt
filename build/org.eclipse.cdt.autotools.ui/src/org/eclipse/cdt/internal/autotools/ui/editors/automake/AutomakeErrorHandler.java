@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Red Hat Inc..
+ * Copyright (c) 2009, 2015 Red Hat Inc..
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,9 @@
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
 import org.eclipse.cdt.autotools.ui.AutotoolsUIPlugin;
+import org.eclipse.cdt.make.core.makefile.IDirective;
+import org.eclipse.cdt.make.core.makefile.IMakefile;
+import org.eclipse.cdt.make.core.makefile.IParent;
 import org.eclipse.core.runtime.AssertionFailedException;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -38,14 +41,17 @@ public class AutomakeErrorHandler {
 			super(annotationType, persist, message);
 		}
 
+		@Override
 		public void setQuickFixable(boolean state) {
 			// do nothing
 		}
 
+		@Override
 		public boolean isQuickFixableStateSet() {
 			return true;
 		}
 
+		@Override
 		public boolean isQuickFixable() throws AssertionFailedException {
 			return false;
 		}
@@ -74,7 +80,7 @@ public class AutomakeErrorHandler {
 			} else if (directive instanceof BadDirective) {
 				int lineNumber = directive.getStartLine();
 				Integer charStart = getCharOffset(lineNumber - 1, 0);
-				Integer charEnd = Integer.valueOf(getCharOffset(directive.getEndLine() - 1, -1).intValue());
+				Integer charEnd = getCharOffset(directive.getEndLine() - 1, -1);
 				
 				String annotationType = CDT_ANNOTATION_ERROR;
 				Annotation annotation = new AutomakeAnnotation(annotationType, true, "Bad directive"); //$NON-NLS-1$
@@ -85,22 +91,17 @@ public class AutomakeErrorHandler {
 		return;
 	}
 	
-	public void removeExistingMarkers()
-	{
+	public void removeExistingMarkers() {
 		fAnnotationModel.removeAllAnnotations();
 	}
 	
 	
-	private Integer getCharOffset(int lineNumber, int columnNumber)
-	{
-		try
-		{
+	private Integer getCharOffset(int lineNumber, int columnNumber) {
+		try {
 			if (columnNumber >= 0)
 				return Integer.valueOf(document.getLineOffset(lineNumber) + columnNumber);
 			return Integer.valueOf(document.getLineOffset(lineNumber) + document.getLineLength(lineNumber));
-		}
-		catch (BadLocationException e)
-		{
+		} catch (BadLocationException e) {
 			e.printStackTrace();
 			return null;
 		}

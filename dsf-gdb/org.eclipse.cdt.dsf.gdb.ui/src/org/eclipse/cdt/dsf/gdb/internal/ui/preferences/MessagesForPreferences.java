@@ -11,6 +11,7 @@
  *     Anton Gorenkov - A preference to use RTTI for variable types determination (Bug 377536)
  *     IBM Corporation
  *     Marc Khouzam (Ericsson) - Add preference for aggressive breakpoint filtering (Bug 360735)
+ *     Intel Corporation - Added Reverse Debugging BTrace support
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.preferences;
 
@@ -66,7 +67,12 @@ class MessagesForPreferences extends NLS {
 	/** @since 2.3 */
 	public static String GdbDebugPreferencePage_use_rtti_label2;
 	
-	
+	public static String ReverseDebugPreferencePage_ReverseSettings;
+	public static String ReverseDebugPreferencePage_SelectHardwareTracingMethod;
+	public static String ReverseDebugPreferencePage_GDBPreference;
+	public static String ReverseDebugPreferencePage_BranchTrace;
+	public static String ReverseDebugPreferencePage_ProcessorTrace;
+
 	static {
 		// initialize resource bundle
 		NLS.initializeMessages(MessagesForPreferences.class.getName(), MessagesForPreferences.class);

@@ -1036,21 +1036,16 @@
 			  id="gnu.c.compiler.option.preprocessor.preprocess"
 			  valueType="boolean">
 		  </option>
-		  <optionCategory
-			  owner="cdt.managedbuild.tool.gnu.c.compiler"
-			  name="%OptionCategory.Symbols"
-			  id="gnu.c.compiler.category.symbols">
-		  </optionCategory>
 		  <option
 			  name="%Option.Posix.DefSym"
-			  category="gnu.c.compiler.category.symbols"
+			  category="gnu.c.compiler.category.preprocessor"
 			  command="-D"
 			  id="gnu.c.compiler.option.preprocessor.def.symbols"
 			  valueType="definedSymbols">
 		  </option>
 		  <option
 			  name="%Option.Posix.UndefSym"
-			  category="gnu.c.compiler.category.symbols"
+			  category="gnu.c.compiler.category.preprocessor"
 			  command="-U"
 			  id="gnu.c.compiler.option.preprocessor.undef.symbol"
 			  valueType="undefDefinedSymbols">
@@ -1825,7 +1820,7 @@
 		          <targetPlatform
 		              id="cdt.managedbuild.target.gnu.platform.base"
 		              name="%PlatformName.Dbg"
-		              binaryParser="org.eclipse.cdt.core.ELF"
+		              binaryParser="org.eclipse.cdt.core.GNU_ELF"
 		              osList="linux,hpux,aix,qnx"
 		              archList="all">
 	              </targetPlatform>

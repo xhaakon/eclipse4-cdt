@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 IBM Corporation and others.
+ * Copyright (c) 2000, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,6 +16,9 @@ import java.net.URI;
 import org.eclipse.cdt.autotools.ui.AutotoolsUIPlugin;
 import org.eclipse.cdt.core.resources.FileStorage;
 import org.eclipse.cdt.internal.autotools.ui.MakeUIMessages;
+import org.eclipse.cdt.make.core.makefile.IDirective;
+import org.eclipse.cdt.make.core.makefile.IMakefile;
+import org.eclipse.cdt.make.ui.IWorkingCopyManager;
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IStorage;
@@ -43,11 +46,7 @@ public class OpenDeclarationAction extends TextEditorAction {
 		super(MakeUIMessages.getResourceBundle(), "OpenDeclarationAction.", editor); //$NON-NLS-1$
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.jface.action.IAction#run()
-	 */
+	@Override
 	public void run() {
 		ITextEditor editor = getTextEditor();
 		if (editor == null) {
@@ -115,13 +114,4 @@ public class OpenDeclarationAction extends TextEditorAction {
 		}
 		return null;
 	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.jdt.ui.actions.SelectionDispatchAction#selectionChanged(org.eclipse.jface.text.ITextSelection)
-	 */
-	//public void selectionChanged(ITextSelection selection) {
-		//setEnabled(fEditor != null);
-	//}
 }

@@ -9,16 +9,17 @@
  *     Anton Leherbauer (Wind River Systems) - initial API and implementation
  *     Markus Schorn (Wind River Systems)
  *     Richard Eames
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.parser.cpp;
-
-import java.util.Collections;
-import java.util.Map;
 
 import org.eclipse.cdt.core.dom.parser.IBuiltinBindingsProvider;
 import org.eclipse.cdt.core.parser.IToken.ContextSensitiveTokenType;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.internal.core.dom.parser.GCCBuiltinSymbolProvider;
+
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Abstract C++ parser extension configuration to help model C++ dialects.
@@ -61,6 +62,14 @@ public abstract class AbstractCPPParserExtensionConfiguration implements ICPPPar
 		return false;
 	}
 
+	/**
+	 * @since 6.0
+	 */
+	@Override
+	public boolean supportGCCStyleDesignators() {
+		return false;
+	}
+
 	@Override
 	public boolean supportKnRC() {
 		return false;
@@ -92,7 +101,6 @@ public abstract class AbstractCPPParserExtensionConfiguration implements ICPPPar
 	}
 
 	/**
-	 * {@inheritDoc}
 	 * @since 5.1
 	 */
 	@Override
@@ -101,7 +109,6 @@ public abstract class AbstractCPPParserExtensionConfiguration implements ICPPPar
 	}
 
 	/**
-	 * {@inheritDoc}
 	 * @since 5.1
 	 */
 	@Override
@@ -110,31 +117,26 @@ public abstract class AbstractCPPParserExtensionConfiguration implements ICPPPar
 	}
 
 	/**
-	 * {@inheritDoc}
 	 * @since 5.1
 	 */
 	@Override
 	public boolean supportFunctionStyleAssembler() {
 		return false;
 	}
-	
+
 	/**
-	 * {@inheritDoc}
 	 * @since 5.11
 	 */
 	@Override
 	public boolean supportUserDefinedLiterals() {
 		return true;
 	}
-	
-	/*
-	 * @see org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration#getBuiltinBindingsProvider()
-	 */
+
 	@Override
 	public IBuiltinBindingsProvider getBuiltinBindingsProvider() {
 		return new GCCBuiltinSymbolProvider(ParserLanguage.CPP, supportGCCOtherBuiltinSymbols());
 	}
-	
+
 	/**
 	 * @since 5.9
 	 */

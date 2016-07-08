@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Texas Instruments.
+ * Copyright (c) 2009, 2012 Texas Instruments.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -160,7 +160,7 @@ public class AddressBarContributionItem extends ContributionItem {
 	 *            true to enable, else false.
 	 */
 	public void enableAddressBox(boolean enable) {
-		if (addressBox != null) {
+		if (addressBox != null && !item.isDisposed()) {
 			item.setEnabled(enable);
 			addressBox.setEnabled(enable);
 		}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Red Hat Inc.
+ * Copyright (c) 2010, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -79,9 +79,7 @@ public class ErrorParser extends MarkerGenerator implements IErrorParser {
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
-			} catch (SecurityException e) {
-				return false;
-			} catch (NoSuchMethodException e) {
+			} catch (SecurityException | NoSuchMethodException e) {
 				return false;
 			}
 		}
@@ -151,9 +149,7 @@ public class ErrorParser extends MarkerGenerator implements IErrorParser {
 		if (!file.exists())
 			return null;
 
-		LineNumberReader reader = null;
-		try {
-			reader = new LineNumberReader(new FileReader(file));
+		try (LineNumberReader reader = new LineNumberReader(new FileReader(file))) {
 
 			// look for something like:
 			// if test "${ac_cv_prog_WINDRES+set}" = set; then :
@@ -184,14 +180,6 @@ public class ErrorParser extends MarkerGenerator implements IErrorParser {
 			}
 		} catch (Exception e) {
 			throw new RuntimeException(e);
-		} finally {
-			if (reader != null) {
-				try {
-					reader.close();
-				} catch (IOException e) {
-					// Ignore.
-				}
-			}
 		}
 
 		return null;
@@ -205,15 +193,11 @@ public class ErrorParser extends MarkerGenerator implements IErrorParser {
 	 * @return
 	 */
 	private int getErrorConfigLineNumber(String name) {
-		LineNumberReader reader = null;
-		try {
-			File file = new File(buildDir + "/config.log");
-			// If the log file is not present there is nothing we can do.
-			if (!file.exists())
-				return -1;
-
-			reader = new LineNumberReader(new FileReader(file));
-
+		File file = new File(buildDir + "/config.log");
+		// If the log file is not present there is nothing we can do.
+		if (!file.exists())
+			return -1;
+		try (LineNumberReader reader = new LineNumberReader(new FileReader(file))) {
 			Pattern errorPattern =
 					Pattern.compile("configure:(\\d+): checking for " + name); //$NON-NLS-1$
 			String line;
@@ -223,16 +207,8 @@ public class ErrorParser extends MarkerGenerator implements IErrorParser {
 					return Integer.parseInt(m.group(1));
 				}
 			}
-		} catch (Exception e) {
+		} catch (IOException e) {
 			return -1;
-		} finally {
-			if (reader != null) {
-				try {
-					reader.close();
-				} catch (IOException e) {
-					// Ignore.
-				}
-			}
 		}
 		return -1;
 	}

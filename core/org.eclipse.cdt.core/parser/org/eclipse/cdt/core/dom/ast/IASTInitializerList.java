@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -58,12 +58,14 @@ public interface IASTInitializerList extends IASTInitializer, IASTInitializerCla
 
 	/**
 	 * @deprecated Replaced by {@link #getClauses()}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTInitializer[] getInitializers();
 
 	/**
 	 * @deprecated Replaced by {@link #addClause(IASTInitializerClause)}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void addInitializer(IASTInitializer initializer);

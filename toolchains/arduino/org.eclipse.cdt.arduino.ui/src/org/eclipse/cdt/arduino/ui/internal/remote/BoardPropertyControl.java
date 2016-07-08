@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2015 QNX Software Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package org.eclipse.cdt.arduino.ui.internal.remote;
 
 import java.io.IOException;
@@ -81,7 +88,8 @@ public class BoardPropertyControl extends Composite {
 		boardCombo = new Combo(this, SWT.READ_ONLY);
 		boardCombo.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		try {
-			List<ArduinoBoard> boardList = Activator.getService(ArduinoManager.class).getInstalledBoards();
+			List<ArduinoBoard> boardList = new ArrayList<>(
+					Activator.getService(ArduinoManager.class).getInstalledBoards());
 			Collections.sort(boardList, new Comparator<ArduinoBoard>() {
 				@Override
 				public int compare(ArduinoBoard o1, ArduinoBoard o2) {
@@ -180,15 +188,8 @@ public class BoardPropertyControl extends Composite {
 	}
 
 	public void apply(IRemoteConnectionWorkingCopy workingCopy) {
-		workingCopy.setAttribute(ArduinoRemoteConnection.PORT_NAME, portName);
-
-		workingCopy.setAttribute(ArduinoRemoteConnection.BOARD_NAME, board.getName());
-
-		ArduinoPlatform platform = board.getPlatform();
-		workingCopy.setAttribute(ArduinoRemoteConnection.PLATFORM_NAME, platform.getName());
-
-		ArduinoPackage pkg = platform.getPackage();
-		workingCopy.setAttribute(ArduinoRemoteConnection.PACKAGE_NAME, pkg.getName());
+		ArduinoRemoteConnection.setBoardId(workingCopy, board);
+		ArduinoRemoteConnection.setPortName(workingCopy, portName);
 
 		String key = null;
 		for (Control control : menuControls) {
@@ -200,7 +201,7 @@ public class BoardPropertyControl extends Composite {
 				String value = ((List<String>) combo.getData()).get(combo.getSelectionIndex());
 
 				if (key != null) {
-					workingCopy.setAttribute(ArduinoBoard.MENU_QUALIFIER + key, value);
+					ArduinoRemoteConnection.setMenuValue(workingCopy, key, value);
 				}
 			}
 		}

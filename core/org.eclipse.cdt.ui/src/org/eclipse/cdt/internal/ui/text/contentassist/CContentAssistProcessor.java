@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2011 IBM Corporation and others.
+ * Copyright (c) 2000, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -44,6 +44,8 @@ import org.eclipse.cdt.ui.text.ICCompletionProposal;
 import org.eclipse.cdt.ui.text.contentassist.ContentAssistInvocationContext;
 import org.eclipse.cdt.ui.text.contentassist.IProposalFilter;
 
+import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownType;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.HeuristicResolver;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 
 import org.eclipse.cdt.internal.ui.preferences.ProposalFilterPreferencesUtil;
@@ -273,6 +275,10 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 					IASTFieldReference ref = (IASTFieldReference) names[0].getParent();
 					IASTExpression ownerExpr = ref.getFieldOwner();
 					IType ownerExprType = SemanticUtil.getNestedType(ownerExpr.getExpressionType(), SemanticUtil.TDEF);
+					if (ownerExprType instanceof ICPPUnknownType) {
+						ownerExprType = HeuristicResolver.resolveUnknownType((ICPPUnknownType) ownerExprType, 
+								names[0]);
+					}
 					if (ownerExprType instanceof IPointerType) {
 						context = replaceDotWithArrow(viewer, offset, isCompletion, context, activationChar);
 					}

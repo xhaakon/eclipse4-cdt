@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -39,7 +39,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
  */
 public class CPPASTTemplateId extends CPPASTNameBase implements ICPPASTTemplateId, IASTAmbiguityParent {
 	private IASTName templateName;
-    private IASTNode[] templateArguments;
+    private IASTNode[] templateArguments = IASTNode.EMPTY_NODE_ARRAY;
 
     public CPPASTTemplateId() {
 	}
@@ -91,7 +91,7 @@ public class CPPASTTemplateId extends CPPASTNameBase implements ICPPASTTemplateI
     
     private void internalAddTemplateArgument(IASTNode node) {
 		assertNotFrozen();
-	    templateArguments = ArrayUtil.append(IASTNode.class, templateArguments, node);
+	    templateArguments = ArrayUtil.append(templateArguments, node);
 	    if (node != null) {
 	    	node.setParent(this);
 	    	node.setPropertyInParent(TEMPLATE_ID_ARGUMENT);
@@ -115,9 +115,7 @@ public class CPPASTTemplateId extends CPPASTNameBase implements ICPPASTTemplateI
 
     @Override
 	public IASTNode[] getTemplateArguments() {
-        if (templateArguments == null)
-        	return ICPPASTTemplateId.EMPTY_ARG_ARRAY;
-        return ArrayUtil.trim(IASTNode.class, templateArguments);
+        return ArrayUtil.trim(templateArguments);
     }
 
     @Override
@@ -193,16 +191,6 @@ public class CPPASTTemplateId extends CPPASTNameBase implements ICPPASTTemplateI
 		}
         return true;
     }
-
-	@Override
-	public boolean isDeclaration() {
-		return false; //for now this seems to be true
-	}
-
-	@Override
-	public boolean isReference() {
-		return true; //for now this seems to be true
-	}
 
 	@Override
 	public int getRoleForName(IASTName n) {

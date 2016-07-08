@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009,2010 QNX Software Systems
+ * Copyright (c) 2009,2016 QNX Software Systems
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,7 +9,6 @@
  *    QNX Software Systems (Alena Laskavaia)  - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.codan.core.param;
-
 
 /**
  * Common problem preference root for most of the codan problems
@@ -24,26 +23,34 @@ public class RootProblemPreference extends MapProblemPreference {
 	public static final String KEY = PARAM;
 
 	/**
-	 *  Default constructor
+	 * Default constructor
 	 */
 	public RootProblemPreference() {
 		super(KEY, ""); //$NON-NLS-1$
 		addChildDescriptor(new FileScopeProblemPreference());
 		addChildDescriptor(new LaunchModeProblemPreference());
+		addChildDescriptor(new SuppressionCommentProblemPreference());
 	}
 
 	/**
 	 * @return scope preference
 	 */
 	public FileScopeProblemPreference getScopePreference() {
-		return (FileScopeProblemPreference) getChildDescriptor(
-				FileScopeProblemPreference.KEY);
+		return (FileScopeProblemPreference) getChildDescriptor(FileScopeProblemPreference.KEY);
 	}
+
 	/**
-	 * @return launch mode
+	 * @return launch mode preference
 	 */
 	public LaunchModeProblemPreference getLaunchModePreference() {
 		return (LaunchModeProblemPreference) getChildDescriptor(LaunchModeProblemPreference.KEY);
+	}
 
+	/**
+	 * @return suppression comment preference
+	 * @since 4.0
+	 */
+	public SuppressionCommentProblemPreference getSuppressionCommentPreference() {
+		return (SuppressionCommentProblemPreference) getChildDescriptor(SuppressionCommentProblemPreference.KEY);
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2015 IBM Corporation and others.
+ * Copyright (c) 2004, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,6 +20,8 @@ import static org.eclipse.cdt.core.parser.ParserLanguage.CPP;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +66,6 @@ import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLinkageSpecification;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
-import org.eclipse.cdt.core.dom.ast.gnu.cpp.GPPLanguage;
 import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.c.ANSICParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.c.GCCParserExtensionConfiguration;
@@ -145,8 +146,8 @@ public class AST2TestBase extends BaseTestCase {
 
 	private static Map<String, String> getGnuMap() {
 		Map<String, String> map= new HashMap<>();
-		map.put("__GNUC__", Integer.toString(GPPLanguage.GNU_LATEST_VERSION_MAJOR));
-		map.put("__GNUC_MINOR__", Integer.toString(GPPLanguage.GNU_LATEST_VERSION_MINOR));
+		map.put("__GNUC__", Integer.toString(GCC_MAJOR_VERSION_FOR_TESTS));
+		map.put("__GNUC_MINOR__", Integer.toString(GCC_MINOR_VERSION_FOR_TESTS));
 		map.put("__SIZEOF_SHORT__", "2");
 		map.put("__SIZEOF_INT__", "4");
 		map.put("__SIZEOF_LONG__", "8");
@@ -314,7 +315,7 @@ public class AST2TestBase extends BaseTestCase {
     }
 
     protected IASTExpression getExpressionFromStatementInCode(String code, ParserLanguage language) throws ParserException {
-        StringBuffer buffer = new StringBuffer("void f() { "); //$NON-NLS-1$
+        StringBuilder buffer = new StringBuilder("void f() { "); //$NON-NLS-1$
         buffer.append("int x, y;\n"); //$NON-NLS-1$
         buffer.append(code);
         buffer.append(";\n}"); //$NON-NLS-1$
@@ -501,16 +502,6 @@ public class AST2TestBase extends BaseTestCase {
 		if (plugin == null)
 			throw new AssertionFailedError("This test must be run as a JUnit plugin test");
 		return TestSourceReader.getContentsForTest(plugin.getBundle(), "parser", getClass(), getName(), sections);
-	}
-
-	protected static <T> T assertInstance(Object o, Class<T> clazz, Class... cs) {
-		assertNotNull("Expected object of " + clazz.getName() + " but got a null value", o);
-		assertTrue("Expected "+clazz.getName()+" but got "+o.getClass().getName(), clazz.isInstance(o));
-		for (Class c : cs) {
-			assertNotNull("Expected object of " + c.getName() + " but got a null value", o);
-			assertTrue("Expected " + c.getName() + " but got " + o.getClass().getName(), c.isInstance(o));
-		}
-		return clazz.cast(o);
 	}
 
 	protected static void assertField(IBinding binding, String fieldName, String ownerName) {
@@ -784,9 +775,7 @@ public class AST2TestBase extends BaseTestCase {
     	
     	public void assertVariableValue(String variableName, long expectedValue) {
     		IVariable var = assertNonProblem(variableName);
-    		assertNotNull(var.getInitialValue());
-    		assertNotNull(var.getInitialValue().numericalValue());
-    		assertEquals(expectedValue, var.getInitialValue().numericalValue().longValue());
+    		BaseTestCase.assertVariableValue(var, expectedValue);
     	}
 
 		public <T, U extends T> U assertType(T obj, Class... cs) {
@@ -912,5 +901,16 @@ public class AST2TestBase extends BaseTestCase {
 		IASTStatement stmt= getStatement(fdef, i);
 		assertInstance(stmt, IASTExpressionStatement.class);
 		return (T) ((IASTExpressionStatement) stmt).getExpression();
+	}
+	
+	/**
+	 * Sort the given array of AST names lexicographically.
+	 */
+	protected static <T extends IASTName> void sortNames(T[] names) {
+		Arrays.sort(names, new Comparator<IASTName>() {
+			@Override
+			public int compare(IASTName a, IASTName b) {
+				return a.toString().compareTo(b.toString());
+			}});
 	}
 }

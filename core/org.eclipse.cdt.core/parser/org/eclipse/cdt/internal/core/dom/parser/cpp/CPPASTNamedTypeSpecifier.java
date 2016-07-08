@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,8 +11,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -90,10 +89,6 @@ public class CPPASTNamedTypeSpecifier extends CPPASTBaseDeclSpecifier
 	        }
 		}
 
-        if (!visitAlignmentSpecifiers(action)) {
-			return false;
-		}
-
         if (name != null && !name.accept(action))
         	return false;
         
@@ -120,19 +115,24 @@ public class CPPASTNamedTypeSpecifier extends CPPASTBaseDeclSpecifier
 	@Override
 	public IBinding[] findBindings(IASTName n, boolean isPrefix, String[] namespaces) {
 		IBinding[] bindings = CPPSemantics.findBindingsForContentAssist(n, isPrefix, namespaces);
-		List<IBinding> filtered = new ArrayList<IBinding>();
 
-		for (IBinding binding : bindings) {
+		int j = 0;
+		for (int i = 0; i < bindings.length; i++) {
+			IBinding binding = bindings[i];
 			if (binding instanceof ICPPClassType
 					|| binding instanceof IEnumeration
 					|| binding instanceof ICPPNamespace
 					|| binding instanceof ITypedef
 					|| binding instanceof ICPPTemplateTypeParameter) {
-				filtered.add(binding);
+				if (i != j)
+					bindings[j] = binding;
+				j++;
 			}
 		}
 
-		return filtered.toArray(new IBinding[filtered.size()]);
+		if (j < bindings.length)
+			return Arrays.copyOfRange(bindings, 0, j);
+		return bindings;
 	}
 	
 	@Override

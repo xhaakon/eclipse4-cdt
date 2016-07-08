@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2015 Ericsson and others.
+ * Copyright (c) 2008, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,6 +19,7 @@
  *     Marc Khouzam (Ericsson) - Support dynamic printf in bp service 7.5 (Bug 400628)
  *     Alvaro Sanchez-Leon (Ericsson) - Allow user to edit the register groups (Bug 235747)
  *     Marc Dumais (Ericsson) - Update GDBHardwareAndOS service to take advantage of GDB providing CPU/core info (bug 464184)
+ *     Intel Corporation - Added Reverse Debugging BTrace support
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.service;
 
@@ -45,7 +46,6 @@ import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_0;
 import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_2;
 import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_4;
 import org.eclipse.cdt.dsf.gdb.service.command.GDBControl_7_7;
-import org.eclipse.cdt.dsf.mi.service.CSourceLookup;
 import org.eclipse.cdt.dsf.mi.service.IMIBackend;
 import org.eclipse.cdt.dsf.mi.service.IMIExpressions;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpoints;
@@ -90,11 +90,47 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 	public static final String GDB_7_10_VERSION = "7.10"; //$NON-NLS-1$
 
 	private final String fVersion;
-	
+	private final ILaunchConfiguration fConfiguration;
+		
+	/** @since 5.0 */
+	public GdbDebugServicesFactory(String version, ILaunchConfiguration config) {
+		fVersion = version;
+		fConfiguration = config;
+	}
+
+	/**
+	 * @deprecated Use {@link GdbDebugServicesFactory#GdbDebugServicesFactory(String, ILaunchConfiguration)
+	 */
+	@Deprecated
 	public GdbDebugServicesFactory(String version) {
 		fVersion = version;
+		fConfiguration = null;
 	}
-	
+
+	/**
+	 * Returns the launch configuration. This is useful for cases where the
+	 * service to use is dependent on the launch settings.
+	 *
+	 * @return configuration or <code>null</code>
+	 * @since 5.0
+	 */
+	protected ILaunchConfiguration getConfiguration() {
+		return fConfiguration;
+	}
+
+	/**
+	 * Returns true if the services should be created for non-stop mode.
+	 * @return <code>true</code> if services should be created for GDB non-stop
+	 * @since 5.0
+	 */
+	protected boolean getIsNonStopMode() {
+		ILaunchConfiguration configuration = getConfiguration();
+		if (configuration == null) {
+			return false;
+		}
+		return LaunchUtils.getIsNonStopMode(configuration);
+	}
+
 	public String getVersion() { return fVersion; }
 	
 	@Override
@@ -229,6 +265,9 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 		
 	@Override
 	protected IProcesses createProcessesService(DsfSession session) {
+		if (compareVersionWith(GDB_7_10_VERSION) >= 0) {
+			return new GDBProcesses_7_10(session);
+		}
 		if (compareVersionWith(GDB_7_4_VERSION) >= 0) {
 			return new GDBProcesses_7_4(session);
 		}
@@ -257,6 +296,18 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 
 	@Override
 	protected IRunControl createRunControlService(DsfSession session) {
+		// First check for the non-stop case
+		if (getIsNonStopMode()) {
+			if (compareVersionWith(GDB_7_2_VERSION) >= 0) {
+				return new GDBRunControl_7_2_NS(session);
+			}
+			return new GDBRunControl_7_0_NS(session);
+		}
+
+		// Else, handle all-stop mode
+		if (compareVersionWith(GDB_7_10_VERSION) >= 0) {
+			return new GDBRunControl_7_10(session);
+		}
 		if (compareVersionWith(GDB_7_6_VERSION) >= 0) {
 			return new GDBRunControl_7_6(session);
 		}
@@ -268,7 +319,7 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 
 	@Override
 	protected ISourceLookup createSourceLookupService(DsfSession session) {
-		return new CSourceLookup(session);
+		return new GDBSourceLookup(session);
 	}
 	
 	@Override
@@ -313,16 +364,16 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 	
 	/**
 	 * Compares the GDB version of the current debug session with the one specified by 
-	 * parameter 'version'.
-	 * Returns -1, 0, or 1 if the current version is less than, equal to, or greater than parameter version respectively.
+	 * parameter 'version'.  Returns -1, 0, or 1 if the current version is less than, 
+	 * equal to, or greater than the specified version, respectively.
 	 * @param version The version to compare with
-	 * @return -1, 0, or 1 if the current version is less than, equal to, or greater than parameter version respectively.
+	 * @return -1, 0, or 1 if the current version is less than, equal to, or greater than 
+	 * 		   the specified version, respectively.
 	 * @since 4.8
 	 */
 	protected int compareVersionWith(String version) {
 		return LaunchUtils.compareVersions(getVersion(), version);
 	}
-	
 
 	/**
 	 * A static method that will compare the version of GDB for the specified session and

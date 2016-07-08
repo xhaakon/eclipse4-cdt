@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2013 Google, Inc and others.
+ * Copyright (c) 2012, 2015 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -151,5 +151,17 @@ public class IncludeCreationContext extends InclusionContext {
 
 	public final boolean wasIncludedPreviously(IPath header) {
 		return fHeadersIncludedPreviously.contains(header);
+	}
+
+	/**
+	 * Returns the path of the partner header included previously, or {@code null} if the partner was not
+	 * included.
+	 */
+	public final IPath getPartnerHeaderIncludedPreviously() {
+		for (IPath path : fHeadersIncludedPreviously) {
+			if (isPartnerFile(path))
+				return path;
+		}
+		return null;
 	}
 }

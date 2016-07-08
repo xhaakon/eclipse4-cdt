@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 Intel Corporation and others.
+ * Copyright (c) 2005, 2011 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -39,6 +39,7 @@ import org.eclipse.cdt.utils.envvar.EnvVarOperationProcessor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.preference.JFacePreferences;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ColumnLayoutData;
@@ -356,14 +357,14 @@ public class CPropertyVarsTab extends AbstractCPropertyTab {
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.dialogs.IDialogPage#createControl(org.eclipse.swt.widgets.Composite)
-	 */
 	@Override
 	public void createControls(Composite parent) {
 		super.createControls(parent);
-		initButtons(new String[] {ADD_STR, EDIT_STR, DEL_STR});
 		usercomp.setLayout(new GridLayout(2, true));
+		Label desc = new Label(usercomp.getParent(), SWT.WRAP);
+		desc.setText(Messages.CPropertyVarsTab_Description);
+		GridDataFactory.fillDefaults().grab(true, false).span(2, 1).applyTo(desc);
+		initButtons(new String[] {ADD_STR, EDIT_STR, DEL_STR});
 		createTableControl();
 
 		// Create a "show parent levels" button

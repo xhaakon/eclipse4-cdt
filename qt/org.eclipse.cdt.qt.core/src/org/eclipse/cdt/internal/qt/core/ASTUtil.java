@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -39,9 +39,8 @@ import org.eclipse.cdt.internal.core.dom.parser.ITypeContainer;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
-import org.eclipse.cdt.qt.core.QtPlugin;
-import org.eclipse.cdt.qt.core.index.IQMethod;
-import org.eclipse.cdt.qt.core.index.IQObject;
+import org.eclipse.cdt.internal.qt.core.index.IQMethod;
+import org.eclipse.cdt.internal.qt.core.index.IQObject;
 import org.eclipse.core.resources.IProject;
 
 @SuppressWarnings("restriction")
@@ -86,7 +85,7 @@ public class ASTUtil {
 			try {
 				return getFullyQualifiedName(((ICPPBinding) binding).getQualifiedName());
 			} catch(DOMException e) {
-				QtPlugin.log(e);
+				Activator.log(e);
 				return null;
 			}
 
@@ -143,7 +142,7 @@ public class ASTUtil {
 
 		ICPPASTInitializerClause cppInit = (ICPPASTInitializerClause) init;
 		ICPPEvaluation eval = cppInit.getEvaluation();
-		return eval == null ? null : getBaseType(eval.getTypeOrFunctionSet(cppInit));
+		return eval == null ? null : getBaseType(eval.getType(cppInit));
 	}
 
 	public static ICPPClassType getReceiverType(IASTFunctionCallExpression fncall) {
@@ -166,7 +165,7 @@ public class ASTUtil {
 				if (scope instanceof ICPPClassScope)
 					return ((ICPPClassScope) scope).getClassType();
 		} catch (DOMException e) {
-			QtPlugin.log(e);
+			Activator.log(e);
 		}
 
 		return null;

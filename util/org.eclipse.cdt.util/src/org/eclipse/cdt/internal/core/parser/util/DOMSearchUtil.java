@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2008 IBM Corporation and others.
+ * Copyright (c) 2000, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -69,16 +69,16 @@ public class DOMSearchUtil {
         {
             shouldVisitNames = true;
         }
-        public List<IASTName> nameList = new ArrayList<IASTName>();
+        public List<IASTName> nameList = new ArrayList<>();
 
         @Override
 		public int visit(IASTName name) {
-            nameList.add( name );
+            nameList.add(name);
             return PROCESS_CONTINUE;
         }
 
-        public IASTName getName( int idx ){
-            if( idx < 0 || idx >= nameList.size() )
+        public IASTName getName(int idx) {
+            if (idx < 0 || idx >= nameList.size())
                 return null;
             return nameList.get(idx);
         }

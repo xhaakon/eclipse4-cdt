@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009,2010 QNX Software Systems
+ * Copyright (c) 2009,2016 QNX Software Systems
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,7 +24,7 @@ public class CodanProblemElement implements IProblemElement {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.eclipse.cdt.codan.core.model.IProblemElement#getProfile()
 	 */
 	@Override
@@ -34,7 +34,7 @@ public class CodanProblemElement implements IProblemElement {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.eclipse.cdt.codan.core.model.IProblemElement#getCategory()
 	 */
 	@Override
@@ -85,14 +85,5 @@ public class CodanProblemElement implements IProblemElement {
 	 */
 	protected boolean isFrozen() {
 		return frozen;
-	}
-
-	/**
-	 * @param problemKey
-	 */
-	protected void notifyChanged(String key) {
-		if (getProfile() instanceof ProblemProfile) {
-			((ProblemProfile) getProfile()).fireProfileChangeEvent(key, null, this);
-		}
 	}
 }

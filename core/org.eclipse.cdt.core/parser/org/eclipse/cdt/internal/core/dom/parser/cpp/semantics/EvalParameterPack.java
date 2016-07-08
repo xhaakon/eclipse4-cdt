@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2013 Nathan Ridge.
+ * Copyright (c) 2013, 2014 Nathan Ridge.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,20 +16,19 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPParameterPackType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
  * Evaluation for a pack expansion expression.
  */
 public class EvalParameterPack extends CPPDependentEvaluation {
-
 	private ICPPEvaluation fExpansionPattern;
 	private IType fType;
 	
@@ -72,9 +71,9 @@ public class EvalParameterPack extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		if (fType == null) {
-			IType type = fExpansionPattern.getTypeOrFunctionSet(point);
+			IType type = fExpansionPattern.getType(point);
 			if (type == null) {
 				fType= ProblemType.UNKNOWN_FOR_EXPRESSION;
 			} else {
@@ -95,10 +94,8 @@ public class EvalParameterPack extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
-		ICPPEvaluation expansionPattern = fExpansionPattern.instantiate(tpMap, packOffset, within,
-				maxdepth, point);
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
+		ICPPEvaluation expansionPattern = fExpansionPattern.instantiate(context, maxDepth);
 		if (expansionPattern == fExpansionPattern)
 			return this;
 		return new EvalParameterPack(expansionPattern, getTemplateDefinition());

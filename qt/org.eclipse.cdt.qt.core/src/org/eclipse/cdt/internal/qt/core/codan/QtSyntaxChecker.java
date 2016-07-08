@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 QNX Software Systems and others.
+ * Copyright (c) 2014, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,9 +21,9 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.internal.qt.core.ASTUtil;
 import org.eclipse.cdt.internal.qt.core.QtFunctionCall;
 import org.eclipse.cdt.internal.qt.core.QtMethodReference;
-import org.eclipse.cdt.qt.core.QtNature;
-import org.eclipse.cdt.qt.core.QtPlugin;
-import org.eclipse.cdt.qt.core.index.IQMethod;
+import org.eclipse.cdt.internal.qt.core.QtNature;
+import org.eclipse.cdt.internal.qt.core.Activator;
+import org.eclipse.cdt.internal.qt.core.index.IQMethod;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.osgi.util.NLS;
@@ -94,9 +94,9 @@ public class QtSyntaxChecker extends AbstractIndexAstChecker implements IChecker
 
 		private void report(IASTNode node, String message, Object... args) {
 			if (args.length <= 0)
-				reportProblem(QtPlugin.QT_SYNTAX_ERR_ID, node, message);
+				reportProblem(Activator.QT_SYNTAX_ERR_ID, node, message);
 			else
-				reportProblem(QtPlugin.QT_SYNTAX_ERR_ID, node, NLS.bind(message, args));
+				reportProblem(Activator.QT_SYNTAX_ERR_ID, node, NLS.bind(message, args));
 		}
 	};
 }

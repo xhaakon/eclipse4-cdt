@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Red Hat Inc..
+ * Copyright (c) 2006, 2015 Red Hat Inc..
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -22,19 +22,12 @@ import org.eclipse.cdt.managedbuilder.core.IManagedProject;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
 import org.eclipse.cdt.managedbuilder.core.ManagedCProjectNature;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jface.dialogs.ErrorDialog;
-import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -81,15 +74,9 @@ public class AutotoolsPlugin extends AbstractUIPlugin {
 	}
 
 	/**
-	 * This method is called upon plug-in activation
-	 */
-	public void start(BundleContext context) throws Exception {
-		super.start(context);
-	}
-
-	/**
 	 * This method is called when the plug-in is stopped
 	 */
+	@Override
 	public void stop(BundleContext context) throws Exception {
 		super.stop(context);
 		plugin = null;
@@ -113,17 +100,6 @@ public class AutotoolsPlugin extends AbstractUIPlugin {
 		BundleContext context = plugin.getBundle().getBundleContext();
 		ServiceReference<T> ref = context.getServiceReference(service);
 		return ref != null ? context.getService(ref) : null;
-	}
-
-	/**
-	 * Returns active shell.
-	 */
-	public static Shell getActiveWorkbenchShell() {
-		IWorkbenchWindow window = getDefault().getWorkbench().getActiveWorkbenchWindow();
-		if (window != null) {
-			return window.getShell();
-		}
-		return null;
 	}
 
 	/**
@@ -180,8 +156,6 @@ public class AutotoolsPlugin extends AbstractUIPlugin {
 					return true;
 				}
 			}
-		} catch (CoreException e) {
-			// Don't care...fall through to not found.
 		} catch (Exception f) {
 			// Don't care...fall through to not found.
 		}
@@ -189,54 +163,12 @@ public class AutotoolsPlugin extends AbstractUIPlugin {
 		return false;
 	}
 
-	/**
-	 * Returns an image descriptor for the image file at the given
-	 * plug-in relative path.
-	 *
-	 * @param path the path
-	 * @return the image descriptor
-	 */
-	public static ImageDescriptor getImageDescriptor(String path) {
-		return AbstractUIPlugin.imageDescriptorFromPlugin(PLUGIN_ID, path);
-	}
-	
 	public static void log(IStatus status) {
 		ResourcesPlugin.getPlugin().getLog().log(status);
 	}
 
 	public static void logErrorMessage(String message) {
 		log(new Status(IStatus.ERROR, getUniqueIdentifier(), IStatus.ERROR, message, null));
-	}
-
-	public static void logException(Throwable e, final String title, String message) {
-		if (e instanceof InvocationTargetException) {
-			e = ((InvocationTargetException) e).getTargetException();
-		}
-		IStatus status = null;
-		if (e instanceof CoreException)
-			status = ((CoreException) e).getStatus();
-		else {
-			if (message == null)
-				message = e.getMessage();
-			if (message == null)
-				message = e.toString();
-			status = new Status(IStatus.ERROR, getUniqueIdentifier(), IStatus.OK, message, e);
-		}
-		ResourcesPlugin.getPlugin().getLog().log(status);
-		Display display;
-		display = Display.getCurrent();
-		if (display == null)
-			display = Display.getDefault();
-		final IStatus fstatus = status;
-		display.asyncExec(new Runnable() {
-			public void run() {
-				ErrorDialog.openError(null, title, null, fstatus);
-			}
-		});
-	}
-
-	public static void logException(Throwable e) {
-		logException(e, null, null);
 	}
 
 	public static void log(Throwable e) {
@@ -250,63 +182,6 @@ public class AutotoolsPlugin extends AbstractUIPlugin {
 		log(status);
 	}
 
-	/**
-	* Utility method with conventions
-	*/
-	public static void errorDialog(Shell shell, String title, String message, IStatus s) {
-		log(s);
-		// if the 'message' resource string and the IStatus' message are the same,
-		// don't show both in the dialog
-		if (s != null && message.equals(s.getMessage())) {
-			message = null;
-		}
-		ErrorDialog.openError(shell, title, message, s);
-	}
-
-	/**
-	* Utility method with conventions
-	*/
-	public static void errorDialog(Shell shell, String title, String message, Throwable t) {
-		log(t);
-		IStatus status;
-		if (t instanceof CoreException) {
-			status = ((CoreException) t).getStatus();
-			// if the 'message' resource string and the IStatus' message are the same,
-			// don't show both in the dialog
-			if (status != null && message.equals(status.getMessage())) {
-				message = null;
-			}
-		} else {
-			status = new Status(IStatus.ERROR, AutotoolsPlugin.getUniqueIdentifier(), -1, "Internal Error: ", t); //$NON-NLS-1$	
-		}
-		ErrorDialog.openError(shell, title, message, status);
-	}
-	
-	/**
-	 * Returns the workspace instance.
-	 */
-	public static IWorkspace getWorkspace() {
-		return ResourcesPlugin.getWorkspace();
-	}
-
-	/**
-	 * Returns the active workbench window or <code>null</code> if none
-	 */
-	public static IWorkbenchWindow getActiveWorkbenchWindow() {
-		return getDefault().getWorkbench().getActiveWorkbenchWindow();
-	}
-
-	/**
-	 * Returns the active workbench page or <code>null</code> if none.
-	 */
-	public static IWorkbenchPage getActivePage() {
-		IWorkbenchWindow window= getActiveWorkbenchWindow();
-		if (window != null) {
-			return window.getActivePage();
-		}
-		return null;
-	}
-	
 	/**
 	 * Return set of Autotool configuration options for a given build configuration id.
 	 * 

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2007, 2016 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,7 +11,7 @@
 package org.eclipse.cdt.autotools.ui.editors.parser;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.List;
 
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -22,7 +22,7 @@ public class AutoconfElement {
 	protected String var;
 	protected int startOffset;
 	protected int endOffset;
-	protected ArrayList<AutoconfElement> children;
+	protected List<AutoconfElement> children;
 	protected AutoconfElement parent;
 	private IDocument document;
 	
@@ -34,16 +34,16 @@ public class AutoconfElement {
 		this.name = name;
 		this.var = var;
 		this.startOffset = 0;
-		this.children = new ArrayList<AutoconfElement>();
+		this.children = new ArrayList<>();
 	}
 	
 
+	@Override
 	public String toString() {
 		String source = getSource();
 		if (source == null) {
-			StringBuffer kids = new StringBuffer();
-			for (Iterator<AutoconfElement> iterator = children.iterator(); iterator.hasNext();) {
-				AutoconfElement kid = (AutoconfElement) iterator.next();
+			StringBuilder kids = new StringBuilder();
+			for (AutoconfElement kid : children) {
 				kids.append(kid.toString());
 				kids.append(","); //$NON-NLS-1$
 			}
@@ -64,7 +64,7 @@ public class AutoconfElement {
 	
 	public AutoconfElement getLastChild() {
 		if (hasChildren())
-			return (AutoconfElement)children.get(children.size() - 1);
+			return children.get(children.size() - 1);
 		return null;
 	}
 	
@@ -77,7 +77,7 @@ public class AutoconfElement {
 	}
 	
 	public AutoconfElement[] getChildren() {
-		return (AutoconfElement[]) children.toArray(new AutoconfElement[children.size()]);
+		return children.toArray(new AutoconfElement[children.size()]);
 	}
 	
 	public boolean hasChildren() {

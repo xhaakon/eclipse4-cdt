@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2015 Mentor Graphics and others.
+ * Copyright (c) 2011, 2016 Mentor Graphics and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,7 +34,6 @@ import org.eclipse.cdt.debug.core.model.ICFunctionBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.internal.core.CRequest;
-import org.eclipse.cdt.debug.internal.core.model.CMemoryBlockExtension;
 import org.eclipse.cdt.debug.internal.ui.CDebugUIUtils;
 import org.eclipse.cdt.debug.internal.ui.IInternalCDebugUIConstants;
 import org.eclipse.cdt.debug.internal.ui.actions.ActionMessages;
@@ -487,9 +486,7 @@ abstract public class AbstractToggleBreakpointAdapter
     }
 
     private String getMemorySpace(IMemoryBlock memBlock, String def) {
-        if (memBlock != null && memBlock instanceof CMemoryBlockExtension) {
-            return ((CMemoryBlockExtension)memBlock).getMemorySpaceID();
-        }
+        // XXX: In pre-CDI removal this retrieved memory space from CMemoryBlockExtension
         return def;
     }
 
@@ -760,7 +757,7 @@ abstract public class AbstractToggleBreakpointAdapter
 
 	private String getFunctionName( IFunction function ) {
 		String functionName = function.getElementName();
-		StringBuffer name = new StringBuffer( functionName );
+		StringBuilder name = new StringBuilder( functionName );
 		ITranslationUnit tu = function.getTranslationUnit();
 		if ( tu != null && tu.isCXXLanguage() ) {
 			appendParameters( name, function );
@@ -769,7 +766,7 @@ abstract public class AbstractToggleBreakpointAdapter
 	}
 
 	private String getMethodName( IMethod method ) {
-		StringBuffer name = new StringBuffer();
+		StringBuilder name = new StringBuilder();
 		String methodName = method.getElementName();
 		ICElement parent = method.getParent();
 		while( parent != null
@@ -783,7 +780,7 @@ abstract public class AbstractToggleBreakpointAdapter
 		return name.toString();
 	}
 
-	private void appendParameters( StringBuffer sb, IFunctionDeclaration fd ) {
+	private void appendParameters( StringBuilder sb, IFunctionDeclaration fd ) {
 		String[] params = fd.getParameterTypes();
 		sb.append( '(' );
 		for( int i = 0; i < params.length; ++i ) {
@@ -846,7 +843,6 @@ abstract public class AbstractToggleBreakpointAdapter
         IAnnotationModel annotationModel = editor.getDocumentProvider().getAnnotationModel(editor.getEditorInput());
         IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
         if (annotationModel != null) {
-            @SuppressWarnings("unchecked")
             Iterator<Annotation> iterator = annotationModel.getAnnotationIterator();
             while (iterator.hasNext()) {
                 Object object = iterator.next();

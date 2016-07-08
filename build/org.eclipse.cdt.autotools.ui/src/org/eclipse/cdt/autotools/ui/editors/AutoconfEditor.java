@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2006, 2016 Red Hat, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -111,14 +111,15 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 	/**
 	 * Reconciling listeners
 	 */
-	private ListenerList fReconcilingListeners= new ListenerList(ListenerList.IDENTITY);
+	private ListenerList<IReconcilingParticipant> fReconcilingListeners = new ListenerList<>(ListenerList.IDENTITY);
 
 
     public AutoconfEditor() {
     	super();
     }
 
-    protected void initializeEditor() {
+    @Override
+	protected void initializeEditor() {
     	super.initializeEditor();
     	setDocumentProvider(getAutoconfDocumentProvider());
 		IPreferenceStore[] stores = new IPreferenceStore[2];
@@ -149,13 +150,12 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
     	return getSourceViewer();
     }
     
-    protected IDocument getInputDocument()
-	{
-		IDocument document = getDocumentProvider().getDocument(input);
-		return document;
+	protected IDocument getInputDocument() {
+		return getDocumentProvider().getDocument(input);
 	}
 
-    protected void doSetInput(IEditorInput newInput) throws CoreException
+    @Override
+	protected void doSetInput(IEditorInput newInput) throws CoreException
 	{
     	// If this editor is for a project file, remove this editor as a property
     	// change listener.
@@ -177,7 +177,7 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 		{
 			IDocument document = getInputDocument();
 
-			setRootElement(reparseDocument(document, newInput));
+			setRootElement(reparseDocument(document));
 		}
 		catch (Exception e)
 		{
@@ -185,17 +185,18 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 		}
 	}
 
-    @SuppressWarnings({ "rawtypes" })
-	public Object getAdapter(Class required) {
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> T getAdapter(Class<T> required) {
 		if (ProjectionAnnotationModel.class.equals(required)) {
 			if (fProjectionSupport != null) {
 				Object result = fProjectionSupport.getAdapter(getSourceViewer(), required);
 				if (result != null) {
-					return result;
+					return (T) result;
 				}
 			}
 		} else if (IContentOutlinePage.class.equals(required)) {
-			return getOutlinePage();
+			return (T) getOutlinePage();
 		}
 		return super.getAdapter(required);
 	}
@@ -264,6 +265,7 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 		return ColorManager.getDefault().getColor(PreferenceConverter.getColor(AutotoolsPlugin.getDefault().getPreferenceStore(), key));
 	}
 
+	@Override
 	public void handleProjectPropertyChanged(IProject project, String property) {
 		if (property.equals(AutotoolsPropertyConstants.AUTOCONF_MACRO_VERSIONING)) {
 			ISourceViewer sourceViewer= getSourceViewer();
@@ -285,24 +287,21 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 		try {
 			IDocument document = getInputDocument();
 
-			setRootElement(reparseDocument(document, getEditorInput()));
+			setRootElement(reparseDocument(document));
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
-	private AutoconfElement reparseDocument(IDocument document,
-			IEditorInput editorInput) {
+	private AutoconfElement reparseDocument(IDocument document) {
 		AutoconfParser parser = getAutoconfParser();
 		((AutoconfErrorHandler)parser.getErrorHandler()).removeAllExistingMarkers();
 		
 		return parser.parse(document);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.ui.texteditor.AbstractTextEditor#handlePreferenceStoreChanged(org.eclipse.jface.util.PropertyChangeEvent)
-	 */
+	@Override
 	protected void handlePreferenceStoreChanged(PropertyChangeEvent event) {
 		ISourceViewer sourceViewer= getSourceViewer();
 		if (sourceViewer == null)
@@ -354,30 +353,21 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
     		fHoverInfo= hoverInfo;
     		fControlCreator= controlCreator;
     	}
-    	/*
-    	 * @see org.eclipse.jface.text.information.IInformationProvider#getSubject(org.eclipse.jface.text.ITextViewer, int)
-    	 */
-    	public IRegion getSubject(ITextViewer textViewer, int invocationOffset) {
+    	@Override
+		public IRegion getSubject(ITextViewer textViewer, int invocationOffset) {
     		return fHoverRegion;
     	}
-    	/*
-    	 * @see org.eclipse.jface.text.information.IInformationProvider#getInformation(org.eclipse.jface.text.ITextViewer, org.eclipse.jface.text.IRegion)
-    	 */
-    	public String getInformation(ITextViewer textViewer, IRegion subject) {
+    	@Override
+		public String getInformation(ITextViewer textViewer, IRegion subject) {
     		return fHoverInfo.toString();
     	}
     	
-    	/*
-    	 * @see org.eclipse.jface.text.information.IInformationProviderExtension#getInformation2(org.eclipse.jface.text.ITextViewer, org.eclipse.jface.text.IRegion)
-    	 * @since 3.2
-    	 */
-    	public Object getInformation2(ITextViewer textViewer, IRegion subject) {
+    	@Override
+		public Object getInformation2(ITextViewer textViewer, IRegion subject) {
     		return fHoverInfo;
     	}
-    	/*
-    	 * @see org.eclipse.jface.text.information.IInformationProviderExtension2#getInformationPresenterControlCreator()
-    	 */
-    	public IInformationControlCreator getInformationPresenterControlCreator() {
+    	@Override
+		public IInformationControlCreator getInformationPresenterControlCreator() {
     		return fControlCreator;
     	}
     }
@@ -408,10 +398,8 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
     		fTextOperationAction= textOperationAction;
     	}
 
-    	/*
-    	 * @see org.eclipse.jface.action.IAction#run()
-    	 */
-    	public void run() {
+    	@Override
+		public void run() {
 
     		ISourceViewer sourceViewer= getSourceViewer();
     		if (sourceViewer == null) {
@@ -589,6 +577,7 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 	 * 
 	 * @param listener	The reconcile listener to be added
 	 */
+	@Override
 	public final void addReconcilingParticipant(IReconcilingParticipant listener) {
 		synchronized (fReconcilingListeners) {
 			fReconcilingListeners.add(listener);
@@ -611,9 +600,8 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 	 */
 	public void reconciled() {
 		// Notify listeners
-		Object[] listeners = fReconcilingListeners.getListeners();
-		for (int i = 0, length= listeners.length; i < length; ++i) {
-			((IReconcilingParticipant)listeners[i]).reconciled();
+		for (IReconcilingParticipant listener : fReconcilingListeners) {
+			listener.reconciled();
 		}
 	}
 
@@ -625,18 +613,14 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 		return AutotoolsPlugin.getDefault().getPreferenceStore().getBoolean(MakefileEditorPreferenceConstants.EDITOR_FOLDING_ENABLED);
 	}
 
-    /* (non-Javadoc)
-	 * @see org.eclipse.ui.editors.text.TextEditor#initializeKeyBindingScopes()
-	 */
+	@Override
 	protected void initializeKeyBindingScopes() {
 		setKeyBindingScopes(new String [] { AutotoolsUIPlugin.getUniqueIdentifier() + ".editor.scope" } ); //$NON-NLS-1$
 	}
 
 
-    /**
-     * @see org.eclipse.ui.texteditor.AbstractTextEditor#createActions()
-     */
-    protected void createActions() {
+    @Override
+	protected void createActions() {
     	super.createActions();
     	// TODO: Figure out how to do this later. 		
 //  	fFoldingGroup= new FoldingActionGroup(this, getSourceViewer());
@@ -667,12 +651,14 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 
      * @param parent Parent composite of the control.
      */
-    public void createPartControl(Composite parent) {
+    @Override
+	public void createPartControl(Composite parent) {
     	super.createPartControl(parent);
 
     	// Sticky hover support
     	IInformationControlCreator informationControlCreator= new IInformationControlCreator() {
-    		public IInformationControl createInformationControl(Shell shell) {
+    		@Override
+			public IInformationControl createInformationControl(Shell shell) {
        			return new DefaultInformationControl(shell, true);
     		}
     	};
@@ -705,7 +691,8 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 //  	fEditorSelectionChangedListener.install(getSelectionProvider());
     }
 
-    protected ISourceViewer createSourceViewer(Composite parent, IVerticalRuler ruler, int styles) {
+    @Override
+	protected ISourceViewer createSourceViewer(Composite parent, IVerticalRuler ruler, int styles) {
     	ISourceViewer viewer = new ProjectionViewer(parent, ruler, getOverviewRuler(), isOverviewRulerVisible(), styles);
 
     	// ensure decoration support has been created and configured.
@@ -715,9 +702,7 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
     }
     
     
-	/* (non-Javadoc)
-	 * @see org.eclipse.ui.IWorkbenchPart#dispose()
-	 */
+	@Override
 	public void dispose() {
 		if (fProjectionFileUpdater != null) {
 			fProjectionFileUpdater.uninstall();
@@ -729,9 +714,7 @@ public class AutoconfEditor extends TextEditor implements IAutotoolsEditor, IPro
 		super.dispose();
 	}
 
-	/*
-	 * @see org.eclipse.ui.texteditor.AbstractTextEditor#performRevert()
-	 */
+	@Override
 	protected void performRevert() {
 		ProjectionViewer projectionViewer= (ProjectionViewer) getSourceViewer();
 		projectionViewer.setRedraw(false);

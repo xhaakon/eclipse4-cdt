@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2013 Nathan Ridge.
+ * Copyright (c) 2013, 2015 Nathan Ridge.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -51,7 +51,7 @@ public class CPPTemplateTemplateParameterSpecialization extends CPPTemplateParam
 
 	@Override
 	public ICPPClassTemplatePartialSpecialization[] getPartialSpecializations() {
-		return ICPPClassTemplatePartialSpecialization.EMPTY_PARTIAL_SPECIALIZATION_ARRAY;
+		return ICPPClassTemplatePartialSpecialization.EMPTY_ARRAY;
 	}
 
 	@Override

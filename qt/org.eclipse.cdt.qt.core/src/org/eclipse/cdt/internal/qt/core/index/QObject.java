@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,11 +18,6 @@ import org.eclipse.cdt.internal.qt.core.pdom.QtPDOMQEnum;
 import org.eclipse.cdt.internal.qt.core.pdom.QtPDOMQMethod;
 import org.eclipse.cdt.internal.qt.core.pdom.QtPDOMQObject;
 import org.eclipse.cdt.internal.qt.core.pdom.QtPDOMQmlRegistration;
-import org.eclipse.cdt.qt.core.index.IQEnum;
-import org.eclipse.cdt.qt.core.index.IQMethod;
-import org.eclipse.cdt.qt.core.index.IQObject;
-import org.eclipse.cdt.qt.core.index.IQProperty;
-import org.eclipse.cdt.qt.core.index.IQmlRegistration;
 import org.eclipse.core.runtime.CoreException;
 
 public class QObject implements IQObject {

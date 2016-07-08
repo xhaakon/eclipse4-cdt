@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Intel Corporation and others.
+ * Copyright (c) 2007, 2012 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -54,9 +54,8 @@ public interface ICDescriptionDelta {
 	int SOURCE_CONTENT_TYPE = 1 << 5;
 	/** @since 5.4 */
 	int SOURCE_EXTENSIONS = 1 << 6;
-	/** @deprecated Use ICDescriptionDelta.SOURCE_EXTENSIONS */
-	@Deprecated
-	int SOURCE_ENTENSIONS = SOURCE_EXTENSIONS;
+	/** @deprecated Use ICDescriptionDelta.SOURCE_EXTENSIONS @noreference This field is not intended to be referenced by clients. */
+	@Deprecated	int SOURCE_ENTENSIONS = SOURCE_EXTENSIONS;
 //	int HEADER_CONTENT_TYPE = 1 << 7;
 //	int HEADER_ENTENSIONS = 1 << 8;
 	int SETTING_ENTRIES = 1 << 9;

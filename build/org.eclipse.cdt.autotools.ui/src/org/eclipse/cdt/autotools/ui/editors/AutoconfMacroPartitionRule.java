@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Red Hat, Inc.
+ * Copyright (c) 2006, 2016 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -37,7 +37,7 @@ public class AutoconfMacroPartitionRule implements IPredicateRule {
 	protected static final int UNDEFINED = -1;
 
 	/** Buffer used for pattern detection */
-	private StringBuffer fBuffer = new StringBuffer();
+	private StringBuilder fBuffer = new StringBuilder();
 
 	public AutoconfMacroPartitionRule(IToken inToken) {
 		token = inToken;
@@ -45,6 +45,7 @@ public class AutoconfMacroPartitionRule implements IPredicateRule {
 		m4MacroWordDetector = new AutoconfM4WordDetector();
 	}
 
+	@Override
 	public IToken getSuccessToken() {
 		return token;
 	}
@@ -77,12 +78,14 @@ public class AutoconfMacroPartitionRule implements IPredicateRule {
 		}
 	}
 	
+	@Override
 	public IToken evaluate(ICharacterScanner scanner, boolean resume) {
 //		if (resume)
 //			return Token.UNDEFINED;
 		return evaluate(scanner);
 	}
 	
+	@Override
 	public IToken evaluate(ICharacterScanner scanner) {
 		int c = scanner.read();
 		fBuffer.setLength(0);

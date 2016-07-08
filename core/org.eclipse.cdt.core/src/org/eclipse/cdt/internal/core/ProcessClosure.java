@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2013 IBM Corporation and others.
+ * Copyright (c) 2000, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -117,11 +117,9 @@ public class ProcessClosure {
 	 * console document.
 	 * 
 	 * @param outputStream
-	 *            prcess stdout is written to this stream. Can be
-	 *            <code>null</code>, if not interested in reading the output
+	 *            prcess stdout is written to this stream. Cannot be <code>null</code>.
 	 * @param errorStream
-	 *            prcess stderr is written to this stream. Can be
-	 *            <code>null</code>, if not interested in reading the output
+	 *            prcess stderr is written to this stream. Cannot be <code>null</code>.
 	 */
 	public ProcessClosure(Process process, OutputStream outputStream, OutputStream errorStream) {
 		fProcess = process;

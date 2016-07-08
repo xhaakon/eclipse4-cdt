@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006, 2009 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,9 +30,7 @@ public class AutotoolsPreferencePage extends FieldEditorPreferencePage implement
 		setPreferenceStore(AutotoolsPlugin.getDefault().getPreferenceStore());
 	}
 
-	/**
-	 * @see FieldEditorPreferencePage#createControl(Composite)
-	 */
+	@Override
 	protected void createFieldEditors() {
 		Composite parent = getFieldEditorParent();
 
@@ -56,6 +54,7 @@ public class AutotoolsPreferencePage extends FieldEditorPreferencePage implement
 		prefs.setDefault(PREF_BUILD_TARGET_IN_BACKGROUND, true);
 	}
 
+	@Override
 	public void init(IWorkbench workbench) {
 	}
 }

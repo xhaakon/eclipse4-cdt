@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2008 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,9 +12,15 @@
 package org.eclipse.cdt.core.parser.util;
 
 import java.lang.reflect.Array;
+import java.util.AbstractCollection;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * @author Doug Schaefer
@@ -23,13 +29,16 @@ public class CharArrayObjectMap <T> extends CharTable {
     public static final CharArrayObjectMap<?> EMPTY_MAP = new CharArrayObjectMap<Object>(0) {
         @Override
 		public Object clone() { return this; }
+
         @Override
 		public List<char[]> toList() { return Collections.emptyList(); }
+
         @Override
 		public Object put(char[] key, int start, int length, Object value) {
         	throw new UnsupportedOperationException();
         }
     };
+
 	/**
 	 * @since 5.4
 	 */
@@ -163,6 +172,32 @@ public class CharArrayObjectMap <T> extends CharTable {
 	    return values;
 	}
 
+    /**
+     * Returns a {@link Collection} view of the values contained in this map.
+     * The collection is backed by the map, so changes to the map are reflected
+     * in the collection, and vice-versa.
+     *
+	 * @since 6.0
+	 */
+    public Collection<T> values() {
+    	return new Values();
+    }
+
+    /**
+     * Checks if the map values contain the given object.
+	 *
+	 * @since 6.0
+	 */
+    public boolean containsValue(Object v) {
+    	int n = size();
+		for (int i = 0; i < n; i++) {
+			if (Objects.equals(valueTable[i], v)) {
+				return true;
+			}
+		}
+		return false;
+    }
+
     @Override
 	public String toString() {
     	StringBuilder buf = new StringBuilder();
@@ -179,5 +214,52 @@ public class CharArrayObjectMap <T> extends CharTable {
     	}
     	buf.append('}');
     	return buf.toString();
+    }
+
+    private class Values extends AbstractCollection<T> {
+        @Override
+		public final int size() {
+        	return CharArrayObjectMap.this.size();
+        }
+
+        @Override
+		public final void clear() {
+        	CharArrayObjectMap.this.clear();
+        }
+
+        @Override
+		public final boolean contains(Object v) {
+        	return containsValue(v);
+        }
+
+        @Override
+		public final Iterator<T> iterator() {
+        	return new ValueIterator();
+        }
+
+		@Override
+        @SuppressWarnings("unchecked")
+		public final void forEach(Consumer<? super T> action) {
+        	for (int i = 0; i < size(); i++) {
+        		action.accept((T) valueTable[i]);
+        	}
+        }
+    }
+
+    private final class ValueIterator implements Iterator<T> {
+    	int index;
+
+		@Override
+		public boolean hasNext() {
+			return index < size();
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public T next() {
+			if (!hasNext())
+				throw new NoSuchElementException();
+			return (T) valueTable[index++];
+		}
     }
 }

@@ -29,16 +29,16 @@ import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMData;
 import org.eclipse.cdt.dsf.mi.service.IMIProcesses;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-@RunWith(BackgroundRunner.class)
-public class GDBProcessesTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class GDBProcessesTest extends BaseParametrizedTestCase {
 	/*
 	 * Name of the executable
 	 */
@@ -72,14 +72,14 @@ public class GDBProcessesTest extends BaseTestCase {
 		super.doAfterTest();
 
 		fProcService = null;
-		fServicesTracker.dispose();
+		if (fServicesTracker!=null) fServicesTracker.dispose();
 	}
-	
+
 	@Override
 	protected void setLaunchAttributes() {
 		super.setLaunchAttributes();
-		
-		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, 
+
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME,
 				           EXEC_PATH + EXEC_NAME);
 	}
 
@@ -114,14 +114,15 @@ public class GDBProcessesTest extends BaseTestCase {
 	 * This defaults to false, and is overridden for specific versions of gdb.
 	 */
 	protected boolean threadNamesSupported() {
-		return false;
+		return !runningOnWindows() && !isRemoteSession();
 	}
 
-	/* 
+	/*
 	 * getThreadData() for multiple threads
 	 */
 	@Test
 	public void getThreadData() throws Throwable {
+		assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_3);
 		// Start the threads one by one to make sure they are discovered by gdb in the right
 		// order.
 		for (int i = 0; i < 5; i++) {

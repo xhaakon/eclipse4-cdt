@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2014 Ericsson and others.
+ * Copyright (c) 2012, 2015 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -49,16 +49,16 @@ import org.eclipse.cdt.dsf.mi.service.command.events.MIStoppedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIDataListRegisterNamesInfo;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-@RunWith(BackgroundRunner.class)
-public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class GDBPatternMatchingExpressionsTest extends BaseParametrizedTestCase {
 	private static final String EXEC_NAME = "PatternMatchingExpressionsTestApp.exe";
 
 	private DsfSession fSession;
@@ -97,7 +97,10 @@ public class GDBPatternMatchingExpressionsTest extends BaseTestCase {
 	public void doAfterTest() throws Exception {
 		super.doAfterTest();
 		fExpService = null;
-		fServicesTracker.dispose();
+        if (fServicesTracker != null) {
+            fServicesTracker.dispose();
+            fServicesTracker = null;
+        }
 	}
 
 	//**************************************************************************************

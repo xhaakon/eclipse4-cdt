@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2009 QNX Software Systems and others.
+ * Copyright (c) 2005, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -49,10 +49,10 @@ public class GCCLanguage extends AbstractCLikeLanguage {
 	}
 	
 	@Override
-	@SuppressWarnings("rawtypes")
-	public Object getAdapter(Class adapter) {
-		if (adapter == IPDOMLinkageFactory.class) {
-			return new PDOMCLinkageFactory();
+	@SuppressWarnings("unchecked")
+	public <T> T getAdapter(Class<T> adapter) {
+		if (adapter.isAssignableFrom(IPDOMLinkageFactory.class)) {
+			return (T) new PDOMCLinkageFactory();
 		}
 		return super.getAdapter(adapter);
 	}

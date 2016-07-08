@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.4"?>
 <plugin>
-   <extension-point id="consoleService" name="Arduino Launch Console Service" schema="schema/consoleService.exsd"/>
    <extension
          point="org.eclipse.debug.core.launchConfigurationTypes">
       <launchConfigurationType
@@ -75,38 +74,29 @@
          </run>
       </runtime>
       <builder
-            id="org.eclipse.cdt.arduino.core.arduinoBuilder">
+            id="com.qnx.tools.ide.qde.core.cbuilder">
       </builder>
    </extension>
    <extension
-         id="arduinoBuilder"
-         name="%ArduinoBuilder.name"
-         point="org.eclipse.core.resources.builders">
-      <builder
-            callOnEmptyDelta="true"
-            hasNature="true"
-            isConfigurable="true"
-            supportsConfigurations="true">
-         <run
-               class="org.eclipse.cdt.arduino.core.internal.build.ArduinoBuilder">
-         </run>
-      </builder>
+         point="org.eclipse.launchbar.core.launchTargetTypes">
+      <launchTargetType
+            id="org.eclipse.cdt.arduino.core.connectionType"
+            provider="org.eclipse.cdt.arduino.core.internal.remote.ArduinoLaunchTargetProvider">
+      </launchTargetType>
    </extension>
    <extension
-         point="org.eclipse.cdt.core.ScannerInfoProvider2">
+         point="org.eclipse.cdt.core.buildConfigProvider">
       <provider
-            builder="org.eclipse.cdt.arduino.core.arduinoBuilder"
-            class="org.eclipse.cdt.arduino.core.internal.ArduinoScannerInfoProvider">
+            class="org.eclipse.cdt.arduino.core.internal.build.ArduinoBuildConfigurationProvider"
+            id="org.eclipse.cdt.arduino.core.provider"
+            natureId="org.eclipse.cdt.arduino.core.arduinoNature">
       </provider>
    </extension>
    <extension
-         point="org.eclipse.core.runtime.adapters">
-      <factory
-            adaptableType="org.eclipse.core.resources.IBuildConfiguration"
-            class="org.eclipse.cdt.arduino.core.internal.build.ArduinoBuildConfiguration$Factory">
-         <adapter
-               type="org.eclipse.cdt.arduino.core.internal.build.ArduinoBuildConfiguration">
-         </adapter>
-      </factory>
+         point="org.eclipse.cdt.core.toolChainProvider">
+      <provider
+            class="org.eclipse.cdt.arduino.core.internal.build.ArduinoToolChainProvider"
+            id="org.eclipse.cdt.arduino.core.toolChainProvider">
+      </provider>
    </extension>
 </plugin>

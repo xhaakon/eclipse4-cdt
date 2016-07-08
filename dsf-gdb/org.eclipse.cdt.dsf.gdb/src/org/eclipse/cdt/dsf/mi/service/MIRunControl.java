@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2013 Wind River Systems and others.
+ * Copyright (c) 2006, 2016 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -108,7 +108,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 		/**
 		 * Integer ID that is used to identify the thread in the GDB/MI protocol.
 		 */
-		private final int fThreadId;
+		private final String fThreadId;
 
 		/**
 		 * Constructor for the context.  It should not be called directly by clients.
@@ -122,7 +122,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 		 * @param containerDmc The container that this context belongs to.
 		 * @param threadId GDB/MI thread identifier.
 		 */
-		protected MIExecutionDMC(String sessionId, IContainerDMContext containerDmc, int threadId) {
+		protected MIExecutionDMC(String sessionId, IContainerDMContext containerDmc, String threadId) {
 			super(sessionId, containerDmc != null ? new IDMContext[] { containerDmc } : new IDMContext[0]);
 			fThreadId = threadId;
 		}
@@ -132,7 +132,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 		 * @return
 		 */
 		@Override
-		public int getThreadId(){
+		public String getThreadId(){
 			return fThreadId;
 		}
 
@@ -141,11 +141,11 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 
 		@Override
 		public boolean equals(Object obj) {
-			return super.baseEquals(obj) && ((MIExecutionDMC)obj).fThreadId == fThreadId;
+			return super.baseEquals(obj) && ((MIExecutionDMC)obj).fThreadId.equals(fThreadId);
 		}
 
 		@Override
-		public int hashCode() { return super.baseHashCode() ^ fThreadId; }
+		public int hashCode() { return super.baseHashCode() + fThreadId.hashCode(); }
 	}
 
 	@Immutable
@@ -417,7 +417,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 	 */
 	protected MIStoppedEvent fSilencedSignalEvent;
 	
-	private static final int FAKE_THREAD_ID = 0;
+	private static final String FAKE_THREAD_ID = "0"; //$NON-NLS-1$
 
     public MIRunControl(DsfSession session) {
         super(session);
@@ -474,7 +474,10 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
     /** @since 2.0 */
     protected ICommandControlService getConnection() { return fConnection; }
 
-    public IMIExecutionDMContext createMIExecutionContext(IContainerDMContext container, int threadId) {
+    /**
+     * @since 5.0
+     */
+    public IMIExecutionDMContext createMIExecutionContext(IContainerDMContext container, String threadId) {
         return new MIExecutionDMC(getSession().getId(), container, threadId);
     }
     
@@ -524,9 +527,9 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 
     	MIBreakpointDMContext _bp = null;
     	if (e instanceof MIBreakpointHitEvent) {
-    	    int bpId = ((MIBreakpointHitEvent)e).getNumber();
+    	    String bpId = ((MIBreakpointHitEvent)e).getNumber();
             IBreakpointsTargetDMContext bpsTarget = DMContexts.getAncestorOfType(e.getDMContext(), IBreakpointsTargetDMContext.class);
-            if (bpsTarget != null && bpId >= 0) {
+            if (bpsTarget != null && !bpId.isEmpty()) {
                 _bp = new MIBreakpointDMContext(getSession().getId(), new IDMContext[] {bpsTarget}, bpId); 
             }
     	}
@@ -583,7 +586,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
     @DsfServiceEventHandler
     public void eventDispatched(final MIThreadCreatedEvent e) {
         IContainerDMContext containerDmc = e.getDMContext();
-        IMIExecutionDMContext executionCtx = e.getStrId() != null ? createMIExecutionContext(containerDmc, e.getId()) : null;
+        IMIExecutionDMContext executionCtx = e.getStrId() != null ? createMIExecutionContext(containerDmc, e.getStrId()) : null;
         getSession().dispatchEvent(new StartedDMEvent(executionCtx, e), getProperties());
     }
 
@@ -596,7 +599,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
     @DsfServiceEventHandler
     public void eventDispatched(final MIThreadExitEvent e) {
         IContainerDMContext containerDmc = e.getDMContext();
-        IMIExecutionDMContext executionCtx = e.getStrId() != null ? createMIExecutionContext(containerDmc, e.getId()) : null;
+        IMIExecutionDMContext executionCtx = e.getStrId() != null ? createMIExecutionContext(containerDmc, e.getStrId()) : null;
     	getSession().dispatchEvent(new ExitedDMEvent(executionCtx, e), getProperties());
     }
 
@@ -894,16 +897,16 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
     
 
 	private IExecutionDMContext[] makeExecutionDMCs(IContainerDMContext containerCtx, MIThreadListIdsInfo info) {
-		if (info.getThreadIds().length == 0) {
+		if (info.getStrThreadIds().length == 0) {
 			// Main thread always exist even if it is not reported by GDB.
 			// So create thread-id = 0 when no thread is reported.
 			// This hack is necessary to prevent AbstractMIControl from issuing a thread-select
 			// because it doesn't work if the application was not compiled with pthread.
 			return new IMIExecutionDMContext[]{createMIExecutionContext(containerCtx, FAKE_THREAD_ID)};
 		} else {
-			IExecutionDMContext[] executionDmcs = new IMIExecutionDMContext[info.getThreadIds().length];
-			for (int i = 0; i < info.getThreadIds().length; i++) {
-				executionDmcs[i] = createMIExecutionContext(containerCtx, info.getThreadIds()[i]);
+			IExecutionDMContext[] executionDmcs = new IMIExecutionDMContext[info.getStrThreadIds().length];
+			for (int i = 0; i < info.getStrThreadIds().length; i++) {
+				executionDmcs[i] = createMIExecutionContext(containerCtx, info.getStrThreadIds()[i]);
 			}
 			return executionDmcs;
 		}
@@ -1562,7 +1565,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 						attr.put(MIBreakpoints.FILE_NAME, debuggerPath);
 						attr.put(MIBreakpoints.LINE_NUMBER, lineNumber);
 						attr.put(MIBreakpointDMData.IS_TEMPORARY, true);
-						attr.put(MIBreakpointDMData.THREAD_ID, Integer.toString(threadExecDmc.getThreadId()));
+						attr.put(MIBreakpointDMData.THREAD_ID, threadExecDmc.getThreadId());
 
 						// Now do the operation
 						moveToLocation(context, location, attr, rm);
@@ -1609,7 +1612,7 @@ public class MIRunControl extends AbstractDsfService implements IMIRunControl, I
 				attr.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.BREAKPOINT);
 				attr.put(MIBreakpoints.ADDRESS, "0x" + address.toString(16)); //$NON-NLS-1$
 				attr.put(MIBreakpointDMData.IS_TEMPORARY, true);
-				attr.put(MIBreakpointDMData.THREAD_ID,  Integer.toString(threadExecDmc.getThreadId()));
+				attr.put(MIBreakpointDMData.THREAD_ID,  threadExecDmc.getThreadId());
 
 				// Now do the operation
 				moveToLocation(context, location, attr, rm);

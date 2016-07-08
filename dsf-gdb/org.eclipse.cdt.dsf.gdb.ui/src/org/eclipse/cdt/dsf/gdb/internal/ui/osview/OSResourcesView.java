@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2012 Mentor Graphics and others.
+ * Copyright (c) 2011, 2016 Mentor Graphics and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     Vladimir Prus (Mentor Graphics) - initial API and implementation
+ *     Teodor Madan (Freescale Semiconductor) - Bug 486521: attaching to selected process
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.gdb.internal.ui.osview;
@@ -25,6 +26,7 @@ import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
+import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS2.IResourcesInformation;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
@@ -40,6 +42,10 @@ import org.eclipse.debug.ui.contexts.IDebugContextManager;
 import org.eclipse.debug.ui.contexts.IDebugContextService;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IMenuListener;
+import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -48,17 +54,26 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.dnd.Clipboard;
+import org.eclipse.swt.dnd.TextTransfer;
+import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.ui.IActionBars;
+import org.eclipse.ui.ISharedImages;
+import org.eclipse.ui.IWorkbenchActionConstants;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.progress.UIJob;
 import org.osgi.framework.Bundle;
@@ -138,8 +153,8 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 			@Override
 			public void handleEvent(Event event) {
 				if (event.text.equals("fetch")) //$NON-NLS-1$
-					if (fSessionData != null && fResourceClass != null)
-						fSessionData.fetchData(fResourceClass);
+					if (fSessionData != null && getResourceClass() != null)
+						fSessionData.fetchData(getResourceClass());
 			}
 		});
 		fNothingLabelContainer.setBackground(fNothingLabel.getBackground());
@@ -152,9 +167,9 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 
 			@Override
 			public void resourceClassChanged(String newClass) {
-				fResourceClass = newClass;
+				setResourceClass(newClass);
 				// Since user explicitly changed the class, initiate fetch immediately.
-				fSessionData.fetchData(fResourceClass);
+				fSessionData.fetchData(getResourceClass());
 				// Do not call 'update()' here. fetchData call above will notify
 				// us at necessary moments.
 			}
@@ -165,8 +180,8 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 		fRefreshAction = new Action() {
 			@Override
 			public void run() {
-				if (fSessionData != null && fResourceClass != null)
-					fSessionData.fetchData(fResourceClass);
+				if (fSessionData != null && getResourceClass() != null)
+					fSessionData.fetchData(getResourceClass());
 			}
 		};
 		fRefreshAction.setText(Messages.OSView_3);
@@ -174,7 +189,7 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
         try {
             Bundle bundle= Platform.getBundle("org.eclipse.ui"); //$NON-NLS-1$
             URL url = bundle.getEntry("/"); //$NON-NLS-1$
-            url = new URL(url, "icons/full/elcl16/refresh_nav.gif"); //$NON-NLS-1$
+            url = new URL(url, "icons/full/elcl16/refresh_nav.png"); //$NON-NLS-1$
             ImageDescriptor candidate = ImageDescriptor.createFromURL(url);
             if (candidate != null && candidate.getImageData() != null) {
                 fRefreshAction.setImageDescriptor(candidate);
@@ -182,12 +197,36 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
         } catch (Exception e) {
         }
         bars.getToolBarManager().add(fRefreshAction);
+        bars.setGlobalActionHandler(ActionFactory.COPY.getId(), new CopyAction());
         bars.updateActionBars();
 
-        fResourceClass = fResourceClassEditor.getResourceClassId();
+        createContextMenu();
+		getSite().setSelectionProvider(fViewer);
+		
+
+        setResourceClass(fResourceClassEditor.getResourceClassId());
 
 		setupContextListener();
 		DsfSession.addSessionEndedListener(this);
+		
+
+	}
+
+	private void createContextMenu() {
+		MenuManager menuMgr= new MenuManager("#PopUp"); //$NON-NLS-1$
+		menuMgr.setRemoveAllWhenShown(true);
+		menuMgr.addMenuListener(new IMenuListener() {
+			@Override
+			public void menuAboutToShow(IMenuManager manager) {
+				manager.add(new CopyAction());
+				manager.add(new Separator(IWorkbenchActionConstants.MB_ADDITIONS));
+			}
+		});
+		Menu menu= menuMgr.createContextMenu(fViewer.getControl());
+		fViewer.getControl().setMenu(menu);
+
+		// register the context menu such that other plug-ins may contribute to it
+		getSite().registerContextMenu(menuMgr, fViewer);
 	}
 
 	private void setupContextListener() {
@@ -370,7 +409,7 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 
 		boolean enable = fSessionData.canFetchData();	
 		fRefreshAction.setEnabled(enable);
-		fResourceClass = fResourceClassEditor.updateClasses(fSessionData.getResourceClasses());
+		setResourceClass(fResourceClassEditor.updateClasses(fSessionData.getResourceClasses()));
 		fResourceClassEditor.setEnabled(enable);
 		
 		if (!fSessionData.osResourcesSupported()) {
@@ -394,7 +433,7 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 			return;
 		}
 
-		if (fResourceClass == null)
+		if (getResourceClass() == null)
 		{
 			fRefreshAction.setEnabled(false);
 			fResourceClassEditor.setEnabled(true);
@@ -403,7 +442,7 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 		}
 		
 
-		final OSData data = fSessionData.existingData(fResourceClass);
+		final OSData data = fSessionData.existingData(getResourceClass());
 
 		if (fSessionData.fetchingContent())
 		{
@@ -419,7 +458,7 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 		else
 		{
 			SimpleDateFormat format = new SimpleDateFormat(Messages.OSView_8);
-			fRefreshAction.setToolTipText(format.format(fSessionData.timestamp(fResourceClass)));
+			fRefreshAction.setToolTipText(format.format(fSessionData.timestamp(getResourceClass())));
 			if (data != fTableShownData)
 			{
 				Job job = new UIJob(Messages.OSView_9) {
@@ -486,11 +525,11 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 		while (table.getColumnCount() > 0)
 			table.getColumns()[0].dispose();
 
-		fColumnLayout = fColumnLayouts.get(fResourceClass);
+		fColumnLayout = fColumnLayouts.get(getResourceClass());
 		if (fColumnLayout == null)
 		{
-			fColumnLayout = new ColumnLayout(fResourceClass);
-			fColumnLayouts.put(fResourceClass, fColumnLayout);
+			fColumnLayout = new ColumnLayout(getResourceClass());
+			fColumnLayouts.put(getResourceClass(), fColumnLayout);
 		}
 		
 		for (int i = 0; i < data.getColumnCount(); ++i) {
@@ -666,5 +705,72 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 	@Override
 	public void setFocus() {
 		fViewer.getControl().setFocus();
+	}
+
+	/**
+	 * @return the currently selected and displayed resource class
+	 */
+	public String getResourceClass() {
+		return fResourceClass;
+	}
+
+	/**
+	 * @param resourceClass the resource class to set
+	 */
+	private void setResourceClass(String resourceClass) {
+		fResourceClass = resourceClass;
+	}
+	
+	/**
+	 * @return currently debug context for which resources are displayed
+	 */
+	public ICommandControlDMContext getSessionContext() {
+		return fSessionData != null ? fSessionData.getContext() : null;
+	}
+
+	/**
+	 * Retargetted copy to clipboard action
+	 */
+	private final class CopyAction extends Action {
+		private static final char COLUMN_SEPARATOR = ',';
+		private final String EOL_CHAR = System.getProperty("line.separator"); //$NON-NLS-1$
+
+		private CopyAction() {
+			setText(Messages.OSView_CopyAction);
+			setImageDescriptor(
+					PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_TOOL_COPY));
+		}
+
+		@Override
+		public boolean isEnabled() {
+			return !fViewer.getSelection().isEmpty();
+		}
+
+		@Override
+		public void run() {
+			ISelection selection = fViewer.getSelection();
+			if (selection.isEmpty())
+				return;
+
+			if (selection instanceof IStructuredSelection) {
+				@SuppressWarnings("unchecked")
+				OSData data = ((ContentLabelProviderWrapper<OSData>) fViewer.getContentProvider()).getData();
+				StringBuilder exportStr = new StringBuilder();
+				for (Object elmnt : ((IStructuredSelection) selection).toList()) {
+					assert elmnt instanceof IResourcesInformation;
+					if (elmnt instanceof IResourcesInformation) {
+						IResourcesInformation ri = (IResourcesInformation) elmnt;
+						exportStr.append(data.getColumnText(ri, 0));
+						for (int i = 1; i < data.getColumnCount(); i++) {
+							exportStr.append(COLUMN_SEPARATOR).append(data.getColumnText(ri, i));
+						}
+						exportStr.append(EOL_CHAR);
+					}
+				}
+				Clipboard cb = new Clipboard(Display.getDefault());
+				TextTransfer textTransfer = TextTransfer.getInstance();
+				cb.setContents(new Object[] { exportStr.toString() }, new Transfer[] { textTransfer });
+			}
+		}
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
+import org.eclipse.cdt.make.core.makefile.ICommand;
+
 /**
  */
 public class GNUTargetRule extends TargetRule {
@@ -17,10 +19,10 @@ public class GNUTargetRule extends TargetRule {
 	String[] orderOnlyPrerequisites;
 	boolean doubleColon;
 
-	public GNUTargetRule(Directive parent, Target target, boolean double_colon, String[] normal_prereqs, String[] order_prereqs, Command[] commands) {
-		super(parent, target, normal_prereqs, commands);
-		orderOnlyPrerequisites = order_prereqs.clone();
-		doubleColon = double_colon;
+	public GNUTargetRule(Directive parent, Target target, boolean doubleColon, String[] normalPrereqs, String[] orderPrereqs, Command[] commands) {
+		super(parent, target, normalPrereqs, commands);
+		orderOnlyPrerequisites = orderPrereqs.clone();
+		this.doubleColon = doubleColon;
 	}
 
 	public boolean isDoubleColon() {
@@ -35,12 +37,9 @@ public class GNUTargetRule extends TargetRule {
 		return orderOnlyPrerequisites.clone();
 	}
 
-
-	/**
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append(getTarget().toString());
 		buffer.append(':');
 		String[] reqs = getNormalPrerequisites();

@@ -63,17 +63,17 @@ import org.eclipse.cdt.dsf.mi.service.command.events.MIStoppedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIDataListRegisterNamesInfo;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.ServiceEventWaitor;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-@RunWith(BackgroundRunner.class)
-public class MIRegistersTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class MIRegistersTest extends BaseParametrizedTestCase {
 	// Static list of register names as obtained directly from GDB.
 	// We make it static it does not get re-set for every test
 	protected static List<String> fRegisterNames = null;
@@ -179,7 +179,7 @@ public class MIRegistersTest extends BaseTestCase {
 	public void doAfterTest() throws Exception {
 		super.doAfterTest();
 
-		fServicesTracker.dispose();
+		if (fServicesTracker!=null) fServicesTracker.dispose();
 		fRegService = null;
 	}
 
@@ -502,8 +502,9 @@ public class MIRegistersTest extends BaseTestCase {
 		MIStoppedEvent stoppedEvent = SyncUtil.step(StepType.STEP_OVER);
 		int depth = SyncUtil.getStackDepth(stoppedEvent.getDMContext());
 
-		// validate expected stack depth
-		assertEquals(4, depth);
+		// we need at least 2 levels of stack frame to continue this test.
+		// note: the depth is glibc-version-dependent
+		assertTrue(depth >= 2);
 
 		// Resolve the register name of the stack pointer
 		String sp_name = resolveStackPointerName();

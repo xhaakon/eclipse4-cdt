@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2014 IBM Corporation and others.
+ * Copyright (c) 2006, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,8 +15,6 @@ import static org.eclipse.cdt.core.dom.lrparser.action.ParserUtil.length;
 import static org.eclipse.cdt.core.dom.lrparser.action.ParserUtil.offset;
 
 import java.util.List;
-
-import lpg.lpgjavaruntime.IToken;
 
 import org.eclipse.cdt.core.dom.ast.IASTASMDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTArrayDeclarator;
@@ -85,6 +83,8 @@ import org.eclipse.cdt.internal.core.dom.parser.AbstractGNUSourceCodeParser;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousExpression;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousStatement;
 
+import lpg.lpgjavaruntime.IToken;
+
 /**
  * Parser semantic actions that are common to both C and C++.
  * 
@@ -149,7 +149,7 @@ public abstract class BuildASTParserAction extends AbstractParserAction {
 
 	public void consumeTranslationUnit() {
 		if(tu == null)
-			tu = nodeFactory.newTranslationUnit();
+			tu = nodeFactory.newTranslationUnit(null);
 		
 		// can't close the outermost scope
 		for(Object o : astStack.topScope()) {
@@ -1021,7 +1021,7 @@ public abstract class BuildASTParserAction extends AbstractParserAction {
 	
 	private boolean discardInitializer(IASTExpression expression) {
 		return initializerListNestingLevel > 0
-		    && "true".equals(properties.get(LRParserProperties.SKIP_TRIVIAL_EXPRESSIONS_IN_AGGREGATE_INITIALIZERS)) //$NON-NLS-1$
+		    && Boolean.parseBoolean(properties.get(LRParserProperties.SKIP_TRIVIAL_EXPRESSIONS_IN_AGGREGATE_INITIALIZERS))
 		    && !ASTQueries.canContainName(expression);
 	}
 	

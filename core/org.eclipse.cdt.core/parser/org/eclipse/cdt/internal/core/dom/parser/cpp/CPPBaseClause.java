@@ -63,6 +63,9 @@ public class CPPBaseClause implements ICPPBase, ICPPInternalBase {
 	    			baseClass = new CPPClassType.CPPClassTypeProblem(nameSpec, ISemanticProblem.BINDING_NO_CLASS);
 	    		}
 	    	}
+	    	if (base.isPackExpansion()) {
+	    		baseClass = new CPPParameterPackType(baseClass);
+	    	}
 		}
 		return baseClass;
     }
@@ -86,12 +89,6 @@ public class CPPBaseClause implements ICPPBase, ICPPInternalBase {
 	@Override
 	public boolean isInheritedConstructorsSource() {
 		return inheritedConstructorsSource;
-	}
-
-	@Override
-	@Deprecated
-	public IName getBaseClassSpecifierName() {
-		return base.getName();
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Red Hat Inc.
+ * Copyright (c) 2009, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,22 +11,23 @@
 package org.eclipse.cdt.internal.autotools.core.configure;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MultiArgConfigureOption extends AbstractConfigurationOption {
 
 	private String value;
-	private ArrayList<String> userArgs;
+	private List<String> userArgs;
 	private boolean isDirty;
 	
 	public MultiArgConfigureOption(String name, AutotoolsConfiguration cfg) {
 		super(name, cfg);
-		this.value = ""; // $NON-NLS-1$
+		this.value = ""; //$NON-NLS-1$
 	}
 	
 	public MultiArgConfigureOption(String name, String msgName, AutotoolsConfiguration cfg) {
 		super(name, msgName, cfg);
-		this.value = ""; // $NON-NLS-1$
+		this.value = ""; //$NON-NLS-1$
 	}
 	
 	private MultiArgConfigureOption(String name, AutotoolsConfiguration cfg,
@@ -35,10 +36,12 @@ public class MultiArgConfigureOption extends AbstractConfigurationOption {
 		this.value = value;
 	}
 	
+	@Override
 	public String getValue() {
 		return value;
 	}
 	
+	@Override
 	public void setValue(String newValue) {
 		if (!newValue.equals(value)) {
 			cfg.setDirty(true);
@@ -47,25 +50,29 @@ public class MultiArgConfigureOption extends AbstractConfigurationOption {
 		}
 	}
 
+	@Override
 	public boolean isParmSet() {
 		return value.length() > 0;
 	}
 	
+	@Override
 	public boolean isMultiArg() {
 		return true;
 	}
 	
+	@Override
 	public String getParameter() {
 		return value;
 	}
 	
-	public ArrayList<String> getParameters() {
+	@Override
+	public List<String> getParameters() {
 		// May be multiple user-specified options in which case we
 		// need to split them up into individual options
 		if (!isDirty && userArgs != null)
 			return userArgs;
 		// Otherwise, we need to calculate userArgs
-		userArgs = new ArrayList<String>();
+		userArgs = new ArrayList<>();
 		isDirty = false;
 		int lastArgIndex = -1;
 		int i = 0;
@@ -109,10 +116,12 @@ public class MultiArgConfigureOption extends AbstractConfigurationOption {
 		return userArgs;
 	}
 
+	@Override
 	public IConfigureOption copy(AutotoolsConfiguration config) {
 		return new MultiArgConfigureOption(name, config, value);
 	}
 
+	@Override
 	public int getType() {
 		return MULTIARG;
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2012 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2016 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,6 +13,7 @@
 package org.eclipse.cdt.internal.core.index.composite.cpp;
 
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
@@ -139,7 +140,7 @@ class CompositeCPPFunction extends CompositeCPPBinding implements ICPPFunction, 
 	}
 
 	@Override
-	public ICPPEvaluation getReturnExpression() {
-		return CPPFunction.getReturnExpression((ICPPFunction) rbinding);
+	public ICPPEvaluation getReturnExpression(IASTNode point) {
+		return CPPFunction.getReturnExpression((ICPPFunction) rbinding, point);
 	}
 }

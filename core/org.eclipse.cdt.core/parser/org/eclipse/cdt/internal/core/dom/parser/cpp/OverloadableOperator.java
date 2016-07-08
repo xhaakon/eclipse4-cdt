@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2008, 2009 IBM Corporation and others.
+ *  Copyright (c) 2008, 2014 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -176,7 +176,7 @@ public enum OverloadableOperator {
 		switch (binaryOp) {
 		case IASTBinaryExpression.op_binaryAnd:     	return AMPER;
 		case IASTBinaryExpression.op_binaryAndAssign:   return AMPERASSIGN;
-		case IASTBinaryExpression.op_pmarrow:         	return ARROW;
+		case IASTBinaryExpression.op_pmarrow:         	return ARROWSTAR;
 		case IASTBinaryExpression.op_binaryOr:			return BITOR;
 		case IASTBinaryExpression.op_binaryOrAssign:	return BITORASSIGN;
 		case IASTBinaryExpression.op_shiftLeft:         return SHIFTL;

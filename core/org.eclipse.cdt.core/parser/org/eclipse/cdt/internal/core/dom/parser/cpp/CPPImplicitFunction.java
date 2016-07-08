@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 IBM Corporation and others.
+ * Copyright (c) 2005, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     IBM - Initial API and implementation
  *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -26,18 +27,20 @@ public class CPPImplicitFunction extends CPPFunction {
 	private ICPPParameter[] params;
 	private IScope scope;
     private ICPPFunctionType functionType;
+	private final boolean isConstexpr;
 	private final boolean takesVarArgs;
 	private boolean isDeleted;
 	private final char[] name;
 	
 	public CPPImplicitFunction(char[] name, IScope scope, ICPPFunctionType type,
-			ICPPParameter[] params, boolean takesVarArgs) {
+			ICPPParameter[] params, boolean isConstexpr, boolean takesVarArgs) {
         super(null);
         this.name= name;
 		this.scope= scope;
 		this.functionType= type;
 		this.params= params;
 		this.takesVarArgs= takesVarArgs;
+        this.isConstexpr = isConstexpr;
 	}
 
     @Override
@@ -49,7 +52,7 @@ public class CPPImplicitFunction extends CPPFunction {
 	public ICPPFunctionType getType() {
     	return functionType;
     }
-    
+
     @Override
 	public String getName() {
         return String.valueOf(name);
@@ -64,27 +67,32 @@ public class CPPImplicitFunction extends CPPFunction {
 	public IScope getScope() {
         return scope;
     }
-    
+
     @Override
 	public IScope getFunctionScope() {
         return null;
     }
-    
+
+	@Override
+	public boolean isConstexpr() {
+		return isConstexpr;
+	}
+
     @Override
 	public boolean takesVarArgs() {
         return takesVarArgs;
     }
-    
+
     @Override
 	public boolean isDeleted() {
     	return isDeleted;
     }
-    
+
     @Override
 	public IBinding getOwner() {
     	return null;
     }
-    
+
     public void setDeleted(boolean val) {
     	isDeleted= val;
     }	

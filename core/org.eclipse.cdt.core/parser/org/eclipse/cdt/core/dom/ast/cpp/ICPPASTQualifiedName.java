@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -47,20 +47,6 @@ public interface ICPPASTQualifiedName extends ICPPASTName, IASTNameOwner {
 	 * @since 5.6
 	 */
 	public void setLastName(ICPPASTName name);
-
-	/**
-	 * Returns all name segments.
-	 *
-	 * @return <code>IASTName []</code>
-	 * 
-	 * @deprecated This cannot represent all qualified names in C++11,
-	 * where the first segment of a qualifier name may be a decltype-specifier.
-	 * Use {@link #getLastName()} and {@link #getQualifier()} instead.
-	 * If called on a name where a segment is a decltype-specifier,
-	 * UnsupportedOperationException is thrown.
-	 */
-	@Deprecated
-	public IASTName[] getNames();
 
 	/**
 	 * Returns all segments of the name but the last.

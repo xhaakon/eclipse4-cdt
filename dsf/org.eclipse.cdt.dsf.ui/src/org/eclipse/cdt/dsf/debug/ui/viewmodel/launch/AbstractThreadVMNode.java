@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2011 Wind River Systems and others.
+ * Copyright (c) 2006, 2015 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -136,17 +136,17 @@ public abstract class AbstractThreadVMNode extends AbstractExecutionContextVMNod
     	}
 
     	runControl.getExecutionContexts(contDmc,
-    			new ViewerDataRequestMonitor<IExecutionDMContext[]>(getSession().getExecutor(), update){
-    				@Override
-    				public void handleCompleted() {
-    					if (!isSuccess()) {
-    						handleFailedUpdate(update);
-    						return;
-    					}
-    					fillUpdateWithVMCs(update, getData());
-    					update.done();
+    		new ViewerDataRequestMonitor<IExecutionDMContext[]>(getSession().getExecutor(), update){
+    			@Override
+    			public void handleCompleted() {
+    				if (!isSuccess()) {
+    					handleFailedUpdate(update);
+    					return;
     				}
-    			});
+    				fillUpdateWithVMCs(update, getData());
+    				update.done();
+    			}
+    		});
     }
 
 
@@ -242,17 +242,17 @@ public abstract class AbstractThreadVMNode extends AbstractExecutionContextVMNod
             }
         } else if (e instanceof SteppingTimedOutEvent && 
                 ((SteppingTimedOutEvent)e).getDMContext() instanceof IContainerDMContext) 
-     {
-          // The timed out event occured on a container and not on a thread.  Do not
-          // return a context for this event, which will force the view model to generate
-          // a delta for all the threads.
-          rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
-          rm.done();
-          return;
+        {
+        	// The timed out event occurred on a container and not on a thread.  Do not
+        	// return a context for this event, which will force the view model to generate
+        	// a delta for all the threads.
+        	rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
+        	rm.done();
+        	return;
         } else if (e instanceof FullStackRefreshEvent &&
                 ((FullStackRefreshEvent)e).getDMContext() instanceof IContainerDMContext)
         {
-        	// The step sequence end event occured on a container and not on a thread.  Do not
+        	// The step sequence end event occurred on a container and not on a thread.  Do not
         	// return a context for this event, which will force the view model to generate
         	// a delta for all the threads.
         	rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.NOT_SUPPORTED, "", null)); //$NON-NLS-1$
@@ -371,7 +371,7 @@ public abstract class AbstractThreadVMNode extends AbstractExecutionContextVMNod
             // Also IContainerResumedDMEvent sub-classes IResumedDMEvent and
             // IContainerSuspendedDMEvnet sub-classes ISuspendedEvent.
             // Because of this relationship, the thread VM node can be called
-            // with data-model evnets for the containers.  This statement
+            // with data-model events for the containers.  This statement
             // filters out those event.
             rm.done();
         } else if(e instanceof IResumedDMEvent) {
@@ -424,5 +424,4 @@ public abstract class AbstractThreadVMNode extends AbstractExecutionContextVMNod
             rm.done();
         }
     }
-
 }

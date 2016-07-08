@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012, 2016 Red Hat Inc. and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.core;
 
 import java.io.IOException;
@@ -47,7 +54,7 @@ public class AutotoolsConfigurationBuilder extends ACBuilder {
 	}
 
 	@Override
-	protected IProject[] build(int kind, @SuppressWarnings("rawtypes") Map args, IProgressMonitor monitor)
+	protected IProject[] build(int kind, Map<String, String> args, IProgressMonitor monitor)
 	throws CoreException {
 		IProject project = getProject();
 		if(!isCdtProjectCreated(project))
@@ -84,7 +91,7 @@ public class AutotoolsConfigurationBuilder extends ACBuilder {
 
 				OutputStream cos = console.getOutputStream();
 				String errormsg = AutotoolsPlugin.getResourceString(BUILD_STOPPED);
-				StringBuffer buf = new StringBuffer(errormsg);
+				StringBuilder buf = new StringBuilder(errormsg);
 				buf.append(System.getProperty("line.separator", "\n")); //$NON-NLS-1$ //$NON-NLS-2$
 				buf.append("(").append(result.getMessage()).append(")"); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -93,7 +100,6 @@ public class AutotoolsConfigurationBuilder extends ACBuilder {
 					cos.flush();
 					cos.close();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					AutotoolsPlugin.log(e);
 				}
 			}
@@ -103,7 +109,7 @@ public class AutotoolsConfigurationBuilder extends ACBuilder {
 	}
 	
 	@Override
-	protected void clean(IProgressMonitor monitor) throws CoreException {
+	protected void clean(IProgressMonitor monitor) {
 		IProject project = getProject();
 		final IManagedBuildInfo info = ManagedBuildManager.getBuildInfo(getProject());
 		if (shouldBuild(CLEAN_BUILD, info)) {
@@ -123,7 +129,7 @@ public class AutotoolsConfigurationBuilder extends ACBuilder {
 	}
 
 	protected MultiStatus performMakefileGeneration(IProject project, IManagedBuildInfo info,
-			IProgressMonitor monitor) throws CoreException {
+			IProgressMonitor monitor) {
 		MultiStatus result;
 		
 		try {

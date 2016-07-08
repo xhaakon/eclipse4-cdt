@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -31,7 +31,7 @@ import org.eclipse.cdt.internal.core.pdom.dom.PDOMLinkage;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMName;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMNode;
 import org.eclipse.cdt.internal.core.pdom.dom.cpp.PDOMCPPGlobalScope;
-import org.eclipse.cdt.qt.core.QtPlugin;
+import org.eclipse.cdt.internal.qt.core.Activator;
 import org.eclipse.core.runtime.CoreException;
 
 @SuppressWarnings("restriction")
@@ -279,21 +279,21 @@ public class QtPDOMLinkage extends PDOMLinkage {
 
 	@Override
 	public PDOMBinding addTypeBinding(IBinding binding) throws CoreException {
-		throw new CoreException(QtPlugin.error("Qt Linkage does not manage types")); //$NON-NLS-1$
+		throw new CoreException(Activator.error("Qt Linkage does not manage types")); //$NON-NLS-1$
 	}
 
 	@Override
 	public IType unmarshalType(ITypeMarshalBuffer buffer) throws CoreException {
-		throw new CoreException(QtPlugin.error("Qt Linkage does not marshal types")); //$NON-NLS-1$
+		throw new CoreException(Activator.error("Qt Linkage does not marshal types")); //$NON-NLS-1$
 	}
 
 	@Override
 	public IBinding unmarshalBinding(ITypeMarshalBuffer buffer) throws CoreException {
-		throw new CoreException(QtPlugin.error("Qt Linkage does not marshal bindings")); //$NON-NLS-1$
+		throw new CoreException(Activator.error("Qt Linkage does not marshal bindings")); //$NON-NLS-1$
 	}
 
 	@Override
 	public ISerializableEvaluation unmarshalEvaluation(ITypeMarshalBuffer typeMarshalBuffer) throws CoreException {
-		throw new CoreException(QtPlugin.error("Qt Linkage does not marshal evaluations")); //$NON-NLS-1$
+		throw new CoreException(Activator.error("Qt Linkage does not marshal evaluations")); //$NON-NLS-1$
 	}
 }

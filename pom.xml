@@ -10,23 +10,24 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>8.8.1-SNAPSHOT</version>
+	<version>9.0.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
 	<properties>
-		<tycho-version>0.24.0</tycho-version>
-		<tycho-extras-version>0.24.0</tycho-extras-version>
+		<tycho-version>0.25.0</tycho-version>
+		<tycho-extras-version>0.25.0</tycho-extras-version>
+		<cbi-plugins.version>1.1.3</cbi-plugins.version>
 		<sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
-		<cdt-site>http://hudson.eclipse.org/cdt/job/cdt-master/lastSuccessfulBuild/artifact/releng/org.eclipse.cdt.repo/target/repository</cdt-site>
-		<repo-path>tools/cdt/builds/8.8/nightly</repo-path>
+		<cdt-site>http://hudson.eclipse.org/cdt/job/cdt-9.0/lastSuccessfulBuild/artifact/releng/org.eclipse.cdt.repo/target/repository</cdt-site>
+		<repo-path>tools/cdt/builds/9.0/nightly</repo-path>
 		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
 		<sonar.jacoco.reportPath>${project.basedir}/../../target/jacoco.exec</sonar.jacoco.reportPath>
 		<sonar.java.source>1.7</sonar.java.source>
 		<target-platform>cdt</target-platform>
 		<help-docs-eclipserun-repo>http://download.eclipse.org/eclipse/updates/4.5</help-docs-eclipserun-repo>
 		<tycho.scmUrl>scm:git:git://git.eclipse.org/gitroot/cdt/org.eclipse.cdt.git</tycho.scmUrl>
-		<base.test.vmargs>-Xms256m -Xmx512m -XX:MaxPermSize=256m -ea</base.test.vmargs>
+		<base.test.vmargs>-Xms256m -Xmx512m -ea</base.test.vmargs>
 	</properties>
 
 	<licenses>
@@ -54,7 +55,6 @@
 		<module>core/org.eclipse.cdt.core.win32.x86_64</module>
 		<module>core/org.eclipse.cdt.core.macosx</module>
 		<module>core/org.eclipse.cdt.core.aix</module>
-		<module>core/org.eclipse.cdt.core.solaris</module>
 		<module>native/org.eclipse.cdt.native.serial</module>
 		<module>releng/org.eclipse.cdt.native-feature</module>
 		<module>releng/org.eclipse.cdt.native.source-feature</module>
@@ -80,6 +80,7 @@
 		<module>releng/org.eclipse.cdt.platform-feature</module>
 		<module>releng/org.eclipse.cdt.platform.source-feature</module>
 
+		<module>build/org.eclipse.cdt.build.gcc.core</module>
 		<module>build/org.eclipse.cdt.managedbuilder.gnu.ui</module>
 		<module>build/org.eclipse.cdt.gnu.build-feature</module>
 		<module>build/org.eclipse.cdt.gnu.build.source-feature</module>
@@ -89,8 +90,6 @@
 		<module>debug/org.eclipse.cdt.gdb-feature</module>
 		<module>debug/org.eclipse.cdt.gdb.source-feature</module>
 
-		<module>debug/org.eclipse.cdt.debug.mi.core</module>
-		<module>debug/org.eclipse.cdt.debug.mi.ui</module>
 		<module>launch/org.eclipse.cdt.launch</module>
 		<module>debug/org.eclipse.cdt.gnu.debug-feature</module>
 		<module>debug/org.eclipse.cdt.gnu.debug.source-feature</module>
@@ -107,9 +106,6 @@
 		<module>dsf-gdb/org.eclipse.cdt.gnu.dsf-feature</module>
 		<module>dsf-gdb/org.eclipse.cdt.gnu.dsf.source-feature</module>
 		<module>dsf-gdb/org.eclipse.cdt.gnu.multicorevisualizer-feature</module>
-
-		<module>p2/org.eclipse.cdt.p2</module>
-		<module>p2/org.eclipse.cdt.p2-feature</module>
 
 		<module>releng/org.eclipse.cdt-feature</module>
 
@@ -193,7 +189,6 @@
 		<module>build/org.eclipse.cdt.autotools.ui.tests</module>
 		<module>build/org.eclipse.cdt.autotools-feature</module>
 		<module>build/org.eclipse.cdt.autotools.source-feature</module>
-		<module>build/org.eclipse.linuxtools.cdt.autotools.core</module>
 
 		<module>launch/org.eclipse.cdt.docker.launcher</module>
 		<module>launch/org.eclipse.cdt.docker.launcher-feature</module>
@@ -213,8 +208,13 @@
 		
 		<module>qt/org.eclipse.cdt.qt.core</module>
 		<module>qt/org.eclipse.cdt.qt.ui</module>
-		<module>qt/org.eclipse.cdt.qt.tests</module>
+		<!--module>qt/org.eclipse.cdt.qt.core.tests</module-->
+		<module>qt/org.eclipse.cdt.qt.ui.tests</module>
 		<module>qt/org.eclipse.cdt.qt-feature</module>
+		
+		<module>build/org.eclipse.cdt.cmake.core</module>
+		<module>build/org.eclipse.cdt.cmake.ui</module>
+		<module>build/org.eclipse.cdt.cmake-feature</module>
 
 		<module>xlc/org.eclipse.cdt.errorparsers.xlc.tests</module>
 		
@@ -229,7 +229,6 @@
 		<module>lrparser/org.eclipse.cdt.core.lrparser.tests</module>
 		<module>upc/org.eclipse.cdt.core.parser.upc.tests</module>
 		<module>xlc/org.eclipse.cdt.core.lrparser.xlc.tests</module>
-		<module>debug/org.eclipse.cdt.debug.ui.tests</module>
 -->
 		<module>releng/org.eclipse.cdt.target</module>
 		<module>releng/org.eclipse.cdt.testing</module>
@@ -313,7 +312,7 @@
 					<plugin>
 						<groupId>org.eclipse.cbi.maven.plugins</groupId>
 						<artifactId>eclipse-jarsigner-plugin</artifactId>
-						<version>1.1.2</version>
+						<version>${cbi-plugins.version}</version>
 						<executions>
 							<execution>
 								<id>sign</id>
@@ -416,11 +415,6 @@
 									<arch>ppc</arch>
 								</environment>
 								<environment>
-									<os>solaris</os>
-									<ws>gtk</ws>
-									<arch>sparc</arch>
-								</environment>
-								<environment>
 									<os>linux</os>
 									<ws>gtk</ws>
 									<arch>ppc64le</arch>
@@ -483,11 +477,6 @@
 							<ws>gtk</ws>
 							<arch>ppc</arch>
 						</environment>
-						<environment>
-							<os>solaris</os>
-							<ws>gtk</ws>
-							<arch>sparc</arch>
-						</environment>
 					</environments>
 					<target>
 						<artifact>
@@ -518,7 +507,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.7.4.201502262128</version>
+				<version>0.7.6.201602180812</version>
 				<executions>
 					<execution>
 						<id>pre-test</id>
@@ -595,7 +584,7 @@
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>findbugs-maven-plugin</artifactId>
-					<version>3.0.0</version>
+					<version>3.0.3</version>
 					<configuration>
 						<xmlOutput>true</xmlOutput>
 						<excludeFilterFile>releng/findbugs-exclude.xml</excludeFilterFile>
@@ -612,7 +601,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-pmd-plugin</artifactId>
-					<version>3.4</version>
+					<version>3.6</version>
 					<configuration>
 						<sourceEncoding>utf-8</sourceEncoding>
 						<minimumTokens>100</minimumTokens>

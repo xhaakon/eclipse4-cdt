@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -31,6 +31,7 @@ import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_pod;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_polymorphic;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_standard_layout;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_trivial;
+import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_trivially_copyable;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_union;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_sizeof;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_sizeofParameterPack;
@@ -43,13 +44,13 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 public class EvalUnaryTypeID extends CPPDependentEvaluation {
@@ -116,6 +117,7 @@ public class EvalUnaryTypeID extends CPPDependentEvaluation {
 		case op_is_polymorphic:
 		case op_is_standard_layout:
 		case op_is_trivial:
+		case op_is_trivially_copyable:
 		case op_is_union:
 			return CPPTemplates.isDependentType(fOrigType);
 
@@ -132,7 +134,7 @@ public class EvalUnaryTypeID extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		if (fType == null)
 			fType= computeType(point);
 		return fType;
@@ -163,6 +165,7 @@ public class EvalUnaryTypeID extends CPPDependentEvaluation {
 		case op_is_polymorphic:
 		case op_is_standard_layout:
 		case op_is_trivial:
+		case op_is_trivially_copyable:
 		case op_is_union:
 			return CPPBasicType.BOOLEAN;
 		case op_typeof:
@@ -202,17 +205,17 @@ public class EvalUnaryTypeID extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
 		if (fOperator == op_sizeofParameterPack) {
-			int packSize = determinePackSize(tpMap);
+			int packSize = determinePackSize(context.getParameterMap());
 			if (packSize == CPPTemplates.PACK_SIZE_FAIL || packSize == CPPTemplates.PACK_SIZE_NOT_FOUND) {
 				return EvalFixed.INCOMPLETE;
 			} else if (packSize != CPPTemplates.PACK_SIZE_DEFER) {
-				return new EvalFixed(getTypeOrFunctionSet(point), getValueCategory(point), Value.create(packSize));
+				IASTNode point = context.getPoint();
+				return new EvalFixed(getType(point), getValueCategory(point), Value.create(packSize));
 			}
 		}
-		IType type = CPPTemplates.instantiateType(fOrigType, tpMap, packOffset, within, point);
+		IType type = CPPTemplates.instantiateType(fOrigType, context);
 		if (type == fOrigType)
 			return this;
 		return new EvalUnaryTypeID(fOperator, type, getTemplateDefinition());

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2013 QNX Software Systems and others.
+ * Copyright (c) 2005, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -41,9 +41,17 @@ public class GPPLanguage extends AbstractCLikeLanguage {
 	protected static final GPPParserExtensionConfiguration CPP_GNU_PARSER_EXTENSION= GPPParserExtensionConfiguration.getInstance();
 	public static final String ID = CCorePlugin.PLUGIN_ID + ".g++"; //$NON-NLS-1$
 
-	/** @since 5.6 */
+	/** 
+	 * @since 5.6
+	 * @deprecated This was meant for internal use only. 
+	 */
+	@Deprecated
 	public static final int GNU_LATEST_VERSION_MAJOR = 4;
-	/** @since 5.6 */
+	/** 
+	 * @since 5.6
+	 * @deprecated This was meant for internal use only. 
+	 */
+	@Deprecated
 	public static final int GNU_LATEST_VERSION_MINOR = 7;
 
 	private static final GPPLanguage DEFAULT_INSTANCE = new GPPLanguage();
@@ -53,10 +61,10 @@ public class GPPLanguage extends AbstractCLikeLanguage {
 	}
 	
 	@Override
-	@SuppressWarnings("rawtypes")
-	public Object getAdapter(Class adapter) {
-		if (adapter == IPDOMLinkageFactory.class) {
-			return new PDOMCPPLinkageFactory();
+	@SuppressWarnings("unchecked")
+	public <T> T getAdapter(Class<T> adapter) {
+		if (adapter.isAssignableFrom(IPDOMLinkageFactory.class)) {
+			return (T) new PDOMCPPLinkageFactory();
 		}
 		return super.getAdapter(adapter);
 	}

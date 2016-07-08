@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,16 +14,12 @@ import org.eclipse.jface.text.rules.IWordDetector;
 
 public class AutoconfKeywordDetector implements IWordDetector {
 
-	/**
-	 * @see IWordDetector#isWordPart(character)
-	 */
+	@Override
 	public boolean isWordPart(char character) {
 		return (Character.isLetter(character) && Character.isLowerCase(character));
 	}
 
-	/**
-	 * @see IWordDetector#isWordStart(char)
-	 */
+	@Override
 	public boolean isWordStart(char character) {
 		return (Character.isLetter(character) && Character.isLowerCase(character));
 	}

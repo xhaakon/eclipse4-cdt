@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,8 +10,7 @@ package org.eclipse.cdt.internal.qt.core.index;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.cdt.qt.core.QtPlugin;
-import org.eclipse.cdt.qt.core.index.IQtVersion;
+import org.eclipse.cdt.internal.qt.core.Activator;
 
 /**
  * A container class to interpret and store value of the the qmake version.
@@ -37,7 +36,7 @@ public final class QMakeVersion implements IQtVersion {
 			int minor = Integer.parseInt(m.group(2));
 			return new QMakeVersion(major, minor);
 		} catch(NumberFormatException e) {
-			QtPlugin.log(e);
+			Activator.log(e);
 		}
 		return null;
 	}

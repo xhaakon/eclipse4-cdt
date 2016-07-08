@@ -30,6 +30,9 @@ public class Messages extends NLS {
 	public static String OSView_13;
 	public static String OSView_14;
 	public static String OSView_15;
+	public static String OSView_AttachJobName;
+	public static String OSView_AttachTask;
+	public static String OSView_CopyAction;
 	static {
 		// initialize resource bundle
 		NLS.initializeMessages(Messages.class.getName(), Messages.class);

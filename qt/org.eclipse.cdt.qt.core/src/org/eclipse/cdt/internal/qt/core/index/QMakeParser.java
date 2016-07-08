@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.cdt.qt.core.QtPlugin;
+import org.eclipse.cdt.internal.qt.core.Activator;
 
 /**
  * Provides a parser for QMake output.
@@ -54,13 +54,13 @@ public final class QMakeParser {
 		while((line = reader.readLine()) != null) {
 			Matcher m = regex.matcher(line);
 			if (!m.matches() || m.groupCount() != 2) {
-				QtPlugin.log("qmake: cannot decode query line '" + line + '\'');
+				Activator.log("qmake: cannot decode query line '" + line + '\'');
 			} else {
 				String key = m.group(1);
 				String value = m.group(2);
 				String oldValue = result.put(key, value);
 				if (oldValue != null)
-					QtPlugin.log("qmake: duplicate keys in query info '" + line + "' was '" + oldValue + '\'');
+					Activator.log("qmake: duplicate keys in query info '" + line + "' was '" + oldValue + '\'');
 			}
 		}
 

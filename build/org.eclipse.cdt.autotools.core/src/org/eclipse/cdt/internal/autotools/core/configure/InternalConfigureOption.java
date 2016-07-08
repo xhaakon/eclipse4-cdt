@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Red Hat Inc.
+ * Copyright (c) 2009, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,12 +16,12 @@ public class InternalConfigureOption extends AbstractConfigurationOption {
 	
 	public InternalConfigureOption(String name, AutotoolsConfiguration cfg) {
 		super(name, cfg);
-		this.value = ""; // $NON-NLS-1$
+		this.value = ""; //$NON-NLS-1$
 	}
 	
 	public InternalConfigureOption(String name, String msgName, AutotoolsConfiguration cfg) {
 		super(name, msgName, cfg);
-		this.value = ""; // $NON-NLS-1$
+		this.value = ""; //$NON-NLS-1$
 	}
 	
 	private InternalConfigureOption(String name, AutotoolsConfiguration cfg,
@@ -30,10 +30,12 @@ public class InternalConfigureOption extends AbstractConfigurationOption {
 		this.value = value;
 	}
 	
+	@Override
 	public String getValue() {
 		return value;
 	}
 	
+	@Override
 	public void setValue(String newValue) {
 		if (!newValue.equals(value)) {
 			cfg.setDirty(true);
@@ -41,18 +43,22 @@ public class InternalConfigureOption extends AbstractConfigurationOption {
 		}
 	}
 
+	@Override
 	public boolean isParmSet() {
 		return false;
 	}
 	
+	@Override
 	public String getParameter() {
 		return "";
 	}
 	
+	@Override
 	public IConfigureOption copy(AutotoolsConfiguration config) {
 		return new InternalConfigureOption(name, config, value);
 	}
 
+	@Override
 	public int getType() {
 		return INTERNAL;
 	}

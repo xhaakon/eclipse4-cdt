@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,6 +33,7 @@ public class AutoconfReconcilingStrategy implements IReconcilingStrategy {
 		documentProvider = editor.getDocumentProvider();
 	}
 	
+	@Override
 	public void reconcile(IRegion partition) {
 		try {
 			AutoconfParser parser = editor.getAutoconfParser();
@@ -45,11 +46,13 @@ public class AutoconfReconcilingStrategy implements IReconcilingStrategy {
 		}
 	}
 
+	@Override
 	public void reconcile(DirtyRegion dirtyRegion, IRegion subRegion) {
 		// TODO Auto-generated method stub
 
 	}
 
+	@Override
 	public void setDocument(IDocument document) {
 		// TODO Auto-generated method stub
 

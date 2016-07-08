@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2015 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2011, 2016 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others.
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -33,7 +33,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.cdt.core.dom.rewrite.ASTRewrite.CommentPosition;
 
-import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
+import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.rewrite.ASTLiteralNode;
 
 import org.eclipse.cdt.internal.ui.refactoring.ModificationCollector;
@@ -118,7 +118,7 @@ public class ToggleFromImplementationToHeaderOrClassStrategy implements IToggleR
 	}
 
 	private IASTNode getParent() {
-		IASTNode parent = CPPVisitor.findAncestorWithType(context.getDefinition(),
+		IASTNode parent = ASTQueries.findAncestorWithType(context.getDefinition(),
 				ICPPASTCompositeTypeSpecifier.class);
 		IASTNode parentnode = null;
 		if (parent != null) {

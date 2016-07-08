@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Institute for Software, HSR Hochschule fuer Technik
+ * Copyright (c) 2014, 2015 Institute for Software, HSR Hochschule fuer Technik
  * Rapperswil, University of applied sciences.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -28,7 +28,7 @@ public abstract class Lazy<E> {
 	 * @return The value of this object.
 	 */
 	@SuppressWarnings("unchecked")
-	public E value() {
+	public final E value() {
 		if (value == NOT_INITIALIZED) {
 			value = calculateValue();
 		}

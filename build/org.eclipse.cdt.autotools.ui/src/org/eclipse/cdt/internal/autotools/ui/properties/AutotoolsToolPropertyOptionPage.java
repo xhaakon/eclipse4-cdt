@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Red Hat Inc.
+ * Copyright (c) 2009, 2015 Red Hat Inc.
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
@@ -14,7 +14,6 @@ import org.eclipse.cdt.internal.autotools.core.configure.IAConfiguration;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.MultiLineTextFieldEditor;
 import org.eclipse.jface.dialogs.Dialog;
-import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
@@ -22,66 +21,21 @@ import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
 
 public class AutotoolsToolPropertyOptionPage extends
 		AbstractConfigurePropertyOptionsPage {
 
 	private static final int MARGIN = 3;
-	private ToolListElement element;
 	private String toolName = "";
 	private IAConfiguration cfg;
-	//  Label class for a preference page.
-	static class LabelFieldEditor extends FieldEditor {
-		private String fTitle;
-		private Label fTitleLabel;
-
-		public LabelFieldEditor( Composite parent, String title ) {
-			fTitle = title;
-			this.createControl( parent );
-		}
-
-		protected void adjustForNumColumns( int numColumns ) {
-			((GridData)fTitleLabel.getLayoutData()).horizontalSpan = 2;
-		}
-
-		protected void doFillIntoGrid( Composite parent, int numColumns ) {
-			fTitleLabel = new Label( parent, SWT.WRAP );
-			fTitleLabel.setText( fTitle );
-			GridData gd = new GridData();
-			gd.verticalAlignment = SWT.TOP;
-			gd.grabExcessHorizontalSpace = false;
-			gd.horizontalSpan = 2;
-			fTitleLabel.setLayoutData( gd );
-		}
-
-		public int getNumberOfControls() {	return 1; }
-		/**
-		 * The label field editor is only used to present a text label on a preference page.
-		 */
-		protected void doLoad() {}
-		protected void doLoadDefault() {}
-		protected void doStore() {}
-	}
 	
 	public AutotoolsToolPropertyOptionPage(ToolListElement element, IAConfiguration cfg) {
  		super(element.getName());
- 		this.element = element;
  		this.toolName = element.getName();
  		this.cfg = cfg;
 	}
 
-	public String getName() {
-		return super.getName();
-	}
-
-	public ToolListElement getElement() {
-		return element;
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.FieldEditorPreferencePage#createFieldEditors()
-	 */
+	@Override
 	protected void createFieldEditors() {
 		super.createFieldEditors();
 		// Add a string editor to edit the tool command
@@ -113,10 +67,6 @@ public class AutotoolsToolPropertyOptionPage extends
 		addField(allOptionFieldEditor);
 	}
 
-	protected FieldEditor createLabelEditor( Composite parent, String title ) {
-		return new LabelFieldEditor( parent, title );
-	}
-
 	// field editor that displays all the build options for a particular tool
 	private MultiLineTextFieldEditor allOptionFieldEditor;
 	//tool command field
@@ -129,15 +79,18 @@ public class AutotoolsToolPropertyOptionPage extends
 	/**
 	 * Update the field editor that displays all the build options
 	 */
+	@Override
 	public void updateFields() {
 		allOptionFieldEditor.load();
 	}
 	
+	@Override
 	public void setValues(){
 		commandStringField.load();
 		updateFields();
 	}
 	
+	@Override
 	public void propertyChange(PropertyChangeEvent event) {
 		// allow superclass to handle as well
 		super.propertyChange(event);

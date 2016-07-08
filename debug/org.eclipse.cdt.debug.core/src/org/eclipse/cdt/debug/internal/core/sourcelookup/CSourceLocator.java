@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2009 QNX Software Systems and others.
+ * Copyright (c) 2004, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -276,7 +276,7 @@ public class CSourceLocator implements ICSourceLocator, IPersistableSourceLocato
 			ICSourceLocation[] locations = getSourceLocations();
 			saveDisabledGenericSourceLocations(locations, document, node);
 			saveAdditionalSourceLocations(locations, document, node);
-			node.setAttribute(ATTR_DUPLICATE_FILES, Boolean.valueOf(searchForDuplicateFiles()).toString());
+			node.setAttribute(ATTR_DUPLICATE_FILES, String.valueOf(searchForDuplicateFiles()));
 			return CDebugUtils.serializeDocument(document);
 		} catch (ParserConfigurationException e) {
 			ex = e;

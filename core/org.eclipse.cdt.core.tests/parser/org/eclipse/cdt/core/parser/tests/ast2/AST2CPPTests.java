@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2015 IBM Corporation and others.
+ * Copyright (c) 2004, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,7 +24,11 @@ import static org.eclipse.cdt.core.parser.ParserLanguage.CPP;
 import static org.eclipse.cdt.core.parser.tests.VisibilityAsserts.assertVisibility;
 import static org.junit.Assert.assertNotEquals;
 
-import junit.framework.TestSuite;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Arrays;
+import java.util.HashSet;
 
 import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
@@ -151,11 +155,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.index.IndexCPPSignatureUtil;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.HashSet;
+import junit.framework.TestSuite;
 
 public class AST2CPPTests extends AST2TestBase {
 
@@ -1471,6 +1471,16 @@ public class AST2CPPTests extends AST2TestBase {
 	//	  foo(a);
 	//	}
 	public void _testInheritedTemplateConstructor() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	struct base {};
+	//
+	//	struct derived : public base {
+	//		using base::base;
+	//		base waldo() const;
+	//	};
+	public void testInheritedConstructorShadowingBaseClassName_485383() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -4661,6 +4671,19 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPASTPointerToMember po = (ICPPASTPointerToMember) d.getPointerOperators()[0];
 		assertEquals("X::", po.getName().toString());
 	}
+	
+	//	struct cat {
+	//	    void meow();
+	//	};
+	//	struct waldo {
+	//	    cat operator->*(bool);
+	//	};
+	//	void foo() {
+	//	    (waldo()->*true).meow();  // Method 'meow' could not be resolved
+	//	}
+	public void testOverloadedPointerToMemberOperator_488611() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	//	struct B {};
 	//	struct D : B {};
@@ -7472,7 +7495,7 @@ public class AST2CPPTests extends AST2TestBase {
 	//	void f(int const volatile * const *) {}
 	//	void test() {
 	//	   int ** x;
-	//	   f(x);  // problem binding here
+	//	   f(x);
 	//	}
 	public void testRankingOfQualificationConversion_269321() throws Exception {
 		final String code = getAboveComment();
@@ -7587,8 +7610,8 @@ public class AST2CPPTests extends AST2TestBase {
 	//	void xx() {
 	//	   D d1;
 	//	   const D d2= D();
-	//	   test(d1); // problem binding here although test(C c) has to be selected
-	//	   test(d2); // problem binding here although test(C c) has to be selected
+	//	   test(d1); // test(C c) has to be selected
+	//	   test(d2); // test(C c) has to be selected
 	//	}
 	public void testDerivedToBaseConversion_269318() throws Exception {
 		final String code = getAboveComment();
@@ -7612,7 +7635,7 @@ public class AST2CPPTests extends AST2TestBase {
 	//	        operator fp() { return foo; }
 	//	} a;
 	//
-	//	int i = bar(a(1));  // problem on bar
+	//	int i = bar(a(1));
 	public void testCallToObjectOfClassType_267389() throws Exception {
 		final String code = getAboveComment();
 		parseAndCheckBindings(code, CPP);
@@ -7818,6 +7841,23 @@ public class AST2CPPTests extends AST2TestBase {
 	//	  XInterface temp;
 	//	}
 	public void testTypeLookupWithMultipleInheritance_286213() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template<class>
+	//	struct ContainerOf {
+	//		int numParts;
+	//	};
+	//
+	//	struct HumanPart;
+	//	struct RobotPart;
+	//
+	//	struct BionicMan : ContainerOf<HumanPart>, ContainerOf<RobotPart> {
+	//		int numRoboParts() {
+	//			return ContainerOf<RobotPart>::numParts;
+	//		}
+	//	};
+	public void testInheritanceFromMultipleInstancesOfSameTemplate_383502() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -8502,6 +8542,18 @@ public class AST2CPPTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	template<typename T>
+	//	void f(T p);
+	//
+	//	class A {
+	//	  void m() {
+	//	    f([this] (int x) {});
+	//	  }
+	//	};
+	public void testLambdaWithCapture() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	int foo = 0;
 	//	auto bar = [foo] { return foo; };
 	public void testLambdaWithCapture_446225() throws Exception {
@@ -8510,6 +8562,29 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPVariable foo2= bh.assertNonProblemOnFirstIdentifier("[foo]", ICPPVariable.class);
 		assertTrue(foo1 == foo2);
 		assertEquals(2, bh.getTranslationUnit().getReferences(foo1).length);
+	}
+
+	//	template<typename T>
+	//	class B;
+	//
+	//	template<typename T, typename... U>
+	//	struct B<T(U...)> {
+	//	  template<typename V>
+	//	  B(V);
+	//	};
+	//
+	//	struct A {
+	//	  B<bool(int arg)> f;
+	//	};
+	//
+	//	void waldo(A a);
+	//
+	//	void test() {
+	//	  int p;
+	//	  waldo({[p](int arg) { return true; }});
+	//	}
+	public void testLambdaWithCaptureInInitializerList_488265() throws Exception {
+		parseAndCheckBindings();
 	}
 
 	//	typedef int TInt;
@@ -8539,7 +8614,6 @@ public class AST2CPPTests extends AST2TestBase {
 	//	};
 	//
 	//	S::S(int a) : f{a} {}		// Member initializer
-
 	public void testInitSyntax_302412() throws Exception {
 		parseAndCheckBindings();
 	}
@@ -8808,7 +8882,23 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testListInitialization_458679() throws Exception {
 		parseAndCheckImplicitNameBindings();
 	}
-	
+
+	//	namespace std {	template<typename T> class initializer_list; }
+	//
+	//	struct A {
+	//	  A(const char* s);
+	//	};
+	//
+	//	void waldo(A p);
+	//	void waldo(std::initializer_list<A> p);
+	//
+	//	void test() {
+	//	  waldo({""});
+	//	}
+	public void testListInitialization_491842() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	namespace std {
 	//		template<typename T> class initializer_list;
 	//	}
@@ -9041,6 +9131,18 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testScopedEnums_305975g() throws Exception {
 		String code= getAboveComment();
 		parseAndCheckBindings(code);
+	}
+	
+	//	typedef int Int;
+	//	struct S {
+	//	    enum waldo1 : int;
+	//	    enum waldo2 : Int;
+	//	};
+	//	enum S::waldo1 : int {
+	//		someConstant = 1508
+	//	};
+	public void testForwardDeclaringEnumAtClassScope_475894() throws Exception {
+		parseAndCheckBindings();
 	}
 
 	//	struct S {
@@ -9970,6 +10072,16 @@ public class AST2CPPTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	struct Base {
+	//		virtual bool waldo();
+	//	};
+	//	struct Derived : Base {
+	//		virtual auto waldo() -> bool override;
+	//	};
+	public void testOverrideSpecifierAfterTrailingReturnType_489876() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	struct CHAINER {
 	//	    CHAINER const & operator,(int x) const;
 	//	};
@@ -10527,6 +10639,19 @@ public class AST2CPPTests extends AST2TestBase {
 		ICPPMethod foo = bh.assertNonProblem("foo");
 		assertTrue(foo.isFinal());
 	}
+	
+	//	struct S {};
+	//	bool b1 = __is_trivially_copyable(S);
+	//	bool b2 = __is_trivially_assignable(S, S&);
+	//	bool b3 = __is_trivially_constructible(S, int, char*);
+	//	// Test that __is_trivially_constructible can take parameter packs
+	//	template <typename... Args>
+	//	struct U {
+	//		static const bool value = __is_trivially_constructible(S, Args...);
+	//	};
+	public void testParsingOfGcc5TypeTraitIntrinsics_485713() throws Exception {
+		parseAndCheckBindings(getAboveComment(), CPP, true /* use GNU extensions */);
+	}
 
 	//	struct S1 {};
 	//	S1 s1;
@@ -10552,6 +10677,33 @@ public class AST2CPPTests extends AST2TestBase {
 	//	    bar(N::A);
 	//	}
 	public void testADLForFunctionObject_388287() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	namespace A {
+	//		template <typename T>
+	//		void foo(T);
+	//	}
+	//
+	//	namespace B {
+	//		template <typename T>
+	//		void foo(T);
+	//		
+	//		struct S {};
+	//	}
+	//
+	//	struct outer : B::S {
+	//		struct waldo {};
+	//		enum E { };
+	//	};
+	//
+	//	using A::foo;
+	//
+	//	int main() {
+	//		foo(outer::waldo{});
+	//		foo(outer::E{});
+	//	}
+	public void testADL_485710() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -10698,6 +10850,15 @@ public class AST2CPPTests extends AST2TestBase {
 		helper.assertNonProblemOnFirstIdentifier("fint({vchar");
 	}
 
+	//	void waldo(char x);
+	//
+	//	void test() {
+	//	  waldo({1});
+	//	}
+	public void testNarrowingConversionInListInitialization_491748() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	namespace std {
 	//		struct string {};
 	//	 	struct exception {};
@@ -10745,6 +10906,17 @@ public class AST2CPPTests extends AST2TestBase {
 	//	    foo(true ? new A() : new B());
 	//	}
 	public void testBasePointerConverstionInConditional_462705() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	struct S {};
+	//	typedef S* S_ptr;
+	//	void waldo(S*);
+	//	S_ptr s;
+	//	int main() {
+	//	    waldo(false ? s : 0);
+	//	}
+	public void testTypedefOfPointerInConditional_481078() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -11210,6 +11382,12 @@ public class AST2CPPTests extends AST2TestBase {
 	public void testAlignas_451082() throws Exception {
 		parseAndCheckBindings();
 	}
+	
+	//	struct alignas(16) Node {};
+	//	enum alignas(8) E { E1, E2 };
+	public void testAlignas_475739() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	// int operator "" _A(unsigned long long i) { return 1; }
 	// int operator "" _B(long double d) { return 1; }
@@ -11513,13 +11691,10 @@ public class AST2CPPTests extends AST2TestBase {
 	}
 
 	// // Test name lacking a space
+	// int operator ""X(const char* s) { return 0; }
 	// int operator ""_X(const char* s) { return 0; }
 	public void testUserDefinedLiteralNoWhiteSpace1() throws Exception {
-		IASTTranslationUnit tu = parse(getAboveComment(), CPP, true, false);
-		IASTDeclaration decl = tu.getDeclarations()[0];
-
-		assertTrue(decl instanceof IASTProblemDeclaration);
-		assertEquals(IProblem.SYNTAX_ERROR, ((IASTProblemDeclaration)decl).getProblem().getID());
+		parseAndCheckBindings();
 	}
 
 	// // Test literals with spaces before the suffix
@@ -11582,6 +11757,13 @@ public class AST2CPPTests extends AST2TestBase {
 		assertTrue(test.getType() instanceof IProblemType); // resolution is ambiguous
 	}
 	
+	//	char foo() {
+	//		return '*';
+	//	}
+	public void testRegression_484618() throws Exception {
+		parseAndCheckImplicitNameBindings();
+	}
+	
 	//	constexpr int lambdas_supported = 
 	//	#if __has_feature(cxx_lambdas)
 	//		1;
@@ -11602,6 +11784,118 @@ public class AST2CPPTests extends AST2TestBase {
 		// this test will need to be updated.
 		helper.assertVariableValue("generic_lambdas_supported", 0);
 	}
+
+	//	struct S {
+	//	  int a;
+	//	  int b;
+	//	  int c[10];
+	//	  int d;
+	//	};
+	//	void test() {
+	//	  S a = { .a = 10, .b = 11 };
+	//	  S b = { .c[4 ... 6] = 3 };
+	//	  S{ .d = 5 };
+	//	  int c[6] = { [4] = 29, [2] = 15 };
+	//	  int d[6] = { [2 ... 4] = 29 };
+	//	}
+	public void testDesignatedInitializers() throws Exception {
+		BindingAssertionHelper bh = getAssertionHelper();
+//		ICPPASTDesignatedInitializer d1 = bh.assertNode(".a = 10");
+//		assertEquals(1, d1.getDesignators().length);
+//		assertTrue(d1.getDesignators()[0] instanceof ICPPASTFieldDesignator);
+//		ICPPASTDesignatedInitializer d2 = bh.assertNode(".b = 11");
+//		assertEquals(1, d2.getDesignators().length);
+//		assertTrue(d2.getDesignators()[0] instanceof ICPPASTFieldDesignator);
+//		ICPPASTDesignatedInitializer d3 = bh.assertNode(".c[4 ... 6] = 3");
+//		assertEquals(2, d3.getDesignators().length);
+//		assertTrue(d3.getDesignators()[0] instanceof ICPPASTFieldDesignator);
+//		assertTrue(d3.getDesignators()[1] instanceof IGPPASTArrayRangeDesignator);
+//		ICPPASTDesignatedInitializer d4 = bh.assertNode(".d = 5");
+//		assertEquals(1, d4.getDesignators().length);
+//		assertTrue(d4.getDesignators()[0] instanceof ICPPASTFieldDesignator);
+//		ICPPASTDesignatedInitializer d5 = bh.assertNode("[4] = 29");
+//		assertEquals(1, d5.getDesignators().length);
+//		assertTrue(d5.getDesignators()[0] instanceof ICPPASTArrayDesignator);
+//		ICPPASTDesignatedInitializer d6 = bh.assertNode("[2] = 15");
+//		assertEquals(1, d6.getDesignators().length);
+//		assertTrue(d6.getDesignators()[0] instanceof ICPPASTArrayDesignator);
+//		ICPPASTDesignatedInitializer d7 = bh.assertNode("[2 ... 4] = 29");
+//		assertEquals(1, d7.getDesignators().length);
+//		assertTrue(d7.getDesignators()[0] instanceof IGPPASTArrayRangeDesignator);
+//		ICPPField a = bh.assertNonProblemOnFirstIdentifier(".a");
+//		ICPPField b = bh.assertNonProblemOnFirstIdentifier(".b");
+//		ICPPField c = bh.assertNonProblemOnFirstIdentifier(".c[4 ... 6]");
+		ICPPField d = bh.assertNonProblemOnFirstIdentifier(".d");
+	}
+
+	//	struct A {
+	//		A() {}
+	//	};
+	//
+	//	struct B {
+	//		B() {}
+	//	};
+	//
+	//	struct C : A {
+	//		C() {}
+	//	};
+	//	
+	//	struct D : virtual A, virtual B {
+	//		D() {}
+	//	};
+	//
+	//	struct E {
+	//		E() {}
+	//	};
+	//
+	//	struct F : D, virtual E {
+	//		F() {}
+	//	};
+	public void testImplicitlyCalledBaseConstructor_393717() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		
+		ICPPConstructor aCtor = helper.assertNonProblem("A()", "A");
+		ICPPConstructor bCtor = helper.assertNonProblem("B()", "B");
+		ICPPConstructor dCtor = helper.assertNonProblem("D()", "D");
+		ICPPConstructor eCtor = helper.assertNonProblem("E()", "E");
+
+		ICPPASTFunctionDefinition ctorDef = helper.assertNode("C() {}");
+		IASTImplicitName[] implicitNames = ((IASTImplicitNameOwner) ctorDef).getImplicitNames();
+		assertEquals(1, implicitNames.length);
+		assertEquals(aCtor, implicitNames[0].resolveBinding());
+		
+		ctorDef = helper.assertNode("D() {}");
+		implicitNames = ((IASTImplicitNameOwner) ctorDef).getImplicitNames();
+		sortNames(implicitNames);
+		assertEquals(2, implicitNames.length);
+		assertEquals(aCtor, implicitNames[0].resolveBinding());
+		assertEquals(bCtor, implicitNames[1].resolveBinding());
+		
+		ctorDef = helper.assertNode("F() {}");
+		implicitNames = ((IASTImplicitNameOwner) ctorDef).getImplicitNames();
+		sortNames(implicitNames);
+		assertEquals(4, implicitNames.length);
+		assertEquals(aCtor, implicitNames[0].resolveBinding());
+		assertEquals(bCtor, implicitNames[1].resolveBinding());
+		assertEquals(dCtor, implicitNames[2].resolveBinding());
+		assertEquals(eCtor, implicitNames[3].resolveBinding());
+	}
+	
+	//	struct A {
+	//		A(int, int);
+	//	};
+	//	void a(A);
+	//	int main() {
+	//		a(A{3, 4});
+	//	}
+	public void testImplicitConstructorNameInTypeConstructorExpression_447431() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPConstructor ctor = helper.assertNonProblem("A(int, int)", "A");
+		ICPPASTSimpleTypeConstructorExpression typeConstructorExpr = helper.assertNode("A{3, 4}");
+		IASTImplicitName[] implicitNames = ((IASTImplicitNameOwner) typeConstructorExpr).getImplicitNames();
+		assertEquals(1, implicitNames.length);
+		assertEquals(ctor, implicitNames[0].resolveBinding());
+	}
 	
 	//	template <typename T>
 	//	struct Waldo {
@@ -11613,6 +11907,17 @@ public class AST2CPPTests extends AST2TestBase {
 	//	    auto size = sizeof(Waldo::x);
 	//	}
 	public void testShadowingAliasDeclaration_484200() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	struct S {
+	//	    void foo() {
+	//	        bar(E::A);       // ERROR: Symbol 'A' could not be resolved
+	//	    }
+	//	    enum class E { A };
+	//	    void bar(E);
+	//	};
+	public void testEnumDeclaredLaterInClass_491747() throws Exception {
 		parseAndCheckBindings();
 	}
 }

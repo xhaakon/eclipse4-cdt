@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Mentor Graphics and others.
+ * Copyright (c) 2012, 2013 Mentor Graphics and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -48,6 +48,17 @@ public class Messages extends NLS {
 	public static String GdbDebugNewExecutableCommand_Select_Binary;
 
 	public static String GdbDebugNewExecutableCommand_Select_binary_and_specify_arguments;
+	
+	public static String GdbReverseDebugging_HardwareReverseDebugNotAvailable;
+
+	public static String GdbReverseDebugging_ProcessorTraceReverseDebugNotAvailable;
+	
+	public static String GdbReverseDebugging_ReverseDebugNotAvailable;
+
+	public static String GdbConnectCommand_Error;
+	
+	public static String GdbConnectCommand_FailureMessage;
+
 	static {
 		// initialize resource bundle
 		NLS.initializeMessages( Messages.class.getName(), Messages.class );

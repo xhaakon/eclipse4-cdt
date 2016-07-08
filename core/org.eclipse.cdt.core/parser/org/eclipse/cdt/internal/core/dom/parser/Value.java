@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2008, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,6 +29,7 @@ import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_pod;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_polymorphic;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_standard_layout;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_trivial;
+import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_trivially_copyable;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_is_union;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_sizeof;
 import static org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression.op_typeid;
@@ -57,7 +58,6 @@ import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeConstructorExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPBasicType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
@@ -92,7 +92,6 @@ public class Value implements IValue {
 	// Value.ERROR indicates that an error, such as a substitution failure, occurred during evaluation.
 	public static final Value ERROR= new Value("<error>".toCharArray(), null); //$NON-NLS-1$
 	public static final Value NOT_INITIALIZED= new Value("<__>".toCharArray(), null); //$NON-NLS-1$
-	private static final IType INT_TYPE= new CPPBasicType(ICPPBasicType.Kind.eInt, 0);
 
 	private static final Number VALUE_CANNOT_BE_DETERMINED = new Number() {
 		@Override
@@ -299,7 +298,7 @@ public class Value implements IValue {
 			return create(val.longValue() + increment);
 		}
 		ICPPEvaluation arg1 = value.getEvaluation();
-		EvalFixed arg2 = new EvalFixed(INT_TYPE, ValueCategory.PRVALUE, create(increment));
+		EvalFixed arg2 = new EvalFixed(CPPBasicType.INT, ValueCategory.PRVALUE, create(increment));
 		return create(new EvalBinary(IASTBinaryExpression.op_plus, arg1, arg2, arg1.getTemplateDefinition()));
 	}
 
@@ -333,7 +332,7 @@ public class Value implements IValue {
 				return type instanceof ICompositeType &&
 						((ICompositeType) type).getKey() != ICompositeType.k_union ? 1 : 0;
 			case op_is_empty:
-				break;  // TODO(sprigogin): Implement
+				return TypeTraits.isEmpty(type, point) ? 1 : 0;
 			case op_is_enum:
 				return type instanceof IEnumeration ? 1 : 0;
 			case op_is_final:
@@ -350,6 +349,8 @@ public class Value implements IValue {
 			case op_is_trivial:
 				return type instanceof ICPPClassType &&
 						TypeTraits.isTrivial((ICPPClassType) type, point) ? 1 : 0;
+			case op_is_trivially_copyable:
+				return TypeTraits.isTriviallyCopyable(type, point) ? 1 : 0;
 			case op_is_union:
 				return type instanceof ICompositeType &&
 						((ICompositeType) type).getKey() == ICompositeType.k_union ? 1 : 0;
@@ -371,6 +372,8 @@ public class Value implements IValue {
 				return 1;
 			}
 			return 0;
+		case __is_trivially_assignable:
+			return VALUE_CANNOT_BE_DETERMINED;  // TODO: Implement.
 		}
 		return VALUE_CANNOT_BE_DETERMINED;
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2009, 2013 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -22,7 +22,7 @@ import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
 import org.eclipse.core.runtime.CoreException;
 
 public class CPPParameterPackType implements ICPPParameterPackType, ITypeContainer, ISerializableType {
-    private IType fType = null;
+    private IType fType;
     
     public CPPParameterPackType(IType type) {
     	setType(type);
@@ -44,7 +44,7 @@ public class CPPParameterPackType implements ICPPParameterPackType, ITypeContain
         if (obj == this)
             return true;
         if (obj instanceof ITypedef)
-            return ((ITypedef)obj).isSameType(this);
+            return ((ITypedef) obj).isSameType(this);
         
         if (obj instanceof ICPPParameterPackType) {
             final ICPPParameterPackType rhs = (ICPPParameterPackType) obj;
@@ -60,7 +60,7 @@ public class CPPParameterPackType implements ICPPParameterPackType, ITypeContain
    		try {
    			return super.clone();
         } catch (CloneNotSupportedException e) {
-            // not going to happen
+            // Not going to happen.
         	return null;
         }
     }

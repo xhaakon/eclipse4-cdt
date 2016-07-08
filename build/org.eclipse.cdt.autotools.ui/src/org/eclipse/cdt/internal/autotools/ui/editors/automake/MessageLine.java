@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,8 +13,6 @@ package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
@@ -108,11 +106,7 @@ public class MessageLine {
 		} else {
 			if (fErrorColor == null) {
 				fErrorColor= new Color(clabel.getDisplay(), fErrorRGB);
-				clabel.addDisposeListener(new DisposeListener() {
-					public void widgetDisposed(DisposeEvent e) {
-						fErrorColor.dispose();
-					}
-				});
+				clabel.addDisposeListener(e -> fErrorColor.dispose());
 			}
 			clabel.setForeground(fErrorColor);
 			clabel.setText(message);
@@ -132,23 +126,14 @@ public class MessageLine {
 		}
 	}
 	
-	/**
-	 * @see org.eclipse.swt.custom.CLabel#isDisposed()
-	 */
 	public boolean isDisposed() {
 		return clabel.isDisposed();
 	}
 	
-	/**
-	 * @see org.eclipse.swt.custom.CLabel#setAlignment(int)
-	 */
 	public void setAlignment(int left) {
 		clabel.setAlignment(left);
 	}
 	
-	/**
-	 * @see org.eclipse.swt.widgets.Control#setLayoutData(Object)
-	 */
 	public void setLayoutData(GridData gridData) {
 		clabel.setLayoutData(gridData);
 	}

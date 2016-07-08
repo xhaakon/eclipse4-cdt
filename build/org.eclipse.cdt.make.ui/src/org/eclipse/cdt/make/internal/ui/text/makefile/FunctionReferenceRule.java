@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2013, 2013 Andrew Gvozdev and others.
+ * Copyright (c) 2013, 2016 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,7 +19,7 @@ import org.eclipse.jface.text.rules.WordRule;
 
 public class FunctionReferenceRule extends WordRule {
 	/** Buffer used for pattern detection. */
-	private StringBuffer fBuffer= new StringBuffer();
+	private StringBuilder fBuffer= new StringBuilder();
 	private String startSeq;
 	private String endSeq;
 
@@ -83,7 +83,7 @@ public class FunctionReferenceRule extends WordRule {
 		if (c == tagDetector.closedBracket) {
 			if (tagDetector.bracketNesting > 0) {
 				tagDetector.bracketNesting--;
-				return (IToken)fWords.get(endSeq);
+				return fWords.get(endSeq);
 			}
 			return fDefaultToken;
 		}
@@ -100,7 +100,7 @@ public class FunctionReferenceRule extends WordRule {
 
 				String buffer= fBuffer.toString();
 
-				IToken token= (IToken)fWords.get(buffer);
+				IToken token= fWords.get(buffer);
 
 				if (token != null) {
 					if (buffer.equals(startSeq + GNUMakefileConstants.FUNCTION_CALL) || buffer.equals('$' + startSeq + GNUMakefileConstants.FUNCTION_CALL)) {

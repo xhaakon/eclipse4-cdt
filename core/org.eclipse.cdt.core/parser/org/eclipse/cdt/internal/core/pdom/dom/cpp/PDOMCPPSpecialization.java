@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2011 QNX Software Systems and others.
+ * Copyright (c) 2008, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,8 +18,6 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.parser.util.ObjectMap;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 import org.eclipse.cdt.internal.core.index.IndexCPPSignatureUtil;
 import org.eclipse.cdt.internal.core.pdom.dom.IPDOMBinding;
 import org.eclipse.cdt.internal.core.pdom.dom.IPDOMOverloader;
@@ -40,7 +38,7 @@ abstract class PDOMCPPSpecialization extends PDOMCPPBinding implements ICPPSpeci
 	@SuppressWarnings("hiding")
 	protected static final int RECORD_SIZE = PDOMCPPBinding.RECORD_SIZE + 12;
 	
-	private volatile IBinding fSpecializedCache= null;
+	private volatile IBinding fSpecializedCache;
 	private volatile ICPPTemplateParameterMap fArgMap;
 	
 	public PDOMCPPSpecialization(PDOMCPPLinkage linkage, PDOMNode parent, ICPPSpecialization spec,
@@ -86,12 +84,6 @@ abstract class PDOMCPPSpecialization extends PDOMCPPBinding implements ICPPSpeci
 		return (IPDOMBinding) PDOMNode.load(getPDOM(), specializedRec);
 	}
 		
-	@Override
-	@Deprecated
-	public ObjectMap getArgumentMap() {
-		return CPPTemplates.getArgumentMap(this, getTemplateParameterMap());
-	}
-	
 	@Override
 	public ICPPTemplateParameterMap getTemplateParameterMap() {
 		if (fArgMap == null) {

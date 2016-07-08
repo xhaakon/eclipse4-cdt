@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2015 Wind River Systems and others.
+ * Copyright (c) 2007, 2016 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -196,7 +196,7 @@ import com.ibm.icu.text.MessageFormat;
 @SuppressWarnings("restriction")
 public abstract class DisassemblyPart extends WorkbenchPart implements IDisassemblyPart, IViewportListener, ITextPresentationListener, IDisassemblyPartCallback  {
 
-	final static boolean DEBUG = "true".equals(Platform.getDebugOption("org.eclipse.cdt.dsf.ui/debug/disassembly"));  //$NON-NLS-1$//$NON-NLS-2$
+	final static boolean DEBUG = Boolean.parseBoolean(Platform.getDebugOption("org.eclipse.cdt.dsf.ui/debug/disassembly"));  //$NON-NLS-1$//$NON-NLS-2$
 
 	/**
 	 * Annotation model attachment key for breakpoint annotations.
@@ -1495,7 +1495,8 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	 */
 	@Override
 	public void viewportChanged(int verticalOffset) {
-		if (fDebugSessionId != null && fGotoAddressPending == PC_UNKNOWN && fScrollPos == null && !fUpdatePending && !fRefreshViewPending) {
+		if (fDebugSessionId != null && fGotoAddressPending == PC_UNKNOWN && fScrollPos == null && !fUpdatePending && !fRefreshViewPending 
+				&& fFocusAddress != PC_UNKNOWN) {
 			fUpdatePending = true;
             final int updateCount = fUpdateCount;
             invokeLater(new Runnable() {
@@ -2184,12 +2185,11 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 				}
 				int offset= lineRegion.getOffset();
 				int length= lineRegion.getLength();
-				@SuppressWarnings("unchecked")
-				Iterator<SimpleMarkerAnnotation> it= bpModel.getAnnotationIterator(offset, length, true, true);
+				Iterator<Annotation> it= bpModel.getAnnotationIterator(offset, length, true, true);
 				List<IBreakpoint> bpList= new ArrayList<IBreakpoint>(5);
 				final IBreakpointManager bpMgr= DebugPlugin.getDefault().getBreakpointManager();
 				while (it.hasNext()) {
-					final SimpleMarkerAnnotation annotation= it.next();
+					final SimpleMarkerAnnotation annotation= (SimpleMarkerAnnotation) it.next();
 					IBreakpoint bp= bpMgr.getBreakpoint(annotation.getMarker());
 					if (bp != null) {
 						bpList.add(bp);
@@ -2830,11 +2830,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	 */
 	protected abstract void closePart();
 
-	/*
-	 * @see org.eclipse.jface.text.ITextPresentationListener#applyTextPresentation(org.eclipse.jface.text.TextPresentation)
-	 */
 	@Override
-	@SuppressWarnings("unchecked")
     public void applyTextPresentation(TextPresentation textPresentation) {
 		IRegion coverage = textPresentation.getExtent();
 		if (coverage == null) {

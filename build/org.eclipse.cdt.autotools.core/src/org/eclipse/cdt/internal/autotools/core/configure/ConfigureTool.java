@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Red Hat Inc.
+ * Copyright (c) 2009, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -31,10 +31,12 @@ public class ConfigureTool extends AbstractConfigurationOption {
 		this.value = value;
 	}
 	
+	@Override
 	public String getValue() {
 		return value;
 	}
 	
+	@Override
 	public void setValue(String newValue) {
 		if (!newValue.equals(value)) {
 			cfg.setDirty(true);
@@ -42,22 +44,27 @@ public class ConfigureTool extends AbstractConfigurationOption {
 		}
 	}
 
+	@Override
 	public boolean isParmSet() {
 		return false;
 	}
 	
+	@Override
 	public String getParameter() {
-		return ""; // $NON-NLS-1$
+		return ""; //$NON-NLS-1$
 	}
 	
+	@Override
 	public ArrayList<String> getParameters() {
-		return new ArrayList<String>();
+		return new ArrayList<>();
 	}
 	
+	@Override
 	public IConfigureOption copy(AutotoolsConfiguration config) {
 		return new ConfigureTool(name, config, value);
 	}
 
+	@Override
 	public int getType() {
 		return TOOL;
 	}

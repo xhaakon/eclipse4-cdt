@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Red Hat Inc.
+ * Copyright (c) 2010, 2015 Red Hat Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,6 +16,7 @@ import org.eclipse.ui.IMarkerResolutionGenerator;
 
 public class MarkerResolutionGenerator implements IMarkerResolutionGenerator {
 
+	@Override
 	public IMarkerResolution[] getResolutions(IMarker marker) {
 //		System.out.println("in marker resolution, library info is " + marker.getAttribute(IAutotoolsMarker.MARKER_LIBRARY_INFO, ""));
 //		String libraryInfo = marker.getAttribute(IAutotoolsMarker.MARKER_LIBRARY_INFO, null);

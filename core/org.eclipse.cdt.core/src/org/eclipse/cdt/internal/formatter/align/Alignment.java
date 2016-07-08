@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2011 IBM Corporation and others.
+ * Copyright (c) 2000, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -463,13 +463,13 @@ public class Alignment {
 		}
 	}
 
-	public void toFragmentsString(StringBuffer buffer) {
+	public void toFragmentsString(StringBuilder buffer) {
 		// default implementation
 	}
 	
 	@Override
 	public String toString() {
-		StringBuffer buffer = new StringBuffer(10);
+		StringBuilder buffer = new StringBuilder(10);
 		buffer
 			.append(getClass().getName())
 			.append(':')

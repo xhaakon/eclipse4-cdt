@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010, 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2010, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -100,5 +100,15 @@ public class CPPASTCapture extends ASTNode implements ICPPASTCapture {
 	public void setIsPackExpansion(boolean val) {
 		assertNotFrozen();
 		fPackExpansion= val;
+	}
+
+	@Override
+	public int getRoleForName(IASTName name) {
+		if (name == fIdentifier) {
+			// Treat the capture as a reference to the captured variable.
+			// This choice may be revisited when C++14 init-captures are implemented.
+			return r_reference;
+		}
+		return r_unclear;
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,7 +17,6 @@ import org.eclipse.cdt.internal.autotools.ui.preferences.ColorManager;
 import org.eclipse.jface.text.rules.EndOfLineRule;
 import org.eclipse.jface.text.rules.IRule;
 import org.eclipse.jface.text.rules.IToken;
-import org.eclipse.jface.text.rules.IWhitespaceDetector;
 import org.eclipse.jface.text.rules.MultiLineRule;
 import org.eclipse.jface.text.rules.WhitespaceRule;
 import org.eclipse.jface.text.rules.WordRule;
@@ -56,6 +55,7 @@ public class MakefileCodeScanner extends AbstractMakefileCodeScanner {
 		initialize();
 	}
 	
+	@Override
 	protected List<IRule> createRules() {
 		IToken keyword = getToken(ColorManager.MAKE_KEYWORD_COLOR);
 		IToken function = getToken(ColorManager.MAKE_FUNCTION_COLOR);
@@ -64,17 +64,13 @@ public class MakefileCodeScanner extends AbstractMakefileCodeScanner {
 		IToken macroDef = getToken(ColorManager.MAKE_MACRO_DEF_COLOR);
 		IToken other = getToken(ColorManager.MAKE_DEFAULT_COLOR);
 
-		List<IRule> rules = new ArrayList<IRule>();
+		List<IRule> rules = new ArrayList<>();
 
 		// Add rule for single line comments.
 		rules.add(new EndOfLineRule("#", comment, '\\', true)); //$NON-NLS-1$
 
 		// Add generic whitespace rule.
-		rules.add(new WhitespaceRule(new IWhitespaceDetector() {
-			public boolean isWhitespace(char character) {
-				return Character.isWhitespace(character);
-			}
-		}));
+		rules.add(new WhitespaceRule(character -> Character.isWhitespace(character)));
 
 		// Put before the the word rules
 		MultiLineRule defineRule = new MultiLineRule("define", "endef", macroDef); //$NON-NLS-1$ //$NON-NLS-2$
@@ -107,6 +103,7 @@ public class MakefileCodeScanner extends AbstractMakefileCodeScanner {
 	/*
 	 * @see AbstractMakefileCodeScanner#getTokenProperties()
 	 */
+	@Override
 	protected String[] getTokenProperties() {
 		return fTokenProperties;
 	}

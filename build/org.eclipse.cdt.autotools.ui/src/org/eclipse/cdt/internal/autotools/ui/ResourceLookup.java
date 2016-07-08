@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2008, 2015 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,7 +13,6 @@ package org.eclipse.cdt.internal.autotools.ui;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -123,18 +122,16 @@ public class ResourceLookup {
 	 * <br> Files on a source root of a CDT project
 	 */
 	public static void sortFilesByRelevance(IFile[] filesToSort, final IProject preferredProject) {
-		Collections.sort(Arrays.asList(filesToSort), new Comparator<IFile>() {
-			public int compare(IFile f1, IFile f2) {
-				int r1= FileRelevance.getRelevance(f1, preferredProject);
-				int r2= FileRelevance.getRelevance(f2, preferredProject);
-				
-				if (r1 > r2)
-					return -1;
-				if (r1 < r2)
-					return 1;
-				
-				return f1.getFullPath().toString().compareTo(f2.getFullPath().toString());
-			}
+		Collections.sort(Arrays.asList(filesToSort), (IFile f1, IFile f2) -> {
+			int r1 = FileRelevance.getRelevance(f1, preferredProject);
+			int r2 = FileRelevance.getRelevance(f2, preferredProject);
+
+			if (r1 > r2)
+				return -1;
+			if (r1 < r2)
+				return 1;
+
+			return f1.getFullPath().toString().compareTo(f2.getFullPath().toString());
 		});
 	}
 

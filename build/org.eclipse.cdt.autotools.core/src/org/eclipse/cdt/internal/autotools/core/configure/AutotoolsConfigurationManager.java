@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010, 2011 Red Hat Inc.
+ * Copyright (c) 2009, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,10 +15,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -28,7 +28,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.cdt.autotools.core.AutotoolsNewProjectNature;
-import org.eclipse.cdt.autotools.core.AutotoolsOptionConstants;
 import org.eclipse.cdt.autotools.core.AutotoolsPlugin;
 import org.eclipse.cdt.autotools.core.IAutotoolsOption;
 import org.eclipse.cdt.core.model.CoreModel;
@@ -63,8 +62,8 @@ import org.xml.sax.SAXException;
 
 public class AutotoolsConfigurationManager implements IResourceChangeListener {
 	
-	public final static String CFG_FILE_NAME = ".autotools"; //$NON-NLS-1$
-	private final static String CFG_CANT_SAVE = "Configure.Error.NoProjectToSave"; //$NON-NLS-1$
+	public static final String CFG_FILE_NAME = ".autotools"; //$NON-NLS-1$
+	private static final String CFG_CANT_SAVE = "Configure.Error.NoProjectToSave"; //$NON-NLS-1$
 	
 	/**
 	 * @since 1.2
@@ -85,9 +84,9 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 	private static Map<String, Map<String, IAConfiguration>> tmpConfigs;
 	
 	private AutotoolsConfigurationManager() {
-		configs = new HashMap<String, Map<String, IAConfiguration>>();
-		tmpConfigs = new HashMap<String, Map<String, IAConfiguration>>();
-		AutotoolsPlugin.getWorkspace().addResourceChangeListener(this);
+		configs = new HashMap<>();
+		tmpConfigs = new HashMap<>();
+		ResourcesPlugin.getWorkspace().addResourceChangeListener(this);
 	}
 	
 	public static AutotoolsConfigurationManager getInstance() {
@@ -97,11 +96,14 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 		return instance;
 	}
 
-	public synchronized IAConfiguration createDefaultConfiguration(IProject project, String id) {
-		IAConfiguration cfg = new AutotoolsConfiguration(id);
-		return cfg;
+	public synchronized IAConfiguration createDefaultConfiguration(String id) {
+		return new AutotoolsConfiguration(id);
 	}
 	
+	public synchronized IAConfiguration createDefaultConfiguration(IProject project, String id) {
+		return new AutotoolsConfiguration(project, id);
+	}
+
 	public synchronized IAConfiguration findCfg(IProject p, String id) {
 		Map<String, IAConfiguration> cfgs = getConfigurations(p);
 		return cfgs.get(id);
@@ -138,7 +140,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 		String projectName = project.getName();
 		Map<String, IAConfiguration> cfgs = getSavedConfigs(project);
 		if (cfgs == null) {
-			cfgs = new HashMap<String, IAConfiguration>();
+			cfgs = new HashMap<>();
 			configs.put(projectName, cfgs);
 		}
 		cfgs.put(cfg.getId(), cfg);
@@ -167,7 +169,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 		clearTmpConfigurations(project);
 		ICProjectDescription pd = CoreModel.getDefault().getProjectDescription(project);
 		ICConfigurationDescription[] cfgs = pd.getConfigurations();
-		Map <String, IAConfiguration> newCfgList = new HashMap<String, IAConfiguration>();
+		Map<String, IAConfiguration> newCfgList = new HashMap<>();
 		for (int i = 0; i < cfgs.length; ++i) {
 			cfgs[i].getConfigurationData();
 			IAConfiguration acfg = getTmpConfiguration(project, cfgs[i]);
@@ -197,22 +199,22 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 			try {
 				IPath fileLocation = project.getLocation().append(CFG_FILE_NAME);
 				File dirFile = fileLocation.toFile();
-				Map<String, IAConfiguration> cfgList = new HashMap<String, IAConfiguration>();
+				Map<String, IAConfiguration> cfgList = new HashMap<>();
 				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 				DocumentBuilder db = dbf.newDocumentBuilder();
 				if (dirFile.exists()) {
 					Document d = db.parse(dirFile);
 					Element e = d.getDocumentElement();
 					// Get the stored configuration data
-					NodeList cfgs = e.getElementsByTagName("configuration"); // $NON-NLS-1$
+					NodeList cfgs = e.getElementsByTagName("configuration"); //$NON-NLS-1$
 					for (int x = 0; x < cfgs.getLength(); ++x) {
 						Node n = cfgs.item(x);
 						NamedNodeMap attrs = n.getAttributes();
 						// Originally we used the configuration name, but now we use
 						// the ConfigurationDescription id which is unique.  Check for
 						// id first, but fall back to name for older .autotools files.
-						Node nameNode = attrs.getNamedItem("name"); // $NON-NLS-1$
-						Node cfgIdNode = attrs.getNamedItem("id"); // $NON-NLS-1$
+						Node nameNode = attrs.getNamedItem("name"); //$NON-NLS-1$
+						Node cfgIdNode = attrs.getNamedItem("id"); //$NON-NLS-1$
 						String cfgId = null;
 						if (cfgIdNode != null)
 							cfgId = cfgIdNode.getNodeValue();
@@ -225,20 +227,20 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 							else
 								continue; // have to punt, this doesn't map to real cfg
 						}
-						IAConfiguration cfg = new AutotoolsConfiguration(cfgId);
+						IAConfiguration cfg = new AutotoolsConfiguration(project, cfgId);
 						NodeList l = n.getChildNodes();
 						for (int y = 0; y < l.getLength(); ++y) {
 							Node child = l.item(y);
-							if (child.getNodeName().equals("option")) { // $NON-NLS-1$
+							if (child.getNodeName().equals("option")) { //$NON-NLS-1$
 								NamedNodeMap optionAttrs = child.getAttributes();
-								Node id = optionAttrs.getNamedItem("id"); // $NON-NLS-1$
-								Node value = optionAttrs.getNamedItem("value"); // $NON-NLS-1$
+								Node id = optionAttrs.getNamedItem("id"); //$NON-NLS-1$
+								Node value = optionAttrs.getNamedItem("value"); //$NON-NLS-1$
 								if (id != null && value != null)
 									cfg.setOption(id.getNodeValue(), value.getNodeValue());
 							} else if (child.getNodeName().equals("flag")) { //$NON-NLS-1$
 								// read in flag values
 								NamedNodeMap optionAttrs = child.getAttributes();
-								Node id = optionAttrs.getNamedItem("id"); // $NON-NLS-1$
+								Node id = optionAttrs.getNamedItem("id"); //$NON-NLS-1$
 								String idValue = id.getNodeValue();
 								IConfigureOption opt = cfg.getOption(idValue);
 								if (opt instanceof FlagConfigureOption) {
@@ -247,8 +249,8 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 										Node flagChild = l2.item(z);
 										if (flagChild.getNodeName().equals("flagvalue")) { //$NON-NLS-1$
 											NamedNodeMap optionAttrs2 = flagChild.getAttributes();
-											Node id2 = optionAttrs2.getNamedItem("id"); // $NON-NLS-1$
-											Node value = optionAttrs2.getNamedItem("value"); // $NON-NLS-1$
+											Node id2 = optionAttrs2.getNamedItem("id"); //$NON-NLS-1$
+											Node value = optionAttrs2.getNamedItem("value"); //$NON-NLS-1$
 											cfg.setOption(id2.getNodeValue(), value.getNodeValue());		
 										}
 									}
@@ -263,14 +265,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 						list = cfgList;
 					}
 				}
-			} catch (ParserConfigurationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (SAXException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
+			} catch (ParserConfigurationException | SAXException | IOException e) {
 				e.printStackTrace();
 			}
 		}
@@ -313,7 +308,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 		if (savedList != null)
 			oldCfg = savedList.get(oldId);
 		if (oldCfg != null) {
-			IAConfiguration newCfg = oldCfg.copy(cfgd.getId());
+			IAConfiguration newCfg = oldCfg.copy(newId);
 			tmpList.put(cfgd.getId(), newCfg);
 			// Check to see if the new configuration is already stored as part of the project description.
 			// If yes, it should already be saved.  This can occur if the configuration was added as part of
@@ -329,7 +324,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 	private Map<String, IAConfiguration> getTmpConfigs(IProject p) {
 		Map <String, IAConfiguration> tmpList = tmpConfigs.get(p.getName());
 		if (tmpList == null) {
-			tmpList = new HashMap<String, IAConfiguration>();
+			tmpList = new HashMap<>();
 			tmpConfigs.put(p.getName(), tmpList);
 		}
 		return tmpList;
@@ -356,8 +351,8 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 				ITool tool = tools[j];
 				if (tool.getName().equals("configure")) { //$NON-NLS-1$
 					IOption option = 
-						tool.getOptionBySuperClassId("org.eclipse.linuxtools.cdt.autotools.core.option.configure.name"); // $NON-NLS-1$
-					IHoldsOptions h = (IHoldsOptions)tool;
+						tool.getOptionBySuperClassId("org.eclipse.linuxtools.cdt.autotools.core.option.configure.name"); //$NON-NLS-1$
+					IHoldsOptions h = tool;
 					try {
 						IOption optionToSet = h.getOptionToSet(option, false);
 						optionToSet.setValue(id);
@@ -385,49 +380,53 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 			if (!f.exists())
 				f.createNewFile();
 			if (f.exists()) {
-				PrintWriter p = new PrintWriter(new BufferedWriter(new FileWriter(f)));
-				Map<String, IAConfiguration> cfgs = configs.get(projectName);
-				p.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); //$NON-NLS-1$
-				p.println("<configurations>"); // $NON-NLS-1$
-				Option[] optionList = AutotoolsConfiguration.getOptionList();
-				// Before saving, force any cloning to occur via the option value handler.
-				setSyncing(true);
-				for (int i = 0; i < cfgds.length; ++i) {
-					@SuppressWarnings("unused")
-					CConfigurationData data = cfgds[i].getConfigurationData();
-				}
-				setSyncing(false);
-				for (int i = 0; i < cfgds.length; ++i) {
-					ICConfigurationDescription cfgd = cfgds[i];
-					String id = cfgd.getId();
-					IAConfiguration cfg = cfgs.get(id);
-					if (cfg == null) {
-						cfg = createDefaultConfiguration(project, id);
+				try (PrintWriter p = new PrintWriter(new BufferedWriter(new FileWriter(f)))) {
+					Map<String, IAConfiguration> cfgs = configs.get(projectName);
+					p.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); //$NON-NLS-1$
+					p.println("<configurations>"); //$NON-NLS-1$
+					Option[] optionList = AutotoolsConfiguration.getOptionList();
+					// Before saving, force any cloning to occur via the option
+					// value handler.
+					setSyncing(true);
+					for (int i = 0; i < cfgds.length; ++i) {
+						@SuppressWarnings("unused")
+						CConfigurationData data = cfgds[i].getConfigurationData();
 					}
-					p.println("<configuration id=\"" + cfg.getId() + "\">"); //$NON-NLS-1$ //$NON-NLS-2$ 
-					for (int j = 0; j < optionList.length; ++j) {
-						Option option = optionList[j];
-						IConfigureOption opt = cfg.getOption(option.getName());
-						if (opt.isFlag()) {
-							p.println("<flag id=\"" + option.getName() + "\" value=\"" + xmlEscape(option.getDefaultValue()) + "\">"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-							FlagConfigureOption fco = (FlagConfigureOption)opt;
-							ArrayList<String> children = fco.getChildren();
-							for (int k = 0; k < children.size(); ++k) {
-								String childName = children.get(k);
-								IConfigureOption childopt = cfg.getOption(childName);
-								p.println("<flagvalue id=\"" + childopt.getName() + "\" value=\"" + xmlEscape(childopt.getValue()) + "\"/>"); //$NON-NLS-1$ //$NON-NLS-2$ // $NON-NLS-3$
-							}
-							p.println("</flag>"); //$NON-NLS-1$
+					setSyncing(false);
+					for (int i = 0; i < cfgds.length; ++i) {
+						ICConfigurationDescription cfgd = cfgds[i];
+						String id = cfgd.getId();
+						IAConfiguration cfg = cfgs.get(id);
+						if (cfg == null) {
+							cfg = createDefaultConfiguration(project, id);
 						}
-						else if (!opt.isCategory() && !opt.isFlagValue())
-							p.println("<option id=\"" + option.getName() + "\" value=\"" + xmlEscape(opt.getValue()) + "\"/>"); //$NON-NLS-1$ //$NON-NLS-2$ // $NON-NLS-3$
+						p.println("<configuration id=\"" + cfg.getId() + "\">"); //$NON-NLS-1$ //$NON-NLS-2$
+						for (int j = 0; j < optionList.length; ++j) {
+							Option option = optionList[j];
+							IConfigureOption opt = cfg.getOption(option.getName());
+							if (opt.isFlag()) {
+								p.println("<flag id=\"" + option.getName() + "\" value=\"" //$NON-NLS-1$ //$NON-NLS-2$
+										+ xmlEscape(option.getDefaultValue()) + "\">"); //$NON-NLS-1$
+								FlagConfigureOption fco = (FlagConfigureOption) opt;
+								List<String> children = fco.getChildren();
+								for (int k = 0; k < children.size(); ++k) {
+									String childName = children.get(k);
+									IConfigureOption childopt = cfg.getOption(childName);
+									p.println("<flagvalue id=\"" + childopt.getName() + "\" value=\"" //$NON-NLS-1$ //$NON-NLS-2$
+											+ xmlEscape(childopt.getValue()) + "\"/>"); //$NON-NLS-3$
+								}
+								p.println("</flag>"); //$NON-NLS-1$
+							} else if (!opt.isCategory() && !opt.isFlagValue())
+								p.println("<option id=\"" + option.getName() + "\" value=\"" + xmlEscape(opt.getValue()) //$NON-NLS-1$ //$NON-NLS-2$
+										+ "\"/>"); //$NON-NLS-3$
+						}
+						p.println("</configuration>"); //$NON-NLS-1$
+						// Sync name field as this configuration is now
+						// officially saved
+						syncNameField(cfgd);
 					}
-					p.println("</configuration>"); //$NON-NLS-1$
-					// Sync name field as this configuration is now officially saved
-					syncNameField(cfgd);
+					p.println("</configurations>");
 				}
-				p.println("</configurations>");
-				p.close();
 			}
 		} catch (IOException e) {
 			AutotoolsPlugin.log(e);
@@ -441,7 +440,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 	public synchronized void applyConfigs(String projectName, ICConfigurationDescription[] cfgds) {
 		try {
 			IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-			IResource res = (IProject)root.findMember(projectName, false);
+			IResource res = root.findMember(projectName, false);
 			if (res == null || res.getType() != IResource.PROJECT) {
 				AutotoolsPlugin.logErrorMessage(ConfigureMessages.getFormattedString(CFG_CANT_SAVE,
 						new String[]{projectName}));
@@ -453,15 +452,14 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 			if (!f.exists())
 				f.createNewFile();
 			if (f.exists()) {
-				PrintWriter p = new PrintWriter(new BufferedWriter(new FileWriter(f)));
-				try {
+				try (PrintWriter p = new PrintWriter(new BufferedWriter(new FileWriter(f)))) {
 					Map<String, IAConfiguration> cfgs = getSavedConfigs(project);
 					if (cfgs == null)
 						return;
 					p.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"); //$NON-NLS-1$
-					p.println("<configurations>"); // $NON-NLS-1$
+					p.println("<configurations>"); //$NON-NLS-1$
 					Option[] optionList = AutotoolsConfiguration.getOptionList();
-					HashSet<String> savedIds = new HashSet<String>();
+					HashSet<String> savedIds = new HashSet<>();
 					setSyncing(true);
 					for (int x = 0; x < cfgds.length; ++x) {
 						ICConfigurationDescription cfgd = cfgds[x];
@@ -476,7 +474,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 							Option option = optionList[j];
 							IConfigureOption opt = cfg.getOption(option.getName());
 							if (!opt.isCategory())
-								p.println("<option id=\"" + option.getName() + "\" value=\"" + opt.getValue() + "\"/>"); //$NON-NLS-1$ //$NON-NLS-2$ // $NON-NLS-3$
+								p.println("<option id=\"" + option.getName() + "\" value=\"" + opt.getValue() + "\"/>"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 						}
 						p.println("</configuration>"); //$NON-NLS-1$
 						syncNameField(cfgd);
@@ -485,24 +483,22 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 
 					// Put all the remaining configurations already saved back into the file.
 					// These represent deleted configurations, but confirmation has not occurred.
-					for (Iterator<String> i = cfgs.keySet().iterator(); i.hasNext(); ) {
-						String id = i.next();
+					for (Entry<String, IAConfiguration> i : cfgs.entrySet()) {
+						String id = i.getKey();
 						// A remaining id won't appear in our savedIds list.
 						if (!savedIds.contains(id)) {
-							IAConfiguration cfg = cfgs.get(id);
+							IAConfiguration cfg = i.getValue();
 							p.println("<configuration id=\"" + id + "\">"); //$NON-NLS-1$ //$NON-NLS-2$ 
 							for (int j = 0; j < optionList.length; ++j) {
 								Option option = optionList[j];
 								IConfigureOption opt = cfg.getOption(option.getName());
 								if (!opt.isCategory())
-									p.println("<option id=\"" + option.getName() + "\" value=\"" + opt.getValue() + "\"/>"); //$NON-NLS-1$ //$NON-NLS-2$ // $NON-NLS-3$
+									p.println("<option id=\"" + option.getName() + "\" value=\"" + opt.getValue() + "\"/>"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 							}
 							p.println("</configuration>"); //$NON-NLS-1$
 						}
 					}
 					p.println("</configurations>");
-				} finally {
-					p.close();
 				}
 			}
 		} catch (IOException e) {
@@ -513,12 +509,13 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 	public synchronized Map<String, IAConfiguration> getConfigurations(IProject project) {
 		Map<String, IAConfiguration> list = getSavedConfigs(project);
 		if (list == null) {
-			list = new HashMap<String, IAConfiguration>();
+			list = new HashMap<>();
 			configs.put(project.getName(), list);
 		}
 		return list;
 	}
 	
+	@Override
 	public synchronized void resourceChanged(IResourceChangeEvent event) {
 		IResource res = event.getResource();
 		if (!(res instanceof IProject))
@@ -548,7 +545,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 		}
 	}
 	
-	private class AutotoolsOption implements IAutotoolsOption {
+	private static class AutotoolsOption implements IAutotoolsOption {
 		
 		private IConfigureOption option;
 		private final static String UNMODIFIABLE_CONFIG_OPTION = "CfgOptions.Unmodifiable.Option"; //$NON-NLS-1$
@@ -573,6 +570,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 			case FLAGVALUE:
 			case MULTIARG:
 			case INTERNAL:
+			case ENVVAR:
 				return true;
 			}
 			return false;
@@ -628,13 +626,13 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 		}
 
 		IAConfiguration cfg = getConfiguration(project, cfgId);
-		HashMap<String, IAutotoolsOption> options = new HashMap<String, IAutotoolsOption>();
+		HashMap<String, IAutotoolsOption> options = new HashMap<>();
 
 		// Get set of configuration options and convert to set of IAutotoolOptions
 		Map<String, IConfigureOption> cfgOptions = cfg.getOptions();
 		IAConfiguration dummyCfg = createDefaultConfiguration(project, createDummyId());
 		for (Iterator<Entry<String, IConfigureOption>> i = cfgOptions.entrySet().iterator(); i.hasNext();) {
-			Map.Entry<String, IConfigureOption> entry = (Entry<String, IConfigureOption>) i.next();
+			Map.Entry<String, IConfigureOption> entry = i.next();
 			String name = entry.getKey();
 			IAutotoolsOption configOption = 
 					new AutotoolsOption(entry.getValue().copy((AutotoolsConfiguration)dummyCfg));
@@ -665,7 +663,7 @@ public class AutotoolsConfigurationManager implements IResourceChangeListener {
 
 		// Get set of configuration options and convert to set of IAutotoolOptions
 		for (Iterator<Entry<String, IAutotoolsOption>> i = options.entrySet().iterator(); i.hasNext();) {
-			Map.Entry<String, IAutotoolsOption> entry = (Entry<String, IAutotoolsOption>) i.next();
+			Map.Entry<String, IAutotoolsOption> entry = i.next();
 			String name = entry.getKey();
 			IAutotoolsOption option = entry.getValue();
 			IConfigureOption cfgOption = cfg.getOption(name);

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Ericsson and others.
+ * Copyright (c) 2007, 2015 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -32,21 +32,21 @@ import org.eclipse.cdt.dsf.mi.service.IMIRunControl;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakInsertInfo;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.ServiceEventWaitor;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 
 /**
  * Tests MIRunControl class for for the execWhileTargetAvailable() method. 
  */
-@RunWith(BackgroundRunner.class)
-public class MIRunControlTargetAvailableTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class MIRunControlTargetAvailableTest extends BaseParametrizedTestCase {
 
 	private static final String TIMEOUT_MESSAGE = "Timeout";
 
@@ -89,7 +89,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
 	public void doAfterTest() throws Exception {
 		super.doAfterTest();
 		
-		fServicesTracker.dispose();
+        if (fServicesTracker!=null) fServicesTracker.dispose();
 	}
 	
 	@Override
@@ -116,7 +116,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
         	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
         	    	
         	        fGDBCtrl.queueCommand(
-        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", 0),
+        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", "0"),
         	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
         		}}
         };
@@ -164,7 +164,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
         	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
         	    	
         	        fGDBCtrl.queueCommand(
-        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", 0),
+        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", "0"),
         	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
         		}}
         };
@@ -215,7 +215,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
         	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
         	    	
         	        fGDBCtrl.queueCommand(
-        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", 0),
+        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", "0"),
         	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
         		}},
            	new Step() {
@@ -224,7 +224,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHi", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHi", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}},
            	new Step() {
@@ -233,7 +233,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}}
         };
@@ -286,7 +286,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
         	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
         	    	
         	        fGDBCtrl.queueCommand(
-        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", 0),
+        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", "0"),
         	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
         		}},
            	new Step() {
@@ -295,7 +295,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, "invalid condition", 0, "PrintHi", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, "invalid condition", 0, "PrintHi", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}},
            	new Step() {
@@ -304,7 +304,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}}
         };
@@ -345,7 +345,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
         	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
         	    	
         	        fGDBCtrl.queueCommand(
-        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", 0),
+        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", "0"),
         	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
         		}},
            	new Step() {
@@ -354,7 +354,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHi", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHi", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}},
            	new Step() {
@@ -363,7 +363,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}}
         };
@@ -422,7 +422,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
         	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
         	    	
         	        fGDBCtrl.queueCommand(
-        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", 0),
+        	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintHello", "0"),
         	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
         		}},
            	new Step() {
@@ -431,7 +431,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, "invalid condition", 0, "PrintHi", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, "invalid condition", 0, "PrintHi", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}},
            	new Step() {
@@ -440,7 +440,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, "PrintBonjour", "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}}
         };
@@ -499,7 +499,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}}
           };
@@ -567,7 +567,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
            	        IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
            	    	
            	        fGDBCtrl.queueCommand(
-           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, 0),
+           	        		fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, "0"),
            	        		new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm));
            		}}
           };
@@ -642,7 +642,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     					final IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
 
     					fGDBCtrl.queueCommand(
-    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, 0),
+    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, "0"),
     							new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm) {
     								@Override
     								protected void handleSuccess() {
@@ -652,7 +652,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     												@Override
     												public void execute(final RequestMonitor rm) {
     													fGDBCtrl.queueCommand(
-    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, 0),
+    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, "0"),
     															new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), null));
     												}}}, new RequestMonitor(fGDBCtrl.getExecutor(), null));
 
@@ -709,7 +709,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     					final IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
 
     					fGDBCtrl.queueCommand(
-    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, 0),
+    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, "0"),
     							new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm) {
     								@Override
     								protected void handleSuccess() {
@@ -719,7 +719,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     												@Override
     												public void execute(final RequestMonitor otherRm) {
     													fGDBCtrl.queueCommand(
-    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, 0),
+    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, "0"),
     															new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), otherRm));
     												}}}, new RequestMonitor(fGDBCtrl.getExecutor(), null));
 
@@ -786,7 +786,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     					final IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
 
     					fGDBCtrl.queueCommand(
-    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, 0),
+    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, "0"),
     							new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm) {
     								@Override
     								protected void handleSuccess() {
@@ -796,7 +796,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     												@Override
     												public void execute(final RequestMonitor otherRm) {
     													fGDBCtrl.queueCommand(
-    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, 0),
+    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, "0"),
     															new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), otherRm));
     												}}}, rm);
     								}});
@@ -851,7 +851,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     					final IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(fContainerDmc, IBreakpointsTargetDMContext.class);
 
     					fGDBCtrl.queueCommand(
-    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, 0),
+    							fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location, "0"),
     							new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), rm) {
     								@Override
     								protected void handleSuccess() {
@@ -861,7 +861,7 @@ public class MIRunControlTargetAvailableTest extends BaseTestCase {
     												@Override
     												public void execute(final RequestMonitor otherRm) {
     													fGDBCtrl.queueCommand(
-    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, 0),
+    															fGDBCtrl.getCommandFactory().createMIBreakInsert(bpTargetDmc, true, false, null, 0, location2, "0"),
     															new DataRequestMonitor<MIBreakInsertInfo> (fGDBCtrl.getExecutor(), otherRm));
     												}}}, rm);
     								}});

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2015 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2011, 2016 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others.
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -61,7 +61,7 @@ import org.eclipse.cdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.cdt.core.dom.rewrite.ASTRewrite.CommentPosition;
 import org.eclipse.cdt.ui.CUIPlugin;
 
-import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
+import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.cdt.internal.core.dom.rewrite.DeclarationGeneratorImpl;
 
@@ -510,11 +510,11 @@ public class ToggleNodeHelper extends NodeHelper {
 	 */
 	public static List<ICPPASTNamespaceDefinition> findSurroundingNamespaces(IASTNode node) {
 		ArrayList<ICPPASTNamespaceDefinition> namespaces = new ArrayList<>();
-		ICPPASTNamespaceDefinition currentNamespace = CPPVisitor.findAncestorWithType(node,
+		ICPPASTNamespaceDefinition currentNamespace = ASTQueries.findAncestorWithType(node,
 				ICPPASTNamespaceDefinition.class);
 		while (currentNamespace != null) {
 			namespaces.add(0, currentNamespace);
-			currentNamespace = CPPVisitor.findAncestorWithType(currentNamespace.getParent(),
+			currentNamespace = ASTQueries.findAncestorWithType(currentNamespace.getParent(),
 					ICPPASTNamespaceDefinition.class);
 		}
 		return namespaces;

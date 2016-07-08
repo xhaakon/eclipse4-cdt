@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,8 +10,8 @@ package org.eclipse.cdt.internal.qt.core.pdom;
 import org.eclipse.cdt.internal.core.pdom.db.Database;
 import org.eclipse.cdt.internal.core.pdom.db.IString;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMBinding;
-import org.eclipse.cdt.qt.core.QtPlugin;
-import org.eclipse.cdt.qt.core.index.IQProperty;
+import org.eclipse.cdt.internal.qt.core.Activator;
+import org.eclipse.cdt.internal.qt.core.index.IQProperty;
 import org.eclipse.core.runtime.CoreException;
 
 @SuppressWarnings("restriction")
@@ -145,7 +145,7 @@ public class QtPDOMProperty extends QtPDOMBinding {
 				long cppRec = linkage.getDB().getRecPtr(record + 1 + Database.PTR_SIZE);
 
 				if (attrId < 0 || attrId >= IQProperty.Attribute.values().length)
-					throw QtPlugin.coreException("invalid QProperty attribute id read from datbase, was " + attrId);
+					throw Activator.coreException("invalid QProperty attribute id read from datbase, was " + attrId);
 
 				IQProperty.Attribute attr = IQProperty.Attribute.values()[attrId];
 

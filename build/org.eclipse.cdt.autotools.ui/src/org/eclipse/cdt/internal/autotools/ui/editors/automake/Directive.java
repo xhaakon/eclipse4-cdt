@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,9 @@
  *     QNX Software Systems - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
+
+import org.eclipse.cdt.make.core.makefile.IDirective;
+import org.eclipse.cdt.make.core.makefile.IMakefile;
 
 public abstract class Directive implements IDirective {
 
@@ -26,32 +29,24 @@ public abstract class Directive implements IDirective {
 		setLines(start, end);
 	}
 
+	@Override
 	public abstract String toString();
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IDirective#getEndLine()
-	 */
+	@Override
 	public int getEndLine() {
 		return endLine;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IDirective#getStartLine()
-	 */
+	@Override
 	public int getStartLine() {
 		return startLine;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IDirective#getParent()
-	 */
+	@Override
 	public IDirective getParent() {
 		return parent;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IDirective#getFileName()
-	 */
 	public String getFileName() {
 		if (filename == null) {
 			if (parent != null) {
@@ -61,9 +56,7 @@ public abstract class Directive implements IDirective {
 		return filename;
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IDirective#getMakefile()
-	 */
+	@Override
 	public IMakefile getMakefile() {
 		if (makefile == null) {
 			if (parent != null) {

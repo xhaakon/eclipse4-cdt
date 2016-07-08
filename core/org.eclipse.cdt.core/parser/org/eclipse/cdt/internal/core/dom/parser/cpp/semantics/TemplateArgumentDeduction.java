@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2013 Wind River Systems, Inc. and others.
+ * Copyright (c) 2009, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -72,6 +72,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownMember;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 
 /**
  * Algorithms for deducing template arguments in various contexts.
@@ -133,7 +134,7 @@ public class TemplateArgumentDeduction {
 					break;
 				}
 				
-				par= CPPTemplates.instantiateType(par, map, -1, null, point);
+				par= CPPTemplates.instantiateType(par, new InstantiationContext(map, point));
 				if (!SemanticUtil.isValidType(par))
 					return false;
 				
@@ -150,7 +151,7 @@ public class TemplateArgumentDeduction {
 						if (inner != null) {
 							final EvalInitList eval = ((InitializerListType) arg).getEvaluation();
 							for (ICPPEvaluation clause : eval.getClauses()) {
-								if (!deduceFromFunctionArg(inner, clause.getTypeOrFunctionSet(point), 
+								if (!deduceFromFunctionArg(inner, clause.getType(point), 
 										clause.getValueCategory(point), deduct, point))
 									return false;
 							}
@@ -165,7 +166,7 @@ public class TemplateArgumentDeduction {
 						
 						// Do trial deduction
 						CPPTemplateParameterMap success= null;
-						Set<String> handled= new HashSet<String>();
+						Set<String> handled= new HashSet<>();
 						for (ICPPFunction f : fs) {
 							arg= f.getType();
 							if (f instanceof ICPPMethod && !f.isStatic()) {
@@ -202,7 +203,7 @@ public class TemplateArgumentDeduction {
 					ICPPTemplateArgument arg = deduct.fDeducedArgs.getArgument(tpar);
 					if (arg != null) {
 						IType type1 = ((ICPPTemplateNonTypeParameter) tpar).getType();
-						type1= CPPTemplates.instantiateType(type1, map, -1, null, point);
+						type1= CPPTemplates.instantiateType(type1, new InstantiationContext(map, point));
 						IType type2= arg.getTypeOfNonTypeValue();
 						// Template-argument deduced from an array bound may be of any integral
 						// type.
@@ -319,19 +320,22 @@ public class TemplateArgumentDeduction {
 	 * @throws DOMException 
 	 */
 	static ICPPTemplateArgument[] deduceForAddressOf(ICPPFunctionTemplate template,
-			ICPPTemplateArgument[] tmplArgs, IFunctionType arg, CPPTemplateParameterMap map, IASTNode point) throws DOMException {
+			ICPPTemplateArgument[] tmplArgs, IFunctionType arg, CPPTemplateParameterMap map, IASTNode point)
+			throws DOMException {
 		final ICPPTemplateParameter[] tmplParams = template.getTemplateParameters();
 		if (!addExplicitArguments(template, tmplParams, tmplArgs, map, point))
 			return null;
-				
+
 		IType par= template.getType();
-		par= CPPTemplates.instantiateType(par, map, -1, null, point);
+		InstantiationContext context = new InstantiationContext(map, point);
+		par= CPPTemplates.instantiateType(par, context);
 		if (!SemanticUtil.isValidType(par))
 			return null;
 
 		boolean isDependentPar= CPPTemplates.isDependentType(par);
 		if (isDependentPar) {
-			TemplateArgumentDeduction deduct= new TemplateArgumentDeduction(tmplParams, map, new CPPTemplateParameterMap(tmplParams.length), 0);
+			TemplateArgumentDeduction deduct=
+					new TemplateArgumentDeduction(tmplParams, map, new CPPTemplateParameterMap(tmplParams.length), 0);
 			par= SemanticUtil.getNestedType(par, SemanticUtil.TDEF); 
 			if (arg != null && !deduct.fromType(par, arg, false, point))
 				return null;
@@ -343,7 +347,7 @@ public class TemplateArgumentDeduction {
 			return null;
 
 		if (isDependentPar)
-			par= CPPTemplates.instantiateType(par, map, -1, null, point);
+			par= CPPTemplates.instantiateType(par, context);
 		
 		if (arg == null || arg.isSameType(par)) {
 			return createArguments(map, tmplParams);
@@ -370,12 +374,13 @@ public class TemplateArgumentDeduction {
 			return null;
 		}
 		
+		InstantiationContext context = new InstantiationContext(map, point);
 		for (int i = 0; i < length; i++) {
 			if (result[i] == null) {
 				final ICPPTemplateParameter tpar = tmplParams[i];
 				ICPPTemplateArgument deducedArg= map.getArgument(tpar);
 				if (deducedArg == null) {
-					deducedArg= CPPTemplates.instantiateArgument(tpar.getDefaultValue(), map, -1, null, point);
+					deducedArg= CPPTemplates.instantiateArgument(tpar.getDefaultValue(), context);
 					if (!CPPTemplates.isValidArgument(deducedArg))
 						return null;
 				}			
@@ -390,18 +395,21 @@ public class TemplateArgumentDeduction {
 	 * 14.8.2.6
 	 */
 	static ICPPTemplateArgument[] deduceForDeclaration(ICPPFunctionTemplate template,
-			ICPPTemplateArgument[] args, ICPPFunctionType ftype, CPPTemplateParameterMap map, IASTNode point) throws DOMException {
+			ICPPTemplateArgument[] args, ICPPFunctionType ftype, CPPTemplateParameterMap map, IASTNode point)
+			throws DOMException {
 		final ICPPTemplateParameter[] tmplParams = template.getTemplateParameters();
 		
 		if (!addExplicitArguments(template, tmplParams, args, map, point))
 			return null;
 
 		IType a= SemanticUtil.getSimplifiedType(ftype);
-		IType p= CPPTemplates.instantiateType(template.getType(), map, -1, null, point);
+		InstantiationContext context = new InstantiationContext(map, point);
+		IType p= CPPTemplates.instantiateType(template.getType(), context);
 		if (!SemanticUtil.isValidType(p))
 			return null;
 
-		TemplateArgumentDeduction deduct= new TemplateArgumentDeduction(tmplParams, map, new CPPTemplateParameterMap(tmplParams.length), 0);
+		TemplateArgumentDeduction deduct=
+				new TemplateArgumentDeduction(tmplParams, map, new CPPTemplateParameterMap(tmplParams.length), 0);
 		if (!deduct.fromType(p, a, false, point)) {
 			return null;
 		}
@@ -412,7 +420,7 @@ public class TemplateArgumentDeduction {
 		if (!verifyDeduction(tmplParams, map, true, point))
 			return null;
 		
-		IType type= CPPTemplates.instantiateType(p, map, -1, null, point);
+		IType type= CPPTemplates.instantiateType(p, context);
 		if (!ftype.isSameType(type))
 			return null;
 		
@@ -428,9 +436,10 @@ public class TemplateArgumentDeduction {
 			final int fnParCount = fnPars.length;
 			final int fnArgCount = fnArgs.length;
 			int result= 0;
-			TemplateArgumentDeduction deduct= new TemplateArgumentDeduction(tmplPars, new CPPTemplateParameterMap(0), new CPPTemplateParameterMap(fnParCount), 0);
+			TemplateArgumentDeduction deduct=
+					new TemplateArgumentDeduction(tmplPars, new CPPTemplateParameterMap(0), new CPPTemplateParameterMap(fnParCount), 0);
 			IType fnParPack= null;
-			Set<Integer> usedTemplateParIds= new HashSet<Integer>();
+			Set<Integer> usedTemplateParIds= new HashSet<>();
 			for (int j= 0; j < fnArgCount; j++) {
 				IType par;
 				if (fnParPack != null) {
@@ -598,7 +607,7 @@ public class TemplateArgumentDeduction {
 
 	private static ICPPTemplateArgument[] createArguments(CPPTemplateParameterMap map,
 			final ICPPTemplateParameter[] tmplParams) {
-		List<ICPPTemplateArgument> result= new ArrayList<ICPPTemplateArgument>(tmplParams.length);
+		List<ICPPTemplateArgument> result= new ArrayList<>(tmplParams.length);
 		for (ICPPTemplateParameter tpar : tmplParams) {
 			if (tpar.isParameterPack()) {
 				ICPPTemplateArgument[] deducedArgs= map.getPackExpansion(tpar);
@@ -622,12 +631,12 @@ public class TemplateArgumentDeduction {
 	 * the deduced A.
 	 */
 	private static ICPPClassType findBaseInstance(ICPPClassType a, ICPPClassTemplate pTemplate, IASTNode point) throws DOMException {
-		return findBaseInstance(a, pTemplate, CPPSemantics.MAX_INHERITANCE_DEPTH, new HashSet<Object>(), point);
+		return findBaseInstance(a, pTemplate, CPPSemantics.MAX_INHERITANCE_DEPTH, new HashSet<>(), point);
 	}
 
 	private static ICPPClassType findBaseInstance(ICPPClassType a, ICPPClassTemplate pTemplate, int maxdepth, HashSet<Object> handled, IASTNode point) throws DOMException {
 		if (a instanceof ICPPTemplateInstance) {
-			final ICPPTemplateInstance inst = (ICPPTemplateInstance) a;
+			ICPPTemplateInstance inst = (ICPPTemplateInstance) a;
 			ICPPClassTemplate tmpl= getPrimaryTemplate(inst);
 			if (pTemplate.isSameType(tmpl))
 				return a;
@@ -723,12 +732,14 @@ public class TemplateArgumentDeduction {
 		return verifyDeduction(pars, map, false, point);
 	}
 
-	private static boolean verifyDeduction(ICPPTemplateParameter[] pars, CPPTemplateParameterMap tpMap, boolean useDefaults, IASTNode point) {
+	private static boolean verifyDeduction(ICPPTemplateParameter[] pars, CPPTemplateParameterMap tpMap,
+			boolean useDefaults, IASTNode point) {
+		InstantiationContext context = new InstantiationContext(tpMap, point);
 		for (ICPPTemplateParameter tpar : pars) {
 			if (tpar.isParameterPack()) {
 				ICPPTemplateArgument[] deducedArgs= tpMap.getPackExpansion(tpar);
 				if (deducedArgs == null) {
-					tpMap.put(tpar, ICPPTemplateArgument.EMPTY_ARGUMENTS);
+					context.addToParameterMap(tpar, ICPPTemplateArgument.EMPTY_ARGUMENTS);
 				} else {
 					for (ICPPTemplateArgument arg : deducedArgs) {
 						if (arg == null)
@@ -740,9 +751,9 @@ public class TemplateArgumentDeduction {
 				if (deducedArg == null && useDefaults) {
 					deducedArg= tpar.getDefaultValue();
 					if (deducedArg != null) {
-						deducedArg= CPPTemplates.instantiateArgument(deducedArg, tpMap, -1, null, point);
+						deducedArg= CPPTemplates.instantiateArgument(deducedArg, context);
 						if (CPPTemplates.isValidArgument(deducedArg)) {
-							tpMap.put(tpar, deducedArg);
+							context.addToParameterMap(tpar, deducedArg);
 						}
 					}
 				}
@@ -769,7 +780,7 @@ public class TemplateArgumentDeduction {
 		for (ICPPTemplateParameter tpar : tpars) {
 			if (tpar.isParameterPack()) {
 				if (fTemplateParameterPacks == null) {
-					fTemplateParameterPacks= new HashSet<Integer>();
+					fTemplateParameterPacks= new HashSet<>();
 				}
 				fTemplateParameterPacks.add(tpar.getParameterID());
 			}
@@ -829,8 +840,9 @@ public class TemplateArgumentDeduction {
 	}
 
 	private boolean fromType(IType p, IType a, boolean allowCVQConversion, IASTNode point) throws DOMException {
+		IType originalArgType = a;
+		a = SemanticUtil.getSimplifiedType(a);
 		while (p != null) {
-			IType argumentTypeBeforeTypedefResolution = a;
 			while (a instanceof ITypedef)
 				a = ((ITypedef) a).getType();
 			while (p instanceof ITypedef)
@@ -934,7 +946,7 @@ public class TemplateArgumentDeduction {
 				if (a == null)
 					return false;
 				return deduce(((ICPPTemplateParameter) p).getParameterID(),
-						new CPPTemplateTypeArgument(a, argumentTypeBeforeTypedefResolution));
+						new CPPTemplateTypeArgument(a, ExpressionTypes.restoreTypedefs(a, originalArgType)));
 			} else if (p instanceof ICPPTemplateInstance) {
 				if (!(a instanceof ICPPTemplateInstance))
 					return false;
@@ -992,15 +1004,19 @@ public class TemplateArgumentDeduction {
 			if (expansionPattern != null) {
 				p= expansionPattern;
 				deduct.incPackOffset();
-				p= CPPTemplates.instantiateArgument(p, fExplicitArgs, deduct.fPackOffset, null, point);
+				InstantiationContext context =
+						new InstantiationContext(fExplicitArgs, deduct.fPackOffset, point);
+				p= CPPTemplates.instantiateArgument(p, context);
 				if (!CPPTemplates.isValidArgument(p))
 					return false;
 			} else {
 				p= pArgs[i];
 				if (p.isPackExpansion()) {
 					p= expansionPattern= p.getExpansionPattern();
-					deduct= new TemplateArgumentDeduction(this, aArgs.length-i);
-					p= CPPTemplates.instantiateArgument(p, fExplicitArgs, deduct.fPackOffset, null, point);
+					deduct= new TemplateArgumentDeduction(this, aArgs.length - i);
+					InstantiationContext context =
+							new InstantiationContext(fExplicitArgs, deduct.fPackOffset, point);
+					p= CPPTemplates.instantiateArgument(p, context);
 					if (!CPPTemplates.isValidArgument(p))
 						return false;
 				}
@@ -1013,8 +1029,13 @@ public class TemplateArgumentDeduction {
 
 	private boolean fromFunctionType(ICPPFunctionType ftp, ICPPFunctionType fta, IASTNode point)
 			throws DOMException {
-		if (ftp.isConst() != fta.isConst() || ftp.isVolatile() != fta.isVolatile() || ftp.takesVarArgs() != fta.takesVarArgs())
+		if (ftp.isConst() != fta.isConst() || 
+			ftp.isVolatile() != fta.isVolatile() || 
+			ftp.takesVarArgs() != fta.takesVarArgs() ||
+			ftp.hasRefQualifier() != fta.hasRefQualifier() ||
+			ftp.isRValueReference() != fta.isRValueReference()) {
 			return false;
+		}
 		
 		if (!fromType(ftp.getReturnType(), fta.getReturnType(), false, point)) 
 			return false;
@@ -1037,7 +1058,9 @@ public class TemplateArgumentDeduction {
 			if (parameterPack != null) {
 				p= parameterPack;
 				deduct.incPackOffset();
-				p= CPPTemplates.instantiateType(p, fExplicitArgs, deduct.fPackOffset, null, point);
+				InstantiationContext context =
+						new InstantiationContext(fExplicitArgs, deduct.fPackOffset, point);
+				p= CPPTemplates.instantiateType(p, context);
 				if (!SemanticUtil.isValidType(p))
 					return false;
 			} else {
@@ -1045,7 +1068,9 @@ public class TemplateArgumentDeduction {
 				if (p instanceof ICPPParameterPackType) {
 					p= parameterPack= ((ICPPParameterPackType) p).getType();
 					deduct= new TemplateArgumentDeduction(this, aParams.length - i);
-					p= CPPTemplates.instantiateType(p, fExplicitArgs, deduct.fPackOffset, null, point);
+					InstantiationContext context =
+							new InstantiationContext(fExplicitArgs, deduct.fPackOffset, point);
+					p= CPPTemplates.instantiateType(p, context);
 					if (!SemanticUtil.isValidType(p))
 						return false;
 				}

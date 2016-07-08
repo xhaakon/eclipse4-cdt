@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2006 QNX Software Systems and others.
+ * Copyright (c) 2002, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -25,7 +25,7 @@ class MacroDefinitionRule implements IPredicateRule {
 	private static final int ERROR_STATE = 5;
 
 	private IToken token;
-	private StringBuffer buffer = new StringBuffer();
+	private StringBuilder buffer = new StringBuilder();
 	protected IToken defaultToken;
 	
 	public MacroDefinitionRule(IToken token, IToken defaultToken) {
@@ -33,10 +33,12 @@ class MacroDefinitionRule implements IPredicateRule {
 		this.defaultToken = defaultToken;
 	}
 
+	@Override
 	public IToken getSuccessToken() {
 		return token;
 	}
 
+	@Override
 	public IToken evaluate(ICharacterScanner scanner, boolean resume) {
 		buffer.setLength(0);
 		int state = INIT_STATE;
@@ -106,6 +108,7 @@ class MacroDefinitionRule implements IPredicateRule {
 
 	}
 
+	@Override
 	public IToken evaluate(ICharacterScanner scanner) {
 		return evaluate(scanner, false);
 	}

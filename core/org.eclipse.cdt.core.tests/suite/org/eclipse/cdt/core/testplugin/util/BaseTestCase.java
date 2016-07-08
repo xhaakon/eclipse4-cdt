@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -32,6 +32,7 @@ import junit.framework.TestResult;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ElementChangedEvent;
@@ -62,6 +63,13 @@ public class BaseTestCase extends TestCase {
 	protected static final int INDEXER_TIMEOUT_SEC =
 			Integer.parseInt(System.getProperty(INDEXER_TIMEOUT_PROPERTY, DEFAULT_INDEXER_TIMEOUT_SEC));
 	protected static final int INDEXER_TIMEOUT_MILLISEC= INDEXER_TIMEOUT_SEC * 1000;
+	
+	/**
+	 * The GCC version to emulate when running tests.
+	 * We emulate the latest version whose extensions we support.
+	 */
+	protected static final int GCC_MAJOR_VERSION_FOR_TESTS = 5;
+	protected static final int GCC_MINOR_VERSION_FOR_TESTS = 1;
 	
 	private boolean fExpectFailure;
 	private int fBugNumber;
@@ -200,8 +208,8 @@ public class BaseTestCase extends TestCase {
 			}
 
 			if (statusLog.size() != fExpectedLoggedNonOK) {
-				StringBuilder msg= new StringBuilder("Expected number (" + fExpectedLoggedNonOK + ") of ");
-				msg.append("Non-OK status objects in log differs from actual (" + statusLog.size() + ").\n");
+				StringBuilder msg= new StringBuilder("Expected number (").append(fExpectedLoggedNonOK).append(") of ");
+				msg.append("Non-OK status objects in log differs from actual (").append(statusLog.size()).append(").\n");
 				Throwable cause= null;
 				if (!statusLog.isEmpty()) {
 					synchronized (statusLog) {
@@ -209,7 +217,7 @@ public class BaseTestCase extends TestCase {
 							IStatus[] ss= {status};
 							ss= status instanceof MultiStatus ? ((MultiStatus) status).getChildren() : ss;
 							for (IStatus s : ss) {
-								msg.append("\t" + s.getMessage() + " ");
+								msg.append('\t').append(s.getMessage()).append(' ');
 
 								Throwable t= s.getException();
 								cause= cause != null ? cause : t;
@@ -336,5 +344,23 @@ public class BaseTestCase extends TestCase {
 
 	public static void waitUntilFileIsIndexed(IIndex index, IFile file) throws Exception {
 		TestSourceReader.waitUntilFileIsIndexed(index, file, INDEXER_TIMEOUT_SEC * 1000);
+	}
+
+	// Assertion helpers
+	
+	protected static <T> T assertInstance(Object o, Class<T> clazz, Class... cs) {
+		assertNotNull("Expected object of " + clazz.getName() + " but got a null value", o);
+		assertTrue("Expected "+clazz.getName()+" but got "+o.getClass().getName(), clazz.isInstance(o));
+		for (Class c : cs) {
+			assertNotNull("Expected object of " + c.getName() + " but got a null value", o);
+			assertTrue("Expected " + c.getName() + " but got " + o.getClass().getName(), c.isInstance(o));
+		}
+		return clazz.cast(o);
+	}
+	
+	protected static void assertVariableValue(IVariable var, long expectedValue) {
+		assertNotNull(var.getInitialValue());
+		assertNotNull(var.getInitialValue().numericalValue());
+		assertEquals(expectedValue, var.getInitialValue().numericalValue().longValue());
 	}
 }

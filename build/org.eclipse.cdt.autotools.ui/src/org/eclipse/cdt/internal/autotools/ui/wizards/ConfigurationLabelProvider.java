@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2005, 2007 Rational Software Corporation and others.
+ * Copyright (c) 2002, 2016 Rational Software Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,11 +24,12 @@ public class ConfigurationLabelProvider	extends LabelProvider implements ITableL
 		AutotoolsUIPluginImages.get(AutotoolsUIPluginImages.IMG_BUILD_CONFIG);
 
 	// 
+	@Override
 	public String getColumnText(Object obj, int index) {
 		if (obj instanceof IConfiguration) {
 			IConfiguration tmpConfig = (IConfiguration) obj;
 			
-			if( (tmpConfig.getDescription() == null)|| (tmpConfig.getDescription().equals("")) )	//$NON-NLS-1$
+			if( (tmpConfig.getDescription() == null)|| (tmpConfig.getDescription().isEmpty()) )
 				return ((IConfiguration) obj).getName();
 			else
 				return ( tmpConfig.getName() + " ( " + tmpConfig.getDescription() + " )");	//$NON-NLS-1$	//$NON-NLS-2$
@@ -36,6 +37,7 @@ public class ConfigurationLabelProvider	extends LabelProvider implements ITableL
 		return "";
 	}
 
+	@Override
 	public Image getColumnImage(Object obj, int index) {
 		return IMG_CFG;
 	}

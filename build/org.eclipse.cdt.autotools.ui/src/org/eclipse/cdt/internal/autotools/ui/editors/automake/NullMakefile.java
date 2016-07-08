@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,9 +10,12 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
-import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
+
+import org.eclipse.cdt.make.core.makefile.IAutomaticVariable;
+import org.eclipse.cdt.make.core.makefile.IBuiltinFunction;
+import org.eclipse.cdt.make.core.makefile.IDirective;
 
 /**
  * Makefile : ( statement ) *
@@ -38,10 +41,12 @@ public class NullMakefile extends AbstractMakefile {
 		super(null);
 	}
 
+	@Override
 	public IDirective[] getDirectives() {
 		return EMPTY_DIRECTIVES;
 	}
 
+	@Override
 	public IDirective[] getBuiltins() {
 		return EMPTY_DIRECTIVES;
 	}
@@ -49,19 +54,29 @@ public class NullMakefile extends AbstractMakefile {
 	public void addDirective(IDirective directive) {
 	}
 
+	@Override
 	public String toString() {
 		return "";
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMakefile#parse(java.io.Reader)
-	 */
-	public void parse(String name, Reader makefile) throws IOException {
+	@Override
+	public void parse(String name, Reader makefile) {
 	}
 	
-	public void parse(URI fileURI, Reader reader) throws IOException {
+	@Override
+	public void parse(URI fileURI, Reader reader) {
 	}
 	
-	protected void parse(URI fileURI, MakefileReader reader) throws IOException {
+	protected void parse(URI fileURI, MakefileReader reader) {
+	}
+
+	@Override
+	public IBuiltinFunction[] getBuiltinFunctions() {
+		return new IBuiltinFunction[0];
+	}
+
+	@Override
+	public IAutomaticVariable[] getAutomaticVariables() {
+		return new IAutomaticVariable[0];
 	}
 }

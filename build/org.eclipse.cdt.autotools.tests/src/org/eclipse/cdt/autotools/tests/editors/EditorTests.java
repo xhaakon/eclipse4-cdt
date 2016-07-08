@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008 Red Hat Inc..
+ * Copyright (c) 2008, 2015 Red Hat Inc..
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,20 +10,14 @@
  *******************************************************************************/
 package org.eclipse.cdt.autotools.tests.editors;
 
-import junit.framework.Test;
-import junit.framework.TestSuite;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
+@RunWith(Suite.class)
+@Suite.SuiteClasses({
+	AutomakeColourizationTests.class,
+	AutomakeTextHoverTest.class,
+	AutomakeEditorTests.class
+})
 public class EditorTests {
-
-	public static Test suite() {
-		TestSuite suite = new TestSuite(
-				"Test for org.eclipse.cdt.autotools.core.tests.editors");
-		//$JUnit-BEGIN$
-		suite.addTestSuite(AutomakeColourizationTests.class);
-		suite.addTestSuite(AutomakeTextHoverTest.class);
-		suite.addTestSuite(AutomakeEditorTests.class);
-		//$JUnit-END$
-		return suite;
-	}
-
 }

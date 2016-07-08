@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2015 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,6 +15,7 @@
  *     Nathan Ridge
  *     Thomas Corbat (IFS)
  *	   Michael Woski
+ *	   Mohamed Azab (Mentor Graphics) - Bug 438549. Add mechanism for parameter guessing.
  *******************************************************************************/
 package org.eclipse.cdt.ui.tests.text.contentassist2;
 
@@ -855,7 +856,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//	Printer::/*cursor*/
 	public void testPrivateStaticMember_109480() throws Exception {
 		// see https://bugs.eclipse.org/bugs/show_bug.cgi?id=109480
-		final String[] expected= { "InitPrinter()", "port" };
+		final String[] expected= { "InitPrinter(port)", "port" };
 		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
 	}
 
@@ -1261,7 +1262,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//	}
 	//};
 	public void testContentAssistInDeferredClassInstance_194592() throws Exception {
-		final String[] expected= { "add()" };
+		final String[] expected= { "add(tOther)" };
 		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
 	}
 
@@ -1428,7 +1429,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//	}
 	//	using N::f/*cursor*/
 	public void testUsingDeclaration_379631() throws Exception {
-		final String[] expected= { "foo;" };
+		final String[] expected= { "foo()" };
 		assertCompletionResults(fCursorOffset, expected, REPLACEMENT);
 	}
 
@@ -1575,7 +1576,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 	//	}
 	//	using N::fo/*cursor*/;
 	public void testUsingCompletionWithFollowingSemicolon() throws Exception {
-		final String[] expected = { "foo" };
+		final String[] expected = { "foo()" };
 		assertContentAssistResults(fCursorOffset, expected, true, REPLACEMENT);
 		final String[] expectedInformation = { "null" };
 		assertContentAssistResults(fCursorOffset, expectedInformation, true, CONTEXT);
@@ -1613,7 +1614,7 @@ public class CompletionTests extends AbstractContentAssistTest {
 		setDisplayDefaultArguments(true);
 		final String[] expectedDisplay = { "default_argument(int i = 23) : void" };
 		assertContentAssistResults(fCursorOffset, expectedDisplay, true, DISPLAY);
-		final String[] expectedReplacement = { "default_argument()" };
+		final String[] expectedReplacement = { "default_argument(i)" };
 		assertContentAssistResults(fCursorOffset, expectedReplacement, true, REPLACEMENT);
 	}
 
@@ -1734,5 +1735,106 @@ public class CompletionTests extends AbstractContentAssistTest {
 	public void testCompletionInsideAttribute_bug477359() throws Exception {
 		final String[] expected = {};
 		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+	
+	//	template <typename T>
+	//	struct vector {
+	//	    T& front();
+	//	};
+	//	template <class T>
+	//	void foo(vector<vector<T>> a) {
+	//	    a.front()./*cursor*/
+	//	}
+	public void testDependentScopes_bug472818a() throws Exception {
+		final String[] expected = { "vector<typename T>", "front(void)" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	//	template <typename T>
+	//	struct vector {
+	//	    T& front();
+	//	};
+	//	template <class T>
+	//	void foo(vector<vector<vector<T>>> a) {
+	//	    a.front().front()./*cursor*/
+	//	}
+	public void testDependentScopes_bug472818b() throws Exception {
+		final String[] expected = { "vector<typename T>", "front(void)" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+
+	//	// This is a simplification of the actual std::vector implementation
+	//	// that ships with gcc 5.1's libstdc++.
+	//	template <typename T>
+	//	struct allocator {
+	//	    typedef T value_type;
+	//		template <typename U>
+	//		struct rebind {
+	//			typedef allocator<U> other;
+	//		};
+	//	};
+	//	template <typename Alloc, typename T>
+	//	struct alloctr_rebind {
+	//		typedef typename Alloc::template rebind<T>::other type;
+	//	};
+	//	template <typename Alloc>
+	//	struct allocator_traits {
+	//	    typedef typename Alloc::value_type value_type;
+	//		template <typename T>
+	//		using rebind_alloc = typename alloctr_rebind<Alloc, T>::type;
+	//	};
+	//	template <typename Alloc>
+	//	struct alloc_traits {
+	//	    typedef allocator_traits<Alloc> base_type;
+	//	    typedef typename base_type::value_type value_type;
+	//	    typedef value_type& reference;
+	//		template <typename T>
+	//		struct rebind {
+	//			typedef typename base_type::template rebind_alloc<T> other;
+	//		};
+	//	};
+	//	template <typename T, typename Alloc>
+	//	struct vector_base {
+	//	    typedef typename alloc_traits<Alloc>::template rebind<T>::other allocator_type;
+	//	};
+	//	template <typename T, typename Alloc = allocator<T>>
+	//	struct vector {
+	//	    typedef vector_base<T, Alloc> base_type;
+	//	    typedef typename base_type::allocator_type allocator_type;
+	//	    typedef alloc_traits<allocator_type> alloc_traits_type;
+	//	    typedef typename alloc_traits_type::reference reference;
+	//	    reference front();
+	//	};
+	//	template <class T>
+	//	void foo(vector<vector<vector<T>>> a) {
+	//	    a.front().front()./*cursor*/
+	//	}
+	public void testDependentScopes_bug472818c() throws Exception {
+		final String[] expected = { 
+			"vector<typename T, typename Alloc = allocator<T>>",
+			"base_type",
+			"allocator_type",
+			"alloc_traits_type",
+			"reference",
+			"front(void)" 
+		};
+		assertCompletionResults(fCursorOffset, expected, ID);
+	}
+	
+	//	template <int k>
+	//	struct D {
+	//		struct C {
+	//			C* c;
+	//		};
+	//		C c;
+	//		void f() {
+	//			c.c->c->c./*cursor*/
+	//		}
+	//	};
+	public void testDependentMemberChain_bug478121() throws Exception {
+		setReplaceDotWithArrow(true);
+		final String[] expected = { "C", "c" };
+		assertCompletionResults(fCursorOffset, expected, ID);
+		assertDotReplacedWithArrow();
 	}
 }

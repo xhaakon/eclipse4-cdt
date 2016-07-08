@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2011 QNX Software Systems and others.
+ * Copyright (c) 2008, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,10 +16,7 @@ package org.eclipse.cdt.dsf.gdb.internal.ui.launching;
 
 import java.util.Map;
 
-import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
-import org.eclipse.cdt.debug.core.ICDebugConfiguration;
-import org.eclipse.cdt.debug.core.ICDebugConstants;
 import org.eclipse.cdt.debug.ui.ICDebuggerPage;
 import org.eclipse.cdt.debug.ui.ICDebuggerPageExtension;
 import org.eclipse.cdt.debug.ui.ICDebuggerPageExtension.IContentChangeListener;
@@ -104,12 +101,6 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 			fCoreMode = true;
 		}
 		fAttachMode = attach;
-		
-		ICDebugConfiguration dc = CDebugCorePlugin.getDefault().getDefaultDefaultDebugConfiguration();
-		if (dc == null) {
-			CDebugCorePlugin.getDefault().getPluginPreferences().setDefault(
-					ICDebugConstants.PREF_DEFAULT_DEBUGGER_TYPE, LOCAL_DEBUGGER_ID);
-		}
 	}
 
 	@Override
@@ -147,9 +138,9 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 
 	protected void initDebuggerTypes(String selection) {
 		if (fAttachMode) {
-			setInitializeDefault(selection.equals("") ? true : false); //$NON-NLS-1$
+			setInitializeDefault(selection.isEmpty());
 
-			if (selection.equals("")) { //$NON-NLS-1$
+			if (selection.isEmpty()) {
 				selection = LOCAL_DEBUGGER_ID;
 			}
 
@@ -199,6 +190,8 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 			IPreferenceStore preferences = GdbUIPlugin.getDefault().getPreferenceStore();
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN,
 					preferences.getBoolean(IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN));
+			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL,
+					preferences.getString(IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN_SYMBOL));
 		}
 	}
 

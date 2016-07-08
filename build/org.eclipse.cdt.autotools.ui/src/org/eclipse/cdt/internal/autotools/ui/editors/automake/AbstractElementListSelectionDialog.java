@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,7 @@ package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.events.SelectionEvent;
@@ -25,8 +26,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-
-import org.eclipse.jface.viewers.ILabelProvider;
 
 /**
  * A class to select one or more elements out of an indexed property
@@ -47,16 +46,10 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 	
 	private StatusInfo fCurrStatus;
 	
-	/*
-	 * @private
-	 */
 	protected void access$superOpen() {
 		super.open();
 	}
-	/*
-	 * @private
-	 * @see Dialog#cancelPressed
-	 */
+	@Override
 	protected void cancelPressed() {
 		setResult(null);
 		super.cancelPressed();
@@ -64,10 +57,7 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 	protected Point computeInitialSize() {
 		return new Point(convertWidthInCharsToPixels(60), convertHeightInCharsToPixels(18));
 	}
-	/*
-	 * @private
-	 * @see Window#createDialogArea(Composite)
-	 */
+	@Override
 	protected Control createDialogArea(Composite parent) {
 		Composite contents= (Composite)super.createDialogArea(parent);
 		
@@ -78,9 +68,11 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 			fRenderer, fIgnoreCase);
 		
 		fSelectionList.addSelectionListener(new SelectionListener() {
+			@Override
 			public void widgetDefaultSelected(SelectionEvent e) {
 				handleDoubleClick();
 			}
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				verifyCurrentSelection();
 			}
@@ -112,10 +104,8 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 		text.setLayoutData(spec);
 		return text;
 	}
-	/*
-	 * @private
-	 * @see Window#create(Shell)
-	 */
+
+	@Override
 	public void create() {
 		super.create();
 	     	if (isEmptyList()) {
@@ -145,7 +135,7 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 	 */
 	protected List<Object> getWidgetSelection() {
 		if (fSelectionList == null || fSelectionList.isDisposed())
-			return new ArrayList<Object>(0);
+			return new ArrayList<>(0);
 		return fSelectionList.getSelection();	
 	}
 	/**
@@ -192,15 +182,9 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 	protected AbstractElementListSelectionDialog(Shell parent, ILabelProvider renderer, boolean ignoreCase, boolean multipleSelection) {
 		this(parent, "", null, renderer, ignoreCase, multipleSelection); //$NON-NLS-1$
 	}
-	/*
-	 * @private
-	 */
+	@Override
 	public int open() {
-		BusyIndicator.showWhile(null, new Runnable() {
-			public void run() {
-				access$superOpen();
-			}
-		});
+		BusyIndicator.showWhile(null, () -> access$superOpen());
 		return getReturnCode() ;
 	}
 	/**
@@ -227,6 +211,7 @@ public abstract class AbstractElementListSelectionDialog extends SelectionStatus
 	 * Sets the message to be shown above the match text field.
 	 * Must be set before widget creation
 	 */
+	@Override
 	public void setMessage(String message) {
 		fMessageText= message;
 	}

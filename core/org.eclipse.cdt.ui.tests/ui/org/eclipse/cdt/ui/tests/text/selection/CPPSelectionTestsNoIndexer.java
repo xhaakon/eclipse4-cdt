@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2015 IBM Corporation and others.
+ * Copyright (c) 2004, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -37,6 +37,8 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.core.testplugin.FileManager;
@@ -225,7 +227,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 	}
 
     public void testBug93281() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("class Point{                         \n"); //$NON-NLS-1$
         buffer.append("public:                              \n"); //$NON-NLS-1$
         buffer.append("Point(): xCoord(0){}                 \n"); //$NON-NLS-1$
@@ -271,7 +273,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
     }
 
     public void testBasicDefinition() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("extern int MyInt;       // def is in another file  \n"); //$NON-NLS-1$
         buffer.append("extern const int MyConst;   // def is in another file    \n"); //$NON-NLS-1$
         buffer.append("void MyFunc(int);       // often used in header files\n"); //$NON-NLS-1$
@@ -397,7 +399,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 	}
 
 	public void testBug86829A() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("class X {\n"); //$NON-NLS-1$
         buffer.append("public:\n"); //$NON-NLS-1$
         buffer.append("X(int); // openReferences fails to find the constructor in g()\n"); //$NON-NLS-1$
@@ -420,7 +422,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 	}
 
 	public void testBug86829B() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("class X {\n"); //$NON-NLS-1$
         buffer.append("public:\n"); //$NON-NLS-1$
         buffer.append("operator int();\n"); //$NON-NLS-1$
@@ -472,7 +474,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 	using N::d; // declares N::d
 	*/
 	public void testCPPSpecDeclsDefs() throws Exception {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
         buffer.append("int a; // defines a\n"); //$NON-NLS-1$
         buffer.append("extern const int c = 1; // defines c\n"); //$NON-NLS-1$
         buffer.append("int f(int x) { return x+a; } // defines f and defines x\n"); //$NON-NLS-1$
@@ -738,7 +740,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 	}
 
 	public void testBug95225() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("class Overflow {\n"); //$NON-NLS-1$
         buffer.append("public:\n"); //$NON-NLS-1$
         buffer.append("Overflow(char,double,double);\n"); //$NON-NLS-1$
@@ -775,7 +777,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
     }
 
 	public void testNoDefinitions() throws Exception {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append("extern int a1; // declares a\n"); //$NON-NLS-1$
 		buffer.append("extern const int c1; // declares c\n"); //$NON-NLS-1$
 		buffer.append("int f1(int); // declares f\n"); //$NON-NLS-1$
@@ -822,7 +824,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 	}
 
     public void testBug95202() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("struct A { }; // implicitlydeclared A::operator=\n"); //$NON-NLS-1$
         buffer.append("struct B : A {\n"); //$NON-NLS-1$
         buffer.append("B& operator=(const B &);\n"); //$NON-NLS-1$
@@ -844,7 +846,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
     }
 
     public void testBug95229() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("struct A {\n"); //$NON-NLS-1$
         buffer.append("operator short(); // F3 on operator causes an infinite loop\n"); //$NON-NLS-1$
         buffer.append("} a;\n"); //$NON-NLS-1$
@@ -864,7 +866,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
     }
 
     public void testBug78354() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("typedef int TestTypeOne;\n"); //$NON-NLS-1$
         buffer.append("typedef int TestTypeTwo;\n"); //$NON-NLS-1$
         buffer.append("int main()\n"); //$NON-NLS-1$
@@ -886,7 +888,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
     }
 
     public void testBug103697() throws Exception {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         buffer.append("int x;\n"); //$NON-NLS-1$
         buffer.append("int foo() {\n"); //$NON-NLS-1$
         buffer.append(" return x;\n"); //$NON-NLS-1$
@@ -904,7 +906,7 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
     }
 
     public void testBug76043() throws Exception {
-    	StringBuffer buffer = new StringBuffer();
+    	StringBuilder buffer = new StringBuilder();
     	buffer.append("int x;\n"); //$NON-NLS-1$
     	buffer.append("int foo() {\n"); //$NON-NLS-1$
     	buffer.append(" return x;\n"); //$NON-NLS-1$
@@ -1247,5 +1249,34 @@ public class CPPSelectionTestsNoIndexer extends BaseSelectionTests {
 
 		offset = code.indexOf("::other->foo") + 9;
 		assertTrue(testF3(file, offset) instanceof IASTName);
+	}
+	
+	//	struct Duration {};
+	//	Duration operator "" _d(unsigned long long);
+	//	Duration dur = 42_d;
+	public void testUserDefinedLiteralSuffix_484618() throws Exception {
+		String code = getAboveComment();
+		IFile file = importFile("testBug484618.cpp", code);
+
+		int offset = code.indexOf("42_d") + 3;
+		assertTrue(testF3(file, offset) instanceof IASTName);
+	}
+
+	//	struct Base {
+	//	    Base(int, int);
+	//	};
+	//
+	//	struct Derived : Base {
+	//	    using Base::Base;
+	//	};
+	public void testInheritedConstructor_484899() throws Exception {
+		String code = getAboveComment();
+		IFile file = importFile("testBug484899.cpp", code);
+
+		int offset = code.indexOf("Base::Base") + 7;
+		IASTNode target = testF3(file, offset); 
+		assertInstance(target, IASTName.class);
+		IBinding targetBinding = ((IASTName) target).resolveBinding();
+		assertInstance(targetBinding, ICPPConstructor.class);
 	}
 }

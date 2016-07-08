@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 QNX Software Systems and others.
+ * Copyright (c) 2014, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,13 +21,11 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
+import org.eclipse.cdt.internal.qt.core.index.IQMethod;
+import org.eclipse.cdt.internal.qt.core.index.IQObject;
+import org.eclipse.cdt.internal.qt.core.index.QtIndex;
 import org.eclipse.cdt.internal.qt.core.pdom.ASTNameReference;
 import org.eclipse.cdt.internal.qt.core.pdom.QtASTImageLocation;
-import org.eclipse.cdt.qt.core.QtKeywords;
-import org.eclipse.cdt.qt.core.QtPlugin;
-import org.eclipse.cdt.qt.core.index.IQMethod;
-import org.eclipse.cdt.qt.core.index.IQObject;
-import org.eclipse.cdt.qt.core.index.QtIndex;
 import org.eclipse.core.resources.IProject;
 
 /**
@@ -175,7 +173,7 @@ public class QtMethodReference extends ASTNameReference {
 		try {
 			qualName = cls.getQualifiedName();
 		} catch(DOMException e) {
-			QtPlugin.log(e);
+			Activator.log(e);
 		}
 
 		IProject project = ASTUtil.getProject(delegate);

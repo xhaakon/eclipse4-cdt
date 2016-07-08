@@ -45,6 +45,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespaceScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPPointerToMemberType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
+import org.eclipse.cdt.core.dom.ast.cpp.SemanticQueries;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.parser.IProblem;
@@ -178,7 +179,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 		assertNotNull(numericalValue);
 		assertEquals(i, numericalValue.longValue());
 	}
-	
+
 	private void assertUserDefinedLiteralType(String retName) {
 		ICPPVariable v= getBindingFromFirstIdentifier("test =");
 		assertEquals(retName, ASTTypeUtil.getType(v.getType()));
@@ -895,7 +896,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	public void testAnonymousUnion_377409() {
 		checkBindings();
 	}
-	
+
 	// void foo(int a=2, int b=3);
 
 	// void ref() { foo(); }
@@ -1810,6 +1811,7 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	public void testAnonymousNamespaces_418130() {
 		checkBindings();
 	}
+
 	//	struct A {
 	//	  A(int);
 	//	};
@@ -2276,5 +2278,25 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	public void testUserDefinedLiteralResolution3() throws Exception {
 		 ICPPVariable v= getBindingFromFirstIdentifier("test");
 		 assertTrue(v.getType() instanceof IProblemType);
+	}
+	
+	//	struct A {
+	//	    virtual bool foo() = 0;
+	//	};
+	//
+	//	struct B : A {
+	//	    bool foo();
+	//	};
+	
+	//	class B;
+	//	int main() {
+	//	    B waldo;
+	//	}
+	public void testFinalOverriderAnalysis_489477() throws Exception {
+		ICPPVariable waldo = getBindingFromFirstIdentifier("waldo");
+		IType type = waldo.getType();
+		assertInstance(type, ICPPClassType.class);
+		ICPPMethod[] pureVirtuals = SemanticQueries.getPureVirtualMethods((ICPPClassType) type, null);
+		assertEquals(0, pureVirtuals.length);
 	}
 }

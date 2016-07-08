@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,11 +14,7 @@ import java.util.List;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.qt.core.QtPlugin;
-import org.eclipse.cdt.qt.core.index.IQMakeEnv;
-import org.eclipse.cdt.qt.core.index.IQMakeEnv2;
-import org.eclipse.cdt.qt.core.index.IQMakeEnvProvider;
-import org.eclipse.cdt.qt.core.index.QMakeEnvInfo;
+import org.eclipse.cdt.internal.qt.core.Activator;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IConfigurationElement;
@@ -49,7 +45,7 @@ public final class QMakeEnvProviderManager {
 	private static List<QMakeEnvProviderDescriptor> loadDescriptors() {
 		List<QMakeEnvProviderDescriptor> descriptors = new ArrayList<QMakeEnvProviderDescriptor>();
 		IConfigurationElement[] elements = Platform.getExtensionRegistry()
-				.getConfigurationElementsFor(QtPlugin.ID, QtPlugin.QMAKE_ENV_PROVIDER_EXT_POINT_NAME);
+				.getConfigurationElementsFor(Activator.ID, Activator.QMAKE_ENV_PROVIDER_EXT_POINT_NAME);
 		for (IConfigurationElement element : elements) {
 			descriptors.add(new QMakeEnvProviderDescriptor(element));
 		}

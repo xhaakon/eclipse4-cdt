@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010, 2015 Wind River Systems, Inc. and others.
+ * Copyright (c) 2010, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -88,13 +88,13 @@ class BuiltinOperators {
 		fUnary= args.length < 2;
 		fGlobalCandidates= globCandidates;
 		if (args.length > 0) {
-			IType type= args[0].getTypeOrFunctionSet(point);
+			IType type= args[0].getType(point);
 			if (!(type instanceof ISemanticProblem)) 
 				fType1= type;
 			
 		}
 		if (args.length > 1) {
-			IType type= args[1].getTypeOrFunctionSet(point);
+			IType type= args[1].getType(point);
 			if (!(type instanceof ISemanticProblem))
 				fType2= type;
 		}
@@ -327,7 +327,7 @@ class BuiltinOperators {
 				final IPointerType ptrType = (IPointerType) type;
 				if (SemanticUtil.getNestedType(ptrType.getType(), TDEF | CVTYPE) instanceof ICPPClassType) {
 					if (classPointers == null) {
-						classPointers= new ArrayList<IPointerType>();
+						classPointers= new ArrayList<>();
 					}
 					classPointers.add(ptrType);
 				}
@@ -341,7 +341,7 @@ class BuiltinOperators {
 			type= SemanticUtil.getNestedType(type, TDEF | REF);
 			if (type instanceof ICPPPointerToMemberType) {
 				if (memberPointers == null) {
-					memberPointers= new ArrayList<ICPPPointerToMemberType>();
+					memberPointers= new ArrayList<>();
 				}
 				memberPointers.add((ICPPPointerToMemberType) type);
 			}
@@ -419,7 +419,7 @@ class BuiltinOperators {
 		}
 		if (type != null) {
 			if (p1 == null) {
-				p1= new ArrayList<IType>();
+				p1= new ArrayList<>();
 			}
 			p1.add(type);
 		}
@@ -549,11 +549,11 @@ class BuiltinOperators {
 		ICPPFunctionType functionType = new CPPFunctionType(returnType, parameterTypes);
 		String sig= ASTTypeUtil.getType(functionType, true);
 		if (fSignatures == null) {
-			fSignatures= new HashSet<String>();
+			fSignatures= new HashSet<>();
 			if (fGlobalCandidates != null) {
 				for (Object cand : fGlobalCandidates) {
 					if (cand instanceof IFunction && !(cand instanceof ICPPMethod)) {
-						fSignatures.add(ASTTypeUtil.getType(((IFunction)cand).getType(), true));
+						fSignatures.add(ASTTypeUtil.getType(((IFunction) cand).getType(), true));
 					}
 				}
 			}
@@ -564,9 +564,9 @@ class BuiltinOperators {
 				parameter[i]= new CPPBuiltinParameter(t);
 			}
 			if (fResult == null) {
-				fResult= new ArrayList<ICPPFunction>();
+				fResult= new ArrayList<>();
 			}
-			fResult.add(new CPPImplicitFunction(fOperator.toCharArray(), fFileScope, functionType, parameter, false));
+			fResult.add(new CPPImplicitFunction(fOperator.toCharArray(), fFileScope, functionType, parameter, true, false));
 		}
 	}
 		

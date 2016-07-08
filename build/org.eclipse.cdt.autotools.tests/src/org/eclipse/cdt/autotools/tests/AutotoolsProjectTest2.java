@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2012 Red Hat Inc. and others.
+ * Copyright (c) 2008, 2015 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,7 +11,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.autotools.tests;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.eclipse.cdt.autotools.core.AutotoolsNewProjectNature;
 import org.eclipse.core.resources.IProject;
@@ -19,18 +21,17 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 // This test verifies an autogen.sh project that builds configure, but
 // does not run it.
-public class AutotoolsProjectTest2 extends TestCase {
+public class AutotoolsProjectTest2 {
     
 	private IProject testProject;
-	
-    /*
-     * @see TestCase#setUp()
-     */
-    protected void setUp() throws Exception {
-        super.setUp();
+	@Before
+    public void setUp() throws Exception {
         if (!ProjectTools.setup())
         	fail("could not perform basic project workspace setup");
 		testProject = ProjectTools.createProject("testProject2");
@@ -48,9 +49,10 @@ public class AutotoolsProjectTest2 extends TestCase {
      * Makefiles.
      * @throws Exception
      */
+	@Test
 	public void testAutotoolsProject2() throws Exception {
 		Path p = new Path("zip/project2.zip");
-		ProjectTools.addSourceContainerWithImport(testProject, "src", p, null);
+		ProjectTools.addSourceContainerWithImport(testProject, "src", p);
 		assertTrue(testProject.hasNature(AutotoolsNewProjectNature.AUTOTOOLS_NATURE_ID));
 		org.eclipse.core.runtime.Path x = new org.eclipse.core.runtime.Path("src/ChangeLog");
 		assertTrue(testProject.exists(x));
@@ -84,15 +86,14 @@ public class AutotoolsProjectTest2 extends TestCase {
 		x = new org.eclipse.core.runtime.Path("sample/Makefile");
 		assertTrue(testProject.exists(x));
 	}
-	
-	protected void tearDown() throws Exception {
+	@After
+	public void tearDown() throws Exception {
 		testProject.refreshLocal(IResource.DEPTH_INFINITE, null);
 		try {
 			testProject.delete(true, true, null);
 		} catch (Exception e) {
 			//FIXME: Why does a ResourceException occur when deleting the project??
 		}
-		super.tearDown();
 	}
 
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2005, 2009 IBM Corporation and others.
+ *  Copyright (c) 2005, 2016 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -47,9 +47,9 @@ import org.apache.tools.ant.util.FileUtils;
  */
 public class PreProcessor extends Task {
 	
-	private Vector fFileSets = new Vector();
+	private Vector<FileSet> fFileSets = new Vector<>();
 	private File fDestDir = null;
-	private Set fSymbols = new HashSet(); 
+	private Set<String> fSymbols = new HashSet<>(); 
 	private FileUtils fUtils = FileUtils.getFileUtils();
 	
 	// possible states
@@ -115,8 +115,8 @@ public class PreProcessor extends Task {
 		if (!fDestDir.exists()) {
 			throw new BuildException("destdir does not exist: " + fDestDir.getAbsolutePath());
 		}
-		StringBuffer buf = new StringBuffer("Symbols: ");
-		String[] symbols = (String[]) fSymbols.toArray(new String[fSymbols.size()]);
+		StringBuilder buf = new StringBuilder("Symbols: ");
+		String[] symbols = fSymbols.toArray(new String[fSymbols.size()]);
 		for (int i = 0; i < symbols.length; i++) {
 			String symbol = symbols[i];
 			buf.append(symbol);
@@ -126,9 +126,9 @@ public class PreProcessor extends Task {
 		}
 		log(buf.toString());
 		
-		Iterator fileSets = fFileSets.iterator();
+		Iterator<FileSet> fileSets = fFileSets.iterator();
 		while (fileSets.hasNext()) {
-			FileSet fileSet = (FileSet) fileSets.next();
+			FileSet fileSet = fileSets.next();
 			DirectoryScanner scanner = fileSet.getDirectoryScanner(getProject());
 			String[] includedFiles = scanner.getIncludedFiles();
 			File baseDir = fileSet.getDir(getProject());
@@ -188,10 +188,8 @@ public class PreProcessor extends Task {
 	 * @return
 	 */
 	public String preProcessFile(File srcFile, String strip) {
-		try {
-			FileReader fileReader = new FileReader(srcFile);
-			BufferedReader reader = new BufferedReader(fileReader);
-			StringBuffer buffer = new StringBuffer();
+		try (BufferedReader reader = new BufferedReader(new FileReader(srcFile))) {
+			StringBuilder buffer = new StringBuilder();
 			String line = reader.readLine();
 			String activeSymbol = null;
 			int state = STATE_OUTSIDE_CONDITION;

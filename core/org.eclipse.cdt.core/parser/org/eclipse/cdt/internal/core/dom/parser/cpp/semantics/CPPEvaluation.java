@@ -13,15 +13,17 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 public abstract class CPPEvaluation implements ICPPEvaluation {
@@ -46,10 +48,9 @@ public abstract class CPPEvaluation implements ICPPEvaluation {
 		return buf.getSignature();
 	}
 
-	protected static IBinding resolveUnknown(ICPPUnknownBinding unknown, ICPPTemplateParameterMap tpMap,
-			int packOffset, ICPPTypeSpecialization within, IASTNode point) {
+	protected static IBinding resolveUnknown(ICPPUnknownBinding unknown, InstantiationContext context) {
 		try {
-			return CPPTemplates.resolveUnknown(unknown, tpMap, packOffset, within, point);
+			return CPPTemplates.resolveUnknown(unknown, context);
 		} catch (DOMException e) {
 			CCorePlugin.log(e);
 		}
@@ -57,19 +58,18 @@ public abstract class CPPEvaluation implements ICPPEvaluation {
 	}
 
 	protected static ICPPTemplateArgument[] instantiateArguments(ICPPTemplateArgument[] args,
-			ICPPTemplateParameterMap tpMap, int packOffset, ICPPTypeSpecialization within, IASTNode point) {
+			InstantiationContext context) {
 		try {
-			return CPPTemplates.instantiateArguments(args, tpMap, packOffset, within, point, false);
+			return CPPTemplates.instantiateArguments(args, context, false);
 		} catch (DOMException e) {
 			CCorePlugin.log(e);
 		}
 		return args;
 	}
 
-	protected static IBinding instantiateBinding(IBinding binding, ICPPTemplateParameterMap tpMap,
-			int packOffset, ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
+	protected static IBinding instantiateBinding(IBinding binding, InstantiationContext context, int maxDepth) {
 		try {
-			return CPPTemplates.instantiateBinding(binding, tpMap, packOffset, within, maxdepth, point);
+			return CPPTemplates.instantiateBinding(binding, context, maxDepth);
 		} catch (DOMException e) {
 			CCorePlugin.log(e);
 		}
@@ -92,9 +92,28 @@ public abstract class CPPEvaluation implements ICPPEvaluation {
 		return false;
 	}
 
+	/**
+	 * Checks if all evaluations contained in the given array are constant expressions.
+	 *
+	 * @param evaluations the evaluations to check
+	 * @param point the point of instantiation
+     */
 	protected static boolean areAllConstantExpressions(ICPPEvaluation[] evaluations, IASTNode point) {
-		for (ICPPEvaluation eval : evaluations) {
-			if (!eval.isConstantExpression(point)) {
+		return areAllConstantExpressions(evaluations, 0, evaluations.length, point);
+	}
+
+	/**
+	 * Checks if all evaluations contained in a range of the given array are constant expressions.
+	 *
+	 * @param evaluations the evaluations to check
+     * @param from the initial index of the range to be checked, inclusive
+     * @param to the final index of the range to be checked, exclusive
+	 * @param point the point of instantiation
+     */
+	protected static boolean areAllConstantExpressions(ICPPEvaluation[] evaluations, int from, int to,
+			IASTNode point) {
+		for (int i = from; i < to; i++) {
+			if (!evaluations[i].isConstantExpression(point)) {
 				return false;
 			}
 		}
@@ -114,5 +133,35 @@ public abstract class CPPEvaluation implements ICPPEvaluation {
 
 	protected static boolean isNullOrConstexprFunc(ICPPFunction function) {
 		return function == null || function.isConstexpr();
+	}
+
+	/**
+	 * If a user-defined conversion is required to convert 'argument' to type 'targetType',
+	 * return 'argument' wrapped in an evaluation representing the conversion.
+	 * Otherwise, return 'argument' unmodified.
+	 * @param point point of instantiation for name lookups
+	 */
+	protected static ICPPEvaluation maybeApplyConversion(ICPPEvaluation argument, IType targetType, 
+			IASTNode point) {
+		IType type = argument.getType(point);
+		ValueCategory valueCategory = argument.getValueCategory(point);
+		ICPPFunction conversion = null;
+		if (type instanceof ICPPClassType) {
+			try {
+				Cost cost = Conversions.initializationByConversion(valueCategory, type, (ICPPClassType) type, 
+						targetType, false, point);
+				conversion = cost.getUserDefinedConversion();
+			} catch (DOMException e) {
+				CCorePlugin.log(e);
+			}
+		}
+		if (conversion != null) {
+			if (!conversion.isConstexpr()) {
+				return EvalFixed.INCOMPLETE;
+			}
+			ICPPEvaluation eval = new EvalBinding(conversion, null, (IBinding) null);
+			argument = new EvalFunctionCall(new ICPPEvaluation[] {eval, argument}, (IBinding) null);
+		}
+		return argument;
 	}
 }

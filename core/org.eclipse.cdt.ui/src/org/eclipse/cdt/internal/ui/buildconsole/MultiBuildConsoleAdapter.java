@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Broadcom Corporation and others.
+ * Copyright (c) 2010, 2011 Broadcom Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -56,12 +56,24 @@ class MultiBuildConsoleAdapter implements IConsole {
 			two.write(b, off, len);
 	    }
 
+	    @Override
+	    public synchronized void write(String msg) throws IOException {
+	    	one.write(msg);
+	    	two.write(msg);
+	    }
+	    
 		@Override
 		public void write(String s, ProblemMarkerInfo marker) throws IOException {
 			one.write(s, marker);
 			two.write(s, marker);
 		}
 
+		@Override
+		public void flush() throws IOException {
+			one.flush();
+			two.flush();
+		}
+		
 		@Override
 		public void close() throws IOException {
 			one.flush();

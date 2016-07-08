@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2015 IBM Corporation and others.
+ * Copyright (c) 2004, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -315,29 +315,29 @@ public class AST2Tests extends AST2TestBase {
 
 			// // test clearBindings
 			// assertNotNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("x").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "x".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNotNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("f").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "f".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNotNull(((ICScope) body_f.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("z").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "z".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNotNull(((ICScope) body_f.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("y").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "y".toCharArray()));
 			// //$NON-NLS-1$
 			// CVisitor.clearBindings(tu);
 			// assertNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("x").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "x".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("f").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "f".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNull(((ICScope) body_f.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("z").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "z".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNull(((ICScope) body_f.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("y").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "y".toCharArray()));
 			// //$NON-NLS-1$
 
 			tu = validateCopy(tu);
@@ -883,29 +883,29 @@ public class AST2Tests extends AST2TestBase {
 			assertEquals(decls[0], declaration2.getDeclarators()[0].getName());
 
 			// assertNotNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_TAG, new String("x").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_TAG, "x".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNotNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("f").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "f".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNotNull(((ICScope) compound.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("x").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "x".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNotNull(((ICScope) compound.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("i").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "i".toCharArray()));
 			// //$NON-NLS-1$
 			// CVisitor.clearBindings(tu);
 			// assertNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_TAG, new String("x").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_TAG, "x".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNull(((ICScope) tu.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("f").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "f".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNull(((ICScope) compound.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("x").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "x".toCharArray()));
 			// //$NON-NLS-1$
 			// assertNull(((ICScope) compound.getScope()).getBinding(
-			// ICScope.NAMESPACE_TYPE_OTHER, new String("i").toCharArray()));
+			// ICScope.NAMESPACE_TYPE_OTHER, "i".toCharArray()));
 			// //$NON-NLS-1$
 
 			tu = validateCopy(tu);
@@ -1091,7 +1091,7 @@ public class AST2Tests extends AST2TestBase {
 			IASTFunctionCallExpression fcall = (IASTFunctionCallExpression) expStatement.getExpression();
 			IASTIdExpression fcall_id = (IASTIdExpression) fcall.getFunctionNameExpression();
 			IASTName name_fcall = fcall_id.getName();
-			assertNull(fcall.getParameterExpression());
+			assertEquals(0, fcall.getArguments().length);
 
 			// void f() {}
 			IASTFunctionDefinition fdef = (IASTFunctionDefinition) tu.getDeclarations()[2];
@@ -3847,9 +3847,9 @@ public class AST2Tests extends AST2TestBase {
 		StringBuilder buffer = new StringBuilder();
 		buffer.append("#define M0 1\n");
 		for (int i = 1; i < depth; i++) {
-			buffer.append("#define M" + i + " (M" + (i-1) + "+1)\n");
+			buffer.append("#define M").append(i).append(" (M").append(i-1).append("+1)\n");
 		}
-		buffer.append("int a= M" + (depth-1) + ";\n");
+		buffer.append("int a= M").append(depth-1).append(";\n");
 		long time= System.currentTimeMillis();
 		parse(buffer.toString(), CPP);
 		parse(buffer.toString(), C);
@@ -4955,7 +4955,7 @@ public class AST2Tests extends AST2TestBase {
     	IASTFunctionDefinition func= (IASTFunctionDefinition) tu.getDeclarations()[0];
 
     	IASTFunctionCallExpression fcall= (IASTFunctionCallExpression) ((IASTExpressionStatement)((IASTCompoundStatement) func.getBody()).getStatements()[0]).getExpression();
-    	IASTLiteralExpression lit= (IASTLiteralExpression) fcall.getParameterExpression();
+    	IASTLiteralExpression lit= (IASTLiteralExpression) fcall.getArguments()[0];
     	assertEquals("\"this is a string\"", lit.toString());
     }
 
@@ -5356,13 +5356,13 @@ public class AST2Tests extends AST2TestBase {
 		return ((ASTNode) expr).getOffset() + ((ASTNode) expr).getLength();
 	}
 
-	private String polishNotation(IASTExpression expr) {
+	private String polishNotation(IASTInitializerClause expr) {
 		StringBuilder buf= new StringBuilder();
 		polishNotation(expr, buf);
 		return buf.toString();
 	}
 
-	private void polishNotation(IASTExpression expr, StringBuilder buf) {
+	private void polishNotation(IASTInitializerClause expr, StringBuilder buf) {
 		if (expr instanceof IASTConditionalExpression) {
 			IASTConditionalExpression bexpr= (IASTConditionalExpression) expr;
 			polishNotation(bexpr.getLogicalConditionExpression(), buf);
@@ -5397,13 +5397,16 @@ public class AST2Tests extends AST2TestBase {
 			IASTFunctionCallExpression f= (IASTFunctionCallExpression) expr;
 			polishNotation(f.getFunctionNameExpression(), buf);
 			buf.append(',');
-			polishNotation(f.getParameterExpression(), buf);
-			buf.append(",()");
+			for (IASTInitializerClause arg : f.getArguments()) {
+				polishNotation(arg, buf);
+				buf.append(',');
+			}
+			buf.append("()");
 		} else if (expr instanceof IASTArraySubscriptExpression) {
 			IASTArraySubscriptExpression f= (IASTArraySubscriptExpression) expr;
 			polishNotation(f.getArrayExpression(), buf);
 			buf.append(',');
-			polishNotation(f.getSubscriptExpression(), buf);
+			polishNotation(f.getArgument(), buf);
 			buf.append(",[]");
 		} else if (expr instanceof IASTFieldReference) {
 			IASTFieldReference f= (IASTFieldReference) expr;
@@ -5430,6 +5433,12 @@ public class AST2Tests extends AST2TestBase {
 				buf.append(ASTStringUtil.getUnaryOperatorString(unaryExpr));
 				break;
 			}
+		} else if (expr instanceof IASTInitializerList) {
+			buf.append('{');
+			for (IASTInitializerClause clause : ((IASTInitializerList) expr).getClauses()) {
+				polishNotation(clause, buf);
+			}
+			buf.append('}');
 		} else {
 			buf.append(expr.getRawSignature());
 		}
@@ -7556,5 +7565,42 @@ public class AST2Tests extends AST2TestBase {
     //	_Alignas(struct S) int t;
     public void testAlignas_451082() throws Exception {
     	parseAndCheckBindings(getAboveComment(), C);
+    }
+    
+	//	void foo(int waldo) {
+	//		(waldo = 5) && waldo;
+	//	}
+    public void testTypeIdWithEqualsInitializer_484824() throws Exception {
+    	// Test that 'waldo = 5' is not parsed as a type-id, causing 
+    	// the entire expression to be parsed as a cast-expression.
+    	// See also bug 471174, which is about the broader problem of
+    	// binary && expressions with a parenthesized left operand
+    	// being incorrectly parsed as cast-expressions.
+    	parseAndCheckBindings(getAboveComment(), C);
+    }
+    
+    private void labelResolutionHelper(BindingAssertionHelper helper) {
+    	// Make sure existing labels are resolved correctly.
+    	ILabel label = helper.assertNonProblem("goto existent", "existent");
+    	assertEquals(1, helper.tu.getDeclarationsInAST(label).length);
+    	label = helper.assertNonProblem("&& existent", "existent");
+    	assertEquals(1, helper.tu.getDeclarationsInAST(label).length);
+    	
+    	// Make sure non-existent labels are not resolved.
+    	helper.assertProblem("goto nonexistent", "nonexistent");
+    	helper.assertProblem("&& nonexistent", "nonexistent");
+    }
+    
+	//	int main() {
+	//	existent:
+	//		int x;
+	//		goto existent;
+	//		goto nonexistent;
+	//		void* ref1 = && existent;
+	//		void* ref2 = && nonexistent;
+	//	}
+    public void testLabelResolution_484979() throws Exception {
+    	labelResolutionHelper(getAssertionHelper(C));
+    	labelResolutionHelper(getAssertionHelper(CPP));
     }
 }

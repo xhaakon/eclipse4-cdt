@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,150 +14,160 @@
  */
 package org.eclipse.cdt.core.parser.tests;
 
-import junit.framework.TestCase;
+import java.util.Random;
 
-import org.eclipse.cdt.core.parser.util.CharArrayUtils;
+import org.eclipse.cdt.core.parser.util.CharArrayObjectMap;
 import org.eclipse.cdt.core.parser.util.ObjectMap;
+
+import junit.framework.TestCase;
 
 /**
  * @author aniefer
  */
 public class ObjectMapTest extends TestCase {
 
-    static public class HashObject{
-        HashObject( int h ){
+    private static class HashObject {
+        final public int hash;
+
+        HashObject(int h) {
             hash = h;
         }
+
         @Override
-		public int hashCode(){
+		public int hashCode() {
             return hash;
         }
-        final public int hash;
     }
 
-    public void insertContents( ObjectMap map, Object[][] contents ) throws Exception {
-        for( int i = 0; i < contents.length; i++ )
-            map.put( contents[i][0], contents[i][1] );
-    }
-    
-    public void assertContents( ObjectMap map, Object[][] contents ) throws Exception {
-        for( int i = 0; i < contents.length; i++ ){
-            assertEquals( map.keyAt(i), contents[i][0] );
-            assertEquals( map.getAt(i), contents[i][1] );
-            assertEquals( map.get(contents[i][0]), contents[i][1] );
+    public void insertContents(ObjectMap map, Object[][] contents) throws Exception {
+        for (int i = 0; i < contents.length; i++) {
+            map.put(contents[i][0], contents[i][1]);
         }
-        assertEquals( map.size(), contents.length );
     }
-    
+
+    public void assertContents(ObjectMap map, Object[][] contents) throws Exception {
+        for (int i = 0; i < contents.length; i++) {
+            assertEquals(map.keyAt(i), contents[i][0]);
+            assertEquals(map.getAt(i), contents[i][1]);
+            assertEquals(map.get(contents[i][0]), contents[i][1]);
+        }
+        assertEquals(map.size(), contents.length);
+    }
+
     public void testSimpleAdd() throws Exception{
-        ObjectMap map = new ObjectMap( 2 );
-    
-        Object [][] contents = new Object[][] { {"1", "ob" } };  //$NON-NLS-1$//$NON-NLS-2$
+        ObjectMap map = new ObjectMap(2);
 
-        insertContents( map, contents );
-        assertContents( map, contents );
-        
-        assertEquals( map.size(), 1 );
-        assertEquals( map.capacity(), 2 );
+        Object[][] contents = new Object[][] { {"1", "ob" } };
+
+        insertContents(map, contents);
+        assertContents(map, contents);
+
+        assertEquals(map.size(), 1);
+        assertEquals(map.capacity(), 8);
     }
-    
+
     public void testSimpleCollision() throws Exception{
-        ObjectMap map = new ObjectMap( 2 );
-        
-        HashObject key1 = new HashObject( 1 );
-        HashObject key2 = new HashObject( 1 );
-        
-        Object [][] contents = new Object[][] { {key1, "1" }, //$NON-NLS-1$
-                								{key2, "2" } };   //$NON-NLS-1$
-        
-        insertContents( map, contents );
-        
-        assertEquals( map.size(), 2 );
-        assertEquals( map.capacity(), 2 );
+        ObjectMap map = new ObjectMap(2);
 
-        assertContents( map, contents );
+        HashObject key1 = new HashObject(1);
+        HashObject key2 = new HashObject(1);
+
+        Object[][] contents = new Object[][] { {key1, "1" },
+                							   {key2, "2" } };
+
+        insertContents(map, contents);
+
+        assertEquals(map.size(), 2);
+        assertEquals(map.capacity(), 8);
+
+        assertContents(map, contents);
     }
-    
+
     public void testResize() throws Exception{
-        ObjectMap map = new ObjectMap( 1 );
-        
-        assertEquals( map.size(), 0 );
-        assertEquals( map.capacity(), 2 );
-        
-        Object [][] res = new Object [][] { { "0", "o0" },  //$NON-NLS-1$//$NON-NLS-2$
-							                { "1", "o1" },  //$NON-NLS-1$//$NON-NLS-2$
-							                { "2", "o2" },  //$NON-NLS-1$//$NON-NLS-2$
-							                { "3", "o3" },  //$NON-NLS-1$//$NON-NLS-2$
-							                { "4", "o4" } };  //$NON-NLS-1$//$NON-NLS-2$
-        
-        insertContents( map, res );
-        assertEquals( map.capacity(), 8 );
-        assertContents( map, res );
-    }
-    
-    public void testCollisionResize() throws Exception{
-        ObjectMap map = new ObjectMap( 1 );
-        
-        assertEquals( map.size(), 0 );
-        assertEquals( map.capacity(), 2 );
-        
-        Object [][] res = new Object [][] { { new HashObject(0), "o0" },  //$NON-NLS-1$
-							                { new HashObject(1), "o1" },  //$NON-NLS-1$
-							                { new HashObject(0), "o2" },  //$NON-NLS-1$
-							                { new HashObject(1), "o3" },  //$NON-NLS-1$
-							                { new HashObject(0), "o4" } };  //$NON-NLS-1$
-        
-        insertContents( map, res );
-        assertEquals( map.capacity(), 8 );
-        assertContents( map, res );
-    }
-    
-    public void testReAdd() throws Exception{
-        ObjectMap map = new ObjectMap( 1 );
-        
-        assertEquals( map.size(), 0 );
-        assertEquals( map.capacity(), 2 );
-        
-        Object [][] res = new Object [][] { { "0", "o0" },  //$NON-NLS-1$ //$NON-NLS-2$
-							                { "1", "o1" } };  //$NON-NLS-1$ //$NON-NLS-2$
-							                
-        insertContents( map, res );
-        assertEquals( map.capacity(), 2 );
-        assertContents( map, res );
-        
-        res = new Object [][]{ { "0",  "o00" },  //$NON-NLS-1$ //$NON-NLS-2$
-                			   { "1",  "o01" },  //$NON-NLS-1$ //$NON-NLS-2$
-                			   { "10", "o10" },  //$NON-NLS-1$ //$NON-NLS-2$
-        					   { "11", "o11" } };  //$NON-NLS-1$ //$NON-NLS-2$
-        
-        insertContents( map, res );
-        assertContents( map, res );
-    }
-    
-    public void testResizeResolvesCollision() throws Exception{
-        ObjectMap map = new ObjectMap( 2 );
-        
-        Object k1 = new HashObject( 0 );
-        Object k2 = new HashObject( 1 );
-        Object k3 = new HashObject( 4 );	//collision with 0 in a table capacity 2, but ok in table capacity 4
-        
-        Object [][] con = new Object[][] { { k1, "1" },  //$NON-NLS-1$
-                						   { k2, "2" }, //$NON-NLS-1$
-                						   { k3, "3" } } ; //$NON-NLS-1$
-        
-        insertContents( map, con );
-        assertContents( map, con );
-    }
-    
-    public void testCharArrayUtils() throws Exception{
-        char [] buffer = "A::B::C".toCharArray(); //$NON-NLS-1$
-        
-        assertEquals( CharArrayUtils.lastIndexOf( "::".toCharArray(), buffer ), 4 ); //$NON-NLS-1$
-        assertTrue( CharArrayUtils.equals( CharArrayUtils.lastSegment( buffer, "::".toCharArray()), "C".toCharArray() ) ); //$NON-NLS-1$ //$NON-NLS-2$
-        
-        buffer = "A::B::C:foo".toCharArray(); //$NON-NLS-1$
-        assertEquals( CharArrayUtils.lastIndexOf( "::".toCharArray(), buffer ), 4 ); //$NON-NLS-1$
-        assertTrue( CharArrayUtils.equals( CharArrayUtils.lastSegment( buffer, "::".toCharArray()), "C:foo".toCharArray() ) ); //$NON-NLS-1$ //$NON-NLS-2$
+        ObjectMap map = new ObjectMap(1);
+
+        assertEquals(map.size(), 0);
+        assertEquals(map.capacity(), 8);
+
+        Object[][] res = new Object[][] { { "0", "o0" },
+							              { "1", "o1" },
+							              { "2", "o2" },
+							              { "3", "o3" },
+							              { "4", "o4" } };
+
+        insertContents(map, res);
+        assertEquals(map.capacity(), 8);
+        assertContents(map, res);
     }
 
+    public void testCollisionResize() throws Exception{
+        ObjectMap map = new ObjectMap(1);
+
+        assertEquals(map.size(), 0);
+        assertEquals(map.capacity(), 8);
+
+        Object[][] res = new Object[][] { { new HashObject(0), "o0" },
+							              { new HashObject(1), "o1" },
+							              { new HashObject(0), "o2" },
+							              { new HashObject(1), "o3" },
+							              { new HashObject(0), "o4" } };
+
+        insertContents(map, res);
+        assertEquals(map.capacity(), 8);
+        assertContents(map, res);
+    }
+
+    public void testReAdd() throws Exception{
+        ObjectMap map = new ObjectMap(1);
+
+        assertEquals(map.size(), 0);
+        assertEquals(map.capacity(), 8);
+
+        Object[][] res = new Object[][] { { "0", "o0" },
+							              { "1", "o1" } };
+
+        insertContents(map, res);
+        assertEquals(map.capacity(), 8);
+        assertContents(map, res);
+
+        res = new Object[][]{ { "0",  "o00" },
+                			  { "1",  "o01" },
+                			  { "10", "o10" },
+        					  { "11", "o11" } };
+
+        insertContents(map, res);
+        assertContents(map, res);
+    }
+
+	public void testMapAdd() {
+		CharArrayObjectMap map = new CharArrayObjectMap(4);
+		char[] key1 = "key1".toCharArray();
+		Integer value1 = 43;
+		map.put(key1, value1);
+
+		char[] key2 = "key1".toCharArray();
+		Object value2 = map.get(key2);
+		assertEquals(value1, value2);
+
+		for (int i = 0; i < 25; ++i) {
+			map.put(("ikey" + i).toCharArray(), Integer.valueOf(i));
+		}
+
+		for (int i = 0; i < 25; ++i) {
+			Object ivalue1 = map.get(("ikey" + i).toCharArray());
+			assertEquals(i, ivalue1);
+		}
+	}
+
+	public void testCollisionRatio() {
+		Random random = new Random(239);
+		CharArrayObjectMap map = new CharArrayObjectMap(1);
+		for (int i = 0; i < 20000; i++) {
+			int r = random.nextInt();
+			map.put(("key" + Integer.toUnsignedString(i)).toCharArray(), i);
+			double collisionRatio = (double) map.countCollisions() / map.size();
+			assertTrue(String.format("Collision ratio %.3f is unexpectedly high for map size of %d.", collisionRatio, map.size()),
+					collisionRatio <= 0.4);
+		}
+	}
 }

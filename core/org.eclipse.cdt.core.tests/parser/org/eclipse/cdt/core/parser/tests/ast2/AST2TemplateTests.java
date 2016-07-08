@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2014 IBM Corporation and others.
+ * Copyright (c) 2005, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -88,12 +88,12 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
-import org.eclipse.cdt.core.parser.util.ObjectMap;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNameBase;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
@@ -3075,24 +3075,14 @@ public class AST2TemplateTests extends AST2TestBase {
 
 		ICPPVariable t= ba.assertNonProblem("t;", 1, ICPPVariable.class);
 		ICPPTemplateInstance ci1= assertInstance(t.getType(), ICPPTemplateInstance.class, ICPPClassType.class);
-		ObjectMap args1= ci1.getArgumentMap();
-		assertEquals(1, args1.size());
-		assertInstance(args1.keyAt(0), ICPPTemplateNonTypeParameter.class);
-
-		// non-type arguments are currently modelled as a type with attached expression
-		ICPPBasicType bt0= assertInstance(args1.getAt(0), ICPPBasicType.class);
-		assertEquals(bt0.getType(), IBasicType.t_int);
-		assertEquals(256, ci1.getTemplateArguments()[0].getNonTypeValue().numericalValue().intValue());
+		ICPPTemplateParameterMap args1= ci1.getTemplateParameterMap();
+		assertEquals(1, args1.getAllParameterPositions().length);
+		assertEquals(256, args1.getArgument(0).getNonTypeValue().numericalValue().intValue());
 
 		ICPPTemplateInstance ct= ba.assertNonProblem("C<_256> ", 7, ICPPTemplateInstance.class, ICPPClassType.class);
-		ObjectMap args= ct.getArgumentMap();
-		assertEquals(1, args.size());
-		assertInstance(args.keyAt(0), ICPPTemplateNonTypeParameter.class);
-
-		// non-type arguments are currently modelled as a type with attached expression
-		ICPPBasicType bt= assertInstance(args.getAt(0), ICPPBasicType.class);
-		assertEquals(bt.getType(), IBasicType.t_int);
-		assertEquals(256, ct.getTemplateArguments()[0].getNonTypeValue().numericalValue().intValue());
+		ICPPTemplateParameterMap args= ct.getTemplateParameterMap();
+		assertEquals(1, args.getAllParameterPositions().length);
+		assertEquals(256, args.getArgument(0).getNonTypeValue().numericalValue().intValue());
 
 		ba.assertNonProblem("foo(t)", 3);
 		ba.assertNonProblem("bar(t)", 3);
@@ -3625,7 +3615,7 @@ public class AST2TemplateTests extends AST2TestBase {
     //    template<> class A<float> {
     //    	  template<typename T> void f(T);
     //    };
-    //    template<typename T> void A<float>::f(T){}   //problem on f
+    //    template<typename T> void A<float>::f(T){}
     public void testClassTemplateMemberFunctionTemplate_104262() throws Exception {
 		final String code = getAboveComment();
 		parseAndCheckBindings(code);
@@ -4400,6 +4390,66 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	template<typename... Ts>
+	//	struct E {};
+	//
+	//	template<int I, typename T>
+	//	struct D;
+	//
+	//	template<int I, typename T, typename... Us>
+	//	struct D<I, E<T, Us...>> : D<I - 1, E<Us...>> {};
+	//
+	//	template<typename T, typename... Us>
+	//	struct D<0, E<T, Us...>> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <typename... Ts>
+	//	class A;
+	//
+	//	template <typename T>
+	//	struct F {
+	//	  using type = T;
+	//	};
+	//
+	//	template <int N, typename T>
+	//	struct C;
+	//
+	//	template <int N, typename... Ts>
+	//	struct C<N, A<Ts...>> {
+	//	  using type = typename D<N, E<F<Ts>...>>::type::type;
+	//	};
+	//
+	//	template <int I, typename T>
+	//	struct B : public B<I - 1, T> {
+	//	  using U = typename C<I, T>::type;
+	//	  using Base = B<I - 1, T>;
+	//	  using Base::Base;
+	//
+	//	  B(const U& value);
+	//	};
+	//
+	//	template <typename... Ts>
+	//	struct B<-1, A<Ts...>> {};
+	//
+	//	template <typename... Ts>
+	//	struct A : public B<sizeof...(Ts) - 1, A<Ts...>> {
+	//	  using B = B<sizeof...(Ts) - 1, A>;
+	//	  using B::B;
+	//	};
+	//
+	//	struct X {};
+	//	struct Y {};
+	//
+	//	void waldo(const A<X, Y>& p);
+	//
+	//	void test() {
+	//	  waldo(X());
+	//	  waldo(Y());
+	//	}
+	public void testInheritedConstructor_489710() throws Exception {
+		parseAndCheckBindings();
+	}
 
 	//	template <typename T>
 	//	struct A {
@@ -6815,8 +6865,8 @@ public class AST2TemplateTests extends AST2TestBase {
 		ICPPSpecialization buffRef = assertionHelper.assertNonProblem("myA.buff[0] = 1;", "buff", ICPPSpecialization.class);
 
 		assertEquals(buff, buffRef.getSpecializedBinding());
-		assertEquals(buffRef.getTemplateParameterMap().getArgument(0).getNonTypeValue().numericalValue(), new Long(4));
-		assertEquals(buffRef.getTemplateParameterMap().getArgument(1).getNonTypeValue().numericalValue(), new Long(5));
+		assertEquals(Long.valueOf(4),buffRef.getTemplateParameterMap().getArgument(0).getNonTypeValue().numericalValue());
+		assertEquals(Long.valueOf(5),buffRef.getTemplateParameterMap().getArgument(1).getNonTypeValue().numericalValue());
 	}
 
 	// template<typename T, int Size>
@@ -6840,7 +6890,7 @@ public class AST2TemplateTests extends AST2TestBase {
 
 		assertEquals(buff, buffRef.getSpecializedBinding());
 		assertSameType(buffRef.getTemplateParameterMap().getArgument(0).getTypeValue(), new CPPBasicType(IBasicType.Kind.eInt, 0));
-		assertEquals(buffRef.getTemplateParameterMap().getArgument(1).getNonTypeValue().numericalValue(), new Long(5));
+		assertEquals(Long.valueOf(5),buffRef.getTemplateParameterMap().getArgument(1).getNonTypeValue().numericalValue());
 	}
 
 	// template<typename T>
@@ -7226,7 +7276,65 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testAliasTemplate_416280_2() throws Exception {
 		parseAndCheckBindings();
 	}
-	
+
+	//	struct A {
+	//	  static constexpr bool val = true;
+	//	};
+	//
+	//	struct C {
+	//	  template <typename T>
+	//	  using AC = A;
+	//	};
+	//
+	//	template <class T>
+	//	struct D {
+	//	  template <class U>
+	//	  struct AD : T::template AC<U> {};
+	//	};
+	//
+	//	bool b = D<C>::template AD<int>::val;
+	public void testAliasTemplate_486618() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<typename T>
+	//	struct B {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <class... T>
+	//	class C {};
+	//
+	//	template <class... T>
+	//	using D = C<typename B<T>::type...>;
+	//
+	//	template <class... T>
+	//	class Group {};
+	//
+	//	template <class... U>
+	//	D<U...> waldo1(Group<U...>);
+	//
+	//	template <class U, class... V>
+	//	D<U, V...> waldo2(Group<U>, Group<V...>);
+	//
+	//	template <class... U, class V>
+	//	D<U..., V> waldo3(Group<U...>, Group<V>);
+	//
+	//	template <class... U, class... V>
+	//	D<U..., V...> waldo4(Group<U...>, Group<V...>);
+	//
+	//	void test() {
+	//		Group<int> one;
+	//		Group<int, int> two;
+	//	    waldo1(two);
+	//		waldo2(one, two);
+	//		waldo3(two, one);
+	//		waldo4(two, two);
+	//	}
+	public void testAliasTemplate_486971() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	template <typename T>
 	//	struct Struct {};
 	//
@@ -7239,6 +7347,22 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	}
 	public void testTemplateIdNamingAliasTemplateInExpression_472615() throws Exception {
 		parseAndCheckBindings();
+	}
+	
+	//	template <class>
+	//	struct Traits {
+	//	    template <class U> 
+	//	    using rebind = U;
+	//	};
+	//	template <class T>
+	//	struct Meta {
+	//	    typedef typename Traits<T>::template rebind<int> type;
+	//	};
+	//	typedef Meta<int>::type Waldo;
+	public void testNestedAliasTemplate_488456() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ITypedef waldo = helper.assertNonProblem("Waldo");
+		assertSameType(waldo, CommonCPPTypes.int_);
 	}
 
 	//	template<typename U>
@@ -7353,6 +7477,35 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	    A<f()>::g();
 	//	}
 	public void testConstexprFunctionCallInTemplateArgument_332829() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	template<bool, typename T = void>
+	//	struct C {};
+	//
+	//	template<typename T>
+	//	struct C<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <typename T>
+	//	struct B {
+	//	  static constexpr bool b() {
+	//	    return true;
+	//	  }
+	//	};
+	//
+	//	struct A {
+	//	  template <typename T, typename = typename C<B<T>::b()>::type>
+	//	  A(T v);
+	//	};
+	//
+	//	void waldo(A p);
+	//
+	//	void test(int x) {
+	//	  waldo(x);
+	//	}
+	public void testConstexprMethod_489987() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -7594,7 +7747,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	template <class T> void waldo(function f);
 	//
 	//	void test() {
-	//	    waldo<A>(""); // problem on waldo
+	//	    waldo<A>("");
 	//	}
 	public void testSfinaeInIdExpression_459940() throws Exception {
 		parseAndCheckBindings();
@@ -7792,6 +7945,43 @@ public class AST2TemplateTests extends AST2TestBase {
 	public void testPartialSpecializationForVarargFunctionType_402807() throws Exception {
 		parseAndCheckBindings();
 	}
+	
+	//	template <typename T>
+	//	struct waldo {
+	//		typedef int type;
+	//	};
+	//
+	//	template <typename R>
+	//	struct waldo<R () &>;
+	//
+	//	typedef waldo<int ()>::type Type;
+	public void testPartialSpecializationForRefQualifiedFunctionType_485888() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template<typename T>
+	//	struct term_traits;
+	//	
+	//	template<typename T>
+	//	struct term_traits<T const &> {
+	//	    typedef T value_type;
+	//	};
+	//	
+	//	template<typename T, int N>
+	//	struct term_traits<T const (&)[N]> {
+	//	    typedef T value_type[N];
+	//	};
+	//	
+	//	using T = const char(&)[4];
+	//	using ActualType = term_traits<T const &>::value_type;
+	//	
+	//	using ExpectedType = char[4];
+	public void testQualifierTypeThatCollapsesAfterTypedefSubstitution_487698() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ITypedef actualType = helper.assertNonProblem("ActualType");
+		ITypedef expectedType = helper.assertNonProblem("ExpectedType");
+		assertSameType(actualType, expectedType);
+	}
 
 	//	template <typename>
 	//	struct meta {
@@ -7938,10 +8128,51 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	template <class T> void waldo(function<T()> generator);
 	//
 	//	void test() {
-	//	    waldo<A>("");  // problem on waldo
+	//	    waldo<A>("");
 	//	}
 	public void testPackExpansionInNestedTemplate_459844() throws Exception {
 		parseAndCheckBindings();
+	}
+	
+	//	template <typename T>
+	//	struct A {};
+	//
+	//	template <typename... T>
+	//	struct C : A<T>... {};
+	//
+	//	constexpr bool answer = __is_base_of(A<int>, C<int>);
+	public void testPackExpansionInBaseSpecifier_487703() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		IVariable answer = helper.assertNonProblem("answer");
+		assertVariableValue(answer, 1);
+	}
+	
+
+	//	template <template <class> class ... Mixins>
+	//	struct C : Mixins<int>... {};
+	//	  
+	//	template <typename>
+	//	struct SpecificMixin {};
+	//	
+	//	constexpr bool answer = __is_base_of(SpecificMixin<int>, C<SpecificMixin>);
+	public void testTemplateTemplateParameterPack_487703a() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		IVariable answer = helper.assertNonProblem("answer");
+		assertVariableValue(answer, 1);
+	}
+	
+	//  template <template <class> class ... Mixins>
+	//  struct C : Mixins<C<Mixins...>>... {};
+	//
+	//  template <typename>
+	//  struct SpecificMixin {};
+	//
+	//  typedef C<SpecificMixin> Waldo;
+	//  constexpr bool answer = __is_base_of(SpecificMixin<Waldo>, Waldo);
+	public void testTemplateTemplateParameterPack_487703b() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		IVariable answer = helper.assertNonProblem("answer");
+		assertVariableValue(answer, 1);
 	}
 
 	// struct S {
@@ -8189,6 +8420,28 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 
+	//	template <int... Is> struct A {
+	//	  typedef A t;
+	//	};
+	//
+	//	template <class P, int I> struct B;
+	//
+	//	template <int... Is, int I>
+	//	struct B<A<Is...>, I> : A<Is..., I> {};
+	//
+	//	template <typename, typename = void>
+	//	struct prober {};
+	//
+	//	template <typename T>
+	//	struct prober<A<0>, T> {
+	//	  typedef T t;
+	//	};
+	//
+	//	prober<B<A<>, 0>::t>::t g();
+	public void testParameterPack_485806() throws Exception {
+		parseAndCheckBindings();
+	}
+
 	//	template <typename... Args>
 	//	void waldo(Args...);
 	//
@@ -8241,6 +8494,50 @@ public class AST2TemplateTests extends AST2TestBase {
 	//		bar(t.waldo...);
 	//	}
 	public void testMemberAccessViaReferenceInPackExpansion_466845() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <int... I>
+	//	struct C {};
+	//
+	//	template <class... T>
+	//	struct B {
+	//	  typedef void type;
+	//	};
+	//
+	//	template <class T, int... I>
+	//	typename B<decltype(T::template operator()<I>())...>::type
+	//	waldo(T f, C<I...>);
+	//
+	//	struct A {};
+	//
+	//	void test() {
+	//	  A a;
+	//	  waldo(a, C<>());
+	//	}	
+	public void testDecltypeInPackExpansion_486425a() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <int... I>
+	//	struct C {};
+	//
+	//	template <class... T>
+	//	struct B {
+	//	  typedef void type;
+	//	};
+	//
+	//	template <class T, int... I>
+	//	typename B<decltype(T::template undefined<I>())...>::type
+	//	waldo(T f, C<I...>);
+	//
+	//	struct A {};
+	//
+	//	void test() {
+	//	  A a;
+	//	  waldo(a, C<>());
+	//	}
+	public void testDecltypeInPackExpansion_486425b() throws Exception {
 		parseAndCheckBindings();
 	}
 
@@ -8674,7 +8971,72 @@ public class AST2TemplateTests extends AST2TestBase {
 		BindingAssertionHelper helper = getAssertionHelper();
 		helper.assertNonProblem("waldo<T>", ICPPDeferredFunction.class);
 	}
+	
+	//	template<bool, typename T = void>
+	//	struct enable_if {};
+	//
+	//	template<typename T>
+	//	struct enable_if<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template <typename T>
+	//	constexpr bool F() {
+	//	  return false;
+	//	}
+	//
+	//	template <typename T>
+	//	typename enable_if<!F<T>(), void>::type waldo(T p);
+	//
+	//	struct A {};
+	//
+	//	void test() {
+	//	  A a;
+	//	  waldo(a);
+	//	}
+	public void testDependentFunctionSet_485985() throws Exception {
+		parseAndCheckBindings();
+	}
 
+	//	template<bool, typename T = void>
+	//	struct enable_if {};
+	//
+	//	template<typename T>
+	//	struct enable_if<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template<typename>
+	//	struct A {
+	//	  constexpr operator int() const { return false; }
+	//	};
+	//
+	//	template <class T>
+	//	typename enable_if<!A<T>()>::type waldo(T a);
+	//
+	//	void test() {
+	//	  waldo(0);
+	//	}
+	public void testDependentConversionOperator_486149() throws Exception {
+		parseAndCheckBindings();
+	}
+
+	//	constexpr bool negate(bool arg) {
+	//	  return !arg;
+	//	}
+	//	    
+	//	template <bool B>
+	//	struct boolean {
+	//	  constexpr operator bool() { return B; } 
+	//	};
+	//	    
+	//	constexpr bool waldo = negate(boolean<true>());
+	public void testDependentConversionOperator_486426() throws Exception {
+		BindingAssertionHelper helper = getAssertionHelper();
+		ICPPVariable waldo = helper.assertNonProblem("waldo");
+		assertConstantValue(0, waldo);
+	}
+	
 	//	template <typename>
 	//	struct C {
 	//	    friend bool operator==(C, C);
@@ -8707,7 +9069,7 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	A<int>::B d;
 	//
 	//	void test() {
-	//	  waldo(foo(c, d)); // problem on waldo
+	//	  waldo(foo(c, d));
 	//	}
 	public void testInstantiationOfFriendOfNestedClassInsideTemplate_484162() throws Exception {
 		parseAndCheckBindings();
@@ -8751,6 +9113,24 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	};
 	public void testConstexprFunctionCallWithNonConstexprArguments_429891() throws Exception {
 		parseAndCheckBindings();
+	}
+	
+	//	template <typename>
+	//	struct S;
+	//
+	//	template <>
+	//	struct S<int> {
+	//		static const int value = 42;
+	//	};
+	//
+	//	template <typename T>
+	//	constexpr int foo() {
+	//		return S<T>::value;
+	//	}
+	//
+	//	constexpr int waldo = foo<int>();
+	public void testInstantiationOfReturnExpression_484959() throws Exception {
+		getAssertionHelper().assertVariableValue("waldo", 42);
 	}
 
 	//	template <typename> class A {};
@@ -8937,6 +9317,82 @@ public class AST2TemplateTests extends AST2TestBase {
 		parseAndCheckBindings();
 	}
 	
+	//	template <typename> struct S {};
+	//	struct U {};
+	//
+	//	struct outer {
+	//		struct inner {
+	//			S<U> foo() {
+	//				return waldo<42>(0);
+	//			}
+	//		};
+	//
+	//		template <int>
+	//		static S<U> waldo(int);
+	//	};
+	public void testAmbiguityResolutionInNestedClassMethodBody_485388() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template<typename T, T v>
+	//	struct F {
+	//	  static constexpr T val = v;
+	//	};
+	//
+	//	template<typename T>
+	//	struct E : public F<bool, __is_class(T)> {};
+	//
+	//	template<bool, typename T = void>
+	//	struct D {};
+	//
+	//	template<typename T>
+	//	struct D<true, T> {
+	//	  typedef T type;
+	//	};
+	//
+	//	template<typename T> struct C {
+	//	  static constexpr int c = 0;
+	//	};
+	//
+	//	template<typename T, T a>
+	//	struct B {
+	//	  template<typename U>
+	//	  typename D<E<U>::val>::type waldo(U);
+	//	};
+	//
+	//	template<typename T, T a>
+	//	template<typename U>
+	//	typename D<E<U>::val>::type
+	//	B<T, a>::waldo(U) { // problems on B<T, a>::waldo and on U
+	//	  C<T>::c; // problems on C, T and ::c
+	//	}
+	public void testRegression_485388a() throws Exception {
+		parseAndCheckBindings(getAboveComment(), CPP, true);
+	}
+	
+	//	template <typename T>
+	//	struct A {
+	//	  void ma(T);
+	//	};
+	//
+	//	template <typename T>
+	//	struct B {
+	//	  void mb() {
+	//	    class C {
+	//	      void mc() {
+	//	        return A<T>::ma(b->waldo()); // problem on waldo
+	//	      }
+	//
+	//	      B<T>* b; // problem on B<T>
+	//	    };
+	//	  }
+	//
+	//	  int waldo();
+	//	};
+	public void testRegression_485388b() throws Exception {
+		parseAndCheckBindings();
+	}
+	
 	//	template <typename>
 	//	struct Base {
 	//	    template <typename>
@@ -8978,6 +9434,18 @@ public class AST2TemplateTests extends AST2TestBase {
 	//	  waldo(a);
 	//	}
 	public void testRecursiveTemplateClass_484786() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename T>
+	//	struct S {
+	//		static const bool value = true;
+	//	};
+	//
+	//	typedef int Int;
+	//
+	//	void waldo() noexcept(S<Int>::value) {}
+	public void testDisambiguationInNoexceptSpecifier_467332() throws Exception {
 		parseAndCheckBindings();
 	}
 }

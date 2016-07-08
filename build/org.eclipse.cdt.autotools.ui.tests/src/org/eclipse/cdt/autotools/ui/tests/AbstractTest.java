@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Red Hat Inc.
+ * Copyright (c) 2014, 2015 Red Hat Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,7 +17,7 @@ import static org.eclipse.swtbot.swt.finder.matchers.WidgetMatcherFactory.withRe
 import static org.eclipse.swtbot.swt.finder.matchers.WidgetMatcherFactory.withStyle;
 import static org.eclipse.swtbot.swt.finder.waits.Conditions.waitForWidget;
 import static org.eclipse.swtbot.swt.finder.waits.Conditions.widgetIsEnabled;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.regex.Pattern;
@@ -37,7 +37,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.swt.widgets.Widget;
 import org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot;
 import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotView;
 import org.eclipse.swtbot.swt.finder.SWTBot;
@@ -45,7 +44,6 @@ import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
 import org.eclipse.swtbot.swt.finder.finders.ContextMenuHelper;
 import org.eclipse.swtbot.swt.finder.finders.UIThreadRunnable;
 import org.eclipse.swtbot.swt.finder.matchers.WidgetMatcherFactory;
-import org.eclipse.swtbot.swt.finder.results.VoidResult;
 import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
 import org.eclipse.swtbot.swt.finder.waits.Conditions;
 import org.eclipse.swtbot.swt.finder.waits.DefaultCondition;
@@ -101,21 +99,19 @@ public abstract class AbstractTest {
 		if (Platform.getOS().equals(Platform.OS_MACOSX)) {
 			// On Mac, the Preferences menu is under the system menu
 			final IWorkbench workbench = PlatformUI.getWorkbench();
-			workbench.getDisplay().asyncExec(new Runnable() {
-				public void run() {
-					IWorkbenchWindow window = workbench.getActiveWorkbenchWindow();
-					if (window != null) {
-						Menu appMenu = workbench.getDisplay().getSystemMenu();
-						for (MenuItem item : appMenu.getItems()) {
-							if (item.getText().startsWith("Preferences")) {
-								Event event = new Event();
-								event.time = (int) System.currentTimeMillis();
-								event.widget = item;
-								event.display = workbench.getDisplay();
-								item.setSelection(true);
-								item.notifyListeners(SWT.Selection, event);
-								break;
-							}
+			workbench.getDisplay().asyncExec(() -> {
+				IWorkbenchWindow window = workbench.getActiveWorkbenchWindow();
+				if (window != null) {
+					Menu appMenu = workbench.getDisplay().getSystemMenu();
+					for (MenuItem item : appMenu.getItems()) {
+						if (item.getText().startsWith("Preferences")) {
+							Event event = new Event();
+							event.time = (int) System.currentTimeMillis();
+							event.widget = item;
+							event.display = workbench.getDisplay();
+							item.setSelection(true);
+							item.notifyListeners(SWT.Selection, event);
+							break;
 						}
 					}
 				}
@@ -159,7 +155,7 @@ public abstract class AbstractTest {
 
 		IProjectNature nature = checkProject().getNature(
 				"org.eclipse.cdt.autotools.core.autotoolsNatureV2");
-		assertTrue(nature != null);
+		assertNotNull(nature);
 
 		projectExplorer = bot.viewByTitle("Project Explorer");
 	}
@@ -250,25 +246,21 @@ public abstract class AbstractTest {
 	 */
 	public static void clickRadioButtonInGroup(String mnemonicText,
 			final String inGroup) {
-		UIThreadRunnable.syncExec(new VoidResult() {
-			@Override
-			public void run() {
-				@SuppressWarnings("unchecked")
-				Matcher<Widget> matcher = allOf(inGroup(inGroup),
-						widgetOfType(Button.class),
-						withStyle(SWT.RADIO, "SWT.RADIO"));
-				int i = 0;
-				while (true) {
-					Button b;
-					try {
-						b = (Button) bot.widget(matcher, i++);
-					} catch (IndexOutOfBoundsException e) {
-						return;
-					}
-					if (b.getSelection()) {
-						b.setSelection(false);
-						return;
-					}
+		UIThreadRunnable.syncExec(() -> {
+			@SuppressWarnings("unchecked")
+			Matcher<Button> matcher = allOf(inGroup(inGroup), widgetOfType(Button.class),
+					withStyle(SWT.RADIO, "SWT.RADIO"));
+			int i = 0;
+			while (true) {
+				Button b;
+				try {
+					b = bot.widget(matcher, i++);
+				} catch (IndexOutOfBoundsException e) {
+					return;
+				}
+				if (b.getSelection()) {
+					b.setSelection(false);
+					return;
 				}
 			}
 		});
@@ -334,11 +326,11 @@ public abstract class AbstractTest {
 
 	public static IProject checkProject() {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		assertTrue(workspace != null);
+		assertNotNull(workspace);
 		IWorkspaceRoot root = workspace.getRoot();
-		assertTrue(root != null);
+		assertNotNull(root);
 		IProject project = root.getProject(projectName);
-		assertTrue(project != null);
+		assertNotNull(project);
 		return project;
 	}
 
@@ -386,13 +378,9 @@ public abstract class AbstractTest {
 				String shellTitle = shell.getText();
 				if (shellTitle.length() > 0
 						&& !shellTitle.startsWith("Quick Access")) {
-					UIThreadRunnable.syncExec(new VoidResult() {
-						@Override
-						public void run() {
-							if (shell.widget.getParent() != null
-									&& !shell.isOpen()) {
-								shell.close();
-							}
+					UIThreadRunnable.syncExec(() -> {
+						if (shell.widget.getParent() != null && !shell.isOpen()) {
+							shell.close();
 						}
 					});
 				}
@@ -416,7 +404,7 @@ public abstract class AbstractTest {
 		}
 
 		@Override
-		public boolean test() throws Exception {
+		public boolean test() {
 			if (view.isActive()) {
 				String output = view.bot().styledText().getText();
 				java.util.regex.Matcher m = pattern.matcher(output);

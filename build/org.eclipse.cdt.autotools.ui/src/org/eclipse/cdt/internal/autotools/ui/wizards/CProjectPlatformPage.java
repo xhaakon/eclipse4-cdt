@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2005 IBM Corporation and others.
+ * Copyright (c) 2002, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,14 +28,9 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TableLayout;
-import org.eclipse.jface.wizard.Wizard;
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -70,9 +65,8 @@ public class CProjectPlatformPage extends WizardPage {
 	public static final String TOOLCHAIN = "toolchain"; //$NON-NLS-1$
 	public static final String NATURE = "nature"; //$NON-NLS-1$
 	
-	protected Wizard parentWizard;
 	protected Text platformSelection;
-	private ArrayList<Object> selectedConfigurations;
+	private List<Object> selectedConfigurations;
 	protected IProjectType projectType;
 	protected Button showAllConfigs;
 	protected boolean showAllConfigsForced;
@@ -84,18 +78,15 @@ public class CProjectPlatformPage extends WizardPage {
 	 * @param pageName
 	 * @param wizard
 	 */
-	public CProjectPlatformPage(String pageName, Wizard parentWizard) {
+	public CProjectPlatformPage(String pageName) {
 		super(pageName);
 		setPageComplete(false);
 		projectType = ManagedBuildManager.getExtensionProjectType("org.eclipse.linuxtools.cdt.autotools.core.projectType"); //$NON-NLS-1$
-		selectedConfigurations = new ArrayList<Object>(0);
-		this.parentWizard = parentWizard;
+		selectedConfigurations = new ArrayList<>(0);
 		showAllConfigsForced = false;
 	}
 
-	/**
-	 * @see org.eclipse.jface.wizard.IWizardPage#canFlipToNextPage()
-	 */
+	@Override
 	public boolean canFlipToNextPage() {
 		return validatePage() && getNextPage() != null;
 	}
@@ -127,18 +118,14 @@ public class CProjectPlatformPage extends WizardPage {
 		tableViewer = new CheckboxTableViewer(table);
 		tableViewer.setLabelProvider(new ConfigurationLabelProvider());
 		tableViewer.setContentProvider(new ConfigurationContentProvider());
-		tableViewer.addSelectionChangedListener(new ISelectionChangedListener() {
-			public void selectionChanged(SelectionChangedEvent e) {
-				// will default to false until a selection is made
-				handleConfigurationSelectionChange();
-			}
-		});
+		tableViewer.addSelectionChangedListener(e -> handleConfigurationSelectionChange());
 
 	}
 	
 	/**
 	 * @see org.eclipse.jface.dialogs.IDialogPage#createControl(org.eclipse.swt.widgets.Composite)
 	 */
+	@Override
 	public void createControl(Composite parent) {
 		// Create the composite control for the tab
 		Composite composite = new Composite(parent, SWT.NULL);
@@ -184,11 +171,7 @@ public class CProjectPlatformPage extends WizardPage {
 		platformSelection.setFont(composite.getFont());
 		platformSelection.setToolTipText(AutotoolsWizardMessages.getResourceString(TARGET_TIP));
 		platformSelection.setText("GNU Autotools"); //$NON-NLS-1$
-		platformSelection.addDisposeListener(new DisposeListener() {
-			public void widgetDisposed(DisposeEvent e) {
-				platformSelection = null;
-			}
-		});
+		platformSelection.addDisposeListener(e -> platformSelection = null);
 		
 		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 		// Make this the same as NewCProjectWizardPage.SIZING_TEXT_FIELD_WIDTH
@@ -196,9 +179,6 @@ public class CProjectPlatformPage extends WizardPage {
 		platformSelection.setLayoutData(gd);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.ui.dialogs.ICOptionContainer#getProject()
-	 */
 	public IProject getProject() {
 		return ((NewCProjectWizard)getWizard()).getNewProject();
 	}
@@ -207,7 +187,7 @@ public class CProjectPlatformPage extends WizardPage {
 	 * @return
 	 */
 	public IConfiguration[] getSelectedConfigurations() {
-		return (IConfiguration[]) selectedConfigurations.toArray(new IConfiguration[selectedConfigurations.size()]);
+		return selectedConfigurations.toArray(new IConfiguration[selectedConfigurations.size()]);
 	}
 
 	/**
@@ -229,7 +209,7 @@ public class CProjectPlatformPage extends WizardPage {
 		// pages will know which toolchains have been selected
 		
 		// get the toolchains from the selected configs and put them into a set
-		Set<IToolChain> toolchainSet = new LinkedHashSet<IToolChain>();
+		Set<IToolChain> toolchainSet = new LinkedHashSet<>();
 		for(int k = 0; k < selectedConfigurations.size(); k++)
 		{
 			IConfiguration config = (IConfiguration) selectedConfigurations.get(k);
@@ -280,7 +260,7 @@ public class CProjectPlatformPage extends WizardPage {
 	 * passed to this method
 	 */
 	IConfiguration[] filterSupportedConfigurations(IConfiguration cfgs[]){
-		ArrayList<IConfiguration> supported = new ArrayList<IConfiguration>();
+		ArrayList<IConfiguration> supported = new ArrayList<>();
 		String os = Platform.getOS();
 		String arch = Platform.getOSArch();
 
@@ -299,7 +279,7 @@ public class CProjectPlatformPage extends WizardPage {
 				}		
 			}
 		}
-		return (IConfiguration[])supported.toArray(new IConfiguration[supported.size()]);
+		return supported.toArray(new IConfiguration[supported.size()]);
 	}
 	
 

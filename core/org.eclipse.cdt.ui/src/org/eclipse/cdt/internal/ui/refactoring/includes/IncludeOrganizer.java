@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2015 Google, Inc and others.
+ * Copyright (c) 2012, 2016 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -86,7 +86,7 @@ import org.eclipse.cdt.internal.formatter.ChangeFormatter;
  */
 public class IncludeOrganizer {
 	private static boolean DEBUG_HEADER_SUBSTITUTION =
-			"true".equalsIgnoreCase(Platform.getDebugOption(CUIPlugin.PLUGIN_ID + "/debug/includeOrganizer/headerSubstitution")); //$NON-NLS-1$ //$NON-NLS-2$
+			Boolean.parseBoolean(Platform.getDebugOption(CUIPlugin.PLUGIN_ID + "/debug/includeOrganizer/headerSubstitution")); //$NON-NLS-1$
 
 	private static final Collator COLLATOR = Collator.getInstance();
 
@@ -193,12 +193,12 @@ public class IncludeOrganizer {
 		IIndexFileSet reachableHeaders = ast.getIndexFileSet();
 
 		List<InclusionRequest> requests = createInclusionRequests(ast, bindingsToInclude, false, reachableHeaders);
-		processInclusionRequests(requests, headerSubstitutor);
+		processInclusionRequests(requests, existingIncludes, headerSubstitutor);
 
 		NodeCommentMap commentedNodeMap = ASTCommenter.getCommentedNodeMap(ast);
 
 		// Use a map instead of a set to be able to retrieve existing elements using equal elements.
-		// Maps each element to itself. 
+		// Maps each element to itself.
 		Map<IncludePrototype, IncludePrototype> includePrototypes = new HashMap<>();
 		// Put the new includes into includePrototypes.
 		for (IPath header : fContext.getHeadersToInclude()) {
@@ -225,7 +225,7 @@ public class IncludeOrganizer {
 
 		IRegion includeReplacementRegion =
 				IncludeUtil.getSafeIncludeReplacementRegion(fContext.getSourceContents(), ast, commentedNodeMap);
-		
+
 		IncludePreferences preferences = fContext.getPreferences();
 		boolean allowReordering = preferences.allowReordering || existingIncludes.length == 0;
 
@@ -238,7 +238,7 @@ public class IncludeOrganizer {
 			if (prototype.getExistingInclude() == null
 					|| (allowReordering && isContainedInRegion(prototype.getExistingInclude(), includeReplacementRegion))) {
 				IncludeGroupStyle groupingStyle = prototype.getStyle().getGroupingStyle(preferences.includeStyles);
-				// If reordering is not allowed, group everything together. 
+				// If reordering is not allowed, group everything together.
 				int position = allowReordering ? groupingStyle.getOrder() : 0;
 				List<IncludePrototype> prototypes = groupedPrototypes[position];
 				if (prototypes == null) {
@@ -312,7 +312,7 @@ public class IncludeOrganizer {
 				if (offset != 0 && !TextUtil.isPreviousLineBlank(fContext.getSourceContents(), offset))
 					buf.insert(0, fContext.getLineDelimiter());  // Blank line before.
 			}
-			
+
 			String text = buf.toString();
 			// TODO(sprigogin): Add a diff algorithm and produce narrower replacements.
 			if (text.length() != length ||
@@ -333,7 +333,7 @@ public class IncludeOrganizer {
 
 	/**
 	 * Creates forward declarations by examining the list of bindings which have to be declared.
-	 * @param pendingBlankLine 
+	 * @param pendingBlankLine
 	 */
 	private void createForwardDeclarations(IASTTranslationUnit ast, BindingClassifier classifier,
 			int offset, boolean pendingBlankLine, MultiTextEdit rootEdit)	throws CoreException {
@@ -413,7 +413,7 @@ public class IncludeOrganizer {
 
 				// Append return type and function name.
 				IFunctionType functionType = function.getType();
-				// TODO(sprigogin): Switch to ASTWriter since ASTTypeUtil doesn't properly handle namespaces.  
+				// TODO(sprigogin): Switch to ASTWriter since ASTTypeUtil doesn't properly handle namespaces.
 				declarationText.append(ASTTypeUtil.getType(functionType.getReturnType(), false));
 				declarationText.append(' ');
 				declarationText.append(function.getName());
@@ -474,7 +474,7 @@ public class IncludeOrganizer {
 				ForwardDeclarationNode node = new ForwardDeclarationNode(ns);
 				parentNode = parentNode.findOrAddChild(node);
 			}
-			
+
 			ForwardDeclarationNode node =
 					new ForwardDeclarationNode(binding.getName(), declarationText.toString(), declarationType);
 			parentNode.findOrAddChild(node);
@@ -599,10 +599,10 @@ public class IncludeOrganizer {
 	}
 
 	private void processInclusionRequests(List<InclusionRequest> requests,
-			HeaderSubstitutor headerSubstitutor) throws CoreException {
+			IASTPreprocessorIncludeStatement[] existingIncludes, HeaderSubstitutor headerSubstitutor)
+			throws CoreException {
 		// Add partner header if necessary.
-		HashSet<IIndexFile> includedByPartner = fContext.getPreferences().allowPartnerIndirectInclusion ?
-				new HashSet<IIndexFile>() : null;
+		IIndexFile partnerHeader = null;
 		for (InclusionRequest request : requests) {
 			List<IPath> candidatePaths = request.getCandidatePaths();
 			if (candidatePaths.size() == 1) {
@@ -610,21 +610,32 @@ public class IncludeOrganizer {
 				if (fContext.isPartnerFile(path)) {
 					request.resolve(path);
 					fContext.addHeaderToInclude(path);
-					if (includedByPartner != null) {
-						try {
-							IIndexFile indexFile = request.getDeclaringFiles().keySet().iterator().next();
-							if (!includedByPartner.contains(indexFile)) {
-								for (IIndexInclude include : indexFile.getIncludes()) {
-									IIndexFileLocation headerLocation = include.getIncludesLocation();
-									if (headerLocation != null) {
-										fContext.addHeaderAlreadyIncluded(getAbsolutePath(headerLocation));
-									}
-								}
-								includedByPartner.add(indexFile);
+					partnerHeader = request.getDeclaringFiles().keySet().iterator().next();
+					break;
+				}
+			}
+		}
+
+		if (fContext.getPreferences().allowPartnerIndirectInclusion) {
+			// Mark all headers included by the partner header as already included.
+			if (partnerHeader == null) {
+				for (IASTPreprocessorIncludeStatement include : existingIncludes) {
+					if (include.isPartOfTranslationUnitFile()) {
+						IIndexFile header = include.getImportedIndexFile();
+						if (header != null) {
+							if (fContext.isPartnerFile(new Path(include.getPath()))) {
+								partnerHeader = header;
+								break;
 							}
-						} catch (CoreException e) {
-							CUIPlugin.log(e);
 						}
+					}
+				}
+			}
+			if (partnerHeader != null) {
+				for (IIndexInclude include : partnerHeader.getIncludes()) {
+					IIndexFileLocation headerLocation = include.getIncludesLocation();
+					if (headerLocation != null) {
+						fContext.addHeaderAlreadyIncluded(getAbsolutePath(headerLocation));
 					}
 				}
 			}
@@ -634,8 +645,8 @@ public class IncludeOrganizer {
 		for (InclusionRequest request : requests) {
 			if (!request.isResolved() && !isExportedBinding(request, headerSubstitutor)) {
 				List<IPath> candidatePaths = request.getCandidatePaths();
-				Set<IPath> representativeHeaders = new HashSet<IPath>();
-				Set<IPath> representedHeaders = new HashSet<IPath>();
+				Set<IPath> representativeHeaders = new HashSet<>();
+				Set<IPath> representedHeaders = new HashSet<>();
 				boolean allRepresented = true;
 				for (IPath path : candidatePaths) {
 					if (fContext.isIncluded(path)) {
@@ -719,7 +730,7 @@ public class IncludeOrganizer {
 					IPath header = fHeaderChooser.chooseHeader(request.getBinding().getName(), candidatePaths);
 					if (header == null)
 						throw new OperationCanceledException();
-	
+
 					request.resolve(header);
 					if (DEBUG_HEADER_SUBSTITUTION) {
 						System.out.println(request.toString() + " (user's choice)"); //$NON-NLS-1$
@@ -783,7 +794,7 @@ public class IncludeOrganizer {
 					IPath header = fHeaderChooser.chooseHeader(request.getBinding().getName(), candidatePaths);
 					if (header == null)
 						throw new OperationCanceledException();
-	
+
 					request.resolve(header);
 					if (DEBUG_HEADER_SUBSTITUTION) {
 						System.out.println(request.toString() +
@@ -813,7 +824,7 @@ public class IncludeOrganizer {
 	private List<InclusionRequest> createInclusionRequests(IASTTranslationUnit ast,
 			Set<IBinding> bindingsToInclude, boolean allowDeclarations,
 			IIndexFileSet reachableHeaders) throws CoreException {
-		List<InclusionRequest> requests = new ArrayList<InclusionRequest>(bindingsToInclude.size());
+		List<InclusionRequest> requests = new ArrayList<>(bindingsToInclude.size());
 		IIndex index = fContext.getIndex();
 
 		binding_loop: for (IBinding binding : bindingsToInclude) {
@@ -836,8 +847,9 @@ public class IncludeOrganizer {
 				indexNames = index.findDeclarations(binding);
 			} else if (binding instanceof ICPPMethod) {
 				// Include the headers containing method definitions except the ones also containing
-				// the definition of the owner class. The headers defining the owner class are taken
-				// care of separately.
+				// the definition of the owner class. The definition of owner class will be included because
+				// BindingClassifier must add a binding that is either the owner itself, or its subclass, or
+				// a typedef pointing to it.
 				Set<IIndexFile> declarationFiles = new HashSet<>();
 				IIndexName[] declarations = index.findNames(binding, IIndex.FIND_DECLARATIONS);
 				for (IIndexName declaration : declarations) {
@@ -946,7 +958,7 @@ public class IncludeOrganizer {
 		}
 		return false;
 	}
-	
+
 	private String getTrimmedCommentText(IASTComment comment) {
 		char[] text = comment.getComment();
 		int end = text.length - (comment.isBlockComment() ? 2 : 0);

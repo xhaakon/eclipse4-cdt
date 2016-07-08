@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2013 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,7 +18,6 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPFunctionParameterMap;
 
@@ -49,12 +48,13 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 	boolean isConstantExpression(IASTNode point);
 
 	/**
-	 * Returns the type of the expression, or a {@code FunctionSetType} if the expression evaluates
-	 * to a function set.
+	 * Returns the type of the expression.
+	 * 
+	 * If the expression evaluates to a function set, a {@code FunctionSetType} is returned.
 	 *
 	 * @param point the point of instantiation, determines the scope for name lookups
 	 */
-	IType getTypeOrFunctionSet(IASTNode point);
+	IType getType(IASTNode point);
 
 	/**
 	 * Returns the value of the expression.
@@ -80,10 +80,10 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 	/**
 	 * Instantiates the evaluation with the provided template parameter map and pack offset.
 	 * The context is used to replace templates with their specialization, where appropriate.
+	 *
 	 * @return a fully or partially instantiated evaluation, or the original evaluation
 	 */
-	ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point);
+	ICPPEvaluation instantiate(InstantiationContext context, int maxDepth);
 
 	/**
 	 * Keeps track of state during a constexpr evaluation.
@@ -163,9 +163,9 @@ public interface ICPPEvaluation extends ISerializableEvaluation {
 	boolean referencesTemplateParameter();
 	
 	/**
-	 * If the evaluation is dependent (or instantiated from a dependent
-	 * evaluation), returns the template definition in which the
-	 * evaluation occurs. Otherwise returns null. 
+	 * If the evaluation is dependent (or instantiated from a dependent evaluation),
+	 * returns the template definition in which the evaluation occurs.
+	 * Otherwise returns {@code null}. 
 	 */
 	IBinding getTemplateDefinition();
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Red Hat Inc..
+ * Copyright (c) 2010, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
 package org.eclipse.cdt.autotools.ui.tests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
@@ -49,7 +50,7 @@ import org.w3c.dom.NodeList;
 public class SetConfigurationParameter extends AbstractTest {
 
 	@BeforeClass
-	public static void initClass() throws Exception {
+	public static void initClass() {
 		initConfigParm();
 	}
 
@@ -100,7 +101,7 @@ public class SetConfigurationParameter extends AbstractTest {
 	@Test
 	public void t1canSetConfigParm() throws Exception {
 		IProject project = checkProject();
-		assertTrue(project != null);
+		assertNotNull(project);
 		IPath path = project.getLocation();
 		path = path.append(".autotools");
 		File f = new File(path.toOSString());
@@ -111,7 +112,7 @@ public class SetConfigurationParameter extends AbstractTest {
 		Document d = db.parse(f);
 		Element e = d.getDocumentElement();
 		// Get the stored configuration data
-		NodeList cfgs = e.getElementsByTagName("configuration"); // $NON-NLS-1$
+		NodeList cfgs = e.getElementsByTagName("configuration"); //$NON-NLS-1$
 		assertTrue(cfgs.getLength() > 0);
 		Node n = cfgs.item(0);
 		NodeList l = n.getChildNodes();
@@ -119,12 +120,12 @@ public class SetConfigurationParameter extends AbstractTest {
 		boolean foundUser = false;
 		for (int y = 0; y < l.getLength(); ++y) {
 			Node child = l.item(y);
-			if (child.getNodeName().equals("option")) { // $NON-NLS-1$
+			if (child.getNodeName().equals("option")) { //$NON-NLS-1$
 				NamedNodeMap optionAttrs = child.getAttributes();
-				Node idNode = optionAttrs.getNamedItem("id"); // $NON-NLS-1$
-				Node valueNode = optionAttrs.getNamedItem("value"); // $NON-NLS-1$
-				assertTrue(idNode != null);
-				assertTrue(valueNode != null);
+				Node idNode = optionAttrs.getNamedItem("id"); //$NON-NLS-1$
+				Node valueNode = optionAttrs.getNamedItem("value"); //$NON-NLS-1$
+				assertNotNull(idNode);
+				assertNotNull(valueNode);
 				String id = idNode.getNodeValue();
 				String value = valueNode.getNodeValue();
 				if (id.equals("user")) {
@@ -149,11 +150,11 @@ public class SetConfigurationParameter extends AbstractTest {
 		bot.waitUntil(Conditions.shellCloses(shell), 120000);
 
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		assertTrue(workspace != null);
+		assertNotNull(workspace);
 		IWorkspaceRoot root = workspace.getRoot();
-		assertTrue(root != null);
+		assertNotNull(root);
 		IProject project = root.getProject(projectName);
-		assertTrue(project != null);
+		assertNotNull(project);
 		IPath path = project.getLocation();
 		File f = new File(path.append("src/a.out").toOSString());
 		assertTrue(f.exists());
@@ -273,11 +274,11 @@ public class SetConfigurationParameter extends AbstractTest {
 		clickContextMenu(projectExplorer.bot().tree().select(projectName),
 				"Build Project");
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		assertTrue(workspace != null);
+		assertNotNull(workspace);
 		IWorkspaceRoot root = workspace.getRoot();
-		assertTrue(root != null);
+		assertNotNull(root);
 		IProject project = root.getProject(projectName);
-		assertTrue(project != null);
+		assertNotNull(project);
 		IPath path = project.getLocation();
 		// We need to wait until the config.status file is created so
 		// sleep a bit and look for it...give up after 20 seconds
@@ -330,8 +331,8 @@ public class SetConfigurationParameter extends AbstractTest {
 		Document d = db.parse(f);
 		Element e = d.getDocumentElement();
 		// Get the stored configuration data
-		NodeList cfgs = e.getElementsByTagName("configuration"); // $NON-NLS-1$
-		assertEquals(3, cfgs.getLength());
+		NodeList cfgs = e.getElementsByTagName("configuration"); //$NON-NLS-1$
+		assertEquals(4, cfgs.getLength());
 		int foundUser = 0;
 		for (int x = 0; x < cfgs.getLength(); ++x) {
 			Node n = cfgs.item(x);
@@ -340,12 +341,12 @@ public class SetConfigurationParameter extends AbstractTest {
 			// --enable-jeff
 			for (int y = 0; y < l.getLength(); ++y) {
 				Node child = l.item(y);
-				if (child.getNodeName().equals("option")) { // $NON-NLS-1$
+				if (child.getNodeName().equals("option")) { //$NON-NLS-1$
 					NamedNodeMap optionAttrs = child.getAttributes();
-					Node idNode = optionAttrs.getNamedItem("id"); // $NON-NLS-1$
-					Node valueNode = optionAttrs.getNamedItem("value"); // $NON-NLS-1$
-					assertTrue(idNode != null);
-					assertTrue(valueNode != null);
+					Node idNode = optionAttrs.getNamedItem("id"); //$NON-NLS-1$
+					Node valueNode = optionAttrs.getNamedItem("value"); //$NON-NLS-1$
+					assertNotNull(idNode);
+					assertNotNull(valueNode);
 					String id = idNode.getNodeValue();
 					String value = valueNode.getNodeValue();
 					if (id.equals("user")) {

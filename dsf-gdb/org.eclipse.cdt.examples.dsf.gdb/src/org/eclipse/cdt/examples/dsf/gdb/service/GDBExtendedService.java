@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Ericsson and others.
+ * Copyright (c) 2014, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -117,5 +117,10 @@ public class GDBExtendedService extends AbstractDsfService implements IGDBExtend
 			rm.done(new Status(IStatus.ERROR, GDBExamplePlugin.PLUGIN_ID,
 					NOT_SUPPORTED, "Not supported", null)); //$NON-NLS-1$
 		}
+	}
+
+	@Override
+	public void canGetVersion(ICommandControlDMContext ctx, DataRequestMonitor<Boolean> rm) {
+		rm.done(fCommandFactory instanceof GdbExtendedCommandFactory_6_8);
 	}
 }

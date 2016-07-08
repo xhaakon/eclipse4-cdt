@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Red Hat Inc. and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package org.eclipse.cdt.autotools.core;
 
 import org.eclipse.core.runtime.CoreException;
@@ -7,16 +14,24 @@ import org.eclipse.core.runtime.CoreException;
  * @since 1.2
  */
 public interface IAutotoolsOption {
-	public final static int CATEGORY = 0;
-	public final static int BIN = 1;
-	public final static int STRING = 2;
-	public final static int INTERNAL = 3;
-	public final static int MULTIARG = 4;
-	public final static int TOOL = 5;
-	public final static int FLAG = 6;
-	public final static int FLAGVALUE = 7;
-	public int getType();
-	public boolean canUpdate();
-	public void setValue(String value) throws CoreException;
-	public String getValue();
+	int CATEGORY = 0;
+	int BIN = 1;
+	int STRING = 2;
+	int INTERNAL = 3;
+	int MULTIARG = 4;
+	int TOOL = 5;
+	int FLAG = 6;
+	int FLAGVALUE = 7;
+	/**
+	 * @since 2.0
+	 */
+	int ENVVAR = 8;
+
+	int getType();
+
+	boolean canUpdate();
+
+	void setValue(String value) throws CoreException;
+
+	String getValue();
 }

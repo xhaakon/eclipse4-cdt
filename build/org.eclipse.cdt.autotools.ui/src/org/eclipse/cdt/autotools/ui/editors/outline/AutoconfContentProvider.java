@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -36,11 +36,13 @@ public class AutoconfContentProvider implements ITreeContentProvider {
 		this.documentProvider = editor.getDocumentProvider();
 	}
 	
+	@Override
 	public void dispose() {
 		// TODO Auto-generated method stub
 
 	}
 
+	@Override
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 		if (oldInput != null)
 		{
@@ -69,6 +71,7 @@ public class AutoconfContentProvider implements ITreeContentProvider {
 		}
 	}
 
+	@Override
 	public Object[] getChildren(Object parentElement) {
 		if (parentElement instanceof AutoconfElement) {
 			AutoconfElement element = (AutoconfElement)parentElement;
@@ -77,10 +80,12 @@ public class AutoconfContentProvider implements ITreeContentProvider {
 		return new Object[0];
 	}
 
+	@Override
 	public Object getParent(Object element) {
 		return null;
 	}
 
+	@Override
 	public boolean hasChildren(Object element) {
 		if (element instanceof AutoconfElement) {
 			return ((AutoconfElement)element).hasChildren();
@@ -88,6 +93,7 @@ public class AutoconfContentProvider implements ITreeContentProvider {
 		return false;
 	}
 
+	@Override
 	public Object[] getElements(Object inputElement) {
 		return this.getChildren(editor.getRootElement());
 	}

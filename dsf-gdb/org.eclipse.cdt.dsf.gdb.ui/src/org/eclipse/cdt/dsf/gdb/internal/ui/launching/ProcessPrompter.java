@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2009 QNX Software Systems and others.
+ * Copyright (c) 2008, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,8 @@
  *     Marc Khouzam (Ericsson) - Add support for multi-attach (Bug 293679)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.launching;
+
+import java.util.List;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.gdb.internal.ui.GdbUIPlugin;
@@ -29,27 +31,22 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.dialogs.ISelectionStatusValidator;
+
+import com.ibm.icu.text.MessageFormat;
 
 public class ProcessPrompter implements IStatusHandler {
 
 	public static class PrompterInfo {
-		public boolean supportsNewProcess;
-		public boolean remote;
 		public IProcessExtendedInfo[] processList;
+		public List<String> debuggedProcesses;
 		
-		public PrompterInfo(boolean supportsNew, boolean remote, IProcessExtendedInfo[] list) {
-			supportsNewProcess = supportsNew;
-			this.remote = remote;
+		public PrompterInfo(IProcessExtendedInfo[] list, List<String> debuggedProcs) {
 			processList = list;
+			debuggedProcesses = debuggedProcs;
 		}
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.debug.core.IStatusHandler#handleStatus(org.eclipse.core.runtime.IStatus,
-	 *      java.lang.Object)
-	 */
     @Override
 	public Object handleStatus(IStatus status, Object info) throws CoreException {
 		Shell shell = GdbUIPlugin.getShell();
@@ -60,7 +57,7 @@ public class ProcessPrompter implements IStatusHandler {
 			throw new CoreException(error);
 		}
 
-		PrompterInfo prompterInfo = (PrompterInfo) info;
+		final PrompterInfo prompterInfo = (PrompterInfo) info;
 		IProcessExtendedInfo[] plist = prompterInfo.processList;		
 		if (plist == null) {
 			MessageDialog.openError(
@@ -85,11 +82,6 @@ public class ProcessPrompter implements IStatusHandler {
 			}
 		} else {
 			ILabelProvider provider = new LabelProvider() {
-				/*
-				 * (non-Javadoc)
-				 * 
-				 * @see org.eclipse.jface.viewers.LabelProvider#getText(java.lang.Object)
-				 */
 				@Override
 				public String getText(Object element) {
 					IProcessExtendedInfo info = (IProcessExtendedInfo)element;
@@ -119,10 +111,10 @@ public class ProcessPrompter implements IStatusHandler {
 					
 					String owner = info.getOwner();
 					if (owner != null && !owner.isEmpty()) {
-						text.append(" (" + owner + ")");  //$NON-NLS-1$//$NON-NLS-2$
+						text.append(" (").append(owner).append(")");  //$NON-NLS-1$//$NON-NLS-2$
 					}
 					
-					text.append(" - " + info.getPid()); //$NON-NLS-1$
+					text.append(" - ").append(info.getPid()); //$NON-NLS-1$
 
 					String[] cores = info.getCores();
 					if (cores != null && cores.length > 0) {
@@ -132,10 +124,10 @@ public class ProcessPrompter implements IStatusHandler {
 						} else {
 							coreStr = LaunchUIMessages.getString("ProcessPrompter.Cores");   //$NON-NLS-1$
 						}
-						text.append(" [" + coreStr + ": ");   //$NON-NLS-1$//$NON-NLS-2$
+						text.append(" [").append(coreStr).append(": ");   //$NON-NLS-1$//$NON-NLS-2$
 						
 						for (String core : cores) {
-							text.append(core + ", "); //$NON-NLS-1$
+							text.append(core).append(", "); //$NON-NLS-1$
 						}
 						// Remove the last comma and space
 						text.replace(text.length()-2, text.length(), "]"); //$NON-NLS-1$
@@ -143,11 +135,7 @@ public class ProcessPrompter implements IStatusHandler {
 					
 					return text.toString();
 				}
-				/*
-				 * (non-Javadoc)
-				 * 
-				 * @see org.eclipse.jface.viewers.LabelProvider#getImage(java.lang.Object)
-				 */
+
 				@Override
 				public Image getImage(Object element) {
 					return LaunchImages.get(LaunchImages.IMG_OBJS_EXEC);
@@ -159,11 +147,7 @@ public class ProcessPrompter implements IStatusHandler {
 					IProcessExtendedInfo info = (IProcessExtendedInfo)element;
 					return info.getName();
 				}
-				/*
-				 * (non-Javadoc)
-				 * 
-				 * @see org.eclipse.jface.viewers.LabelProvider#getImage(java.lang.Object)
-				 */
+
 				@Override
 				public Image getImage(Object element) {
 					return LaunchImages.get(LaunchImages.IMG_OBJS_EXEC);
@@ -172,21 +156,29 @@ public class ProcessPrompter implements IStatusHandler {
 
 			// Display the list of processes and have the user choose
 			ProcessPrompterDialog dialog = 
-				new ProcessPrompterDialog(shell, provider, qprovider, prompterInfo.supportsNewProcess, prompterInfo.remote);
+				new ProcessPrompterDialog(shell, provider, qprovider);
 			dialog.setTitle(LaunchUIMessages.getString("LocalAttachLaunchDelegate.Select_Process")); //$NON-NLS-1$
 			dialog.setMessage(LaunchUIMessages.getString("LocalAttachLaunchDelegate.Select_Process_to_attach_debugger_to")); //$NON-NLS-1$
 
 			// Allow for multiple selection
 			dialog.setMultipleSelection(true);
-
+			dialog.setStatusLineAboveButtons(true);
+			
+			dialog.setValidator(new ISelectionStatusValidator() {
+				@Override
+				public IStatus validate(Object[] selection) {
+					for (Object sel : selection) {
+						String pid = Integer.toString(((IProcessExtendedInfo)sel).getPid(), 10);
+						if (prompterInfo.debuggedProcesses.contains(pid)) {
+							return new Status(IStatus.ERROR, GdbUIPlugin.getUniqueIdentifier(),
+									MessageFormat.format(LaunchUIMessages.getString("ProcessPrompter.ErrProcessConected"), pid)); //$NON-NLS-1$
+						}
+					}
+					return new Status(IStatus.OK, GdbUIPlugin.getUniqueIdentifier(), ""); //$NON-NLS-1$
+				}
+			});
 			dialog.setElements(plist);
 			if (dialog.open() == Window.OK) {
-				// First check if the user pressed the New button
-				NewExecutableInfo execInfo = dialog.getExecutableInfo();
-				if (execInfo != null) {
-					return execInfo;
-				}
-				
 				Object[] results = dialog.getResult();
 				if (results != null) {
 					IProcessExtendedInfo[] processes = new IProcessExtendedInfo[results.length];

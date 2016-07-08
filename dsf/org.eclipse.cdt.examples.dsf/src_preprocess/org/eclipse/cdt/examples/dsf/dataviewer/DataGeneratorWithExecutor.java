@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2011 Wind River Systems and others.
+ * Copyright (c) 2006, 2015 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -72,9 +72,11 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
             fRequestMonitor = rm;
             
             rm.addCancelListener(new RequestMonitor.ICanceledListener() {
-                public void requestCanceled(RequestMonitor rm) {
+                @Override
+				public void requestCanceled(RequestMonitor rm) {
                     fExecutor.execute(new DsfRunnable() {
-                        public void run() {
+                        @Override
+						public void run() {
                             fQueue.remove(Request.this);
                         }
                     });
@@ -184,7 +186,8 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
         // Schedule a runnable to make the random changes.
         fExecutor.scheduleAtFixedRate(
             new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     randomChanges();
                 }
             },
@@ -197,10 +200,12 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
     // TODO Exercise 4 - Add an annotation (ThreadSafe/ConfinedToDsfExecutor) 
     // indicating allowed thread access to this class/method/member
     //#endif
-    public void shutdown(final RequestMonitor rm) {
+    @Override
+	public void shutdown(final RequestMonitor rm) {
         try {
             fExecutor.execute( new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     // Empty the queue of requests and fail them.
                     for (Request request : fQueue) {
                         request.fRequestMonitor.setStatus(new Status(
@@ -226,10 +231,12 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
     // TODO Exercise 4 - Add an annotation (ThreadSafe/ConfinedToDsfExecutor) 
     // indicating allowed thread access to this class/method/member
     //#endif
-    public void getCount(final DataRequestMonitor<Integer> rm) {
+    @Override
+	public void getCount(final DataRequestMonitor<Integer> rm) {
         try {
             fExecutor.execute( new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     fQueue.add(new CountRequest(rm));
                     serviceQueue();
                 }
@@ -246,10 +253,12 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
     // TODO Exercise 4 - Add an annotation (ThreadSafe/ConfinedToDsfExecutor) 
     // indicating allowed thread access to this class/method/member
     //#endif
-    public void getValue(final int index, final DataRequestMonitor<Integer> rm) { 
+    @Override
+	public void getValue(final int index, final DataRequestMonitor<Integer> rm) { 
         try {
             fExecutor.execute( new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     fQueue.add(new ItemRequest(index, rm));
                     serviceQueue();
                 }
@@ -265,10 +274,12 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
     // TODO Exercise 4 - Add an annotation (ThreadSafe/ConfinedToDsfExecutor) 
     // indicating allowed thread access to this class/method/member
     //#endif
-    public void addListener(final Listener listener) {
+    @Override
+	public void addListener(final Listener listener) {
         try {
             fExecutor.execute( new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     fListeners.add(listener);
                 }
             });
@@ -279,10 +290,12 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
     // TODO Exercise 4 - Add an annotation (ThreadSafe/ConfinedToDsfExecutor) 
     // indicating allowed thread access to this class/method/member
     //#endif
-    public void removeListener(final Listener listener) {
+    @Override
+	public void removeListener(final Listener listener) {
         try {
             fExecutor.execute( new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     fListeners.remove(listener);
                 }
             });
@@ -299,7 +312,8 @@ public class DataGeneratorWithExecutor implements IDataGenerator {
     private void serviceQueue() {
         fExecutor.schedule(
             new DsfRunnable() {
-                public void run() {
+                @Override
+				public void run() {
                     doServiceQueue();
                 }
             }, 

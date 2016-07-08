@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2011 IBM Corporation and others.
+ * Copyright (c) 2000, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -51,8 +51,11 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplate;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPAliasTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPDeferredFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionScope;
@@ -60,6 +63,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.index.IIndexFile;
@@ -72,6 +76,7 @@ import org.eclipse.cdt.ui.text.ISemanticToken;
 
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.OverloadableOperator;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.HeuristicResolver;
 
 /**
  * Semantic highlightings.
@@ -198,7 +203,7 @@ public class SemanticHighlightings {
 	public static final String OVERLOADED_OPERATOR= "overloadedOperator"; //$NON-NLS-1$
 	
 	/** Init debugging mode */
-	private static final boolean DEBUG= "true".equalsIgnoreCase(Platform.getDebugOption("org.eclipse.cdt.ui/debug/SemanticHighlighting"));  //$NON-NLS-1$//$NON-NLS-2$
+	private static final boolean DEBUG= Boolean.parseBoolean(Platform.getDebugOption("org.eclipse.cdt.ui/debug/SemanticHighlighting"));  //$NON-NLS-1$
 
 	/**
 	 * Semantic highlightings
@@ -300,6 +305,11 @@ public class SemanticHighlightings {
 				}
 				IBinding binding= token.getBinding();
 				if (binding instanceof IField) {
+					if (binding instanceof ICPPUnknownBinding) {
+						if (heuristicallyResolvesToEnumerator((ICPPUnknownBinding) binding, node)) {
+							return false;
+						}
+					}
 					return true;
 				}
 			}
@@ -479,7 +489,8 @@ public class SemanticHighlightings {
 				return false;
 			if (node instanceof IASTName) {
 				IASTName name= (IASTName) node;
-				if (name instanceof ICPPASTQualifiedName && name.isReference()) {
+				boolean qualified = name instanceof ICPPASTQualifiedName; 
+				if (qualified && name.isReference()) {
 					return false;
 				}
 				IBinding binding= token.getBinding();
@@ -494,9 +505,43 @@ public class SemanticHighlightings {
 							}
 						}
 					}
+				} else if (!qualified && isInheritingConstructorDeclaration(binding)) {
+					return true;
 				}
 			}
 			return false;
+		}
+		
+		private boolean isInheritingConstructorDeclaration(IBinding binding) {
+			if (!(binding instanceof ICPPUsingDeclaration)) {
+				return false;
+			}
+			IBinding[] delegates = ((ICPPUsingDeclaration) binding).getDelegates();
+			// The delegates of an inheriting constructor declaration
+			// include the class type and the constructors.
+			ICPPClassType classType = null;
+			boolean foundConstructors = false;
+			for (IBinding delegate : delegates) {
+				if (delegate instanceof ICPPClassType) {
+					if (classType != null) {
+						// Multiple classes among delegates.
+						return false;
+					}
+					classType = (ICPPClassType) delegate;
+				} else if (delegate instanceof ICPPConstructor) {
+					foundConstructors = true;
+					if (classType != null) {
+						if (!delegate.getOwner().equals(classType)) {
+							// Constructor does not belong to class.
+							return false;
+						}
+					}
+				} else {
+					// Delegate other than class or constructor.
+					return false;
+				}
+			}
+			return foundConstructors;
 		}
 	}
 
@@ -951,6 +996,11 @@ public class SemanticHighlightings {
 			if (node instanceof IASTName) {
 				IBinding binding= token.getBinding();
 				if (binding instanceof ICompositeType && !(binding instanceof ICPPTemplateParameter)) {
+					if (binding instanceof ICPPUnknownBinding) {
+						if (heuristicallyResolvesToEnumeration((ICPPUnknownBinding) binding, node)) {
+							return false;
+						}
+					}
 					return true;
 				}
 			}
@@ -996,9 +1046,17 @@ public class SemanticHighlightings {
 		public boolean consumes(ISemanticToken token) {
 			IASTNode node= token.getNode();
 			if (node instanceof IASTName) {
+				if (node instanceof ICPPASTQualifiedName) {
+					return false;
+				}
 				IBinding binding= token.getBinding();
 				if (binding instanceof IEnumeration) {
 					return true;
+				}
+				if (binding instanceof ICPPUnknownBinding) {
+					if (heuristicallyResolvesToEnumeration((ICPPUnknownBinding) binding, node)) {
+						return true;
+					}
 				}
 			}
 			return false;
@@ -1142,6 +1200,18 @@ public class SemanticHighlightings {
 					return false;
 				}
 				IBinding binding= token.getBinding();
+				// Names that resolve to alias template instances are template-ids
+				// with the template-name naming the alias template. We don't want
+				// to color the entire template-id, but rather want to color its
+				// constituent names separately.
+				if (binding instanceof ICPPAliasTemplateInstance) {
+					return false;
+				}
+				// This covers the name defining an alias template.
+				if (binding instanceof ICPPAliasTemplate) {
+					return true;
+				}
+				// This covers regular typedefs.
 				if (binding instanceof ITypedef) {
 					return true;
 				}
@@ -1283,6 +1353,11 @@ public class SemanticHighlightings {
 				IBinding binding= token.getBinding();
 				if (binding instanceof IEnumerator) {
 					return true;
+				}
+				if (binding instanceof ICPPUnknownBinding) {
+					if (heuristicallyResolvesToEnumerator((ICPPUnknownBinding) binding, node)) {
+						return true;
+					}
 				}
 			}
 			return false;
@@ -1541,7 +1616,17 @@ public class SemanticHighlightings {
 					|| token.getNode() instanceof ICPPASTClassVirtSpecifier;
 		}
 	}
-
+	
+	private static boolean heuristicallyResolvesToEnumeration(ICPPUnknownBinding binding, IASTNode point) {
+		IBinding[] resolved = HeuristicResolver.resolveUnknownBinding(binding, point);
+		return resolved.length == 1 && resolved[0] instanceof IEnumeration;
+	}
+	
+	private static boolean heuristicallyResolvesToEnumerator(ICPPUnknownBinding binding, IASTNode point) {
+		IBinding[] resolved = HeuristicResolver.resolveUnknownBinding(binding, point);
+		return resolved.length == 1 && resolved[0] instanceof IEnumerator;
+	}
+	
 	// Note on the get___PreferenceKey() functions below:
 	//  - For semantic highlightings deriving from SemanticHighlightingWithOwnPreference,
 	//    these functions return keys for accessing the highlighting's own preferences.

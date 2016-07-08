@@ -81,14 +81,12 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypedefNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICNodeFactory;
-import org.eclipse.cdt.core.dom.ast.gnu.IGCCASTAttributeSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTCompoundStatementExpression;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.gnu.c.IGCCASTArrayRangeDesignator;
 import org.eclipse.cdt.core.parser.IScanner;
 import org.eclipse.cdt.internal.core.dom.parser.ASTToken;
 import org.eclipse.cdt.internal.core.dom.parser.ASTTokenList;
-import org.eclipse.cdt.internal.core.dom.parser.GCCASTAttributeSpecifier;
 import org.eclipse.cdt.internal.core.dom.parser.NodeFactory;
 import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
 
@@ -279,7 +277,13 @@ public class CNodeFactory extends NodeFactory implements ICNodeFactory {
 	@Deprecated
 	public IASTFunctionCallExpression newFunctionCallExpression(IASTExpression idExpr, IASTExpression argList) {
 		CASTFunctionCallExpression result = new CASTFunctionCallExpression(idExpr, null);
-		result.setParameterExpression(argList);
+        if (argList == null) {
+        	result.setArguments(null);
+        } else if (argList instanceof IASTExpressionList) {
+        	result.setArguments(((IASTExpressionList) argList).getExpressions());
+        } else {
+        	result.setArguments(new IASTExpression[] {argList});
+        }
 		return result;
 	}
 	
@@ -299,11 +303,6 @@ public class CNodeFactory extends NodeFactory implements ICNodeFactory {
 		return new CASTFunctionDefinition(declSpecifier, declarator, bodyStatement);
 	}
 
-	@Override
-	public IGCCASTAttributeSpecifier newGCCAttributeSpecifier() {
-		return new GCCASTAttributeSpecifier();
-	}
-	
 	@Override
 	public IGNUASTCompoundStatementExpression newGNUCompoundStatementExpression(IASTCompoundStatement compoundStatement) {
 		return new CASTCompoundStatementExpression(compoundStatement);
@@ -442,11 +441,6 @@ public class CNodeFactory extends NodeFactory implements ICNodeFactory {
 	}
 
 	@Override
-	public IASTTranslationUnit newTranslationUnit() {
-		return newTranslationUnit(null);
-	}
-
-	@Override
 	public IASTTranslationUnit newTranslationUnit(IScanner scanner) {
 		CASTTranslationUnit tu = new CASTTranslationUnit();
 		
@@ -490,20 +484,3 @@ public class CNodeFactory extends NodeFactory implements ICNodeFactory {
 		return new CASTWhileStatement(condition, body);
 	}
 } 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

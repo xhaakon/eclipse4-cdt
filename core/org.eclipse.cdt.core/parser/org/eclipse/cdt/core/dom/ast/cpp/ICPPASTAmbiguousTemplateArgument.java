@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2009 Symbian Software Systems and others.
+ * Copyright (c) 2008, 2013 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -40,12 +40,14 @@ public interface ICPPASTAmbiguousTemplateArgument extends IASTNode {
 	
 	/**
 	 * @deprecated Replaced by {@link #addExpression(IASTExpression)}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void addIdExpression(IASTExpression idExpression);
 	
 	/**
 	 * @deprecated Replaced by {@link #addIdExpression(IASTExpression)}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void addIdExpression(IASTIdExpression idExpression);

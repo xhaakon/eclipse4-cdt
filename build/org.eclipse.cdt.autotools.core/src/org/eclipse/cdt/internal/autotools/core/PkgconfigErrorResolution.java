@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Red Hat Inc.
+ * Copyright (c) 2010, 2015 Red Hat Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -27,7 +27,7 @@ import org.eclipse.ui.IMarkerResolution;
 
 public class PkgconfigErrorResolution implements IMarkerResolution {
 
-	private class ConsoleOutputStream extends OutputStream {
+	private static class ConsoleOutputStream extends OutputStream {
 		
 		protected StringBuffer fBuffer;
 			
@@ -42,19 +42,19 @@ public class PkgconfigErrorResolution implements IMarkerResolution {
 		}
 
 		@Override
-		public synchronized void write(int c) throws IOException {
+		public synchronized void write(int c) {
 			byte ascii[] = new byte[1];
 			ascii[0] = (byte) c;
 			fBuffer.append(new String(ascii));
 		}
 		    
 	    @Override
-		public synchronized void write(byte[] b, int off, int len) throws IOException {
+		public synchronized void write(byte[] b, int off, int len) {
 	        fBuffer.append(new String(b, off, len));
 	    }
 	}
 	
-	private final static String PKG_UPDATE_MSG = "UpdatePackage.msg"; //$NON-NLS-1$
+	private static final String PKG_UPDATE_MSG = "UpdatePackage.msg"; //$NON-NLS-1$
 	private String pkgName;
 	
 	public PkgconfigErrorResolution(String pkgconfigRequirement) {
@@ -68,7 +68,6 @@ public class PkgconfigErrorResolution implements IMarkerResolution {
 	
 	@Override
 	public String getLabel() {
-		// TODO Auto-generated method stub
 		return AutotoolsPlugin.getFormattedString(PKG_UPDATE_MSG, new String[] {pkgName});
 	}
 
@@ -118,9 +117,8 @@ public class PkgconfigErrorResolution implements IMarkerResolution {
 			}
 			
 		} catch (CoreException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} //$NON-NLS-1$
+		}
 	}
 
 }

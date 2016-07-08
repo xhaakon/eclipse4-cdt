@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -47,10 +47,10 @@ import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMember;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
@@ -61,10 +61,12 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPArithmeticConversion;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPClosureType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunction;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPImplicitFunction;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerToMemberType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.OverloadableOperator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics.LookupMode;
 import org.eclipse.core.runtime.CoreException;
@@ -175,7 +177,7 @@ public class EvalUnary extends CPPDependentEvaluation {
 				return null;
 		}
 
-    	IType type = fArgument.getTypeOrFunctionSet(point);
+    	IType type = fArgument.getType(point);
 		type = SemanticUtil.getNestedType(type, TDEF | REF | CVTYPE);
 		if (!CPPSemantics.isUserDefined(type))
 			return null;
@@ -191,7 +193,7 @@ public class EvalUnary extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		if (fType == null)
 			fType= computeType(point);
 		return fType;
@@ -225,9 +227,9 @@ public class EvalUnary extends CPPDependentEvaluation {
 					}
 				}
 			}
-			return new CPPPointerType(fArgument.getTypeOrFunctionSet(point));
+			return new CPPPointerType(fArgument.getType(point));
 		case op_star:
-			IType type= fArgument.getTypeOrFunctionSet(point);
+			IType type= fArgument.getType(point);
 			type = prvalueTypeWithResolvedTypedefs(type);
 	    	if (type instanceof IPointerType) {
 	    		return glvalueType(((IPointerType) type).getType());
@@ -241,14 +243,14 @@ public class EvalUnary extends CPPDependentEvaluation {
 			return CPPBasicType.BOOLEAN;
 		case op_postFixDecr:
 		case op_postFixIncr:
-			return prvalueType(fArgument.getTypeOrFunctionSet(point));
+			return prvalueType(fArgument.getType(point));
 		case op_plus:
-			return promoteType(fArgument.getTypeOrFunctionSet(point), true);
+			return promoteType(fArgument.getType(point), true);
 		case op_minus:
 		case op_tilde:
-			return promoteType(fArgument.getTypeOrFunctionSet(point), false);
+			return promoteType(fArgument.getType(point), false);
 		}
-		return fArgument.getTypeOrFunctionSet(point);
+		return fArgument.getType(point);
 	}
 
 	private IType promoteType(IType type, boolean allowPointer) {
@@ -276,20 +278,31 @@ public class EvalUnary extends CPPDependentEvaluation {
 		if (isValueDependent())
 			return Value.create(this);
 
-		if (getOverload(point) != null) {
-			// TODO(sprigogin): Simulate execution of a function call.
-			return Value.create(this);
+		ICPPEvaluation arg = fArgument;
+		ICPPFunction overload = getOverload(point);
+		if (overload != null) {
+			ICPPFunctionType functionType = overload.getType();
+			IType targetType = functionType.getParameterTypes()[0];
+			arg = maybeApplyConversion(arg, targetType, point);
+			
+			if (!(overload instanceof CPPImplicitFunction)) {
+				if (!overload.isConstexpr())
+					return Value.ERROR;
+				ICPPEvaluation eval = new EvalBinding(overload, null, (IBinding) null);
+				arg = new EvalFunctionCall(new ICPPEvaluation[] {eval, arg}, (IBinding) null);
+				return arg.getValue(point);
+			}
 		}
 
 		switch (fOperator) {
 			case op_sizeof: {
 				SizeAndAlignment info =
-						SizeofCalculator.getSizeAndAlignment(fArgument.getTypeOrFunctionSet(point), point);
+						SizeofCalculator.getSizeAndAlignment(fArgument.getType(point), point);
 				return info == null ? Value.UNKNOWN : Value.create(info.size);
 			}
 			case op_alignOf: {
 				SizeAndAlignment info =
-						SizeofCalculator.getSizeAndAlignment(fArgument.getTypeOrFunctionSet(point), point);
+						SizeofCalculator.getSizeAndAlignment(fArgument.getType(point), point);
 				return info == null ? Value.UNKNOWN : Value.create(info.alignment);
 			}
 			case op_noexcept:
@@ -302,7 +315,7 @@ public class EvalUnary extends CPPDependentEvaluation {
 				return Value.UNKNOWN;  // TODO(sprigogin): Implement
 		}
 
-		IValue val = fArgument.getValue(point);
+		IValue val = arg.getValue(point);
 		if (val == null)
 			return Value.UNKNOWN;
 
@@ -349,14 +362,12 @@ public class EvalUnary extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
-		ICPPEvaluation argument = fArgument.instantiate(tpMap, packOffset, within, maxdepth, point);
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
+		ICPPEvaluation argument = fArgument.instantiate(context, maxDepth);
 		IBinding binding = fAddressOfQualifiedNameBinding;
 		if (binding instanceof ICPPUnknownBinding) {
 			try {
-				binding= CPPTemplates.resolveUnknown((ICPPUnknownBinding) binding, tpMap, packOffset,
-						within, point);
+				binding= CPPTemplates.resolveUnknown((ICPPUnknownBinding) binding, context);
 			} catch (DOMException e) {
 			}
 		}

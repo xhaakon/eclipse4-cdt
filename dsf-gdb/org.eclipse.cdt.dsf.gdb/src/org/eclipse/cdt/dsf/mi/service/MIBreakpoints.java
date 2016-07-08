@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2014 Ericsson and others.
+ * Copyright (c) 2007, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -130,22 +130,20 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 
 	// Service breakpoints tracking
 	// The breakpoints are stored per context and keyed on the back-end breakpoint reference
-	private Map<IBreakpointsTargetDMContext, Map<Integer, MIBreakpointDMData>> fBreakpoints =
-		new HashMap<IBreakpointsTargetDMContext, Map<Integer, MIBreakpointDMData>>();
+	private Map<IBreakpointsTargetDMContext, Map<String, MIBreakpointDMData>> fBreakpoints = new HashMap<>();
 
 	/**
 	 * Map tracking which threads are currently suspended on a breakpoint.
 	 * @since 3.0
 	 */
-	private Map<IExecutionDMContext, IBreakpointDMContext[]> fBreakpointHitMap = 
-	    new HashMap<IExecutionDMContext, IBreakpointDMContext[]>();
+	private Map<IExecutionDMContext, IBreakpointDMContext[]> fBreakpointHitMap = new HashMap<>();
 	
 	/**
 	 * Returns a map of existing breakpoints for the specified context
 	 * 
 	 * @since 3.0
 	 */
-	protected Map<Integer, MIBreakpointDMData> getBreakpointMap(IBreakpointsTargetDMContext ctx) {
+	protected Map<String, MIBreakpointDMData> getBreakpointMap(IBreakpointsTargetDMContext ctx) {
 		return fBreakpoints.get(ctx);
 	}
 	
@@ -156,37 +154,37 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 * 
 	 * @since 3.0
 	 */
-	protected Map<Integer, MIBreakpointDMData> createNewBreakpointMap(IBreakpointsTargetDMContext ctx) {
-		Map<Integer, MIBreakpointDMData> map = new HashMap<Integer, MIBreakpointDMData>();
+	protected Map<String, MIBreakpointDMData> createNewBreakpointMap(IBreakpointsTargetDMContext ctx) {
+		Map<String, MIBreakpointDMData> map = new HashMap<>();
 		fBreakpoints.put(ctx, map);
 		return map;
 	}
 	
 	// Error messages
 	/** @since 3.0 */
-	public final static String NULL_STRING = ""; //$NON-NLS-1$
+	public static final String NULL_STRING = ""; //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String UNKNOWN_EXECUTION_CONTEXT    = "Unknown execution context";    //$NON-NLS-1$
+	public static final String UNKNOWN_EXECUTION_CONTEXT    = "Unknown execution context";    //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String UNKNOWN_BREAKPOINT_CONTEXT   = "Unknown breakpoint context";   //$NON-NLS-1$
+	public static final String UNKNOWN_BREAKPOINT_CONTEXT   = "Unknown breakpoint context";   //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String UNKNOWN_BREAKPOINT_TYPE      = "Unknown breakpoint type";      //$NON-NLS-1$
+	public static final String UNKNOWN_BREAKPOINT_TYPE      = "Unknown breakpoint type";      //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String UNKNOWN_BREAKPOINT           = "Unknown breakpoint";           //$NON-NLS-1$
+	public static final String UNKNOWN_BREAKPOINT           = "Unknown breakpoint";           //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String BREAKPOINT_INSERTION_FAILURE = "Breakpoint insertion failure"; //$NON-NLS-1$
+	public static final String BREAKPOINT_INSERTION_FAILURE = "Breakpoint insertion failure"; //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String WATCHPOINT_INSERTION_FAILURE = "Watchpoint insertion failure"; //$NON-NLS-1$
+	public static final String WATCHPOINT_INSERTION_FAILURE = "Watchpoint insertion failure"; //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String INVALID_CONDITION            = "Invalid condition";            //$NON-NLS-1$
+	public static final String INVALID_CONDITION            = "Invalid condition";            //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String TRACEPOINT_INSERTION_FAILURE = "Tracepoint insertion failure"; //$NON-NLS-1$
+	public static final String TRACEPOINT_INSERTION_FAILURE = "Tracepoint insertion failure"; //$NON-NLS-1$
 	/** @since 4.4 */
-	public final static String DYNAMIC_PRINTF_INSERTION_FAILURE = "Dynamic printf insertion failure"; //$NON-NLS-1$
+	public static final String DYNAMIC_PRINTF_INSERTION_FAILURE = "Dynamic printf insertion failure"; //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String INVALID_BREAKPOINT_TYPE      = "Invalid breakpoint type";      //$NON-NLS-1$
+	public static final String INVALID_BREAKPOINT_TYPE      = "Invalid breakpoint type";      //$NON-NLS-1$
 	/** @since 3.0 */
-	public final static String CATCHPOINT_INSERTION_FAILURE = "Catchpoint insertion failure"; //$NON-NLS-1$
+	public static final String CATCHPOINT_INSERTION_FAILURE = "Catchpoint insertion failure"; //$NON-NLS-1$
 
 	
 	///////////////////////////////////////////////////////////////////////////
@@ -233,14 +231,16 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
     public static final class MIBreakpointDMContext extends AbstractDMContext implements IBreakpointDMContext {
 
     	// The breakpoint reference
-    	private final Integer fReference;
+    	private final String fReference;
 
     	/**
     	 * @param service       the Breakpoint service
     	 * @param parents       the parent contexts
     	 * @param reference     the DsfMIBreakpoint reference
+    	 * 
+    	 * @since 5.0
     	 */
-    	public MIBreakpointDMContext(MIBreakpoints service, IDMContext[] parents, int reference) {
+    	public MIBreakpointDMContext(MIBreakpoints service, IDMContext[] parents, String reference) {
             this(service.getSession().getId(), parents, reference);
         }
 
@@ -249,17 +249,19 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
          * @param parents       the parent contexts
          * @param reference     the DsfMIBreakpoint reference
          * 
-         * @since 3.0
+         * @since 5.0
          */
-        public MIBreakpointDMContext(String sessionId, IDMContext[] parents, int reference) {
+        public MIBreakpointDMContext(String sessionId, IDMContext[] parents, String reference) {
             super(sessionId, parents);
             fReference = reference;
         }
 
-		/* (non-Javadoc)
+    	/**
+    	 * @returns a reference to the breakpoint
     	 * @see org.eclipse.cdt.dsf.debug.service.IBreakpoints.IDsfBreakpointDMContext#getReference()
-    	 */
-    	public int getReference() {
+		 * @since 5.0
+		 */
+    	public String getReference() {
     		return fReference;
     	}
  
@@ -268,6 +270,9 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
          */
         @Override
         public boolean equals(Object obj) {
+        	if (!(obj instanceof MIBreakpointDMContext)) {
+        		return false;
+        	}
             return baseEquals(obj) && (fReference.equals(((MIBreakpointDMContext)obj).fReference));
         }
         
@@ -369,7 +374,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	    // remove it from our breakpoints map.
 	    IBreakpointsTargetDMContext bpContext = DMContexts.getAncestorOfType(e.getDMContext(), IBreakpointsTargetDMContext.class);
 	    if (bpContext != null) {
-	        Map<Integer, MIBreakpointDMData> contextBps = getBreakpointMap(bpContext);
+	        Map<String, MIBreakpointDMData> contextBps = getBreakpointMap(bpContext);
 	        if (contextBps != null) {
 	            contextBps.remove(e.getNumber());
 	        }
@@ -409,7 +414,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		// Select the breakpoints context map
 		// If it doesn't exist then no breakpoint was ever inserted for this breakpoint space.
 		// In that case, return an empty list.
-		final Map<Integer, MIBreakpointDMData> breakpointContext = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> breakpointContext = getBreakpointMap(context);
 		if (breakpointContext == null) {
        		drm.setData(new IBreakpointDMContext[0]);
        		drm.done();
@@ -427,7 +432,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 					IBreakpointDMContext[] result = new IBreakpointDMContext[breakpoints.length];
 					for (int i = 0; i < breakpoints.length; i++) {
 						MIBreakpointDMData breakpoint = new MIBreakpointDMData(breakpoints[i]);
-						int reference = breakpoint.getReference();
+						String reference = breakpoint.getReference();
 						result[i] = new MIBreakpointDMContext(MIBreakpoints.this, new IDMContext[] { context }, reference);
 						breakpointContext.put(reference, breakpoint);
 					}
@@ -474,7 +479,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Select the breakpoints context map
-		Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		drm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT, null));
        		drm.done();
@@ -505,7 +510,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Select the breakpoints context map. If it doesn't exist, create it.
-		Map<Integer, MIBreakpointDMData> breakpointContext = getBreakpointMap(context);
+		Map<String, MIBreakpointDMData> breakpointContext = getBreakpointMap(context);
 		if (breakpointContext == null) {
 			breakpointContext = createNewBreakpointMap(context);
 		}
@@ -636,7 +641,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	protected void addBreakpoint(final IBreakpointsTargetDMContext context, final Map<String, Object> attributes, final DataRequestMonitor<IBreakpointDMContext> finalRm)
 	{
 		// Select the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		finalRm.done();
@@ -656,13 +661,12 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		final String  condition      = (String)  getProperty(attributes, CONDITION,    NULL_STRING);
 		final Integer ignoreCount    = (Integer) getProperty(attributes, IGNORE_COUNT,          0 );
 		final String  threadId       = (String)  getProperty(attributes, MIBreakpointDMData.THREAD_ID,      "0"); //$NON-NLS-1$
-		final int     tid            = Integer.parseInt(threadId);
 
 	    final Step insertBreakpointStep = new Step() {
     		@Override
     		public void execute(final RequestMonitor rm) {
     				fConnection.queueCommand(
-    					fCommandFactory.createMIBreakInsert(context, isTemporary, isHardware, condition, ignoreCount, location, tid), 
+    					fCommandFactory.createMIBreakInsert(context, isTemporary, isHardware, condition, ignoreCount, location, threadId), 
 						new DataRequestMonitor<MIBreakInsertInfo>(getExecutor(), rm) {
 							@Override
 							protected void handleSuccess() {
@@ -676,8 +680,8 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 
 								// Create a breakpoint object and store it in the map
 								final MIBreakpointDMData newBreakpoint = new MIBreakpointDMData(getData().getMIBreakpoints()[0]);
-								int reference = newBreakpoint.getNumber();
-								if (reference == -1) {
+								String reference = newBreakpoint.getNumber();
+								if (reference.isEmpty()) {
 									rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, BREAKPOINT_INSERTION_FAILURE, null));
 									rm.done();
 									return;
@@ -737,7 +741,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	protected void addWatchpoint(final IBreakpointsTargetDMContext context, final Map<String, Object> attributes, final DataRequestMonitor<IBreakpointDMContext> drm)
 	{
 		// Pick the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		drm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		drm.done();
@@ -769,8 +773,8 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 
                 	// Create a breakpoint object and store it in the map
                 	final MIBreakpointDMData newBreakpoint = new MIBreakpointDMData(getData().getMIBreakpoints()[0]);
-                	int reference = newBreakpoint.getNumber();
-                	if (reference == -1) {
+                	String reference = newBreakpoint.getNumber();
+                	if (reference.isEmpty()) {
                    		drm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, WATCHPOINT_INSERTION_FAILURE, null));
                    		drm.done();
                    		return;
@@ -809,7 +813,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 */
 	protected void addCatchpoint(final IBreakpointsTargetDMContext context, final Map<String, Object> attributes, final DataRequestMonitor<IBreakpointDMContext> finalRm) {
 		// Select the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		finalRm.done();
@@ -817,10 +821,10 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Though CDT allows setting a temporary catchpoint, CDT never makes use of it
-		assert (Boolean) getProperty(attributes, MIBreakpointDMData.IS_TEMPORARY, false) == false;
+		assert !(Boolean)getProperty(attributes, MIBreakpointDMData.IS_TEMPORARY, false);
 
 		// GDB has no support for hardware catchpoints
-		assert (Boolean) getProperty(attributes, MIBreakpointDMData.IS_HARDWARE,  false) == false;
+		assert !(Boolean)getProperty(attributes, MIBreakpointDMData.IS_HARDWARE, false);
 
 		final String event = (String) getProperty(attributes, CATCHPOINT_TYPE, NULL_STRING);
 		final String[] args = (String[]) getProperty(attributes, CATCHPOINT_ARGS, null);
@@ -844,8 +848,8 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 
 								// Create a breakpoint object and store it in the map
 								final MIBreakpointDMData newBreakpoint = new MIBreakpointDMData(miBkpt);
-								int reference = newBreakpoint.getNumber();
-								if (reference == -1) {
+								String reference = newBreakpoint.getNumber();
+								if (reference.isEmpty()) {
 									rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, CATCHPOINT_INSERTION_FAILURE, null));
 									rm.done();
 									return;
@@ -928,7 +932,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Pick the context breakpoints map
-		final Map<Integer,MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String,MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
 			finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT, null));
 			finalRm.done();
@@ -936,7 +940,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Validate the breakpoint
-		final int reference = breakpointCtx.getReference();
+		final String reference = breakpointCtx.getReference();
 		MIBreakpointDMData breakpoint = contextBreakpoints.get(reference);
 		if (breakpoint == null) {
 			finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT, null));
@@ -993,7 +997,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Pick the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT, null));
        		rm.done();
@@ -1001,7 +1005,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		}
 
 		// Validate the breakpoint
-		final int reference = breakpointCtx.getReference();
+		final String reference = breakpointCtx.getReference();
 		MIBreakpointDMData breakpoint = contextBreakpoints.get(reference);
 		if (breakpoint == null) {
        		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT, null));
@@ -1029,8 +1033,8 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		// At this point, we know their are OK so there is no need to re-validate
 		MIBreakpointDMContext breakpointCtx = (MIBreakpointDMContext) dmc;
         IBreakpointsTargetDMContext context = DMContexts.getAncestorOfType(dmc, IBreakpointsTargetDMContext.class);
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
-		final int reference = breakpointCtx.getReference();
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final String reference = breakpointCtx.getReference();
 		MIBreakpointDMData breakpoint = contextBreakpoints.get(reference);
 
 		// Track the number of change requests
@@ -1038,8 +1042,9 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
         final CountingRequestMonitor countingRm = new CountingRequestMonitor(getExecutor(), rm) {
             @Override
             protected void handleSuccess() {
-           		if (generateUpdateEvent)
+           		if (generateUpdateEvent) {
            			getSession().dispatchEvent(new BreakpointUpdatedEvent(dmc), getProperties());
+           		}
         		rm.done();
             }
         };
@@ -1049,7 +1054,9 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		if (properties.containsKey(conditionAttribute)) {
 			String oldValue = breakpoint.getCondition();
 			String newValue = (String) properties.get(conditionAttribute);
-			if (newValue == null) newValue = NULL_STRING;
+			if (newValue == null) {
+				newValue = NULL_STRING;
+			}
 	        if (!oldValue.equals(newValue)) {
 	        	changeCondition(context, reference, newValue, countingRm);
 	        	numberOfChanges++;
@@ -1062,7 +1069,9 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		if (properties.containsKey(ignoreCountAttribute)) {
 			Integer oldValue = breakpoint.getIgnoreCount();
 			Integer newValue = (Integer) properties.get(ignoreCountAttribute);
-			if (newValue == null) newValue = 0;
+			if (newValue == null) {
+				newValue = 0;
+			}
 	        if (!oldValue.equals(newValue)) {
 	        	changeIgnoreCount(context, reference, newValue, countingRm);
 	        	numberOfChanges++;
@@ -1075,13 +1084,16 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 		if (properties.containsKey(enableAttribute)) {
 			Boolean oldValue = breakpoint.isEnabled();
 			Boolean newValue = (Boolean) properties.get(enableAttribute);
-			if (newValue == null) newValue = false;
+			if (newValue == null) {
+				newValue = false;
+			}
 	        if (!oldValue.equals(newValue)) {
 	        	numberOfChanges++;
-				if (newValue)
+				if (newValue) {
 					enableBreakpoint(context, reference, countingRm);
-				else
+				} else {
 					disableBreakpoint(context, reference, countingRm);
+				}
 	        }
 			properties.remove(enableAttribute);
 		}
@@ -1098,13 +1110,13 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 * @param condition
 	 * @param finalRm
 	 * 
-	 * @since 3.0
+	 * @since 5.0
 	 */
 	protected void changeCondition(final IBreakpointsTargetDMContext context,
-			final int reference, final String condition, final RequestMonitor finalRm)
+			final String reference, final String condition, final RequestMonitor finalRm)
 	{
 		// Pick the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		finalRm.done();
@@ -1172,13 +1184,13 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 * @param ignoreCount
 	 * @param finalRm
 	 * 
-	 * @since 3.0
+	 * @since 5.0
 	 */
 	protected void changeIgnoreCount(final IBreakpointsTargetDMContext context,
-			final int reference, final int ignoreCount, final RequestMonitor finalRm)
+			final String reference, final int ignoreCount, final RequestMonitor finalRm)
 	{
 		// Pick the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		finalRm.done();
@@ -1217,13 +1229,13 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 * @param reference
 	 * @param finalRm
 	 * 
-	 * @since 3.0
+	 * @since 5.0
 	 */
 	protected void enableBreakpoint(final IBreakpointsTargetDMContext context,
-			final int reference, final RequestMonitor finalRm)
+			final String reference, final RequestMonitor finalRm)
 	{
 		// Pick the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		finalRm.done();
@@ -1235,7 +1247,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
     		public void execute(final RequestMonitor rm) {
     			// Queue the command
     			fConnection.queueCommand(
-    					fCommandFactory.createMIBreakEnable(context, new int[] { reference }),
+    					fCommandFactory.createMIBreakEnable(context, new String[] { reference }),
     					new DataRequestMonitor<MIInfo>(getExecutor(), rm) {
     						@Override
     						protected void handleSuccess() {
@@ -1262,13 +1274,13 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 	 * @param dmc
 	 * @param finalRm
 	 * 
-	 * @since 3.0
+	 * @since 5.0
 	 */
 	protected void disableBreakpoint(final IBreakpointsTargetDMContext context,
-			final int reference, final RequestMonitor finalRm)
+			final String reference, final RequestMonitor finalRm)
 	{
 		// Pick the context breakpoints map
-		final Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
+		final Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointMap(context);
 		if (contextBreakpoints == null) {
        		finalRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED, UNKNOWN_BREAKPOINT_CONTEXT, null));
        		finalRm.done();
@@ -1280,7 +1292,7 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
     		public void execute(final RequestMonitor rm) {
     			// Queue the command
     			fConnection.queueCommand(
-    					fCommandFactory.createMIBreakDisable(context, new int[] { reference }),
+    					fCommandFactory.createMIBreakDisable(context, new String[] { reference }),
     					new DataRequestMonitor<MIInfo>(getExecutor(), rm) {
     						@Override
     						protected void handleSuccess() {
@@ -1302,15 +1314,15 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 
 	/**
 	 * This method deletes the target breakpoint with the given reference number.
-	 * @since 4.2
+	 * @since 5.0
 	 */
-	protected void deleteBreakpointFromTarget(final IBreakpointsTargetDMContext context, final int reference, RequestMonitor finalRm) {
+	protected void deleteBreakpointFromTarget(final IBreakpointsTargetDMContext context, final String reference, RequestMonitor finalRm) {
 	    final Step deleteBreakpointStep = new Step() {
     		@Override
     		public void execute(final RequestMonitor rm) {
     			// Queue the command
     			fConnection.queueCommand(
-					fCommandFactory.createMIBreakDelete(context, new int[] { reference }), 
+					fCommandFactory.createMIBreakDelete(context, new String[] { reference }), 
 					new DataRequestMonitor<MIInfo>(getExecutor(), rm));
     		}
 	    };
@@ -1376,12 +1388,12 @@ public class MIBreakpoints extends AbstractDsfService implements IBreakpoints, I
 
     /**
      * Returns a breakpoint target context for given breakpoint number.
-	 * @since 4.2
+	 * @since 5.0
 	 */
-    protected IBreakpointsTargetDMContext getBreakpointTargetContext(int reference) {
+    protected IBreakpointsTargetDMContext getBreakpointTargetContext(String reference) {
     	for (IBreakpointsTargetDMContext context : fBreakpoints.keySet()) {
-    		Map<Integer, MIBreakpointDMData> map = fBreakpoints.get(context);
-    		if (map != null && map.keySet().contains(Integer.valueOf(reference))) {
+    		Map<String, MIBreakpointDMData> map = fBreakpoints.get(context);
+    		if (map != null && map.keySet().contains(reference)) {
     			return context;
     		}
     	}

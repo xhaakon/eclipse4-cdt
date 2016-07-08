@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat Corporation, (c) 2008 Nokia Corporation.
+ * Copyright (c) 2007, 2015 Red Hat Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -40,9 +40,7 @@ public class AutoconfEditorMacroValidator implements IAutoconfMacroValidator {
 		fEditor = autoconfEditor;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.autotools.ui.editors.parser.IAutoconfMacroValidator#validateMacroCall(org.eclipse.cdt.autotools.core.ui.editors.parser.AutoconfMacroElement)
-	 */
+	@Override
 	public void validateMacroCall(AutoconfMacroElement macro)
 			throws ParseException, InvalidMacroException {
 		AutoconfPrototype p = AutoconfTextHover.getPrototype(macro.getName(), fEditor);

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
@@ -284,15 +285,15 @@ public class ClassTypeHelper {
 	 * @return An array of base classes in arbitrary order.
 	 */
 	public static ICPPClassType[] getAllBases(ICPPClassType classType, IASTNode point) {
-		HashSet<ICPPClassType> result= new HashSet<>();
+		Set<ICPPClassType> result= new HashSet<>();
 		result.add(classType);
 		getAllBases(classType, result, point);
 		result.remove(classType);
 		return result.toArray(new ICPPClassType[result.size()]);
 	}
 
-	private static void getAllBases(ICPPClassType classType, HashSet<ICPPClassType> result, IASTNode point) {
-		ICPPBase[] bases= ClassTypeHelper.getBases(classType, point);
+	private static void getAllBases(ICPPClassType classType, Set<ICPPClassType> result, IASTNode point) {
+		ICPPBase[] bases= getBases(classType, point);
 		for (ICPPBase base : bases) {
 			IBinding b= base.getBaseClass();
 			if (b instanceof ICPPClassType) {
@@ -303,7 +304,43 @@ public class ClassTypeHelper {
 			}
 		}
 	}
+	
+	/**
+	 * Returns all (direct or indirect) virtual base classes of 'classType'.
+	 * @param point the point of instantiation for name lookups
+	 */
+	public static ICPPClassType[] getVirtualBases(ICPPClassType classType, IASTNode point) {
+		Set<ICPPClassType> virtualBases = new HashSet<>();
+		Set<ICPPClassType> nonvirtualBases = new HashSet<>();
+		nonvirtualBases.add(classType);
+		getVirtualBases(classType, virtualBases, nonvirtualBases, point);
+		return virtualBases.toArray(new ICPPClassType[virtualBases.size()]);
+	}
 
+	/**
+	 * Helper function for #getVirtualBases(classType, point).
+	 */
+	private static void getVirtualBases(ICPPClassType classType, Set<ICPPClassType> virtualBases,
+			Set<ICPPClassType> nonvirtualBases, IASTNode point) {
+		ICPPBase[] bases = getBases(classType, point);
+		for (ICPPBase base : bases) {
+			IBinding b = base.getBaseClass();
+			if (b instanceof ICPPClassType) {
+				final ICPPClassType baseClass = (ICPPClassType) b;
+				if (base.isVirtual()) {
+					if (virtualBases.add(baseClass)) {
+						getVirtualBases(baseClass, virtualBases, nonvirtualBases, point);
+					}
+				} else {
+					// A non-virtual base could have virtual bases in its hierarchy. 
+					if (nonvirtualBases.add(baseClass)) {
+						getVirtualBases(baseClass, virtualBases, nonvirtualBases, point);
+					}
+				}
+			}
+		}
+	}
+	
 	/**
 	 * Checks inheritance relationship between two classes.
 	 * @return {@code true} if {@code subclass} is a subclass of {@code superclass}.

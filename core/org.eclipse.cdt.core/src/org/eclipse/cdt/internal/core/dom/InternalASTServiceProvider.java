@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2004, 2009 IBM Corporation and others.
+ *  Copyright (c) 2004, 2011 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -48,11 +48,10 @@ import org.eclipse.core.resources.IStorage;
 import org.eclipse.core.runtime.content.IContentType;
 
 /**
- * @deprecated
+ * @deprecated Do not use this class.
  */
 @Deprecated
 public class InternalASTServiceProvider implements IASTServiceProvider {
-
 	protected static final GCCScannerExtensionConfiguration C_GNU_SCANNER_EXTENSION = GCCScannerExtensionConfiguration.getInstance();
     protected static final GPPScannerExtensionConfiguration CPP_GNU_SCANNER_EXTENSION = GPPScannerExtensionConfiguration.getInstance();
     private static final String[] dialects = {

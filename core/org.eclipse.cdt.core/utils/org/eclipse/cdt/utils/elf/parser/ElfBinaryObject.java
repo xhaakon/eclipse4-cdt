@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2009 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -198,23 +198,19 @@ public class ElfBinaryObject extends BinaryObjectAdapter {
 		}
 	}
 
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.core.runtime.IAdaptable#getAdapter(java.lang.Class)
-	 */
-	@SuppressWarnings("rawtypes")
 	@Override
-	public Object getAdapter(Class adapter) {
+	@SuppressWarnings("unchecked")
+	public <T> T getAdapter(Class<T> adapter) {
 		if (adapter.equals(Elf.class)) {
 			try {
-				return new Elf(getPath().toOSString());
+				return (T) new Elf(getPath().toOSString());
 			} catch (IOException e) {
 			}
 		}
 		if (adapter.equals(ISymbolReader.class)) {
-			Elf elf = (Elf)getAdapter(Elf.class);
+			Elf elf = getAdapter(Elf.class);
 			if (elf != null) {
-				return elf.getSymbolReader();
+				return (T) elf.getSymbolReader();
 			}
 		}
 		return super.getAdapter(adapter);

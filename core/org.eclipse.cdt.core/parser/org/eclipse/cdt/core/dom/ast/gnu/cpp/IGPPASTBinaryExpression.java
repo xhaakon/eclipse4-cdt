@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2009 IBM Corporation and others.
+ * Copyright (c) 2005, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -31,16 +31,8 @@ public interface IGPPASTBinaryExpression extends ICPPASTBinaryExpression {
 	public static final int op_min = IASTBinaryExpression.op_min;
 
 	/**
-	 * @deprecated all constants must be defined in {@link IASTBinaryExpression} to avoid
-	 * using a constant twice.
-	 */
-	@Deprecated
-	public static final int op_last = IASTBinaryExpression.op_last;
-	
-	/**
 	 * @since 5.1
 	 */
 	@Override
 	public IGPPASTBinaryExpression copy();
-
 }

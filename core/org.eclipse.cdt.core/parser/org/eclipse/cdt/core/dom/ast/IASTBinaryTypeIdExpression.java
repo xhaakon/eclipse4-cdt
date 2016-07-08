@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2011, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,9 +20,13 @@ public interface IASTBinaryTypeIdExpression extends IASTExpression {
 	public static final ASTNodeProperty OPERAND2 = new ASTNodeProperty("IASTBinaryTypeIdExpression.OPERAND2 [IASTTypeId]"); //$NON-NLS-1$
 
 	/**
-	 * Built-in type trait of g++.
+	 * Built-in type traits of g++.
 	 */
-	public static enum Operator {__is_base_of}
+	public static enum Operator {
+		__is_base_of,
+		/** @since 6.0 */
+		__is_trivially_assignable
+		}
 	
 	/**
 	 * Returns the operator for the expression.

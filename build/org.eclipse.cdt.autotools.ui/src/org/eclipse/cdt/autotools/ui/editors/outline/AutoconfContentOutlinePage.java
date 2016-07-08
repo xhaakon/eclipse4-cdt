@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,6 +15,8 @@ import java.util.Iterator;
 
 import org.eclipse.cdt.autotools.ui.editors.AutoconfEditor;
 import org.eclipse.cdt.autotools.ui.editors.parser.AutoconfElement;
+import org.eclipse.cdt.internal.autotools.ui.editors.LexicalSortingAction;
+import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
@@ -23,6 +25,7 @@ import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IEditorInput;
+import org.eclipse.ui.part.IPageSite;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.ui.views.contentoutline.ContentOutlinePage;
 
@@ -31,6 +34,7 @@ public class AutoconfContentOutlinePage extends ContentOutlinePage {
 
 	private ITextEditor editor;
 	private IEditorInput input;
+	private LexicalSortingAction sortAction;
 	
 	public AutoconfContentOutlinePage(AutoconfEditor editor) {
 		super();
@@ -43,10 +47,9 @@ public class AutoconfContentOutlinePage extends ContentOutlinePage {
 	}
 
 	protected ISelection updateSelection(ISelection sel) {
-		ArrayList<AutoconfElement> newSelection= new ArrayList<AutoconfElement>();
+		ArrayList<AutoconfElement> newSelection= new ArrayList<>();
 		if (sel instanceof IStructuredSelection) {
-			@SuppressWarnings("rawtypes")
-			Iterator iter= ((IStructuredSelection)sel).iterator();
+			Iterator<?> iter = ((IStructuredSelection) sel).iterator();
 			for (;iter.hasNext();) {
 				//ICElement elem= fInput.findEqualMember((ICElement)iter.next());
 				Object o = iter.next();
@@ -68,24 +71,18 @@ public class AutoconfContentOutlinePage extends ContentOutlinePage {
 			final Control control = viewer.getControl();
 			if (control != null && !control.isDisposed())
 			{
-				control.getDisplay().asyncExec(new Runnable() {
-					public void run() {
-						if (!control.isDisposed()) {
-//							control.setRedraw(false);
-//							if (input != null)
-//								viewer.setInput(input);
-//							viewer.expandAll();
-//							control.setRedraw(true);
-							ISelection sel= viewer.getSelection();
-							viewer.setSelection(updateSelection(sel));		
-							viewer.refresh();
-						}
+				control.getDisplay().asyncExec(() -> {
+					if (!control.isDisposed()) {
+						ISelection sel = viewer.getSelection();
+						viewer.setSelection(updateSelection(sel));
+						viewer.refresh();
 					}
 				});
 			}
 		}
 	}
 	
+	@Override
 	public void createControl(Composite parent) {
 
 		super.createControl(parent);
@@ -95,13 +92,16 @@ public class AutoconfContentOutlinePage extends ContentOutlinePage {
 		viewer.setLabelProvider(new AutoconfLabelProvider());
 		viewer.addSelectionChangedListener(this);
 
-		if (input != null)
+		if (input != null) {
 			viewer.setInput(input);
+		}
+		sortAction.setTreeViewer(viewer);
 	}
 	
 	/*
 	 * Change in selection
 	 */
+	@Override
 	public void selectionChanged(SelectionChangedEvent event)
 	{
 		super.selectionChanged(event);
@@ -123,6 +123,14 @@ public class AutoconfContentOutlinePage extends ContentOutlinePage {
 				editor.resetHighlightRange();
 			}
 		}
+	}
+
+	@Override
+	public void init(IPageSite pageSite) {
+		super.init(pageSite);
+		IToolBarManager toolBarManager = pageSite.getActionBars().getToolBarManager();
+		sortAction = new LexicalSortingAction();
+		toolBarManager.add(sortAction);
 	}
 
 }

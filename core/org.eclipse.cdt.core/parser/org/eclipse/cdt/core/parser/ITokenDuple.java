@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2008 IBM Corporation and others.
+ * Copyright (c) 2002, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,13 +16,12 @@ import java.util.List;
 
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 
-
 /**
- * @deprecated
+ * @deprecated Do not use.
+ * @noreference This interface is not intended to be referenced by clients.
  */
 @Deprecated
 public interface ITokenDuple {
-
 	public abstract IToken getFirstToken();
 	public abstract IToken getLastToken();
 	
@@ -35,7 +34,7 @@ public interface ITokenDuple {
 	public abstract Iterator<IToken> iterator();
 	@Override
 	public abstract String toString();
-	public char [] toCharArray();
+	public char[] toCharArray();
 			
 	public abstract int length(); 
 	

@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %pluginName
 Bundle-SymbolicName: org.eclipse.cdt.ui; singleton:=true
-Bundle-Version: 5.11.0.qualifier
+Bundle-Version: 6.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.ui.CUIPlugin
 Bundle-Vendor: %providerName
 Bundle-Localization: plugin
@@ -15,7 +15,6 @@ Export-Package: org.eclipse.cdt.internal.corext;x-internal:=true,
  org.eclipse.cdt.internal.ui;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.internal.ui.actions;x-internal:=true,
  org.eclipse.cdt.internal.ui.browser.opentype;x-internal:=true,
- org.eclipse.cdt.internal.ui.build;x-internal:=true,
  org.eclipse.cdt.internal.ui.buildconsole;x-internal:=true,
  org.eclipse.cdt.internal.ui.callhierarchy;x-internal:=true,
  org.eclipse.cdt.internal.ui.compare;x-internal:=true,
@@ -66,7 +65,7 @@ Export-Package: org.eclipse.cdt.internal.corext;x-internal:=true,
  org.eclipse.cdt.internal.ui.typehierarchy;x-internal:=true,
  org.eclipse.cdt.internal.ui.util;x-friends:="org.eclipse.cdt.debug.ui,org.eclipse.cdt.debug.edc.tests,org.eclipse.cdt.managedbuilder.ui",
  org.eclipse.cdt.internal.ui.viewsupport;x-internal:=true,
- org.eclipse.cdt.internal.ui.wizards;x-internal:=true,
+ org.eclipse.cdt.internal.ui.wizards;x-friends:="org.eclipse.cdt.codan.checkers.ui",
  org.eclipse.cdt.internal.ui.wizards.classwizard;x-internal:=true,
  org.eclipse.cdt.internal.ui.wizards.dialogfields;x-friends:="org.eclipse.cdt.codan.ui",
  org.eclipse.cdt.internal.ui.wizards.filewizard;x-internal:=true,
@@ -101,7 +100,7 @@ Export-Package: org.eclipse.cdt.internal.corext;x-internal:=true,
  org.eclipse.cdt.ui.wizards,
  org.eclipse.cdt.ui.wizards.conversion,
  org.eclipse.cdt.utils.ui.controls
-Require-Bundle: org.eclipse.cdt.core;bundle-version="[5.2.0,6.0.0)",
+Require-Bundle: org.eclipse.cdt.core;bundle-version="[5.2.0,7.0.0)",
  org.eclipse.compare;bundle-version="[3.3.0,4.0.0)",
  org.eclipse.core.expressions,
  org.eclipse.core.filesystem;bundle-version="[1.1.0,2.0.0)",

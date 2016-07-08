@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2013 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,14 +14,12 @@ package org.eclipse.cdt.debug.internal.ui;
 import java.net.URI;
 import java.util.Iterator;
 
-import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICDebugElementStatus;
 import org.eclipse.cdt.debug.core.model.ICStackFrame;
 import org.eclipse.cdt.debug.core.model.ICType;
 import org.eclipse.cdt.debug.core.model.ICValue;
 import org.eclipse.cdt.debug.core.model.IEnableDisableTarget;
-import org.eclipse.cdt.debug.internal.ui.disassembly.rendering.DisassemblyEditorInput;
 import org.eclipse.cdt.debug.ui.CDebugUIPlugin;
 import org.eclipse.cdt.debug.ui.breakpoints.CBreakpointPropertyDialogAction;
 import org.eclipse.core.filesystem.URIUtil;
@@ -126,7 +124,7 @@ public class CDebugUIUtils {
 	 * Moved from CDebugModelPresentation because it is also used by CVariableLabelProvider.
 	 */
 	static public String getValueText( IValue value ) {
-		StringBuffer label = new StringBuffer();
+		StringBuilder label = new StringBuilder();
 		if ( value instanceof ICDebugElementStatus && !((ICDebugElementStatus)value).isOK() ) {
 			label.append(  MessageFormat.format( CDebugUIMessages.getString( "CDTDebugModelPresentation.4" ), (Object[]) new String[] { ((ICDebugElementStatus)value).getMessage() } ) ); //$NON-NLS-1$
 		}
@@ -146,16 +144,6 @@ public class CDebugUIUtils {
 							valueString = "."; //$NON-NLS-1$
 						label.append( valueString );
 					}
-					else if ( type != null && type.isFloatingPointType() ) {
-						Number floatingPointValue = CDebugUtils.getFloatingPointValue( (ICValue)value );
-						if ( CDebugUtils.isNaN( floatingPointValue ) )
-							valueString = "NAN"; //$NON-NLS-1$
-						if ( CDebugUtils.isPositiveInfinity( floatingPointValue ) )
-							valueString = CDebugUIMessages.getString( "CDTDebugModelPresentation.23" ); //$NON-NLS-1$
-						if ( CDebugUtils.isNegativeInfinity( floatingPointValue ) )
-							valueString = CDebugUIMessages.getString( "CDTDebugModelPresentation.24" ); //$NON-NLS-1$
-						label.append( valueString );
-					}
 					else if ( valueString.length() > 0 ) {
 							label.append( valueString );
 					}
@@ -171,7 +159,7 @@ public class CDebugUIUtils {
 	 * Moved from CDebugModelPresentation because it is also used by CVariableLabelProvider.
 	 */
 	public static String getVariableTypeName( ICType type ) {
-		StringBuffer result = new StringBuffer();
+		StringBuilder result = new StringBuilder();
 		if ( type != null ) {
 			String typeName = type.getName();
 			if ( typeName != null )
@@ -221,13 +209,6 @@ public class CDebugUIUtils {
 		if ( input instanceof IPathEditorInput ) {
 			return ((IPathEditorInput)input).getPath().toOSString();
 		}
-		if ( input instanceof DisassemblyEditorInput ) {
-			String sourceFile = ((DisassemblyEditorInput)input).getSourceFile();
-			if ( sourceFile != null ) {
-				return sourceFile;
-			}
-			return ((DisassemblyEditorInput)input).getModuleFile();
-		}
 		if ( input instanceof IURIEditorInput)
 		{
 			IPath uriPath = URIUtil.toPath(((IURIEditorInput)input).getURI());
@@ -240,7 +221,7 @@ public class CDebugUIUtils {
 	public static String decorateText( Object element, String text ) {
 		if ( text == null )
 			return null;
-		StringBuffer baseText = new StringBuffer( text );
+		StringBuilder baseText = new StringBuilder( text );
 		if ( element instanceof ICDebugElementStatus && !((ICDebugElementStatus)element).isOK() ) {
 			baseText.append( MessageFormat.format( " <{0}>", new Object[] { ((ICDebugElementStatus)element).getMessage() } ) ); //$NON-NLS-1$
 		}
@@ -297,7 +278,6 @@ public class CDebugUIUtils {
         IAnnotationModel annotationModel = editor.getDocumentProvider().getAnnotationModel(editor.getEditorInput());
         IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
         if (annotationModel != null) {
-            @SuppressWarnings("unchecked")
             Iterator<Annotation> iterator = annotationModel.getAnnotationIterator();
             while (iterator.hasNext()) {
                 Object object = iterator.next();

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Ericsson and others.
+ * Copyright (c) 2014, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,5 +26,10 @@ public interface IGDBExtendedFunctions extends IDsfService {
 	 * Get the version of the debugger
 	 */
 	void getVersion(ICommandControlDMContext ctx, DataRequestMonitor<String> rm);
+
+	/**
+	 * Can get the version of the debugger
+	 */
+	void canGetVersion(ICommandControlDMContext ctx, DataRequestMonitor<Boolean> rm);
 
 }

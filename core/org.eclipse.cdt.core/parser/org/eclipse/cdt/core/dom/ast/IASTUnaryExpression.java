@@ -102,6 +102,7 @@ public interface IASTUnaryExpression extends IASTExpression {
 
 	/**
 	 * @deprecated Shall not be used, 'typeof something' is not an expression, it's a declaration specifier.
+	 * @noreference This field is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public static final int op_typeof = 14;
@@ -129,13 +130,6 @@ public interface IASTUnaryExpression extends IASTExpression {
 	 * @since 5.8
 	 */
 	public static final int op_labelReference = 18;
-
-	/**
-	 * {@code op_last} is made available for subclasses.
-	 * @deprecated all constants must be defined in this interface
-	 */
-	@Deprecated
-	public static final int op_last = op_alignOf;
 
 	/**
 	 * {@code OPERAND} represents the relationship between an {@code IASTUnaryExpression} and

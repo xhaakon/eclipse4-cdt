@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2012 Red Hat Inc. and others.
+ * Copyright (c) 2008, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.autotools.tests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -20,13 +25,11 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.autotools.core.AutotoolsOptionConstants;
-import org.eclipse.cdt.autotools.core.AutotoolsPlugin;
 import org.eclipse.cdt.autotools.core.IAutotoolsOption;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.internal.autotools.core.configure.AutotoolsConfigurationManager;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
 import org.eclipse.cdt.managedbuilder.core.ManagedCProjectNature;
@@ -35,6 +38,9 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -44,15 +50,11 @@ import org.xml.sax.SAXException;
 
 // This test verifies an autogen.sh project that builds configure, but
 // does not run it.
-public class UpdateConfigureTest extends TestCase {
+public class UpdateConfigureTest {
     
 	private IProject testProject;
-	
-    /*
-     * @see TestCase#setUp()
-     */
-    protected void setUp() throws Exception {
-        super.setUp();
+	@Before
+	public void setUp() throws Exception {
         if (!ProjectTools.setup())
         	fail("could not perform basic project workspace setup");
 		testProject = ProjectTools.createProject("testProject2");
@@ -67,9 +69,10 @@ public class UpdateConfigureTest extends TestCase {
      * the configure script sets both the C and C++ flags.
      * @throws Exception
      */
+	@Test
 	public void testGprofGcovDebugFlagOptions() throws Exception {
 		Path p = new Path("zip/project2.zip");
-		ProjectTools.addSourceContainerWithImport(testProject, "src", p, null);
+		ProjectTools.addSourceContainerWithImport(testProject, "src", p);
 		assertTrue(testProject.hasNature(ManagedCProjectNature.MNG_NATURE_ID));
 		ProjectTools.setConfigDir(testProject, "src");
 		ProjectTools.markExecutable(testProject, "src/autogen.sh");
@@ -77,13 +80,13 @@ public class UpdateConfigureTest extends TestCase {
 		ICConfigurationDescription cfgDes = CoreModel.getDefault().getProjectDescription(testProject).getActiveConfiguration();
 		IConfiguration cfg = ManagedBuildManager.getConfigurationForDescription(cfgDes);
 		assertTrue(cfg.getName().equals("Build (GNU)"));
-		Map<String, IAutotoolsOption> opts = AutotoolsPlugin.getDefault().getAutotoolCfgOptions(testProject, cfg.getId());
+		Map<String, IAutotoolsOption> opts = AutotoolsConfigurationManager.getInstance().getAutotoolsCfgOptions(testProject, cfg.getId());
 		
 		IAutotoolsOption k = opts.get(AutotoolsOptionConstants.OPT_CFLAGS_GPROF);
 		k.setValue("true");
 		
 		// Now update the options we changed
-		AutotoolsPlugin.getDefault().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
+		AutotoolsConfigurationManager.getInstance().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
 		
 		// Rebuild project
 		assertTrue(ProjectTools.build());
@@ -95,19 +98,15 @@ public class UpdateConfigureTest extends TestCase {
 		
 		File f = r.getLocation().toFile();
 		
-		FileReader fr = new FileReader(f);
-		
 		char[] cbuf = new char[2000];
-		fr.read(cbuf);
-		
-		String s = new String(cbuf);
-		
-		assertTrue(s.contains("testProject2/src/configure CFLAGS=-pg CXXFLAGS=-pg"));
-		
-		fr.close();
+		try (FileReader fr = new FileReader(f)) {
+			fr.read(cbuf);
+			String s = new String(cbuf);
+			assertTrue(s.contains("testProject2/src/configure CFLAGS=-pg CXXFLAGS=-pg"));
+		}
 		
 		// Reset gprof opt and set gcov opt
-		opts = AutotoolsPlugin.getDefault().getAutotoolCfgOptions(testProject, cfg.getId());
+		opts = AutotoolsConfigurationManager.getInstance().getAutotoolsCfgOptions(testProject, cfg.getId());
 		k = opts.get(AutotoolsOptionConstants.OPT_CFLAGS_GPROF);
 		k.setValue("false");
 		
@@ -115,24 +114,23 @@ public class UpdateConfigureTest extends TestCase {
 		k.setValue("true");
 		
 		// Now update the options we changed
-		AutotoolsPlugin.getDefault().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
+		AutotoolsConfigurationManager.getInstance().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
 		
 		// Rebuild project
 		assertTrue(ProjectTools.build());
 		
 		r = testProject.findMember(x);
 		f = r.getLocation().toFile();
-		fr = new FileReader(f);
-		fr.read(cbuf);
-		
-		s = new String(cbuf);
-		
-		assertTrue(s.contains("testProject2/src/configure CFLAGS=-fprofile-arcs -ftest-coverage CXXFLAGS=-fprofile-arcs -ftest-coverage"));
+		try (FileReader fr = new FileReader(f)) {
+			fr.read(cbuf);
+			String s = new String(cbuf);
+			assertTrue(s.contains(
+					"testProject2/src/configure CFLAGS=-fprofile-arcs -ftest-coverage CXXFLAGS=-fprofile-arcs -ftest-coverage"));
 
-		fr.close();
+		}
 		
 		// Reset gcov opt and set debug opt
-		opts = AutotoolsPlugin.getDefault().getAutotoolCfgOptions(testProject, cfg.getId());
+		opts = AutotoolsConfigurationManager.getInstance().getAutotoolsCfgOptions(testProject, cfg.getId());
 		k = opts.get(AutotoolsOptionConstants.OPT_CFLAGS_GCOV);
 		k.setValue("false");
 		
@@ -140,21 +138,18 @@ public class UpdateConfigureTest extends TestCase {
 		k.setValue("true");
 		
 		// Now update the options we changed
-		AutotoolsPlugin.getDefault().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
+		AutotoolsConfigurationManager.getInstance().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
 		
 		// Rebuild project
 		assertTrue(ProjectTools.build());
 		
 		r = testProject.findMember(x);
 		f = r.getLocation().toFile();
-		fr = new FileReader(f);
-		fr.read(cbuf);
-		
-		s = new String(cbuf);
-		
-		assertTrue(s.contains("testProject2/src/configure CFLAGS=-g CXXFLAGS=-g"));
-		
-		fr.close();
+		try (FileReader fr = new FileReader(f)) {
+			fr.read(cbuf);
+			String s = new String(cbuf);
+			assertTrue(s.contains("testProject2/src/configure CFLAGS=-g CXXFLAGS=-g"));
+		}
 	}
 		
     /**
@@ -162,9 +157,10 @@ public class UpdateConfigureTest extends TestCase {
      * contains autogen.sh which will build configure, but not run it.
      * @throws Exception
      */
+	@Test
 	public void testGetAndUpdateConfigureOptions() throws Exception {
 		Path p = new Path("zip/project2.zip");
-		ProjectTools.addSourceContainerWithImport(testProject, "src", p, null);
+		ProjectTools.addSourceContainerWithImport(testProject, "src", p);
 		assertTrue(testProject.hasNature(ManagedCProjectNature.MNG_NATURE_ID));
 		ProjectTools.setConfigDir(testProject, "src");
 		ProjectTools.markExecutable(testProject, "src/autogen.sh");
@@ -172,7 +168,7 @@ public class UpdateConfigureTest extends TestCase {
 		ICConfigurationDescription cfgDes = CoreModel.getDefault().getProjectDescription(testProject).getActiveConfiguration();
 		IConfiguration cfg = ManagedBuildManager.getConfigurationForDescription(cfgDes);
 		assertTrue(cfg.getName().equals("Build (GNU)"));
-		Map<String, IAutotoolsOption> opts = AutotoolsPlugin.getDefault().getAutotoolCfgOptions(testProject, cfg.getId());
+		Map<String, IAutotoolsOption> opts = AutotoolsConfigurationManager.getInstance().getAutotoolsCfgOptions(testProject, cfg.getId());
 		IAutotoolsOption configdir = opts.get(AutotoolsOptionConstants.OPT_CONFIGDIR);
 		assertEquals(configdir.getType(), IAutotoolsOption.INTERNAL);
 		assertTrue(configdir.getValue().equals("src"));
@@ -416,13 +412,13 @@ public class UpdateConfigureTest extends TestCase {
 		// Verify last option changed has changed in our copy, but not
 		// in the actual options
 		assertEquals(k.getValue(), "true");
-		Map<String, IAutotoolsOption> opts2 = AutotoolsPlugin.getDefault().getAutotoolCfgOptions(testProject, cfg.getId());
+		Map<String, IAutotoolsOption> opts2 = AutotoolsConfigurationManager.getInstance().getAutotoolsCfgOptions(testProject, cfg.getId());
 		IAutotoolsOption k2 = opts2.get(AutotoolsOptionConstants.OPT_VERSION);
 		assertEquals(k2.getValue(), "false");
 		
 		// Now update the options we changed
-		AutotoolsPlugin.getDefault().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
-		opts2 = AutotoolsPlugin.getDefault().getAutotoolCfgOptions(testProject, cfg.getId());
+		AutotoolsConfigurationManager.getInstance().updateAutotoolCfgOptions(testProject, cfg.getId(), opts);
+		opts2 = AutotoolsConfigurationManager.getInstance().getAutotoolsCfgOptions(testProject, cfg.getId());
 		
 		// Verify new option values
 		k = opts2.get(AutotoolsOptionConstants.TOOL_AUTOGEN);
@@ -537,43 +533,36 @@ public class UpdateConfigureTest extends TestCase {
 			Document d = db.parse(dirFile);
 			Element e = d.getDocumentElement();
 			// Get the stored configuration data
-			NodeList cfgs = e.getElementsByTagName("configuration"); // $NON-NLS-1$
+			NodeList cfgs = e.getElementsByTagName("configuration"); //$NON-NLS-1$
 			for (int x = 0; x < cfgs.getLength(); ++x) {
 				Node n = cfgs.item(x);
 				NodeList l = n.getChildNodes();
 				for (int y = 0; y < l.getLength(); ++y) {
 					Node child = l.item(y);
-					if (child.getNodeName().equals("option")) { // $NON-NLS-1$
+					if (child.getNodeName().equals("option")) { //$NON-NLS-1$
 						NamedNodeMap optionAttrs = child.getAttributes();
-						Node id = optionAttrs.getNamedItem("id"); // $NON-NLS-1$
-						Node value = optionAttrs.getNamedItem("value"); // $NON-NLS-1$
+						Node id = optionAttrs.getNamedItem("id"); //$NON-NLS-1$
+						Node value = optionAttrs.getNamedItem("value"); //$NON-NLS-1$
 						// Verify the bindir option is updated
 						if (id.equals(AutotoolsOptionConstants.OPT_BINDIR))
 							assertEquals(value, "/usr/bin"); //$NON-NLS-1$
 					}
 				}
 			}
-		} catch (ParserConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+		} catch (IOException|ParserConfigurationException|SAXException e) {
 			e.printStackTrace();
 		}
 
 	}
 	
-	protected void tearDown() throws Exception {
+	@After
+	public void tearDown() throws Exception {
 		testProject.refreshLocal(IResource.DEPTH_INFINITE, null);
 		try {
 			testProject.delete(true, true, null);
 		} catch (Exception e) {
 			//FIXME: Why does a ResourceException occur when deleting the project??
 		}
-		super.tearDown();
 	}
 
 }

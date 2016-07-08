@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2009 Red Hat, Inc.
+ * Copyright (c) 2006, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,17 +21,17 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContentAssistProcessor;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.eclipse.jface.text.contentassist.IContextInformationValidator;
-import org.eclipse.jface.text.rules.ICharacterScanner;
 
 
 public class AutoconfMacroContentAssistProcessor implements
 		IContentAssistProcessor {
 	
-	protected ICharacterScanner scanner;
 	protected AutoconfEditor editor;
 	
-	public AutoconfMacroContentAssistProcessor(ICharacterScanner scanner, AutoconfEditor editor) {
-		this.scanner = scanner;
+	/**
+	 * @since 2.0
+	 */
+	public AutoconfMacroContentAssistProcessor(AutoconfEditor editor) {
 		this.editor = editor;
 	}
 
@@ -46,6 +46,7 @@ public class AutoconfMacroContentAssistProcessor implements
 		return offset;
 	}
 	
+	@Override
 	public ICompletionProposal[] computeCompletionProposals(ITextViewer viewer,
 			int offset) {
 		
@@ -62,7 +63,7 @@ public class AutoconfMacroContentAssistProcessor implements
 		}
 		ICompletionProposal[] result = null;
 		if (macros != null) {
-			ArrayList<ICompletionProposal> validList = new ArrayList<ICompletionProposal>();
+			ArrayList<ICompletionProposal> validList = new ArrayList<>();
 			for (int i = 0; i < macros.length; ++i) {
 				String name = macros[i].getName();
 				if (name.length() >= prefix.length()) {
@@ -86,32 +87,37 @@ public class AutoconfMacroContentAssistProcessor implements
 				}
 			}
 			result = new ICompletionProposal[validList.size()];
-			result = (ICompletionProposal[])validList.toArray(result);
+			result = validList.toArray(result);
 		}
 		return result;
 	}
 
+	@Override
 	public IContextInformation[] computeContextInformation(ITextViewer viewer,
 			int offset) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
+	@Override
 	public char[] getCompletionProposalAutoActivationCharacters() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
+	@Override
 	public char[] getContextInformationAutoActivationCharacters() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
+	@Override
 	public IContextInformationValidator getContextInformationValidator() {
 		// TODO Auto-generated method stub
 		return new AutoconfMacroParameterListValidator();
 	}
 
+	@Override
 	public String getErrorMessage() {
 		// TODO Auto-generated method stub
 		return null;

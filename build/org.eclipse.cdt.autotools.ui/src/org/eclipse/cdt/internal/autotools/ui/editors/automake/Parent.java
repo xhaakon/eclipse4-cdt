@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,13 +13,16 @@ package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.eclipse.cdt.make.core.makefile.IDirective;
+import org.eclipse.cdt.make.core.makefile.IParent;
+
 /**
  * IParent
  */
 
 public abstract class Parent extends Directive implements IParent {
 
-	ArrayList<IDirective> children = new ArrayList<IDirective>();
+	ArrayList<IDirective> children = new ArrayList<>();
 
 	public Parent(Directive parent) {
 		super(parent);
@@ -29,9 +32,10 @@ public abstract class Parent extends Directive implements IParent {
 		return getDirectives();
 	}
 
+	@Override
 	public IDirective[] getDirectives() {
 		children.trimToSize();
-		return (IDirective[]) children.toArray(new IDirective[0]);
+		return children.toArray(new IDirective[0]);
 	}
 
 	public void addDirective(Directive directive) {
@@ -54,14 +58,12 @@ public abstract class Parent extends Directive implements IParent {
 
 	public Directive[] getStatements() {
 		children.trimToSize();
-		return (Directive[]) children.toArray(new Directive[0]);		
+		return children.toArray(new Directive[0]);		
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		IDirective[] directives = getDirectives();
 		for (int i = 0; i < directives.length; i++) {
 			sb.append(directives[i]);

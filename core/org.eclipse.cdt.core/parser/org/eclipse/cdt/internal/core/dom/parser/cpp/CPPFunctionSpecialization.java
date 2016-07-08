@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2014 IBM Corporation and others.
+ * Copyright (c) 2005, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
@@ -35,6 +36,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.internal.core.dom.parser.ASTInternal;
 import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
+import org.eclipse.cdt.internal.core.dom.parser.Value;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
@@ -319,7 +322,7 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 	}
 
 	@Override
-	public ICPPEvaluation getReturnExpression() {
+	public ICPPEvaluation getReturnExpression(IASTNode point) {
 		if (!isConstexpr())
 			return null;
 
@@ -330,7 +333,14 @@ public class CPPFunctionSpecialization extends CPPSpecialization implements ICPP
 		}
 		IBinding f = getSpecializedBinding();
 		if (f instanceof ICPPComputableFunction) {
-			return ((ICPPComputableFunction) f).getReturnExpression();
+			ICPPEvaluation eval = ((ICPPComputableFunction) f).getReturnExpression(point);
+			if (eval != null) {
+				ICPPClassSpecialization within = CPPTemplates.getSpecializationContext(getOwner());
+				InstantiationContext context =
+						new InstantiationContext(getTemplateParameterMap(), within, point);
+ 				eval = eval.instantiate(context, Value.MAX_RECURSION_DEPTH);
+			}
+			return eval;
 		}
 		return null;
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,9 +50,7 @@ public class MakefileEditorActionContributor extends BasicTextEditorActionContri
 		
 	}
 
-	/**
-	 * @see org.eclipse.ui.IEditorActionBarContributor#setActiveEditor(IEditorPart)
-	 */
+	@Override
 	public void setActiveEditor(IEditorPart targetEditor) {
 		super.setActiveEditor(targetEditor);
 		doSetActiveEditor(targetEditor);
@@ -76,17 +74,13 @@ public class MakefileEditorActionContributor extends BasicTextEditorActionContri
 		fOpenDeclarationAction.update();
 	}
 
-	/*
-	 * @see IEditorActionBarContributor#dispose()
-	 */
+	@Override
 	public void dispose() {
 		doSetActiveEditor(null);
 		super.dispose();
 	}
 
-	/**
-	 * @see org.eclipse.ui.part.EditorActionBarContributor#init(IActionBars)
-	 */
+	@Override
 	public void init(IActionBars bars) {
 		super.init(bars);
 		IMenuManager menuManager = bars.getMenuManager();

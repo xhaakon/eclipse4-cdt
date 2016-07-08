@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,8 +34,7 @@ public interface ICPPASTCompositeTypeSpecifier extends IASTCompositeTypeSpecifie
 	public static final int k_last = k_class;
 
 	/**
-	 * <code>VISIBILITY_LABEL</code> is used to express the relationship for a
-	 * visibility label "declaration".
+	 * <code>VISIBILITY_LABEL</code> is used to express the relationship for a visibility label "declaration".
 	 */
 	public static final ASTNodeProperty VISIBILITY_LABEL = new ASTNodeProperty(
 			"ICPPASTCompositeTypeSpecifier.VISIBILITY_LABEL - Visibility label \"declaration\""); //$NON-NLS-1$
@@ -59,9 +58,8 @@ public interface ICPPASTCompositeTypeSpecifier extends IASTCompositeTypeSpecifie
 		public static final ICPPASTBaseSpecifier[] EMPTY_BASESPECIFIER_ARRAY = {};
 
 		/**
-		 * Relation between base specifier and its name.
-		 * 
-		 * @deprecated Use ICPPASTBaseSpecifier.NAME_SPECIFIER instead.
+		 * @deprecated Use {@link ICPPASTBaseSpecifier#NAME_SPECIFIER} instead.
+		 * @noreference This field is not intended to be referenced by clients.
 		 */
 		@Deprecated
 		public static final ASTNodeProperty NAME = new ASTNodeProperty(
@@ -90,9 +88,8 @@ public interface ICPPASTCompositeTypeSpecifier extends IASTCompositeTypeSpecifie
 		public int getVisibility();
 
 		/**
-		 * Returns the name of this specifier.
-		 * 
 		 * @deprecated Use getNameSpecifier() instead.
+		 * @noreference This method is not intended to be referenced by clients.
 		 */
 		@Deprecated
 		public IASTName getName();
@@ -117,9 +114,8 @@ public interface ICPPASTCompositeTypeSpecifier extends IASTCompositeTypeSpecifie
 		public ICPPASTBaseSpecifier copy(CopyStyle style);
 		
 		/**
-		 * Sets the name for this specifier, not allowed on frozen AST.
-		 * 
 		 * @deprecated Use setNameSpecifier() instead.
+		 * @noreference This method is not intended to be referenced by clients.
 		 */
 		@Deprecated
 		public void setName(IASTName name);

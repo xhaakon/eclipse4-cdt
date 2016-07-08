@@ -31,12 +31,6 @@
       </wizard>
    </extension>
    <extension
-         point="org.eclipse.cdt.arduino.core.consoleService">
-      <provider
-            class="org.eclipse.cdt.arduino.ui.internal.launch.ArduinoConsole">
-      </provider>
-   </extension>
-   <extension
          point="org.eclipse.ui.propertyPages">
       <page
             class="org.eclipse.cdt.arduino.ui.internal.remote.ArduinoTargetPropertyPage"
@@ -92,18 +86,6 @@
             id="org.eclipse.cdt.arduino.preference.page"
             name="%preferencePage.name">
       </page>
-      <page
-            category="org.eclipse.cdt.arduino.preference.page"
-            class="org.eclipse.cdt.arduino.ui.internal.preferences.ArduinoBoardsPreferencePage"
-            id="org.eclipse.cdt.arduino.preference.page.boards"
-            name="Boards">
-      </page>
-      <page
-            category="org.eclipse.cdt.arduino.preference.page"
-            class="org.eclipse.cdt.arduino.ui.internal.preferences.ArduinoPlatformsPreferencePage"
-            id="org.eclipse.cdt.arduino.ui.page.platforms"
-            name="Platforms">
-      </page>
    </extension>
    <extension
          point="org.eclipse.ui.perspectiveExtensions">
@@ -112,8 +94,7 @@
          <view
                id="org.eclipse.remote.ui.view.connections"
                minimized="false"
-               ratio="0.75"
-               relationship="bottom"
+               relationship="stack"
                relative="org.eclipse.ui.navigator.ProjectExplorer">
          </view>
       </perspectiveExtension>
@@ -135,5 +116,58 @@
             id="org.eclipse.cdt.arduino.ui.launchConfigurationTabGroup"
             type="org.eclipse.cdt.arduino.core.launchConfigurationType">
       </launchConfigurationTabGroup>
+   </extension>
+   <extension
+         point="org.eclipse.launchbar.ui.launchTargetTypeUI">
+      <launchTargetTypeUI
+            id="org.eclipse.cdt.arduino.core.connectionType"
+            labelProvider="org.eclipse.launchbar.remote.ui.RemoteLaunchTargetLabelProvider">
+      </launchTargetTypeUI>
+      <wizard
+            class="org.eclipse.cdt.arduino.ui.internal.remote.NewArduinoTargetWizard"
+            icon="icons/arduino.png"
+            id="org.eclipse.cdt.arduino.ui.launchTargetWizard"
+            name="Arduino">
+      </wizard>
+   </extension>
+   <extension
+         point="org.eclipse.tools.templates.ui.templates">
+      <tag
+            id="org.eclipse.cdt.arduino.ui.tag"
+            label="Arduino">
+      </tag>
+      <template
+            icon="icons/arduino48.png"
+            id="org.eclipse.cdt.arduino.ui.template.sketch"
+            label="Arduino C++ Sketch"
+            wizard="org.eclipse.cdt.arduino.ui.internal.project.NewArduinoCPPSketchWizard">
+         <tagReference
+               id="org.eclipse.cdt.arduino.ui.tag">
+         </tagReference>
+         <description>
+            A single C++ file with empty setup() and loop() functions.
+         </description>
+      </template>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="menu:help">
+         <command
+               commandId="org.eclipse.cdt.arduino.ui.openManager"
+               icon="icons/arduino.png"
+               label="%arduinoDownloadsManager"
+               style="push">
+         </command>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            defaultHandler="org.eclipse.cdt.arduino.ui.internal.downloads.OpenDownloadsManager"
+            id="org.eclipse.cdt.arduino.ui.openManager"
+            name="%arduinoDownloadsManager">
+      </command>
    </extension>
 </plugin>

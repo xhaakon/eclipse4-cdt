@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2014 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -67,7 +67,7 @@ import org.eclipse.cdt.dsf.gdb.internal.tracepointactions.TracepointActionManage
  */
 public class MIBreakpoint  {
 
-    int     number   = -1;
+    String  number   = ""; //$NON-NLS-1$
     String  type     = "";  //$NON-NLS-1$
     String  disp     = "";  //$NON-NLS-1$
     boolean enabled  = false;
@@ -128,18 +128,18 @@ public class MIBreakpoint  {
 
     public MIBreakpoint(MIBreakpoint other) {
         number   = other.number;
-        type     = new String(other.type);
-        disp     = new String(other.disp);
+        type     = other.type;
+        disp     = other.disp;
         enabled  = other.enabled;
-        address  = new String(other.address);
-        func     = new String(other.func);
-        fullName = new String(other.fullName);
-        file     = new String(other.file);
+        address  = other.address;
+        func     = other.func;
+        fullName = other.fullName;
+        file     = other.file;
         line     = other.line;
-        cond     = new String(other.cond);
+        cond     = other.cond;
         times    = other.times;
-        exp      = new String(other.exp);
-        threadId = new String(other.threadId);
+        exp      = other.exp;
+        threadId = other.threadId;
         ignore   = other.ignore;
         commands = other.commands;
         passcount= other.passcount;
@@ -199,7 +199,7 @@ public class MIBreakpoint  {
 	 */
     public MIBreakpoint(String cliResult) {
 		if (cliResult.startsWith("Catchpoint ")) { //$NON-NLS-1$ 
-			int bkptNumber = 0;
+			String bkptNumber = ""; //$NON-NLS-1$
 	
 			StringTokenizer tokenizer = new StringTokenizer(cliResult);
 			for (int i = 0; tokenizer.hasMoreTokens(); i++) {
@@ -208,7 +208,7 @@ public class MIBreakpoint  {
 				case 0: // first token is "Catchpoint"
 					break;
 				case 1: // second token is the breakpoint number
-					bkptNumber = Integer.parseInt(sub);
+					bkptNumber = sub;
 					break;
 				case 2: // third token is the event type; drop the parenthesis
 					if (sub.startsWith("(")) { //$NON-NLS-1$
@@ -233,7 +233,8 @@ public class MIBreakpoint  {
     // Properties getters 
     ///////////////////////////////////////////////////////////////////////////
 
-	public int getNumber() {
+	/** @since 5.0 */
+	public String getNumber() {
         return number;
     }
 
@@ -506,10 +507,7 @@ public class MIBreakpoint  {
             }
 
             if (var.equals("number")) { //$NON-NLS-1$
-                try {
-                    number = Integer.parseInt(str.trim());
-                } catch (NumberFormatException e) {
-                }
+            	number = str.trim();
             } else if (var.equals("type")) { //$NON-NLS-1$
 				// Note that catchpoints are reported by gdb as address
 				// breakpoints; there's really nothing we can go on to determine
@@ -552,10 +550,7 @@ public class MIBreakpoint  {
             } else if (var.equals("enabled")) { //$NON-NLS-1$
                 enabled = str.equals("y"); //$NON-NLS-1$
             } else if (var.equals("addr")) { //$NON-NLS-1$
-                try {
-                    address = str.trim();
-                } catch (NumberFormatException e) {
-                }
+            	address = str.trim();
             } else if (var.equals("func")) { //$NON-NLS-1$
                 func = str;
             } else if (var.equals("file")) { //$NON-NLS-1$
@@ -607,7 +602,7 @@ public class MIBreakpoint  {
 
     void parseCommands(MITuple tuple) {
     	MIValue[] values = tuple.getMIValues();
-    	StringBuffer cmds = new StringBuffer();
+    	StringBuilder cmds = new StringBuilder();
     	for (int i = 0; i < values.length; i++) {
     		MIValue value = values[i];
     		if (value != null && value instanceof MIConst) {

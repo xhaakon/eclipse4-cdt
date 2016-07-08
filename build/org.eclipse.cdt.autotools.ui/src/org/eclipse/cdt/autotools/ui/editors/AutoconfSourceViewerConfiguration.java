@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Red Hat, Inc.
+ * Copyright (c) 2006, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -40,21 +40,16 @@ public class AutoconfSourceViewerConfiguration extends
 		fEditor = editor;
 	}
 	
-	/*
-	 * @see org.eclipse.jface.text.source.SourceViewerConfiguration#getConfiguredDocumentPartitioning(org.eclipse.jface.text.source.ISourceViewer)
-	 */
+	@Override
 	public String getConfiguredDocumentPartitioning(ISourceViewer sourceViewer) {
 		return AutoconfEditor.AUTOCONF_PARTITIONING;
 	}
 
-	/*
-	 * @see org.eclipse.jface.text.source.SourceViewerConfiguration#getContentAssistant(org.eclipse.jface.text.source.ISourceViewer)
-	 */
+	@Override
 	public IContentAssistant getContentAssistant(ISourceViewer sourceViewer) {
 		ContentAssistant assistant = new ContentAssistant();
 		
-		IContentAssistProcessor macroContentAssistProcessor =
-			new AutoconfMacroContentAssistProcessor(new AutoconfMacroCodeScanner(), fEditor);
+		IContentAssistProcessor macroContentAssistProcessor = new AutoconfMacroContentAssistProcessor(fEditor);
 		assistant.setContentAssistProcessor(macroContentAssistProcessor, AutoconfPartitionScanner.AUTOCONF_MACRO);
 		assistant.setContentAssistProcessor(macroContentAssistProcessor, IDocument.DEFAULT_CONTENT_TYPE);
 		assistant.enableAutoActivation(true);
@@ -66,39 +61,35 @@ public class AutoconfSourceViewerConfiguration extends
 		return assistant;
 	}
 	
-	/* (non-Javadoc)
-	 * Method declared on SourceViewerConfiguration
-	 */
+	@Override
 	public String[] getConfiguredContentTypes(ISourceViewer sourceViewer) {
 		return new String[] { IDocument.DEFAULT_CONTENT_TYPE,
 							  AutoconfPartitionScanner.AUTOCONF_MACRO,
 							  AutoconfPartitionScanner.AUTOCONF_COMMENT};
 	}
 	
+	@Override
 	public ITextHover getTextHover(ISourceViewer sourceViewer, String contentType) {
 		if (acHover == null)
 			acHover = new AutoconfTextHover(fEditor);
 		return acHover;
 	}
 	
+	@Override
 	public IAnnotationHover getAnnotationHover(ISourceViewer sourceViewer) {
 		if (aaHover == null)
 			aaHover = new AutoconfAnnotationHover();
 		return aaHover;
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.text.source.SourceViewerConfiguration#getReconciler(org.eclipse.jface.text.source.ISourceViewer)
-	 */
+	@Override
 	public IReconciler getReconciler(ISourceViewer sourceViewer) {
 		MonoReconciler reconciler= new MonoReconciler(new AutoconfReconcilingStrategy(fEditor), false);
 		reconciler.setDelay(1000);
 		reconciler.setProgressMonitor(new NullProgressMonitor());
 		return reconciler;
 	}
-	/* (non-Javadoc)
-	 * Method declared on SourceViewerConfiguration
-	 */
+	@Override
 	public IPresentationReconciler getPresentationReconciler(ISourceViewer sourceViewer) {
 		PresentationReconciler reconciler = new PresentationReconciler();
 

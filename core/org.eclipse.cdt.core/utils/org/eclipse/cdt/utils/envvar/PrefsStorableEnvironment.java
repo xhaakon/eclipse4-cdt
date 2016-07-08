@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Broadcom Corporation and others.
+ * Copyright (c) 2009, 2013 Broadcom Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -383,8 +383,8 @@ public class PrefsStorableEnvironment extends StorableEnvironment {
 		checkBackingSerializeInfo();
 		Map<String, IEnvironmentVariable> map = getAllVariablesMap();
 
-		element.setAttribute(ATTRIBUTE_APPEND, Boolean.valueOf(fAppend).toString());
-		element.setAttribute(ATTRIBUTE_APPEND_CONTRIBUTED, Boolean.valueOf(fAppendContributedEnv).toString());
+		element.setAttribute(ATTRIBUTE_APPEND, String.valueOf(fAppend));
+		element.setAttribute(ATTRIBUTE_APPEND_CONTRIBUTED, String.valueOf(fAppendContributedEnv));
 		if(!map.isEmpty()){
 			Iterator<IEnvironmentVariable> iter = map.values().iterator();
 			while(iter.hasNext()){

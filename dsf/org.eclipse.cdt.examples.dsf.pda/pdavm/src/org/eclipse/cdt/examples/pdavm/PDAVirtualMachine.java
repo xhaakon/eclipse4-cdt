@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2009 Wind River Systems and others.
+ * Copyright (c) 2008, 2016 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -420,32 +420,33 @@ public class PDAVirtualMachine {
         pdaVM.run();
     }
 
-    PDAVirtualMachine(String inputFile, boolean debug, int commandPort, int eventPort) throws IOException {
-        fFilename = inputFile;
+	PDAVirtualMachine(String inputFile, boolean debug, int commandPort, int eventPort) throws IOException {
+		fFilename = inputFile;
 
-        // Load all the code into memory
-        FileReader fileReader = new FileReader(inputFile);
-        StringWriter stringWriter = new StringWriter();
-        List<String> code = new LinkedList<String>();
-        int c = fileReader.read();
-        while (c != -1) {
-            if (c == '\n') {
-                code.add(stringWriter.toString().trim());
-                stringWriter = new StringWriter();
-            } else {
-                stringWriter.write(c);
-            }
-            c = fileReader.read();
-        }
-        code.add(stringWriter.toString().trim());
-        fCode = code.toArray(new String[code.size()]);
+		// Load all the code into memory
+		try (FileReader fileReader = new FileReader(inputFile)) {
+			StringWriter stringWriter = new StringWriter();
+			List<String> code = new LinkedList<String>();
+			int c = fileReader.read();
+			while (c != -1) {
+				if (c == '\n') {
+					code.add(stringWriter.toString().trim());
+					stringWriter = new StringWriter();
+				} else {
+					stringWriter.write(c);
+				}
+				c = fileReader.read();
+			}
+			code.add(stringWriter.toString().trim());
+			fCode = code.toArray(new String[code.size()]);
 
-        fLabels = mapLabels(fCode);
+			fLabels = mapLabels(fCode);
 
-        fDebug = debug;
-        fCommandPort = commandPort;
-        fEventPort = eventPort;
-    }
+			fDebug = debug;
+			fCommandPort = commandPort;
+			fEventPort = eventPort;
+		}
+	}
 
     /**
      * Initializes the labels map
@@ -789,7 +790,7 @@ public class PDAVirtualMachine {
             }
         }
         
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
         for (String child : children) {
             result.append(child);
             result.append('|');
@@ -815,7 +816,7 @@ public class PDAVirtualMachine {
             return;
         }
 
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
         for (Object val : thread.fStack) {
             result.append(val);
             result.append('|');
@@ -870,7 +871,7 @@ public class PDAVirtualMachine {
         System.arraycopy(fCode, 0, thread.fThreadCode, 0, fCode.length);
         for (int i = 0; i < numEvalLines; i++) {
             String line = tokenizer.nextToken();
-            StringBuffer lineBuf = new StringBuffer(line.length());
+            StringBuilder lineBuf = new StringBuilder(line.length());
             Matcher matcher = fPackPattern.matcher(line);
             int lastMatchEnd = 0;
             while (matcher.find()) {
@@ -936,7 +937,7 @@ public class PDAVirtualMachine {
         for (Register reg : fRegisters.values()) {
             groups.add(reg.fGroup);
         }
-        StringBuffer response = new StringBuffer();
+        StringBuilder response = new StringBuilder();
         for (String group : groups) {
             response.append(group);
             response.append('|');
@@ -971,7 +972,7 @@ public class PDAVirtualMachine {
     void debugRegisters(Args args) {
         String group = args.getNextStringArg();
         
-        StringBuffer response = new StringBuffer();
+        StringBuilder response = new StringBuilder();
         for (Register reg : fRegisters.values()) {
             if (group.equals(reg.fGroup)) {
                 response.append(reg.fName);
@@ -1073,7 +1074,7 @@ public class PDAVirtualMachine {
             return;
         }
 
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
         for (Frame frame : thread.fFrames) {
             result.append(printFrame(frame));
             result.append('#');
@@ -1098,7 +1099,7 @@ public class PDAVirtualMachine {
      * filename | line number | function name | var | var | var | var ...
      */
     private String printFrame(Frame frame) {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         buf.append(fFilename);
         buf.append('|');
         buf.append(frame.fPC);
@@ -1204,7 +1205,7 @@ public class PDAVirtualMachine {
     }
 
     void debugThreads() {
-        StringBuffer response = new StringBuffer();
+        StringBuilder response = new StringBuilder();
         for (int threadId : fThreads.keySet()) {
             response.append(threadId);
             response.append(' ');
@@ -1308,7 +1309,7 @@ public class PDAVirtualMachine {
     void iDec(PDAThread thread, Args args) {
         Object val = thread.fStack.pop();
         if (val instanceof Integer) {
-            val = new Integer(((Integer) val).intValue() - 1);
+            val = ((Integer) val) - 1;
         }
         thread.fStack.push(val);
     }

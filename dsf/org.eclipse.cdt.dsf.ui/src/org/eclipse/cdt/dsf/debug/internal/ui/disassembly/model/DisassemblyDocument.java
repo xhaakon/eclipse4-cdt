@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2014 Wind River Systems and others.
+ * Copyright (c) 2007, 2016 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -178,7 +178,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		return (int)(fMeanSizeOfInstructions+.9);
 	}
 
-	public Iterator<AddressRangePosition> getModelPositionIterator(BigInteger address) {
+	public Iterator<Position> getModelPositionIterator(BigInteger address) {
 		try {
 			return getPositionIterator(CATEGORY_MODEL, address);
 		} catch (BadPositionCategoryException e) {
@@ -188,8 +188,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	}
 
 	public Iterator<Position> getPositionIterator(String category, int offset) throws BadPositionCategoryException {
-		@SuppressWarnings("unchecked")
-		List<Position> positions = (List<Position>) getDocumentManagedPositions().get(category);
+		List<Position> positions = getDocumentManagedPositions().get(category);
 		if (positions == null) {
 			throw new BadPositionCategoryException();
 		}
@@ -197,9 +196,8 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		return positions.listIterator(idx);
 	}
 
-	public Iterator<AddressRangePosition> getPositionIterator(String category, BigInteger address) throws BadPositionCategoryException {
-		@SuppressWarnings("unchecked")
-		List<AddressRangePosition> positions = (List<AddressRangePosition>) getDocumentManagedPositions().get(category);
+	public Iterator<Position> getPositionIterator(String category, BigInteger address) throws BadPositionCategoryException {
+		List<Position> positions = getDocumentManagedPositions().get(category);
 		if (positions == null) {
 			throw new BadPositionCategoryException();
 		}
@@ -208,8 +206,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	}
 
 	public int computeIndexInCategory(String category, BigInteger address) throws BadPositionCategoryException {
-		@SuppressWarnings("unchecked")
-		List<AddressRangePosition> c = (List<AddressRangePosition>) getDocumentManagedPositions().get(category);
+		List<Position> c = getDocumentManagedPositions().get(category);
 		if (c == null) {
 			throw new BadPositionCategoryException();
 		}
@@ -226,7 +223,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @return the computed index
 	 * 
 	 */
-	protected int computeIndexInPositionListFirst(List<AddressRangePosition> positions, BigInteger address) {
+	protected int computeIndexInPositionListFirst(List<Position> positions, BigInteger address) {
 		int size = positions.size();
 		if (size == 0) {
 			return 0;
@@ -236,7 +233,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		int mid = 0;
 		while (low < high) {
 			mid = (low + high) >>> 1;
-			AddressRangePosition range = positions.get(mid);
+			AddressRangePosition range = (AddressRangePosition)positions.get(mid);
 			int compareSign = address.compareTo(range.fAddressOffset);
 			if (compareSign < 0) {
 				high = mid;
@@ -250,14 +247,14 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		}
 
 		int idx = mid;
-		AddressRangePosition p = positions.get(idx);
+		AddressRangePosition p = (AddressRangePosition)positions.get(idx);
 		if (address.compareTo(p.fAddressOffset) == 0) {
 			do {
 				--idx;
 				if (idx < 0) {
 					break;
 				}
-				p = positions.get(idx);
+				p = (AddressRangePosition)positions.get(idx);
 			} while (address.compareTo(p.fAddressOffset) == 0);
 			++idx;
 		} else if (address.compareTo(p.fAddressOffset.add(p.fAddressLength)) >= 0) {
@@ -276,7 +273,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @return the computed index
 	 * 
 	 */
-	protected int computeIndexInPositionListLast(List<AddressRangePosition> positions, BigInteger address) {
+	protected int computeIndexInPositionListLast(List<Position> positions, BigInteger address) {
 		int size = positions.size();
 		if (size == 0) {
 			return 0;
@@ -286,7 +283,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		int mid = 0;
 		while (low < high) {
 			mid = (low + high) >>> 1;
-			AddressRangePosition range = positions.get(mid);
+			AddressRangePosition range = (AddressRangePosition) positions.get(mid);
 			if (address.compareTo(range.fAddressOffset) < 0) {
 				high = mid;
 			} else if (address.compareTo(range.fAddressOffset) == 0) {
@@ -299,7 +296,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		}
 
 		int idx = mid;
-		AddressRangePosition p = positions.get(idx);
+		AddressRangePosition p = (AddressRangePosition) positions.get(idx);
 		if (address.compareTo(p.fAddressOffset) > 0) {
 			++idx;
 		} else if (address.compareTo(p.fAddressOffset) == 0 && p.fAddressLength.compareTo(BigInteger.ZERO) == 0) {
@@ -308,7 +305,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 				if (idx == size) {
 					break;
 				}
-				p = positions.get(idx);
+				p = (AddressRangePosition) positions.get(idx);
 			} while (address.compareTo(p.fAddressOffset) == 0 && p.fAddressLength.compareTo(BigInteger.ZERO) == 0);
 			//			--idx;
 		}
@@ -325,7 +322,10 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @return the computed index
 	 * 
 	 * @see IDocument#computeIndexInCategory(String, int)
+	 * @deprecated Use {@link #computeIndexInPositionListLast(List, BigInteger)}
+	 * as it is for managing lists of AddressRangePositions
 	 */
+	@Deprecated
 	protected int computeIndexInPositionListLast(List<Position> positions, int offset) {
 		if (positions.size() == 0)
 			return 0;
@@ -380,8 +380,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 */
 	public Position getPositionOfIndex(String category, int index) throws BadPositionCategoryException {
 		if (index >= 0) {
-			@SuppressWarnings("unchecked")
-			List<Position> positions = (List<Position>) getDocumentManagedPositions().get(category);
+			List<Position> positions = getDocumentManagedPositions().get(category);
 			if (positions == null) {
 				throw new BadPositionCategoryException();
 			}
@@ -398,14 +397,13 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	}
 
 	public AddressRangePosition getPositionOfAddress(String category, BigInteger address) {
-		@SuppressWarnings("unchecked")
-		List<AddressRangePosition> positions = (List<AddressRangePosition>) getDocumentManagedPositions().get(category);
+		List<Position> positions = getDocumentManagedPositions().get(category);
 		if (positions == null) {
 			return null;
 		}
 		int index = computeIndexInPositionListFirst(positions, address);
 		if (index < positions.size()) {
-			AddressRangePosition p = positions.get(index);
+			AddressRangePosition p = (AddressRangePosition) positions.get(index);
 			if (address.compareTo(p.fAddressOffset) == 0 || p.containsAddress(address)) {
 				return p;
 			}
@@ -419,8 +417,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @return
 	 */
 	public AddressRangePosition getPositionInAddressRange(String category, AddressRangePosition range) {
-		@SuppressWarnings("unchecked")
-		List<AddressRangePosition> positions = (List<AddressRangePosition>) getDocumentManagedPositions().get(category);
+		List<Position> positions = getDocumentManagedPositions().get(category);
 		if (positions == null) {
 			return null;
 		}
@@ -428,7 +425,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		int index = computeIndexInPositionListFirst(positions, range.fAddressOffset);
 		if (index < positions.size()) {
 			do {
-				AddressRangePosition p = positions.get(index);
+				AddressRangePosition p = (AddressRangePosition) positions.get(index);
 				if (p.fAddressOffset.compareTo(endAddress) >= 0) {
 					--index;
 				} else {
@@ -643,8 +640,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @throws BadLocationException
 	 */
 	public Position getPosition(String category, int offset, boolean allowZeroLength) throws BadLocationException, BadPositionCategoryException {
-		@SuppressWarnings("unchecked")
-		List<Position> list = (List<Position>) getDocumentManagedPositions().get(category);
+		List<Position> list = getDocumentManagedPositions().get(category);
 		int idx;
 		idx = computeIndexInPositionList(list, offset, true);
 		if (idx > 0) {
@@ -681,12 +677,11 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @param pos
 	 */
 	public void addModelPositionFirst(AddressRangePosition pos) {
-		@SuppressWarnings("unchecked")
-		List<AddressRangePosition> list = (List<AddressRangePosition>) getDocumentManagedPositions().get(CATEGORY_MODEL);
+		List<Position> list = getDocumentManagedPositions().get(CATEGORY_MODEL);
 		int idx;
 		idx = computeIndexInPositionListFirst(list, pos.fAddressOffset.add(pos.fAddressLength));
 		if (idx < list.size()) {
-			AddressRangePosition nextPos = list.get(idx);
+			AddressRangePosition nextPos = (AddressRangePosition) list.get(idx);
 			assert nextPos.fAddressOffset.compareTo(pos.fAddressOffset.add(pos.fAddressLength)) == 0;
 		}
 		list.add(idx, pos);
@@ -724,8 +719,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @throws BadPositionCategoryException
 	 */
 	public void addPositionLast(String category, AddressRangePosition pos) throws BadPositionCategoryException {
-		@SuppressWarnings("unchecked")
-		List<AddressRangePosition> list = (List<AddressRangePosition>) getDocumentManagedPositions().get(category);
+		List<Position> list = getDocumentManagedPositions().get(category);
 		if (list == null) {
 			throw new BadPositionCategoryException();
 		}
@@ -817,7 +811,6 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	public void removePositions(String category, List<AddressRangePosition> toRemove) {
 		if (toRemove.isEmpty()) {
 			return;
@@ -831,18 +824,23 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 			}
 		}
 		
-		List<Position> positions = (List<Position>) getDocumentManagedPositions().get(category);
+		List<Position> positions = getDocumentManagedPositions().get(category);
 		if (positions != null) {
 			positions.removeAll(toRemove);
 		}
 		if (!category.equals(CATEGORY_MODEL)) {
-			positions = (List<Position>) getDocumentManagedPositions().get(CATEGORY_MODEL);
+			positions = getDocumentManagedPositions().get(CATEGORY_MODEL);
 			if (positions != null) {
 				positions.removeAll(toRemove);
 			}
 		}
 	}
 
+	/**
+	 * @deprecated Use {@link #addPositionLast(String, AddressRangePosition)}
+	 *             instead as DissemblyDocument's lists are AddressRangePositions
+	 */
+	@Deprecated
 	public void addPositionLast(String category, Position position) throws BadLocationException,
 		BadPositionCategoryException {
 
@@ -852,8 +850,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		if (category == null)
 			throw new BadPositionCategoryException();
 
-		@SuppressWarnings("unchecked")
-		List<Position> list = (List<Position>) getDocumentManagedPositions().get(category);
+		List<Position> list = getDocumentManagedPositions().get(category);
 		if (list == null)
 			throw new BadPositionCategoryException();
 
@@ -888,9 +885,9 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		int delta = (text != null ? text.length() : 0) - replaceLength;
 		if (delta != 0) {
 			BigInteger address = insertPos.fAddressOffset;
-			Iterator<AddressRangePosition> it = getModelPositionIterator(address);
+			Iterator<Position> it = getModelPositionIterator(address);
 			while (it.hasNext()) {
-				AddressRangePosition pos = it.next();
+				AddressRangePosition pos = (AddressRangePosition) it.next();
 				assert pos.fAddressOffset.compareTo(address) >= 0;
 				if (pos.fAddressOffset.compareTo(address) > 0) {
 					break;
@@ -903,7 +900,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 				}
 			}
 			while (it.hasNext()) {
-				AddressRangePosition pos = it.next();
+				AddressRangePosition pos = (AddressRangePosition) it.next();
 				pos.offset += delta;
 			}
 		}
@@ -911,9 +908,9 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		if (DEBUG) {
 			String escapedText = null;
 			if (text != null) {
-				escapedText = text.replace(new StringBuffer("\n"), new StringBuffer("\\n")); //$NON-NLS-1$ //$NON-NLS-2$
-				escapedText = escapedText.replace(new StringBuffer("\r"), new StringBuffer("\\r")); //$NON-NLS-1$ //$NON-NLS-2$
-				escapedText = escapedText.replace(new StringBuffer("\t"), new StringBuffer("\\t")); //$NON-NLS-1$ //$NON-NLS-2$
+				escapedText = text.replace(new StringBuilder("\n"), new StringBuilder("\\n")); //$NON-NLS-1$ //$NON-NLS-2$
+				escapedText = escapedText.replace(new StringBuilder("\r"), new StringBuilder("\\r")); //$NON-NLS-1$ //$NON-NLS-2$
+				escapedText = escapedText.replace(new StringBuilder("\t"), new StringBuilder("\\t")); //$NON-NLS-1$ //$NON-NLS-2$
 			}
 			System.out.println("Calling AbstractDocument.replace("+insertPos.offset+','+replaceLength+",\""+escapedText+"\")");  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 		}
@@ -940,10 +937,10 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		int replaceLength = 0;
 		if (length.compareTo(BigInteger.ONE) > 0 && !pos.containsAddress(address.add(length.subtract(BigInteger.ONE)))) {
 			// merge with successor positions
-			Iterator<AddressRangePosition> it = getModelPositionIterator(pos.fAddressOffset.add(pos.fAddressLength));
+			Iterator<Position> it = getModelPositionIterator(pos.fAddressOffset.add(pos.fAddressLength));
 			assert it.hasNext();
 			do {
-				AddressRangePosition overlap = it.next();
+				AddressRangePosition overlap = (AddressRangePosition) it.next();
 				BigInteger posEndAddress= pos.fAddressOffset.add(pos.fAddressLength);
 				assert pos.offset <= overlap.offset && overlap.fAddressOffset.compareTo(posEndAddress) == 0;
 				if (overlap instanceof LabelPosition || overlap instanceof SourcePosition) {
@@ -1040,7 +1037,7 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 	 * @param instruction
 	 */
 	private String buildDisassemblyLine(BigInteger address, String functionOffset, String instruction) {
-		StringBuffer buf = new StringBuffer(40);
+		StringBuilder buf = new StringBuilder(40);
 		if (fShowAddresses) {
 			if (fRadixPrefix != null) {
 				buf.append(fRadixPrefix);
@@ -1308,9 +1305,9 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 			int replaceLen = replacement != null ? replacement.length() : 0;
 			AddressRangePosition lastPos = null;
 			ArrayList<AddressRangePosition> toRemove = new ArrayList<AddressRangePosition>();
-			Iterator<AddressRangePosition> it = getModelPositionIterator(startAddress);
+			Iterator<Position> it = getModelPositionIterator(startAddress);
 			while (it.hasNext()) {
-				AddressRangePosition pos = it.next();
+				AddressRangePosition pos = (AddressRangePosition) it.next();
 				BigInteger posEndAddress = pos.fAddressOffset.add(pos.fAddressLength);
 				if (pos instanceof LabelPosition) {
 					if (!invalidate && pos.length > 0 && posEndAddress.compareTo(endAddress) > 0) {
@@ -1451,9 +1448,9 @@ public class DisassemblyDocument extends REDDocument implements IDisassemblyDocu
 		BigInteger addressLength = BigInteger.ZERO;
 		ArrayList<AddressRangePosition> toRemove = new ArrayList<AddressRangePosition>();
 		try {
-			Iterator<AddressRangePosition> it = getPositionIterator(DisassemblyDocument.CATEGORY_MODEL, startAddress);
+			Iterator<Position> it = getPositionIterator(DisassemblyDocument.CATEGORY_MODEL, startAddress);
 			while (it.hasNext()) {
-				AddressRangePosition p = it.next();
+				AddressRangePosition p = (AddressRangePosition) it.next();
 				addressLength = addressLength.add(p.fAddressLength);
 				replaceLength += p.length;
 				toRemove.add(p);

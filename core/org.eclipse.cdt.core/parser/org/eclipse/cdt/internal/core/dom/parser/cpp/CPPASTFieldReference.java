@@ -17,6 +17,7 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp;
 import static org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory.LVALUE;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
@@ -142,7 +143,7 @@ public class CPPASTFieldReference extends ASTNode
     			return fImplicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
 			
     		// Collect the function bindings
-			List<ICPPFunction> functionBindings = new ArrayList<ICPPFunction>();
+			List<ICPPFunction> functionBindings = new ArrayList<>();
 			EvalMemberAccess.getFieldOwnerType(fOwner.getExpressionType(), fIsDeref, this, functionBindings, false);
 			if (functionBindings.isEmpty())
 				return fImplicitNames = IASTImplicitName.EMPTY_NAME_ARRAY;
@@ -228,19 +229,21 @@ public class CPPASTFieldReference extends ASTNode
 	@Override
 	public IBinding[] findBindings(IASTName n, boolean isPrefix, String[] namespaces) {
 		IBinding[] bindings = CPPSemantics.findBindingsForContentAssist(n, isPrefix, namespaces);
-		List<IBinding> filtered = new ArrayList<IBinding>();
 
-		for (IBinding binding : bindings) {
-			if (binding instanceof ICPPMethod) {
-				ICPPMethod method = (ICPPMethod) binding;
-				if (method.isImplicit()) {
-					continue;
-				}
+		int j = 0;
+		for (int i = 0; i < bindings.length; i++) {
+			IBinding binding = bindings[i];
+			if (!(binding instanceof ICPPMethod && ((ICPPMethod) binding).isImplicit())) {
+				if (i != j)
+					bindings[j] = binding;
+				j++;
 			}
-			filtered.add(binding);
 		}
 		
-		return filtered.toArray(new IBinding[filtered.size()]);
+
+		if (j < bindings.length)
+			return Arrays.copyOfRange(bindings, 0, j);
+		return bindings;
 	}
 	
 	@Override
@@ -268,7 +271,7 @@ public class CPPASTFieldReference extends ASTNode
 	private ICPPEvaluation createEvaluation() {
 		ICPPEvaluation ownerEval = fOwner.getEvaluation();
 		if (!ownerEval.isTypeDependent()) {
-			IType ownerType= EvalMemberAccess.getFieldOwnerType(ownerEval.getTypeOrFunctionSet(this), fIsDeref, this, null, false);
+			IType ownerType= EvalMemberAccess.getFieldOwnerType(ownerEval.getType(this), fIsDeref, this, null, false);
 			if (ownerType != null) {
 				IBinding binding = fName.resolvePreBinding();
 				if (binding instanceof CPPFunctionSet)
@@ -306,7 +309,7 @@ public class CPPASTFieldReference extends ASTNode
 
 	@Override
 	public IType getExpressionType() {
-		return getEvaluation().getTypeOrFunctionSet(this);
+		return getEvaluation().getType(this);
 	}
 	
 	@Override

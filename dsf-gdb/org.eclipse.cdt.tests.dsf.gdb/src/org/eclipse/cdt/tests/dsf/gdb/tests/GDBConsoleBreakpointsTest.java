@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Mentor Graphics and others.
+ * Copyright (c) 2012, 2016 Mentor Graphics and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -39,8 +39,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.eclipse.cdt.utils.Addr64;
@@ -58,14 +57,15 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 /**
  * This test case verifies whether breakpoints or watchpoints set from GDB console
  * are properly synchronized with platform breakpoints.
  */
 @SuppressWarnings( "restriction" )
-@RunWith(BackgroundRunner.class)
-public class GDBConsoleBreakpointsTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class GDBConsoleBreakpointsTest extends BaseParametrizedTestCase {
 
 	final static protected String SOURCE_NAME = "GDBMIGenericTestApp.cc";
 
@@ -128,16 +128,16 @@ public class GDBConsoleBreakpointsTest extends BaseTestCase {
 	@Override
 	@After
 	public void doAfterTest() throws Exception {
-        Runnable runnable = new Runnable() {
-            @Override
-			public void run() {
-            	fSession.removeServiceEventListener(GDBConsoleBreakpointsTest.this);
-            }
-        };
-        fSession.getExecutor().submit(runnable).get();
+		if (fSession != null) {
+			fSession.getExecutor().submit(() -> fSession.removeServiceEventListener(GDBConsoleBreakpointsTest.this))
+					.get();
+		}
+
 		fBreakpointEvents.clear();
-        fServicesTracker.dispose();
-        fServicesTracker = null;
+        if (fServicesTracker != null) {
+            fServicesTracker.dispose();
+        	fServicesTracker = null;
+        }
 		
         super.doAfterTest();
 		
@@ -374,22 +374,22 @@ public class GDBConsoleBreakpointsTest extends BaseTestCase {
   		queueConsoleCommand(String.format("%s %s", command, expression));
   	}
 
-  	private void deleteConsoleBreakpoint(int bpId) throws Throwable {
-  		queueConsoleCommand(String.format("delete %d", bpId));
+  	private void deleteConsoleBreakpoint(String bpId) throws Throwable {
+  		queueConsoleCommand(String.format("delete %s", bpId));
   	}
 
-  	private void enableConsoleBreakpoint(int bpId, boolean enable) throws Throwable {
+  	private void enableConsoleBreakpoint(String bpId, boolean enable) throws Throwable {
   		String cmd = (enable) ? "enable" : "disable";
-  		queueConsoleCommand(String.format("%s %d", cmd, bpId));
+  		queueConsoleCommand(String.format("%s %s", cmd, bpId));
   	}
 
-  	private void setConsoleBreakpointIgnoreCount(int bpId, int ignoreCount) throws Throwable {
+  	private void setConsoleBreakpointIgnoreCount(String bpId, int ignoreCount) throws Throwable {
   		Assert.assertTrue(ignoreCount >= 0);
-  		queueConsoleCommand(String.format("ignore %d %d", bpId, ignoreCount));
+  		queueConsoleCommand(String.format("ignore %s %d", bpId, ignoreCount));
   	}
 
-  	private void setConsoleBreakpointCondition(int bpId, String condition) throws Throwable {
-  		queueConsoleCommand(String.format("condition %d %s", bpId, condition));
+  	private void setConsoleBreakpointCondition(String bpId, String condition) throws Throwable {
+  		queueConsoleCommand(String.format("condition %s %s", bpId, condition));
   	}
 
   	private MIBreakpoint[] getTargetBreakpoints() throws Throwable {

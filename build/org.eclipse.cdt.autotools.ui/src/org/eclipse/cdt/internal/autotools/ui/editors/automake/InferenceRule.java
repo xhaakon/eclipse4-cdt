@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,8 @@
  *     QNX Software Systems - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
+
+import org.eclipse.cdt.make.core.makefile.ICommand;
 
 public class InferenceRule extends Rule {
 
@@ -24,11 +26,9 @@ public class InferenceRule extends Rule {
 		super(parent, target, cmds);
 	}
 
-	/**
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append(getTarget().toString()).append(":\n"); //$NON-NLS-1$
 		ICommand[] cmds = getCommands();
 		for (int i = 0; i < cmds.length; i++) {

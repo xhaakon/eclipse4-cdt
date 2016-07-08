@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2009 Red Hat, Inc.
+ * Copyright (c) 2006, 2016 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,6 +30,7 @@ public class AutoconfPartitioner extends FastPartitioner {
 	// To optionally show partitions, we must do so by overriding the computePartitioning
 	// method.  We cannot do it at connect time because the document may be zero length
 	// at the time and we will end up getting default partitioning from then on.
+	@Override
 	public ITypedRegion[] computePartitioning(int offset, int length, 
 			boolean includeZeroLength) {
 		ITypedRegion[] regions = super.computePartitioning(offset, length, includeZeroLength);
@@ -40,25 +41,21 @@ public class AutoconfPartitioner extends FastPartitioner {
 	
 	public void printPartitions(ITypedRegion[] partitions)
 	{
-		StringBuffer buffer = new StringBuffer();
-
 		for (int i = 0; i < partitions.length; i++)
 		{
 			try
 			{
-				buffer.append("Partition type: " + partitions[i].getType() //$NON-NLS-1$
+				System.out.print("Partition type: " + partitions[i].getType() //$NON-NLS-1$
 						+ ", offset: " + partitions[i].getOffset() //$NON-NLS-1$
-						+ ", length: " + partitions[i].getLength()); //$NON-NLS-1$
-				buffer.append("\n"); //$NON-NLS-1$
-				buffer.append("Text:\n"); //$NON-NLS-1$
-				buffer.append(super.fDocument.get(partitions[i].getOffset(), partitions[i].getLength()));
-				buffer.append("\n---------------------------\n\n\n"); //$NON-NLS-1$
+						+ ", length: " + partitions[i].getLength() //$NON-NLS-1$
+						+"\nText:\n" //$NON-NLS-1$
+						+ super.fDocument.get(partitions[i].getOffset(), partitions[i].getLength())
+						+ "\n---------------------------\n\n\n"); //$NON-NLS-1$
 			}
 			catch (BadLocationException e)
 			{
 				e.printStackTrace();
 			}
 		}
-		System.out.print(buffer);
 	}
 }

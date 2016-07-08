@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -58,16 +58,22 @@ public interface ICPPASTConstructorInitializer extends IASTInitializer {
 
 	/**
 	 * @deprecated Replaced by {@link #getArguments()}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTExpression getExpression();
 
 	/**
 	 * @deprecated Replaced by {@link #setArguments(IASTInitializerClause[])}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void setExpression(IASTExpression expression);
-	
+
+	/**
+	 * @deprecated Use {@link #ARGUMENT} instead.
+	 * @noreference This field is not intended to be referenced by clients.
+	 */
 	@Deprecated
 	public static final ASTNodeProperty EXPRESSION = ARGUMENT;
 }

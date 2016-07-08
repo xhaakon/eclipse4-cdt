@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -56,7 +56,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPPointerToMemberType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
@@ -65,6 +64,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPArithmeticConversion;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunction;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.OverloadableOperator;
 import org.eclipse.core.runtime.CoreException;
 
@@ -115,7 +115,7 @@ public class EvalBinary extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		if (fType == null) {
 			if (isTypeDependent()) {
 				fType= new TypeOfDependentExpression(this);
@@ -124,7 +124,7 @@ public class EvalBinary extends CPPDependentEvaluation {
 				if (overload != null) {
 					fType= ExpressionTypes.restoreTypedefs(
 							ExpressionTypes.typeFromFunctionCall(overload),
-							fArg1.getTypeOrFunctionSet(point), fArg2.getTypeOrFunctionSet(point));
+							fArg1.getType(point), fArg2.getType(point));
 				} else {
 					fType= computeType(point);
 				}
@@ -219,12 +219,12 @@ public class EvalBinary extends CPPDependentEvaluation {
 			return LVALUE;
 
 		case op_pmdot:
-			if (!(getTypeOrFunctionSet(point) instanceof ICPPFunctionType))
+			if (!(getType(point) instanceof ICPPFunctionType))
 				return fArg1.getValueCategory(point);
 			break;
 
 		case op_pmarrow:
-			if (!(getTypeOrFunctionSet(point) instanceof ICPPFunctionType))
+			if (!(getType(point) instanceof ICPPFunctionType))
 				return LVALUE;
 			break;
 		}
@@ -244,7 +244,7 @@ public class EvalBinary extends CPPDependentEvaluation {
 			return null;
 
 		if (fOperator == op_arrayAccess) {
-			IType type = fArg1.getTypeOrFunctionSet(point);
+			IType type = fArg1.getType(point);
 			type= SemanticUtil.getNestedType(type, TDEF | REF | CVTYPE);
     		if (type instanceof ICPPClassType) {
     			return CPPSemantics.findOverloadedBinaryOperator(point, getTemplateDefinitionScope(), 
@@ -266,13 +266,13 @@ public class EvalBinary extends CPPDependentEvaluation {
 		if (o != null)
 			return typeFromFunctionCall(o);
 
-		final IType originalType1 = fArg1.getTypeOrFunctionSet(point);
+		final IType originalType1 = fArg1.getType(point);
 		final IType type1 = prvalueTypeWithResolvedTypedefs(originalType1);
 		if (type1 instanceof ISemanticProblem) {
 			return type1;
 		}
 
-    	final IType originalType2 = fArg2.getTypeOrFunctionSet(point);
+    	final IType originalType2 = fArg2.getType(point);
 		final IType type2 = prvalueTypeWithResolvedTypedefs(originalType2);
 		if (type2 instanceof ISemanticProblem) {
 			return type2;
@@ -355,10 +355,9 @@ public class EvalBinary extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
-		ICPPEvaluation arg1 = fArg1.instantiate(tpMap, packOffset, within, maxdepth, point);
-		ICPPEvaluation arg2 = fArg2.instantiate(tpMap, packOffset, within, maxdepth, point);
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
+		ICPPEvaluation arg1 = fArg1.instantiate(context, maxDepth);
+		ICPPEvaluation arg2 = fArg2.instantiate(context, maxDepth);
 		if (arg1 == fArg1 && arg2 == fArg2)
 			return this;
 		return new EvalBinary(fOperator, arg1, arg2, getTemplateDefinition());

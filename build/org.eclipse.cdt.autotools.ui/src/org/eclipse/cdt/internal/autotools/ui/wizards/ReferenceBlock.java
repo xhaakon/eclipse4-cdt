@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2010 IBM Corporation and others.
+ * Copyright (c) 2003, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -22,7 +22,7 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.swt.SWT;
@@ -47,9 +47,9 @@ import org.eclipse.ui.model.WorkbenchLabelProvider;
 @Deprecated
 public class ReferenceBlock extends AbstractCOptionPage {
 
-	private static final String PREFIX = "ReferenceBlock"; // $NON-NLS-1$ //$NON-NLS-1$
-	private static final String LABEL = PREFIX + ".label"; // $NON-NLS-1$ //$NON-NLS-1$
-	private static final String DESC = PREFIX + ".desc"; // $NON-NLS-1$ //$NON-NLS-1$
+	private static final String PREFIX = "ReferenceBlock"; //$NON-NLS-1$ //$NON-NLS-1$
+	private static final String LABEL = PREFIX + ".label"; //$NON-NLS-1$ //$NON-NLS-1$
+	private static final String DESC = PREFIX + ".desc"; //$NON-NLS-1$ //$NON-NLS-1$
 
 	private CheckboxTableViewer referenceProjectsViewer;
 
@@ -77,7 +77,7 @@ public class ReferenceBlock extends AbstractCOptionPage {
 			public Object[] getChildren(Object element) {
 				if (!(element instanceof IWorkspace))
 					return new Object[0];
-				ArrayList<IProject> aList = new ArrayList<IProject>(15);
+				ArrayList<IProject> aList = new ArrayList<>(15);
 				final IProject[] projects = ((IWorkspace)element).getRoot().getProjects();
 				for (int i = 0; i < projects.length; i++) {
 					if (CoreModel.hasCNature(projects[i])) {
@@ -166,7 +166,7 @@ public class ReferenceBlock extends AbstractCOptionPage {
 	}
 
 	@Override
-	public void performApply(IProgressMonitor monitor) throws CoreException {
+	public void performApply(IProgressMonitor monitor) {
 		IProject[] refProjects = getReferencedProjects();
 		if (refProjects != null) {
 			IProject project = getContainer().getProject();
@@ -177,7 +177,7 @@ public class ReferenceBlock extends AbstractCOptionPage {
 			try {
 				IProjectDescription description = project.getDescription();
 				description.setReferencedProjects(refProjects);
-				project.setDescription(description, new SubProgressMonitor(monitor, 1));
+				project.setDescription(description, SubMonitor.convert(monitor, 1));
 			} catch (CoreException e) {
 			}
 		}

@@ -42,6 +42,7 @@ public final class PreferencesMessages extends NLS {
 	public static String CEditorPreferencePage_ContentAssistPage_insertionGroupTitle;
 	public static String CEditorPreferencePage_ContentAssistPage_insertSingleProposalAutomatically;
 	public static String CEditorPreferencePage_ContentAssistPage_insertCommonProposalAutomatically;
+	public static String CEditorPreferencePage_ContentAssistPage_guessArguments;
 	public static String CEditorPreferencePage_ContentAssistPage_showProposalsInAlphabeticalOrder;
 	public static String CEditorPreferencePage_ContentAssistPage_showCamelCaseMatches;
 	public static String CEditorPreferencePage_ContentAssistPage_autoActivationGroupTitle;
@@ -181,11 +182,13 @@ public final class PreferencesMessages extends NLS {
 	public static String CEditorPreferencePage_typing_smartTab;
 	public static String CEditorPreferencePage_WorkspaceDefaultLabel;
 
-	public static String SaveActionsPreferencePage_removeTrailingWhitespace;
-	public static String SaveActionsPreferencePage_inEditedLines;
-	public static String SaveActionsPreferencePage_inAllLines;
-	public static String SaveActionsPreferencePage_ensureNewline;
 	public static String SaveActionsPreferencePage_formatSourceCode;
+	public static String SaveActionsPreferencePage_formatAllLines;
+	public static String SaveActionsPreferencePage_formatEditedLines;
+	public static String SaveActionsPreferencePage_removeTrailingWhitespace;
+	public static String SaveActionsPreferencePage_inAllLines;
+	public static String SaveActionsPreferencePage_inEditedLines;
+	public static String SaveActionsPreferencePage_ensureNewline;
 
 	public static String SmartTypingConfigurationBlock_autoclose_title;
 	public static String SmartTypingConfigurationBlock_autoindent_newlines;

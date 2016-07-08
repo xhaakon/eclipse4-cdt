@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2007, 2009 IBM Corporation and others.
+ * Copyright (c) 2002, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -41,6 +41,7 @@ public class ToolListLabelProvider extends LabelProvider {
 		this.cfg = cfg;
 	}
 	
+	@Override
 	public Image getImage(Object element) {
 		if (!(element instanceof ToolListElement)) {
 			throw unknownElement(element);
@@ -57,9 +58,7 @@ public class ToolListLabelProvider extends LabelProvider {
 		return defaultImage;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.viewers.ILabelProvider#getText(Object)
-	 */
+	@Override
 	public String getText(Object element) {
 		if (!(element instanceof ToolListElement)) {
 			throw unknownElement(element);
@@ -84,7 +83,8 @@ public class ToolListLabelProvider extends LabelProvider {
      * 
      * @since 3.0
      */
-    public void dispose() {
+    @Override
+	public void dispose() {
         if (descriptor != null && manager != null) {
             manager.destroyImage(descriptor);
         }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2015 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,7 +29,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
@@ -37,6 +36,7 @@ import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -132,7 +132,9 @@ public class EvalFunctionSet extends CPPDependentEvaluation {
 
 	@Override
 	public boolean isValueDependent() {
-		return false;
+		// The value of the function set (which function it resolves to) is
+		// dependent under the same circumstances when its type is dependent.
+		return isTypeDependent();
 	}
 
 	@Override
@@ -148,7 +150,7 @@ public class EvalFunctionSet extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		return new FunctionSetType(fFunctionSet, fAddressOf);
 	}
 
@@ -230,25 +232,23 @@ public class EvalFunctionSet extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
 		if (fFunctionSet == null)
 			return this;
 
 		ICPPTemplateArgument[] originalArguments = fFunctionSet.getTemplateArguments();
 		ICPPTemplateArgument[] arguments = originalArguments;
 		if (originalArguments != null)
-			arguments = instantiateArguments(originalArguments, tpMap, packOffset, within, point);
+			arguments = instantiateArguments(originalArguments, context);
 
 		IBinding originalOwner = fFunctionSet.getOwner();
 		IBinding owner = originalOwner;
 		if (owner instanceof ICPPUnknownBinding) {
-			owner = resolveUnknown((ICPPUnknownBinding) owner, tpMap, packOffset, within, point);
+			owner = resolveUnknown((ICPPUnknownBinding) owner, context);
 		} else if (owner instanceof ICPPClassTemplate) {
-			owner = resolveUnknown(CPPTemplates.createDeferredInstance((ICPPClassTemplate) owner),
-					tpMap, packOffset, within, point);
+			owner = resolveUnknown(CPPTemplates.createDeferredInstance((ICPPClassTemplate) owner), context);
 		} else if (owner instanceof IType) {
-			IType type = CPPTemplates.instantiateType((IType) owner, tpMap, packOffset, within, point);
+			IType type = CPPTemplates.instantiateType((IType) owner, context);
 			if (type instanceof IBinding)
 				owner = (IBinding) type;
 		}
@@ -258,7 +258,7 @@ public class EvalFunctionSet extends CPPDependentEvaluation {
 			functions = new ICPPFunction[originalFunctions.length];
 			for (int i = 0; i < originalFunctions.length; i++) {
 				functions[i] = (ICPPFunction) CPPTemplates.createSpecialization((ICPPClassSpecialization) owner,
-						originalFunctions[i], point);
+						originalFunctions[i], context.getPoint());
 			}
 		}
 		// No need to instantiate the implied object type. An EvalFunctioNSet should only be created

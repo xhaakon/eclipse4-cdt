@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Intel Corporation and others.
+ * Copyright (c) 2007, 2012 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,7 +13,6 @@ package org.eclipse.cdt.core.settings.model;
 import java.util.Map;
 
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationDataProvider;
@@ -371,13 +370,7 @@ public interface ICConfigurationDescription extends ICSettingContainer, ICSettin
 
 	/**
 	 * @deprecated Deprecated as of CDT 8.1. This method returns settings supplied by MBS only.
-	 * For most cases, more generic Language Settings Providers mechanism should be used instead, see
-	 * {@link LanguageSettingsManager#getSettingEntriesByKind(ICConfigurationDescription, org.eclipse.core.resources.IResource, String, int)}.
-	 *
-	 * Convenience method to return a language setting for the file with the specified project-relative path.
-	 * 
-	 * @param path - file project relative path
-	 * @return ICLanguageSetting or null if not found
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	ICLanguageSetting getLanguageSettingForFile(IPath path, boolean ignoreExludeStatus);

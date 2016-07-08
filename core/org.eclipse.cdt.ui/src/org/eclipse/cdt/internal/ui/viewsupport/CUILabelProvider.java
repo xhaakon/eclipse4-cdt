@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 IBM Corporation and others.
+ * Copyright (c) 2000, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -40,7 +40,6 @@ public class CUILabelProvider extends LabelProvider implements IColorProvider, I
 	private int fImageFlags;
 	private long fTextFlags;
 	private Color fInactiveColor;
-	private Color fDefaultColor;
 
 	/**
 	 * Creates a new label provider with default flags.
@@ -238,12 +237,11 @@ public class CUILabelProvider extends LabelProvider implements IColorProvider, I
 			if (!sref.isActive()) {
 				if (fInactiveColor == null && Display.getCurrent() != null) {
 					fInactiveColor= CUIPlugin.getStandardDisplay().getSystemColor(SWT.COLOR_DARK_GRAY);
-					fDefaultColor= CUIPlugin.getStandardDisplay().getSystemColor(SWT.COLOR_LIST_FOREGROUND);
 				}
 				return fInactiveColor;
 			}
 		}
-		return fDefaultColor;
+		return null;
 	}
 
 	@Override

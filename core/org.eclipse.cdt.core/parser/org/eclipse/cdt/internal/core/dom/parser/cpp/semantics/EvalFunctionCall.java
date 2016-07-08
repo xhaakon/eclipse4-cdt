@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,7 +12,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp.semantics;
 
-import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.typeFromReturnType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.valueCategoryFromFunctionCall;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.ExpressionTypes.valueCategoryFromReturnType;
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.CVTYPE;
@@ -32,13 +31,12 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
-import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunction;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.OverloadableOperator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics.LookupMode;
 import org.eclipse.core.runtime.CoreException;
@@ -87,8 +85,7 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 
 	@Override
 	public boolean isConstantExpression(IASTNode point) {
-		return areAllConstantExpressions(fArguments, point)
-			&& isNullOrConstexprFunc(getOverload(point));
+		return areAllConstantExpressions(fArguments, point) && isNullOrConstexprFunc(getOverload(point));
 	}
 
 	public ICPPFunction getOverload(IASTNode point) {
@@ -102,7 +99,7 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 		if (isTypeDependent())
 			return null;
 
-		IType t= SemanticUtil.getNestedType(fArguments[0].getTypeOrFunctionSet(point), TDEF | REF | CVTYPE);
+		IType t= SemanticUtil.getNestedType(fArguments[0].getType(point), TDEF | REF | CVTYPE);
 		if (t instanceof ICPPClassType) {
 	    	return CPPSemantics.findOverloadedOperator(point, getTemplateDefinitionScope(), fArguments, t, 
 	    			OverloadableOperator.PAREN, LookupMode.NO_GLOBALS);
@@ -111,7 +108,7 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
     }
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		if (fType == null)
 			fType= computeType(point);
 		return fType;
@@ -124,24 +121,13 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 		ICPPFunction overload = getOverload(point);
 		if (overload != null)
 			return ExpressionTypes.typeFromFunctionCall(overload);
-
-		final ICPPEvaluation arg0 = fArguments[0];
-		IType t= SemanticUtil.getNestedType(arg0.getTypeOrFunctionSet(point), TDEF | REF | CVTYPE);
-		if (t instanceof ICPPClassType) {
-			return ProblemType.UNKNOWN_FOR_EXPRESSION;
+		
+		ICPPEvaluation function = fArguments[0];
+		IType result = ExpressionTypes.typeFromFunctionCall(function.getType(point));
+		if (function instanceof EvalMemberAccess) {
+			result = ExpressionTypes.restoreTypedefs(result, ((EvalMemberAccess) function).getOwnerType());
 		}
-
-		if (t instanceof IPointerType) {
-			t= SemanticUtil.getNestedType(((IPointerType) t).getType(), TDEF | REF | CVTYPE);
-		}
-		if (t instanceof IFunctionType) {
-			t = typeFromReturnType(((IFunctionType) t).getReturnType());
-			if (arg0 instanceof EvalMemberAccess) {
-				t= ExpressionTypes.restoreTypedefs(t, ((EvalMemberAccess) arg0).getOwnerType());
-			}
-			return t;
-		}
-		return ProblemType.UNKNOWN_FOR_EXPRESSION;
+		return result;
 	}
 
 	@Override
@@ -159,7 +145,7 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
     	if (overload != null)
     		return valueCategoryFromFunctionCall(overload);
 
-		IType t= fArguments[0].getTypeOrFunctionSet(point);
+		IType t= fArguments[0].getType(point);
 		if (t instanceof IPointerType) {
 			t= SemanticUtil.getNestedType(((IPointerType) t).getType(), TDEF | REF | CVTYPE);
 		}
@@ -190,16 +176,15 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
-		ICPPEvaluation[] args = instantiateCommaSeparatedSubexpressions(fArguments, tpMap, 
-				packOffset, within, maxdepth, point);
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
+		ICPPEvaluation[] args = instantiateCommaSeparatedSubexpressions(fArguments, context, maxDepth);
 		if (args == fArguments)
 			return this;
 
-		if (args[0] instanceof EvalFunctionSet && getOverload(point) == null) {
+		if (args[0] instanceof EvalFunctionSet && getOverload(context.getPoint()) == null) {
 			// Resolve the function using the parameters of the function call.
-			args[0] = ((EvalFunctionSet) args[0]).resolveFunction(Arrays.copyOfRange(args, 1, args.length), point);
+			EvalFunctionSet functionSet = (EvalFunctionSet) args[0];
+			args[0] = functionSet.resolveFunction(Arrays.copyOfRange(args, 1, args.length), context.getPoint());
 		}
 		return new EvalFunctionCall(args, getTemplateDefinition());
 	}
@@ -232,26 +217,29 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 			return this;
 		// If the arguments are not all constant expressions, there is
 		// no point trying to substitute them into the return expression.
-		if (!areAllConstantExpressions(fArguments, context.getPoint()))
+		if (!areAllConstantExpressions(fArguments, 1, fArguments.length, context.getPoint()))
 			return this;
 		ICPPFunction function = getOverload(context.getPoint());
 		if (function == null) {
+			IBinding binding = null;
 			if (fArguments[0] instanceof EvalBinding) {
-				IBinding binding = ((EvalBinding) fArguments[0]).getBinding();
-				if (binding instanceof ICPPFunction)
-					function = (ICPPFunction) binding;
+				binding = ((EvalBinding) fArguments[0]).getBinding();
+			} else if (fArguments[0] instanceof EvalMemberAccess) {
+				binding = ((EvalMemberAccess) fArguments[0]).getMember();
 			}
+			if (binding instanceof ICPPFunction)
+				function = (ICPPFunction) binding;
 		}
 		if (function == null)
 			return this;
-		ICPPEvaluation eval = CPPFunction.getReturnExpression(function);
+		ICPPEvaluation eval = CPPFunction.getReturnExpression(function, context.getPoint());
 		if (eval == null)
 			return EvalFixed.INCOMPLETE;
-		CPPFunctionParameterMap parameterMap = buildParameterMap(function);
+		CPPFunctionParameterMap parameterMap = buildParameterMap(function, context.getPoint());
 		return eval.computeForFunctionCall(parameterMap, context.recordStep());
 	}
 
-	private CPPFunctionParameterMap buildParameterMap(ICPPFunction function) {
+	private CPPFunctionParameterMap buildParameterMap(ICPPFunction function, IASTNode point) {
 		ICPPParameter[] parameters = function.getParameters();
 		CPPFunctionParameterMap map = new CPPFunctionParameterMap(parameters.length);
 		int j = 1;
@@ -262,7 +250,8 @@ public class EvalFunctionCall extends CPPDependentEvaluation {
 				j = fArguments.length;
 			} else {
 				if (j < fArguments.length) {
-					map.put(i, fArguments[j++]);
+					ICPPEvaluation argument = maybeApplyConversion(fArguments[j++], param.getType(), point);
+					map.put(i, argument);
 				} else if (param.hasDefaultValue()) {
 					IValue value = param.getDefaultValue();
 					ICPPEvaluation eval = value.getEvaluation();

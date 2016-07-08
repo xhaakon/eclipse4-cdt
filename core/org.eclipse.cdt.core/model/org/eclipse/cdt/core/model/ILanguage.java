@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 QNX Software Systems and others.
+ * Copyright (c) 2005, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,7 +34,6 @@ import org.eclipse.core.runtime.IAdaptable;
  * @noextend This interface is not intended to be extended by clients.
  */
 public interface ILanguage extends IAdaptable {
-
 	/**
 	 * Option for {@link #getASTTranslationUnit(FileContent, IScannerInfo, IncludeFileContentProvider, IIndex, int, IParserLogService)}
 	 * Instructs the parser to skip function and method bodies.
@@ -43,6 +42,7 @@ public interface ILanguage extends IAdaptable {
 
 	/**
 	 * @deprecated, has no effect.
+	 * @noreference This field is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public final static int OPTION_ADD_COMMENTS= 0x2;
@@ -143,12 +143,14 @@ public interface ILanguage extends IAdaptable {
 	
 	/**
 	 * @deprecated replaced by {@link IASTTranslationUnit#getNodeSelector(String)}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	IASTName[] getSelectedNames(IASTTranslationUnit ast, int start, int length);
 	/**
 	 * @deprecated replaced by {@link #getASTTranslationUnit(FileContent, IScannerInfo, 
 	 * IncludeFileContentProvider, IIndex, int, IParserLogService)}
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	IASTTranslationUnit getASTTranslationUnit(org.eclipse.cdt.core.parser.CodeReader reader,
@@ -158,6 +160,7 @@ public interface ILanguage extends IAdaptable {
 	/**
 	 * @deprecated replaced by {@link #getASTTranslationUnit(FileContent, IScannerInfo, 
 	 * IncludeFileContentProvider, IIndex, int, IParserLogService)}
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	IASTTranslationUnit getASTTranslationUnit(org.eclipse.cdt.core.parser.CodeReader reader,
@@ -167,6 +170,7 @@ public interface ILanguage extends IAdaptable {
 	/**
 	 * @deprecated replaced by {@link #getCompletionNode(FileContent, IScannerInfo, 
 	 * IncludeFileContentProvider, IIndex, IParserLogService, int)}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	IASTCompletionNode getCompletionNode(org.eclipse.cdt.core.parser.CodeReader reader,
