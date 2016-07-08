@@ -26,6 +26,7 @@ import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTASMDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTAlignmentSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTAttribute;
+import org.eclipse.cdt.core.dom.ast.IASTAttributeList;
 import org.eclipse.cdt.core.dom.ast.IASTAttributeOwner;
 import org.eclipse.cdt.core.dom.ast.IASTAttributeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
@@ -255,6 +256,10 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
         backtrack.initialize(offset, (length < 0) ? 0 : length);
         throw backtrack;
     }
+    
+    protected INodeFactory getNodeFactory() {
+    	return nodeFactory;
+    }
 
     @Override
 	public IASTCompletionNode getCompletionNode() {
@@ -394,8 +399,9 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
     		return;
     	try {
         	fActiveCode= true;
-        	while (t != null && t.getType() != IToken.tINACTIVE_CODE_END)
+        	while (t != null && t.getType() != IToken.tINACTIVE_CODE_END) {
         		t= t.getNext();
+        	}
 
         	if (t != null) {
         		nextToken= t.getNext();
@@ -519,7 +525,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 
 	protected final boolean isOnSameLine(int offset1, int offset2) {
 		ILocationResolver lr= getTranslationUnit().getAdapter(ILocationResolver.class);
-		IASTFileLocation floc= lr.getMappedFileLocation(offset1, offset2-offset1+1);
+		IASTFileLocation floc= lr.getMappedFileLocation(offset1, offset2 - offset1 + 1);
 		return floc.getFileName().equals(lr.getContainingFilePath(offset1)) &&
 			floc.getStartingLineNumber() == floc.getEndingLineNumber();
 	}
@@ -536,12 +542,12 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 
     protected final <T extends IASTNode> T setRange(T n, IASTNode from, int endOffset) {
     	final int offset = ((ASTNode) from).getOffset();
-		((ASTNode) n).setOffsetAndLength(offset, endOffset-offset);
+		((ASTNode) n).setOffsetAndLength(offset, endOffset - offset);
     	return n;
     }
 
     protected final <T extends IASTNode> T setRange(T n, int offset, int endOffset) {
-    	((ASTNode) n).setOffsetAndLength(offset, endOffset-offset);
+    	((ASTNode) n).setOffsetAndLength(offset, endOffset - offset);
     	return n;
     }
 
@@ -552,7 +558,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 
 	protected final <T extends IASTNode> T adjustEndOffset(T n, final int endOffset) {
 		final ASTNode node = (ASTNode) n;
-        node.setLength(endOffset-node.getOffset());
+        node.setLength(endOffset - node.getOffset());
         return n;
 	}
 
@@ -1332,11 +1338,11 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 		while (true) {
 			final boolean ok= acceptInactiveCodeBoundary(codeBranchNesting);
 			if (!ok) {
-				// we left to an enclosing code branch. If we started in inactive code, it's time to leave.
+				// We left to an enclosing code branch. If we started in inactive code, it's time to leave.
 				if (!wasActive)
 					return;
 
-				// if we started in active code, we need to skip the outer and therefore unrelated
+				// If we started in active code, we need to skip the outer and therefore unrelated
 				// inactive branches until we hit active code again.
 				try {
 					skipInactiveCode();
@@ -1345,7 +1351,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 				}
 				codeBranchNesting= Math.min(getCodeBranchNesting() + 1, codeBranchNesting);
 
-				// we could be at the start of inactive code so restart the loop
+				// We could be at the start of inactive code so restart the loop.
 				continue;
 			}
 
@@ -1360,7 +1366,7 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
 
 			final int offset = next.getOffset();
 			declarationMark= next;
-			next= null; // don't hold on to the token while parsing namespaces, class bodies, etc.
+			next= null; // Don't hold on to the token while parsing namespaces, class bodies, etc.
 			try {
 				IASTDeclaration declaration= declaration(options);
 				if (((ASTNode) declaration).getLength() == 0 && LTcatchEOF(1) != IToken.tEOC) {
@@ -2379,11 +2385,11 @@ public abstract class AbstractGNUSourceCodeParser implements ISourceCodeParser {
      * @throws BacktrackException
      * @throws EndOfFileException
      */
-    protected IASTAttributeSpecifier __attribute__() throws BacktrackException, EndOfFileException {
+    protected IASTAttributeList __attribute__() throws BacktrackException, EndOfFileException {
     	if (LT(1) != IGCCToken.t__attribute__)
     		return null;
 
-    	IASTAttributeSpecifier result = nodeFactory.newGCCAttributeSpecifier();
+    	IASTAttributeList result = nodeFactory.newGCCAttributeList();
     	consume();
     	if (LT(1) == IToken.tLPAREN) {
     		consume();

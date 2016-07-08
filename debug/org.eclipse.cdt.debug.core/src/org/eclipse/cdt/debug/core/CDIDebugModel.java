@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 QNX Software Systems and others.
+ * Copyright (c) 2004, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,20 +14,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.core;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.core.IBinaryParser;
-import org.eclipse.cdt.core.IBinaryParser.IBinaryExecutable;
-import org.eclipse.cdt.core.IBinaryParser.IBinaryFile;
-import org.eclipse.cdt.core.IBinaryParser.IBinaryObject;
-import org.eclipse.cdt.core.model.CoreModelUtil;
-import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
-import org.eclipse.cdt.debug.core.cdi.model.ICDITarget;
 import org.eclipse.cdt.debug.core.model.ICAddressBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpoint2;
@@ -51,10 +42,7 @@ import org.eclipse.cdt.debug.internal.core.breakpoints.CLineBreakpoint;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CLineDynamicPrintf;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CLineTracepoint;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CWatchpoint;
-import org.eclipse.cdt.debug.internal.core.model.CDebugTarget;
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -64,14 +52,10 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.IBreakpointManager;
-import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.model.IBreakpoint;
-import org.eclipse.debug.core.model.IDebugTarget;
 import org.eclipse.debug.core.model.ILineBreakpoint;
-import org.eclipse.debug.core.model.IProcess;
 
 /**
  * Provides utility methods for creating debug sessions, targets and breakpoints
@@ -86,154 +70,6 @@ public class CDIDebugModel {
      */
     public static String getPluginIdentifier() {
         return CDebugCorePlugin.getUniqueIdentifier();
-    }
-
-    /**
-     * Creates and returns a debug target for the given CDI target, with the
-     * specified name, and associates it with the given process for console I/O.
-     * The debug target is added to the given launch.
-     * 
-     * @param launch
-     *            the launch the new debug target will be contained in
-     * @param project
-     *            the project to use to persist breakpoints.
-     * @param cdiTarget
-     *            the CDI target to create a debug target for
-     * @param name
-     *            the name to associate with this target, which will be returned
-     *            from <code>IDebugTarget.getName</code>.
-     * @param debuggeeProcess
-     *            the process to associate with the debug target, which will be
-     *            returned from <code>IDebugTarget.getProcess</code>
-     * @param file
-     *            the executable to debug.
-     * @param allowTerminate
-     *            allow terminate().
-     * @param allowDisconnect
-     *            allow disconnect().
-     * @param stopSymbol
-     *            place temporary breakpoint at <code>stopSymbol</code>, ignore
-     *            if <code>null</code> or empty.
-     * @param resumeTarget
-     *            resume target.
-     * @return a debug target
-     * @throws DebugException
-     * @since 3.1
-     */
-    public static IDebugTarget newDebugTarget(final ILaunch launch, final IProject project, final ICDITarget cdiTarget,
-        final String name, final IProcess debuggeeProcess, final IBinaryObject file, final boolean allowTerminate,
-        final boolean allowDisconnect, final String stopSymbol, final boolean resumeTarget) throws DebugException {
-        final IDebugTarget[] target = new IDebugTarget[1];
-        IWorkspaceRunnable r = new IWorkspaceRunnable() {
-
-            @Override
-            public void run(IProgressMonitor m) throws CoreException {
-                target[0] = new CDebugTarget(launch, project, cdiTarget, name, debuggeeProcess, file, allowTerminate,
-                    allowDisconnect);
-                ((CDebugTarget) target[0]).start(stopSymbol, resumeTarget);
-            }
-        };
-        try {
-            ResourcesPlugin.getWorkspace().run(r, null);
-        } catch (CoreException e) {
-            CDebugCorePlugin.log(e);
-            throw new DebugException(e.getStatus());
-        }
-        return target[0];
-    }
-
-    /**
-     * Creates and returns a debug target for the given CDI target, with the
-     * specified name, and associates it with the given process for console I/O.
-     * The debug target is added to the given launch.
-     * 
-     * @param launch
-     *            the launch the new debug target will be contained in
-     * @param project
-     *            the project to use to persist breakpoints.
-     * @param cdiTarget
-     *            the CDI target to create a debug target for
-     * @param name
-     *            the name to associate with this target, which will be returned
-     *            from <code>IDebugTarget.getName</code>.
-     * @param debuggeeProcess
-     *            the process to associate with the debug target, which will be
-     *            returned from <code>IDebugTarget.getProcess</code>
-     * @param file
-     *            the executable to debug.
-     * @param allowTerminate
-     *            allow terminate().
-     * @param allowDisconnect
-     *            allow disconnect().
-     * @param stopInMain
-     *            place temporary breakpoint at main()
-     * @param resumeTarget
-     *            resume target.
-     * @return a debug target
-     * @throws DebugException
-     * @deprecated
-     */
-    @Deprecated
-    public static IDebugTarget newDebugTarget(final ILaunch launch, final IProject project, final ICDITarget cdiTarget,
-        final String name, final IProcess debuggeeProcess, final IBinaryObject file, final boolean allowTerminate,
-        final boolean allowDisconnect, final boolean stopInMain, final boolean resumeTarget) throws DebugException {
-        final IDebugTarget[] target = new IDebugTarget[1];
-        IWorkspaceRunnable r = new IWorkspaceRunnable() {
-
-            @Override
-            public void run(IProgressMonitor m) throws CoreException {
-                String stopSymbol = null;
-                if (stopInMain)
-                    stopSymbol = launch.getLaunchConfiguration().getAttribute(
-                        ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL,
-                        ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_SYMBOL_DEFAULT);
-                target[0] = new CDebugTarget(launch, project, cdiTarget, name, debuggeeProcess, file, allowTerminate,
-                    allowDisconnect);
-                ((CDebugTarget) target[0]).start(stopSymbol, resumeTarget);
-            }
-        };
-        try {
-            ResourcesPlugin.getWorkspace().run(r, null);
-        } catch (CoreException e) {
-            CDebugCorePlugin.log(e);
-            throw new DebugException(e.getStatus());
-        }
-        return target[0];
-    }
-
-    /**
-     * Creates and returns a debug target for the given CDI target, with the
-     * specified name, and associates it with the given process for console I/O.
-     * The debug target is added to the given launch.
-     * 
-     * @param launch
-     *            the launch the new debug target will be contained in
-     * @param project
-     *            the project to use to persist breakpoints.
-     * @param cdiTarget
-     *            the CDI target to create a debug target for
-     * @param name
-     *            the name to associate with this target, which will be returned
-     *            from <code>IDebugTarget.getName</code>.
-     * @param debuggeeProcess
-     *            the process to associate with the debug target, which will be
-     *            returned from <code>IDebugTarget.getProcess</code>
-     * @param file
-     *            the executable to debug.
-     * @param allowTerminate
-     *            allow terminate().
-     * @param allowDisconnect
-     *            allow disconnect().
-     * @param resumeTarget
-     *            resume target.
-     * @return a debug target
-     * @throws DebugException
-     */
-    public static IDebugTarget newDebugTarget(ILaunch launch, IProject project, ICDITarget cdiTarget,
-        final String name, IProcess debuggeeProcess, IBinaryObject file, boolean allowTerminate,
-        boolean allowDisconnect, boolean resumeTarget) throws DebugException {
-        return newDebugTarget(launch, project, cdiTarget, name, debuggeeProcess, file, allowTerminate, allowDisconnect,
-            null, resumeTarget);
     }
 
     /**
@@ -454,9 +290,9 @@ public class CDIDebugModel {
     public static void setLineBreakpointAttributes(Map<String, Object> attributes, String sourceHandle, Integer type,
         int lineNumber, boolean enabled, int ignoreCount, String condition) {
         attributes.put(IBreakpoint.ID, getPluginIdentifier());
-        attributes.put(IMarker.LINE_NUMBER, new Integer(lineNumber));
+        attributes.put(IMarker.LINE_NUMBER, Integer.valueOf(lineNumber));
         attributes.put(IBreakpoint.ENABLED, Boolean.valueOf(enabled));
-        attributes.put(ICBreakpoint.IGNORE_COUNT, new Integer(ignoreCount));
+        attributes.put(ICBreakpoint.IGNORE_COUNT, Integer.valueOf(ignoreCount));
         attributes.put(ICBreakpoint.CONDITION, condition);
         attributes.put(ICBreakpoint.SOURCE_HANDLE, sourceHandle);
         attributes.put(ICBreakpointType.TYPE, type);
@@ -466,7 +302,7 @@ public class CDIDebugModel {
             attributes.put(ICLineBreakpoint2.REQUESTED_SOURCE_HANDLE, sourceHandle);
         }
         if (!attributes.containsKey(ICLineBreakpoint2.REQUESTED_LINE)) {
-            attributes.put(ICLineBreakpoint2.REQUESTED_LINE, new Integer(lineNumber));
+            attributes.put(ICLineBreakpoint2.REQUESTED_LINE, Integer.valueOf(lineNumber));
         }
         if (attributes.containsKey(IMarker.CHAR_START)
             && !attributes.containsKey(ICLineBreakpoint2.REQUESTED_CHAR_START)) {
@@ -701,8 +537,8 @@ public class CDIDebugModel {
         String sourceHandle, int type, int lineNumber, IAddress address, boolean enabled, int ignoreCount,
         String condition) {
         setLineBreakpointAttributes(attributes, sourceHandle, type, lineNumber, enabled, ignoreCount, condition);
-        attributes.put(IMarker.CHAR_START, new Integer(-1));
-        attributes.put(IMarker.CHAR_END, new Integer(-1));
+        attributes.put(IMarker.CHAR_START, Integer.valueOf(-1));
+        attributes.put(IMarker.CHAR_END, Integer.valueOf(-1));
         attributes.put(ICLineBreakpoint.ADDRESS, address.toHexAddressString());
         attributes.put(ICBreakpoint.MODULE, module);
     }
@@ -864,9 +700,9 @@ public class CDIDebugModel {
         HashMap<String, Object> attributes = new HashMap<String, Object>(10);
         setWatchPointAttributes(attributes, sourceHandle, resource, writeAccess, readAccess, expression, memorySpace,
             range, enabled, ignoreCount, condition);
-        attributes.put(IMarker.CHAR_START, new Integer(charStart));
-        attributes.put(IMarker.CHAR_END, new Integer(charEnd));
-        attributes.put(IMarker.LINE_NUMBER, new Integer(lineNumber));
+        attributes.put(IMarker.CHAR_START, Integer.valueOf(charStart));
+        attributes.put(IMarker.CHAR_END, Integer.valueOf(charEnd));
+        attributes.put(IMarker.LINE_NUMBER, Integer.valueOf(lineNumber));
         return new CWatchpoint(resource, attributes, register);
     }
 
@@ -953,7 +789,7 @@ public class CDIDebugModel {
         boolean enabled, int ignoreCount, String condition) {
         attributes.put(IBreakpoint.ID, getPluginIdentifier());
         attributes.put(IBreakpoint.ENABLED, Boolean.valueOf(enabled));
-        attributes.put(ICBreakpoint.IGNORE_COUNT, new Integer(ignoreCount));
+        attributes.put(ICBreakpoint.IGNORE_COUNT, Integer.valueOf(ignoreCount));
         attributes.put(ICBreakpoint.CONDITION, condition);
         attributes.put(ICBreakpoint.SOURCE_HANDLE, sourceHandle);
         attributes.put(ICWatchpoint.EXPRESSION, expression);
@@ -1255,8 +1091,8 @@ public class CDIDebugModel {
     public static void setFunctionBreakpointAttributes(Map<String, Object> attributes, String sourceHandle, int type,
         String function, int charStart, int charEnd, int lineNumber, boolean enabled, int ignoreCount, String condition) {
         setLineBreakpointAttributes(attributes, sourceHandle, type, lineNumber, enabled, ignoreCount, condition);
-        attributes.put(IMarker.CHAR_START, new Integer(charStart));
-        attributes.put(IMarker.CHAR_END, new Integer(charEnd));
+        attributes.put(IMarker.CHAR_START, Integer.valueOf(charStart));
+        attributes.put(IMarker.CHAR_END, Integer.valueOf(charEnd));
         attributes.put(ICLineBreakpoint.FUNCTION, function);
     }
 
@@ -1374,61 +1210,6 @@ public class CDIDebugModel {
             }
         }
         return null;
-    }
-
-    /**
-     * @deprecated
-     */
-    @Deprecated
-    public static IDebugTarget newDebugTarget(ILaunch launch, ICDITarget target, String name, IProcess iprocess,
-        IProcess debuggerProcess, IFile file, boolean allowTerminate, boolean allowDisconnect, boolean stopInMain)
-        throws CoreException {
-        IBinaryExecutable exeFile = getBinary(file);
-        String stopSymbol = null;
-        if (stopInMain)
-            stopSymbol = launch.getLaunchConfiguration().getAttribute(
-                ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL,
-                ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_SYMBOL_DEFAULT);
-        return newDebugTarget(launch, file.getProject(), target, name, iprocess, exeFile, allowTerminate,
-            allowDisconnect, stopSymbol, true);
-    }
-
-    /**
-     * @deprecated
-     */
-    @Deprecated
-    public static IDebugTarget newAttachDebugTarget(ILaunch launch, ICDITarget target, String name,
-        IProcess debuggerProcess, IFile file) throws CoreException {
-        IBinaryExecutable exeFile = getBinary(file);
-        return newDebugTarget(launch, file.getProject(), target, name, null, exeFile, true, true, false);
-    }
-
-    /**
-     * @deprecated
-     */
-    @Deprecated
-    public static IDebugTarget newCoreFileDebugTarget(final ILaunch launch, final ICDITarget target, final String name,
-        final IProcess debuggerProcess, final IFile file) throws CoreException {
-        IBinaryExecutable exeFile = getBinary(file);
-        return newDebugTarget(launch, file.getProject(), target, name, null, exeFile, true, false, false);
-    }
-
-    private static IBinaryExecutable getBinary(IFile file) throws CoreException {
-        IProject project = file.getProject();
-        ICConfigExtensionReference[] binaryParsersExt = CCorePlugin.getDefault().getDefaultBinaryParserExtensions(
-            project);
-        for (int i = 0; i < binaryParsersExt.length; i++) {
-            IBinaryParser parser = CoreModelUtil.getBinaryParser(binaryParsersExt[i]);
-            try {
-                IBinaryFile exe = parser.getBinary(file.getLocation());
-                if (exe instanceof IBinaryExecutable) {
-                    return (IBinaryExecutable) exe;
-                }
-            } catch (IOException e) {
-            }
-        }
-        throw new CoreException(new Status(IStatus.ERROR, CDebugCorePlugin.getUniqueIdentifier(), -1,
-            DebugCoreMessages.getString("CDIDebugModel.0"), null)); //$NON-NLS-1$
     }
 
     private static boolean sameSourceHandle(String handle1, String handle2) {

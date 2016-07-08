@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.4"?>
 <plugin>
-   <extension-point id="qmakeEnvProvider" name="%qmakeEnvProvider.name" schema="schema/qmakeEnvProvider.exsd"/>
+   <extension-point id="qtInstallProvider" name="Qt Install Provider" schema="schema/qtInstallProvider.exsd"/>
+   <extension-point id="qtToolChainMapper" name="Qt ToolChain Mapper" schema="schema/qtToolChainMapper.exsd"/>
 
    <extension
          point="org.eclipse.cdt.core.templates">
@@ -35,15 +36,25 @@
             name="%qmlFile.name"
             priority="normal">
       </content-type>
+      <content-type
+            base-type="org.eclipse.core.runtime.xml"
+            file-extensions="qrc"
+            id="qrcFile"
+            name="%qrcFile.name"
+            priority="normal">
+      </content-type>
    </extension>
    <extension
          id="qtNature"
          point="org.eclipse.core.resources.natures">
       <runtime>
          <run
-               class="org.eclipse.cdt.qt.core.QtNature">
+               class="org.eclipse.cdt.internal.qt.core.QtNature">
          </run>
       </runtime>
+      <builder
+            id="org.eclipse.cdt.qt.core.qtBuilder">
+      </builder>
    </extension>
     <extension
         point="org.eclipse.cdt.core.PDOMASTProcessor"
@@ -64,15 +75,6 @@
         <pdomLinkageFactory
             id="Qt"
             class="org.eclipse.cdt.internal.qt.core.pdom.PDOMQtLinkageFactory"/>
-    </extension>
-    <extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
-        <provider
-            class="org.eclipse.cdt.internal.qt.core.QtIncludePathsProvider"
-            id="org.eclipse.cdt.qt.core.QtPathsProvider"
-            name="%QtInstallHeaders.pathProvider.name"
-            prefer-non-shared="false">
-            <language-scope id="org.eclipse.cdt.core.g++"/>
-        </provider>
     </extension>
     <extension point="org.eclipse.core.expressions.definitions">
         <definition id="org.eclipse.cdt.qt.core.isQtProject">
@@ -111,5 +113,116 @@
         name="Qt C/C++ Problem">
         <super type="org.eclipse.cdt.codan.core.codanProblem"/> 
         <persistent value="true"/>
+    </extension>
+    <extension
+          point="org.eclipse.launchbar.core.launchBarContributions">
+       <descriptorType
+             class="org.eclipse.cdt.internal.qt.core.launch.QtLaunchDescriptorType"
+             id="org.eclipse.cdt.qt.core.launchDescriptorType"
+             priority="10">
+          <enablement>
+             <instanceof
+                   value="org.eclipse.core.resources.IProject">
+             </instanceof>
+             <test
+                   forcePluginActivation="true"
+                   property="org.eclipse.core.resources.projectNature"
+                   value="org.eclipse.cdt.qt.core.qtNature">
+             </test>
+          </enablement>
+       </descriptorType>
+       <configProvider
+             class="org.eclipse.cdt.internal.qt.core.launch.QtLocalLaunchConfigationProvider"
+             descriptorType="org.eclipse.cdt.qt.core.launchDescriptorType"
+             priority="10">
+       </configProvider>
+    </extension>
+    <extension
+          point="org.eclipse.debug.core.launchConfigurationTypes">
+       <launchConfigurationType
+             delegate="org.eclipse.cdt.internal.qt.core.launch.QtLocalRunLaunchConfigDelegate"
+             id="org.eclipse.cdt.qt.core.launchConfigurationType"
+             modes="run"
+             name="Qt Local Application"
+             public="true"
+             sourceLocatorId="org.eclipse.cdt.debug.core.sourceLocator"
+             sourcePathComputerId="org.eclipse.cdt.debug.core.sourcePathComputer">
+       </launchConfigurationType>
+    </extension>
+    <extension
+          point="org.eclipse.debug.core.launchDelegates">
+       <launchDelegate
+             delegate="org.eclipse.cdt.internal.qt.core.launch.QtLocalDebugLaunchConfigDelegate"
+             id="org.eclipse.cdt.qt.core.launchDelegate.debug.local"
+             modes="debug"
+             name="Qt Local Debug launcher"
+             type="org.eclipse.cdt.qt.core.launchConfigurationType">
+       </launchDelegate>
+    </extension>
+    <extension
+          point="org.eclipse.cdt.core.buildConfigProvider">
+       <provider
+             class="org.eclipse.cdt.internal.qt.core.build.QtBuildConfigurationProvider"
+             id="org.eclipse.cdt.qt.core.qtBuildConfigProvider"
+             natureId="org.eclipse.cdt.qt.core.qtNature">
+       </provider>
+    </extension>
+    <extension
+          point="org.eclipse.cdt.core.toolChainProvider">
+       <provider
+             class="org.eclipse.cdt.qt.core.QtMinGWToolChainProvider"
+             id="org.eclipse.cdt.qt.core.qtMinGWProvider">
+       </provider>
+    </extension>
+    <extension
+          point="org.eclipse.cdt.qt.core.qtInstallProvider">
+       <provider
+             class="org.eclipse.cdt.internal.qt.core.provider.Msys2QtInstallProvider">
+       </provider>
+       <provider
+             class="org.eclipse.cdt.internal.qt.core.provider.HomebrewQtInstallProvider">
+       </provider>
+       <provider
+             class="org.eclipse.cdt.internal.qt.core.provider.QtInstallProvider">
+       </provider>
+       <provider
+             class="org.eclipse.cdt.internal.qt.core.provider.LinuxQtInstallProvider">
+       </provider>
+    </extension>
+    <extension
+          point="org.eclipse.cdt.qt.core.qtToolChainMapper">
+       <mapping
+             spec="macx-clang">
+          <property
+                key="os"
+                value="macosx">
+          </property>
+          <property
+                key="arch"
+                value="x86_64">
+          </property>
+       </mapping>
+       <mapping
+             spec="win32-g++">
+          <property
+                key="os"
+                value="win32">
+          </property>
+          <property
+                key="arch"
+                value="x86_64">
+          </property>
+       </mapping>
+       <mapping
+             spec="linux-g++-64">
+          <property
+                key="os"
+                value="linux">
+          </property>
+          <property
+                key="arch"
+                value="x86_64">
+          </property>
+       </mapping>
     </extension>
 </plugin>

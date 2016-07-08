@@ -2,7 +2,7 @@
  * Mostly copied from makefileCompletionProcessor which has the following
  * copyright notice:
  * 
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,6 +18,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 import org.eclipse.cdt.internal.autotools.ui.MakeUIImages;
+import org.eclipse.cdt.make.core.makefile.IDirective;
+import org.eclipse.cdt.make.core.makefile.IMacroDefinition;
+import org.eclipse.cdt.make.core.makefile.IMakefile;
+import org.eclipse.cdt.make.core.makefile.IRule;
+import org.eclipse.cdt.make.ui.IWorkingCopyManager;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.TextPresentation;
 import org.eclipse.jface.text.contentassist.CompletionProposal;
@@ -41,23 +46,17 @@ public class AutomakeCompletionProcessor implements IContentAssistProcessor {
 
 			protected int fInstallOffset;
 
-			/*
-			 * @see IContextInformationValidator#isContextInformationValid(int)
-			 */
+			@Override
 			public boolean isContextInformationValid(int offset) {
 				return Math.abs(fInstallOffset - offset) < 5;
 			}
 
-			/*
-			 * @see IContextInformationValidator#install(IContextInformation, ITextViewer, int)
-			 */
+			@Override
 			public void install(IContextInformation info, ITextViewer viewer, int offset) {
 				fInstallOffset = offset;
 			}
 
-			/*
-			 * @see org.eclipse.jface.text.contentassist.IContextInformationPresenter#updatePresentation(int, TextPresentation)
-			 */
+			@Override
 			public boolean updatePresentation(int documentPosition, TextPresentation presentation) {
 				return false;
 			}
@@ -65,9 +64,7 @@ public class AutomakeCompletionProcessor implements IContentAssistProcessor {
 
 		public static class DirectiveComparator implements Comparator<Object> {
 
-			/* (non-Javadoc)
-			 * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
-			 */
+			@Override
 			public int compare(Object o1, Object o2) {
 				String name1;
 				String name2;
@@ -106,9 +103,7 @@ public class AutomakeCompletionProcessor implements IContentAssistProcessor {
 			fManager =  AutomakeEditorFactory.getDefault().getWorkingCopyManager();
 		}
 
-		/* (non-Javadoc)
-		 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#computeCompletionProposals(org.eclipse.jface.text.ITextViewer, int)
-		 */
+		@Override
 		public ICompletionProposal[] computeCompletionProposals(ITextViewer viewer, int documentOffset) {
 			WordPartDetector wordPart = new WordPartDetector(viewer, documentOffset);
 			boolean macro = WordPartDetector.inMacro(viewer, documentOffset);
@@ -124,7 +119,7 @@ public class AutomakeCompletionProcessor implements IContentAssistProcessor {
 				statements = makefile.getTargetRules();
 			}
 
-			ArrayList<ICompletionProposal> proposalList = new ArrayList<ICompletionProposal>(statements.length);
+			ArrayList<ICompletionProposal> proposalList = new ArrayList<>(statements.length);
 
 			// iterate over all the different categories
 			for (int i = 0; i < statements.length; i++) {
@@ -156,38 +151,34 @@ public class AutomakeCompletionProcessor implements IContentAssistProcessor {
 					proposalList.add(result);
 				}
 			}
-			ICompletionProposal[] proposals = (ICompletionProposal[]) proposalList.toArray(new ICompletionProposal[0]);
+			ICompletionProposal[] proposals = proposalList.toArray(new ICompletionProposal[0]);
 			Arrays.sort(proposals, comparator);
 			return proposals;
 		}
 
-		/* (non-Javadoc)
-		 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#computeContextInformation(org.eclipse.jface.text.ITextViewer, int)
-		 */
+		@Override
 		public IContextInformation[] computeContextInformation(ITextViewer viewer, int documentOffset) {
 			WordPartDetector wordPart = new WordPartDetector(viewer, documentOffset);
 			boolean macro = WordPartDetector.inMacro(viewer, documentOffset);
 			IMakefile makefile = fManager.getWorkingCopy(fEditor.getEditorInput());
-			ArrayList<String> contextList = new ArrayList<String>();
+			ArrayList<String> contextList = new ArrayList<>();
 			if (macro) {
-				IDirective[] statements = makefile.getMacroDefinitions();
+			IMacroDefinition[] statements = makefile.getMacroDefinitions();
 				for (int i = 0; i < statements.length; i++) {
-					if (statements[i] instanceof IMacroDefinition) {
-						String name = ((IMacroDefinition) statements[i]).getName();
-						if (name != null && name.equals(wordPart.toString())) {
-							String value = ((IMacroDefinition) statements[i]).getValue().toString();
-							if (value != null && value.length() > 0) {
-								contextList.add(value);
-							}
+				String name = statements[i].getName();
+				if (name != null && name.equals(wordPart.toString())) {
+					String value = statements[i].getValue().toString();
+					if (value != null && value.length() > 0) {
+						contextList.add(value);
 						}
-					}
+				}
 				}
 				statements = makefile.getBuiltinMacroDefinitions();
 				for (int i = 0; i < statements.length; i++) {
 					if (statements[i] != null) {
-						String name = ((IMacroDefinition) statements[i]).getName();
+						String name = statements[i].getName();
 						if (name != null && name.equals(wordPart.toString())) {
-							String value = ((IMacroDefinition) statements[i]).getValue().toString();
+							String value = statements[i].getValue().toString();
 							if (value != null && value.length() > 0) {
 								contextList.add(value);
 							}
@@ -198,37 +189,29 @@ public class AutomakeCompletionProcessor implements IContentAssistProcessor {
 
 			IContextInformation[] result = new IContextInformation[contextList.size()];
 			for (int i = 0; i < result.length; i++) {
-				String context = (String)contextList.get(i);
+				String context = contextList.get(i);
 				result[i] = new ContextInformation(imageMacro, wordPart.toString(), context);
 			}
 			return result;
 
 		}
 
-		/* (non-Javadoc)
-		 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#getCompletionProposalAutoActivationCharacters()
-		 */
+		@Override
 		public char[] getCompletionProposalAutoActivationCharacters() {
 			return null;
 		}
 
-		/* (non-Javadoc)
-		 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#getContextInformationAutoActivationCharacters()
-		 */
+		@Override
 		public char[] getContextInformationAutoActivationCharacters() {
 			return null;
 		}
 
-		/* (non-Javadoc)
-		 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#getErrorMessage()
-		 */
+		@Override
 		public String getErrorMessage() {
 			return null;
 		}
 
-		/* (non-Javadoc)
-		 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#getContextInformationValidator()
-		 */
+		@Override
 		public IContextInformationValidator getContextInformationValidator() {
 			return fValidator;
 		}

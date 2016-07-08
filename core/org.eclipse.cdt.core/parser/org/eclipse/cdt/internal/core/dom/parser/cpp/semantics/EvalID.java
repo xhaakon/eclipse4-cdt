@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -49,14 +49,16 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateNonTypeParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
+import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPDeferredFunction;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPDeferredClassInstance;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalEnumerator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPUnknownBinding;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 public class EvalID extends CPPDependentEvaluation {
@@ -150,7 +152,7 @@ public class EvalID extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		return new TypeOfDependentExpression(this);
 	}
 
@@ -293,7 +295,7 @@ public class EvalID extends CPPDependentEvaluation {
 	 * Returns {@code true} if the given node is located inside the given enum.
 	 */
 	private static boolean isInsideEnum(IASTNode node, ICPPEnumeration enumBinding) {
-		IASTEnumerator enumeratorNode = CPPVisitor.findAncestorWithType(node, IASTEnumerator.class);
+		IASTEnumerator enumeratorNode = ASTQueries.findAncestorWithType(node, IASTEnumerator.class);
 		if (enumeratorNode == null)
 			return false;
 		IBinding enumerator = enumeratorNode.getName().getBinding();
@@ -307,6 +309,13 @@ public class EvalID extends CPPDependentEvaluation {
 		}
 		if (parent instanceof ICPPASTFunctionDefinition) {
 			ICPPASTFunctionDefinition fdef= (ICPPASTFunctionDefinition) parent;
+			// Resolution of the method name triggers name resolution inside the
+			// decl-specifier of the method definition. If we are currently
+			// resolving something inside the decl-specifier, this can lead to
+			// recursion.
+			if (ASTQueries.isAncestorOf(fdef.getDeclSpecifier(), expr)) {
+				return null;
+			}
 			final IBinding methodBinding = fdef.getDeclarator().getName().resolvePreBinding();
 			if (methodBinding instanceof ICPPMethod && !((ICPPMethod) methodBinding).isStatic()) {
 				IScope scope = CPPVisitor.getContainingScope(expr);
@@ -331,24 +340,23 @@ public class EvalID extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
 		ICPPTemplateArgument[] templateArgs = fTemplateArgs;
 		if (templateArgs != null) {
-			templateArgs = instantiateArguments(templateArgs, tpMap, packOffset, within, point);
+			templateArgs = instantiateArguments(templateArgs, context);
 		}
 
 		ICPPEvaluation fieldOwner = fFieldOwner;
 		if (fieldOwner != null) {
-			fieldOwner = fieldOwner.instantiate(tpMap, packOffset, within, maxdepth, point);
+			fieldOwner = fieldOwner.instantiate(context, maxDepth);
 		}
 
 		IBinding nameOwner = fNameOwner;
 		if (nameOwner instanceof ICPPClassTemplate) {
-			nameOwner = resolveUnknown(CPPTemplates.createDeferredInstance((ICPPClassTemplate) nameOwner),
-					tpMap, packOffset, within, point);
+			ICPPDeferredClassInstance deferred = CPPTemplates.createDeferredInstance((ICPPClassTemplate) nameOwner);
+			nameOwner = resolveUnknown(deferred, context);
 		} else if (nameOwner instanceof IType) {
-			IType type = CPPTemplates.instantiateType((IType) nameOwner, tpMap, packOffset, within, point);
+			IType type = CPPTemplates.instantiateType((IType) nameOwner, context);
 			type = getNestedType(type, TDEF | REF | CVTYPE);
 			if (!(type instanceof IBinding))
 				return EvalFixed.INCOMPLETE;
@@ -362,7 +370,7 @@ public class EvalID extends CPPDependentEvaluation {
 			return this;
 
 		if (nameOwner instanceof ICPPClassType) {
-			ICPPEvaluation eval = resolveName((ICPPClassType) nameOwner, templateArgs, null, point);
+			ICPPEvaluation eval = resolveName((ICPPClassType) nameOwner, templateArgs, null, context.getPoint());
 			if (eval != null)
 				return eval;
 			if (!CPPTemplates.isDependentType((ICPPClassType) nameOwner))
@@ -370,7 +378,7 @@ public class EvalID extends CPPDependentEvaluation {
 		}
 		
 		if (fieldOwner != null && !fieldOwner.isTypeDependent()) {
-			IType fieldOwnerType = fieldOwner.getTypeOrFunctionSet(point);
+			IType fieldOwnerType = fieldOwner.getType(context.getPoint());
 			if (fIsPointerDeref) {
 				fieldOwnerType = SemanticUtil.getSimplifiedType(fieldOwnerType);
 				if (fieldOwnerType instanceof IPointerType) {
@@ -382,7 +390,8 @@ public class EvalID extends CPPDependentEvaluation {
 			IType fieldOwnerClassTypeCV = SemanticUtil.getNestedType(fieldOwnerType, TDEF | REF);
 			IType fieldOwnerClassType = SemanticUtil.getNestedType(fieldOwnerClassTypeCV, CVTYPE);
 			if (fieldOwnerClassType instanceof ICPPClassType) {
-				ICPPEvaluation eval = resolveName((ICPPClassType) fieldOwnerClassType, templateArgs, fieldOwnerClassTypeCV, point);
+				ICPPEvaluation eval = resolveName((ICPPClassType) fieldOwnerClassType, templateArgs,
+						fieldOwnerClassTypeCV, context.getPoint());
 				if (eval != null)
 					return eval;
 			}

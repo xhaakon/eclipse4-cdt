@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat Inc. and others.
+ * Copyright (c) 2007, 2015 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,8 +12,11 @@ package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
 public interface IAutomakeConditional {
 	
-	public boolean isAutomake();
-	public void setAutomake(boolean value);
-	public Rule[] getRules();
-	public void setRules(Rule[] rules);
+	boolean isAutomake();
+
+	void setAutomake(boolean value);
+
+	Rule[] getRules();
+
+	void setRules(Rule[] rules);
 }

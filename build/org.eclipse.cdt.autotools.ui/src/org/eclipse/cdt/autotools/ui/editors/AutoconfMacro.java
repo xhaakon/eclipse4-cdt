@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -36,11 +36,13 @@ public class AutoconfMacro implements Comparable<Object> {
 		return (parms.length() > 0);
 	}
 
+	@Override
 	public int compareTo(Object x) {
 		AutoconfMacro y = (AutoconfMacro) x;
 		return getName().compareTo(y.getName());
 	}
 	
+	@Override
 	public boolean equals(Object x) {
 		if (x == null)
 			return false;
@@ -48,6 +50,7 @@ public class AutoconfMacro implements Comparable<Object> {
 		return getName().equals(y.getName());
 	}
 	
+	@Override
 	public int hashCode() {
 		return getName().hashCode();
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,11 +14,10 @@ import org.eclipse.cdt.core.dom.ast.IASTCompletionContext;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.internal.corext.template.c.CContextType;
+import org.eclipse.cdt.internal.qt.core.QtKeywords;
 import org.eclipse.cdt.internal.qt.ui.assist.QPropertyExpansion;
 import org.eclipse.cdt.internal.qt.ui.assist.QtProposalContext;
 import org.eclipse.cdt.internal.qt.ui.assist.QtTemplateProposal;
-import org.eclipse.cdt.qt.core.QtKeywords;
-import org.eclipse.cdt.qt.ui.QtUIPlugin;
 import org.eclipse.cdt.ui.text.contentassist.ICEditorContentAssistInvocationContext;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
@@ -28,7 +27,7 @@ import org.eclipse.jface.text.templates.TemplateContextType;
 @SuppressWarnings("restriction")
 public class QPropertyCompletion {
 
-	private static final String CONTEXT_ID = QtUIPlugin.PLUGIN_ID + ".proposal.Q_PROPERTY";
+	private static final String CONTEXT_ID = Activator.PLUGIN_ID + ".proposal.Q_PROPERTY";
 
 	private static final Template QPropertyTemplate
 		= new Template("Q_PROPERTY", "Q_PROPERTY declaration", CONTEXT_ID, "Q_PROPERTY( ${type} ${name} READ ${accessor} ${cursor} )", true);

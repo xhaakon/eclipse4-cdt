@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2008 IBM Corporation and others.
+ * Copyright (c) 2000, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -23,7 +23,6 @@ import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.text.Position;
 import org.eclipse.ui.texteditor.AbstractMarkerAnnotationModel;
 import org.eclipse.ui.texteditor.MarkerAnnotation;
@@ -42,9 +41,7 @@ public class ResourceMarkerAnnotationModel extends AbstractMarkerAnnotationModel
 	 * Internal resource change listener.
 	 */
 	class ResourceChangeListener implements IResourceChangeListener {
-		/*
-		 * @see IResourceChangeListener#resourceChanged(org.eclipse.core.resources.IResourceChangeEvent)
-		 */
+		@Override
 		public void resourceChanged(IResourceChangeEvent e) {
 			IResourceDelta delta= e.getDelta();
 			if (delta != null && fResource != null) {
@@ -75,9 +72,7 @@ public class ResourceMarkerAnnotationModel extends AbstractMarkerAnnotationModel
 		fWorkspace= resource.getWorkspace();
 	}
 
-	/*
-	 * @see AbstractMarkerAnnotationModel#isAcceptable(IMarker)
-	 */
+	@Override
 	protected boolean isAcceptable(IMarker marker) {
 		return marker != null && fResource.equals(marker.getResource());
 	}
@@ -116,10 +111,9 @@ public class ResourceMarkerAnnotationModel extends AbstractMarkerAnnotationModel
 	 *
 	 * @param markerDeltas the array of marker deltas
 	 */
-	@SuppressWarnings("unchecked")
 	private void batchedUpdate(IMarkerDelta[] markerDeltas) {
-		HashSet removedMarkers= new HashSet(markerDeltas.length);
-		HashSet modifiedMarkers= new HashSet(markerDeltas.length);
+		HashSet<IMarker> removedMarkers= new HashSet<>(markerDeltas.length);
+		HashSet<IMarker> modifiedMarkers= new HashSet<>(markerDeltas.length);
 
 		for (int i= 0; i < markerDeltas.length; i++) {
 			IMarkerDelta delta= markerDeltas[i];
@@ -139,7 +133,7 @@ public class ResourceMarkerAnnotationModel extends AbstractMarkerAnnotationModel
 		if (modifiedMarkers.isEmpty() && removedMarkers.isEmpty())
 			return;
 
-		Iterator e= getAnnotationIterator(false);
+		Iterator<?> e= getAnnotationIterator(false);
 		while (e.hasNext()) {
 			Object o= e.next();
 			if (o instanceof MarkerAnnotation) {
@@ -163,14 +157,12 @@ public class ResourceMarkerAnnotationModel extends AbstractMarkerAnnotationModel
 			}
 		}
 
-		Iterator iter= modifiedMarkers.iterator();
+		Iterator<IMarker> iter= modifiedMarkers.iterator();
 		while (iter.hasNext())
-			addMarkerAnnotation((IMarker)iter.next());
+			addMarkerAnnotation(iter.next());
 	}
 
-	/*
-	 * @see AbstractMarkerAnnotationModel#listenToMarkerChanges(boolean)
-	 */
+	@Override
 	protected void listenToMarkerChanges(boolean listen) {
 		if (listen)
 			fWorkspace.addResourceChangeListener(fResourceChangeListener);
@@ -178,22 +170,16 @@ public class ResourceMarkerAnnotationModel extends AbstractMarkerAnnotationModel
 			fWorkspace.removeResourceChangeListener(fResourceChangeListener);
 	}
 
-	/*
-	 * @see AbstractMarkerAnnotationModel#deleteMarkers(IMarker[])
-	 */
+	@Override
 	protected void deleteMarkers(final IMarker[] markers) throws CoreException {
-		fWorkspace.run(new IWorkspaceRunnable() {
-			public void run(IProgressMonitor monitor) throws CoreException {
-				for (int i= 0; i < markers.length; ++i) {
-					markers[i].delete();
-				}
+		fWorkspace.run((IWorkspaceRunnable) monitor -> {
+			for (int i= 0; i < markers.length; ++i) {
+				markers[i].delete();
 			}
 		}, null, IWorkspace.AVOID_UPDATE, null);
 	}
 
-	/*
-	 * @see AbstractMarkerAnnotationModel#retrieveMarkers()
-	 */
+	@Override
 	protected IMarker[] retrieveMarkers() throws CoreException {
 		return fResource.findMarkers(IMarker.MARKER, true, IResource.DEPTH_ZERO);
 	}

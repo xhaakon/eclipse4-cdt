@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,7 +33,7 @@ public class AutoconfPartitionScanner extends RuleBasedPartitionScanner {
 	public AutoconfPartitionScanner() {
 		super();
 		
-		List<IRule> rules= new ArrayList<IRule>();
+		List<IRule> rules= new ArrayList<>();
 		Token macro = new Token(AUTOCONF_MACRO);
 		Token comment = new Token(AUTOCONF_COMMENT);
 

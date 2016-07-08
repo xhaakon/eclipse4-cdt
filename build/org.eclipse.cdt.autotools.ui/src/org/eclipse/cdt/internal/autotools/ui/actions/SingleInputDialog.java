@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Red Hat Inc..
+ * Copyright (c) 2006, 2015 Red Hat Inc..
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -32,13 +32,7 @@ public class SingleInputDialog extends InputDialog {
 		this.firstMessage = firstMessage;
 	}
 
-	/*
-	 * (non-Javadoc) Method declared on Dialog.
-	 */
-	protected void buttonPressed(int buttonId) {
-		super.buttonPressed(buttonId);
-	}
-
+	@Override
 	protected Control createDialogArea(Composite parent) {
 
 		// create composite

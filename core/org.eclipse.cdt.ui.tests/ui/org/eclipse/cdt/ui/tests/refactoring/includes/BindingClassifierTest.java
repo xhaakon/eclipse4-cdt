@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import junit.framework.TestSuite;
-
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import com.ibm.icu.text.MessageFormat;
@@ -39,6 +37,8 @@ import org.eclipse.cdt.ui.testplugin.CTestPlugin;
 
 import org.eclipse.cdt.internal.ui.refactoring.includes.BindingClassifier;
 import org.eclipse.cdt.internal.ui.refactoring.includes.IncludeCreationContext;
+
+import junit.framework.TestSuite;
 
 /**
  * Tests for {@link BindingClassifier}.
@@ -198,6 +198,23 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 	//	}
 	public void testMethodCall() throws Exception {
 		assertDefined("A", "A::m");
+		assertDeclared();
+	}
+
+	//	struct A {
+	//	  void a() const;
+	//	};
+	//	struct B : public A {
+	//	}
+	//	struct C {
+	//	  const B& c() const;
+	//	};
+
+	//	void test(const C& x) {
+	//	  x.c().a();
+	//	}
+	public void testMethodCall_488349() throws Exception {
+		assertDefined("A::a", "B", "C", "C::c");
 		assertDeclared();
 	}
 
@@ -370,6 +387,38 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 		assertDeclared();
 	}
 
+	//	class A {};
+	//	class B {};
+	//	class C {};
+	//	class D {};
+	
+	//	void foo(A* a, B& b, C& c) {
+	//	  A& aa(*a);
+	//	  B* bb(&b);
+	//	  C cc(c);
+	//	  D d;
+	//	}
+	public void testVariableDeclaration() throws Exception {
+		assertDefined("C", "D");
+		assertDeclared("A", "B");
+	}
+
+	//	class A {};
+	//	class B {};
+	//	class C {};
+
+	//	class D {
+	//	  A* aa;
+	//	  B& bb;
+	//	  C cc;
+	//	  D(A* a, B& b, C& c)
+	//        : aa(a), bb(b), cc(c) {}
+	//	};
+	public void testConstructorChainInitializer() throws Exception {
+		assertDefined("C");
+		assertDeclared("A", "B");
+	}
+
 	//	namespace ns1 {
 	//	namespace ns2 {
 	//	class A {};
@@ -418,6 +467,25 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 	public void testFieldReference() throws Exception {
 		assertDefined("A");
 		assertDeclared("B");
+	}
+
+	//	namespace std {
+	//  template<typename T> class shared_ptr {};
+	//	}
+	//
+	//	struct A {
+	//	  int x;
+	//	};
+	//	struct B {
+	//	  const std::shared_ptr<A> y;
+	//	};
+
+	//	int test(B* b) {
+	//	  return b->y->x;
+	//	};
+	public void testFieldReference_487971() throws Exception {
+		assertDefined("A", "B");
+		assertDeclared();
 	}
 
 	//	typedef unsigned int size_t;
@@ -705,6 +773,43 @@ public class BindingClassifierTest extends OneSourceMultipleHeadersTestCase {
 	//	MACRO(foo, bar);
 	public void testMacro_4() throws Exception {
 		assertDefined("MACRO");
+		assertDeclared();
+	}
+
+	//	template <typename T>
+	//	void m();
+	//
+	//	#define MACRO(a) m<a>()
+
+	//	typedef int INT;
+	//	void test() {
+	//	  MACRO(INT);
+	//	}
+	public void testMacro_5() throws Exception {
+		assertDefined("MACRO");
+		assertDeclared();
+	}
+
+	//	struct A {
+	//	  A(int);
+	//	};
+	//
+	//	#define MACRO(a, b) A a(b)
+
+	//	void test(int x) {
+	//	  MACRO(a, x);
+	//	}
+	public void testMacro_6() throws Exception {
+		assertDefined("MACRO");
+		assertDeclared();
+	}
+
+	//	#define bool bool
+	//	#define false false
+
+	//  bool b = false;
+	public void testIdentityMacro_487972() throws Exception {
+		assertDefined();
 		assertDeclared();
 	}
 }

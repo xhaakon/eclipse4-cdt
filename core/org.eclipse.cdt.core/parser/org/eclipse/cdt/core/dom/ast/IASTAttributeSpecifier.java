@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2014 Institute for Software, HSR Hochschule fuer Technik
+ * Copyright (c) 2014, 2015 Institute for Software, HSR Hochschule fuer Technik and others
  * Rapperswil, University of applied sciences and others
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -25,13 +25,17 @@ public interface IASTAttributeSpecifier extends IASTNode {
 			new ASTNodeProperty("IASTAttributeSpecifier.ATTRIBUTE"); //$NON-NLS-1$
 
 	/**
-	 * Returns the attributes of the specifier.
+	 * @deprecated Use IASTAttributeList.getAttributes() instead.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public abstract IASTAttribute[] getAttributes();
 
 	/**
-	 * Adds an attribute to the specifier.
+	 * @deprecated Use IASTAttributeList.addAttribute() instead.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public abstract void addAttribute(IASTAttribute attribute);
 
 	@Override

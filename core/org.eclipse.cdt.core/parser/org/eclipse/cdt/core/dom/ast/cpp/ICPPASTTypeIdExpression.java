@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,12 +19,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
  */
 public interface ICPPASTTypeIdExpression extends IASTTypeIdExpression, ICPPASTExpression {
 	public static final int op_typeid = IASTTypeIdExpression.op_typeid;
-
-	/**
-	 * @deprecated all constants should be declared in {@link IASTTypeIdExpression}
-	 */
-	@Deprecated
-	public static final int op_last = IASTTypeIdExpression.op_last;
 
 	/**
 	 * @since 5.1

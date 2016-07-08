@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,7 +13,7 @@ package org.eclipse.cdt.core.dom.ast;
 
 /**
  * This is the base interface that represents a declaration specifier sequence.
- * 
+ *
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.
  */
@@ -30,10 +30,15 @@ public interface IASTDeclSpecifier extends IASTNode {
 	/** @since 5.2 */
 	public static final int sc_mutable = 6;
 
-	/** @since 5.10 */
+	/**
+	 * @deprecated Not used.
+	 * @noreference This field is not intended to be referenced by clients.
+	 * @since 5.10
+	 */
+	@Deprecated
 	public static final ASTNodeProperty ALIGNMENT_SPECIFIER = new ASTNodeProperty(
 			"IASTDeclSpecifier.ALIGNMENT_SPECIFIER - Alignment specifier");  //$NON-NLS-1$
-	
+
 	/**
 	 * Returns the storage class, which is one of the constants sc_...
 	 */
@@ -50,13 +55,16 @@ public interface IASTDeclSpecifier extends IASTNode {
 
 	// Function specifier
 	public boolean isInline();
-	
+
 	/**
-	 * Get any alignment-specifiers in this decl-specifier sequence.
+	 * @deprecated Use ICASTDeclSpecifier.getAlignmentSpecifiers() for C code.
+	 * In C++ code, alignment specifiers are now stored in the attribute specifier sequence.
+	 * @noreference This method is not intended to be referenced by clients.
 	 * @since 5.10
 	 */
+	@Deprecated
 	public IASTAlignmentSpecifier[] getAlignmentSpecifiers();
-	
+
 	/**
 	 * @since 5.1
 	 */
@@ -94,16 +102,13 @@ public interface IASTDeclSpecifier extends IASTNode {
 	 * Not allowed on frozen ast.
 	 */
 	public void setInline(boolean value);
-	
+
 	/**
-	 * Not allowed on frozen ast.
+	 * @deprecated Use ICASTDeclSpecifier.setAlignmentSpecifiers() for C code.
+	 * In C++ code, alignment specifiers are now stored in the attribute specifier sequence.
+	 * @noreference This method is not intended to be referenced by clients.
 	 * @since 5.10
 	 */
-	public void setAlignmentSpecifiers(IASTAlignmentSpecifier[] alignmentSpecifiers);
-	
-	/**
-	 * @deprecated All constants must be defined in this interface.
-	 */
 	@Deprecated
-	public static final int sc_last = sc_register;
+	public void setAlignmentSpecifiers(IASTAlignmentSpecifier[] alignmentSpecifiers);
 }

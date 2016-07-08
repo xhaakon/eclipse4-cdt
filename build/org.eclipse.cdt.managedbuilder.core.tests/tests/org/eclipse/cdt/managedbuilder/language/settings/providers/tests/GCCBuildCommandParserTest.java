@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Andrew Gvozdev and others.
+ * Copyright (c) 2009, 2016 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -447,6 +447,7 @@ public class GCCBuildCommandParserTest extends BaseTestCase {
 		IFile file8=ResourceHelper.createFile(project, "file8.cpp");
 		IFile file9=ResourceHelper.createFile(project, "file9.cpp");
 		IFile file10=ResourceHelper.createFile(project, "file10.cpp");
+		IFile file11=ResourceHelper.createFile(project, "file11.cpp");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file1.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
 
@@ -465,6 +466,7 @@ public class GCCBuildCommandParserTest extends BaseTestCase {
 		parser.processLine("../relative/path/gcc -I/path0 file8.cpp");
 		parser.processLine("clang -I/path0 file9.cpp");
 		parser.processLine("clang++ -I/path0 file10.cpp");
+		parser.processLine("cc -I/path0 file11.cpp");
 		parser.shutdown();
 
 		// check populated entries
@@ -506,6 +508,10 @@ public class GCCBuildCommandParserTest extends BaseTestCase {
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file10, languageId);
+			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file11, languageId);
 			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
 		}
 	}
@@ -676,6 +682,7 @@ public class GCCBuildCommandParserTest extends BaseTestCase {
 				+ " -D'MACRO5=\"quoted value\"'"
 				+ " -DMACRO6=\\\"escape-quoted value\\\""
 				+ " -DMACRO7=\"'single-quoted value'\""
+				+ " -DMACRO8=\"\\\"escape-quoted value\\\"\""
 				+ " file.cpp");
 		parser.shutdown();
 
@@ -696,6 +703,7 @@ public class GCCBuildCommandParserTest extends BaseTestCase {
 		assertEquals(new CMacroEntry("MACRO5", "\"quoted value\"", 0), entries.get(5));
 		assertEquals(new CMacroEntry("MACRO6", "\"escape-quoted value\"", 0), entries.get(6));
 		assertEquals(new CMacroEntry("MACRO7", "'single-quoted value'", 0), entries.get(7));
+		assertEquals(new CMacroEntry("MACRO8", "\"escape-quoted value\"", 0), entries.get(8));
 	}
 
 	/**

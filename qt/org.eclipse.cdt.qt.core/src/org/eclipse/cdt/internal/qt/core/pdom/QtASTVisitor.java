@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -41,12 +41,12 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
 import org.eclipse.cdt.internal.core.parser.scanner.LocationMap;
 import org.eclipse.cdt.internal.qt.core.ASTUtil;
 import org.eclipse.cdt.internal.qt.core.QtFunctionCall;
+import org.eclipse.cdt.internal.qt.core.QtKeywords;
 import org.eclipse.cdt.internal.qt.core.QtMethodReference;
 import org.eclipse.cdt.internal.qt.core.QtMethodUtil;
+import org.eclipse.cdt.internal.qt.core.index.IQMethod;
+import org.eclipse.cdt.internal.qt.core.index.IQProperty;
 import org.eclipse.cdt.internal.qt.core.index.QProperty;
-import org.eclipse.cdt.qt.core.QtKeywords;
-import org.eclipse.cdt.qt.core.index.IQMethod;
-import org.eclipse.cdt.qt.core.index.IQProperty;
 
 @SuppressWarnings("restriction")
 public class QtASTVisitor extends ASTVisitor {

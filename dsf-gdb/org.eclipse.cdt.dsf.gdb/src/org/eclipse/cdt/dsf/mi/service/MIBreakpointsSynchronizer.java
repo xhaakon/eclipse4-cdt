@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2015 Mentor Graphics and others.
+ * Copyright (c) 2012, 2016 Mentor Graphics and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -109,24 +109,24 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 	/**
 	 * Collection of breakpoints created from the GDB console or outside of Eclipse
 	 */
-	private Map<IBreakpointsTargetDMContext, Map<Integer, MIBreakpoint>> fCreatedTargetBreakpoints;
+	private Map<IBreakpointsTargetDMContext, Map<String, MIBreakpoint>> fCreatedTargetBreakpoints;
 
 	/**
 	 * Collection of breakpoints deleted from the GDB console or outside of Eclipse
 	 */ 
-	private Map<IBreakpointsTargetDMContext, Set<Integer>> fDeletedTargetBreakpoints;
+	private Map<IBreakpointsTargetDMContext, Set<String>> fDeletedTargetBreakpoints;
 	
 	/**
 	 * Collection of pending breakpoint modifications
 	 */
-	private Map<IBreakpointsTargetDMContext, Map<Integer, MIBreakpoint>> fPendingModifications;
+	private Map<IBreakpointsTargetDMContext, Map<String, MIBreakpoint>> fPendingModifications;
 
 	public MIBreakpointsSynchronizer(DsfSession session) {
 		super(session);
 		fTrackedTargets = new HashSet<IBreakpointsTargetDMContext>();
-		fCreatedTargetBreakpoints = new HashMap<IBreakpointsTargetDMContext, Map<Integer, MIBreakpoint>>();
-		fDeletedTargetBreakpoints = new HashMap<IBreakpointsTargetDMContext, Set<Integer>>();
-		fPendingModifications = new HashMap<IBreakpointsTargetDMContext, Map<Integer, MIBreakpoint>>();
+		fCreatedTargetBreakpoints = new HashMap<IBreakpointsTargetDMContext, Map<String, MIBreakpoint>>();
+		fDeletedTargetBreakpoints = new HashMap<IBreakpointsTargetDMContext, Set<String>>();
+		fPendingModifications = new HashMap<IBreakpointsTargetDMContext, Map<String, MIBreakpoint>>();
 	}
 
 	@Override
@@ -203,33 +203,36 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 	}
 
 	public void targetBreakpointCreated(final MIBreakpoint miBpt) {
-		if (isCatchpoint(miBpt))
+		if (isCatchpoint(miBpt)) {
 			return;
+		}
 		ICommandControlService commandControl = getCommandControl();
 		MIBreakpoints breakpointsService = getBreakpointsService();
 		final MIBreakpointsManager bm = getBreakpointsManager();
-		if (commandControl == null || breakpointsService == null || bm == null)
+		if (commandControl == null || breakpointsService == null || bm == null) {
 			return;
+		}
 
 		final IBreakpointsTargetDMContext bpTargetDMC = getBreakpointsTargetContext(commandControl, miBpt);
-		if (bpTargetDMC == null)
+		if (bpTargetDMC == null) {
 			return;
+		}
 
 		// Store the target breakpoint data
-		Map<Integer, MIBreakpointDMData> contextBreakpoints = breakpointsService.getBreakpointMap(bpTargetDMC);
+		Map<String, MIBreakpointDMData> contextBreakpoints = breakpointsService.getBreakpointMap(bpTargetDMC);
 		if (contextBreakpoints == null) {
 			contextBreakpoints = breakpointsService.createNewBreakpointMap(bpTargetDMC);
 		}
-		contextBreakpoints.put(Integer.valueOf(miBpt.getNumber()), new MIBreakpointDMData(miBpt));
+		contextBreakpoints.put(miBpt.getNumber(), new MIBreakpointDMData(miBpt));
 
 		// Store the created target breakpoint to prevent setting it again on the target 
 		// when addBreakpoint() is called.
-		Map<Integer, MIBreakpoint> targetMap = fCreatedTargetBreakpoints.get(bpTargetDMC);
+		Map<String, MIBreakpoint> targetMap = fCreatedTargetBreakpoints.get(bpTargetDMC);
 		if (targetMap == null) {
-			targetMap = new HashMap<Integer, MIBreakpoint>();
+			targetMap = new HashMap<String, MIBreakpoint>();
 			fCreatedTargetBreakpoints.put(bpTargetDMC, targetMap);
 		}
-		targetMap.put(Integer.valueOf(miBpt.getNumber()), miBpt);
+		targetMap.put(miBpt.getNumber(), miBpt);
 
 		// Convert the debug info file path into the file path in the local file system
     	String debuggerPath = getFileName(miBpt);
@@ -241,8 +244,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
             	@ConfinedToDsfExecutor( "fExecutor" )
             	protected void handleSuccess() {
             		String fileName = getData();
-            		if (fileName == null)
+            		if (fileName == null) {
             			fileName = getFileName(miBpt);
+            		}
             		// Try to find matching platform breakpoint
         			ICBreakpoint plBpt = getPlatformBreakpoint(miBpt, fileName);
         			String threadId = miBpt.getThreadId();
@@ -253,7 +257,7 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 							plBpt = createPlatformBreakpoint(fileName, miBpt);
 		        			// If the target breakpoint is thread specific, update thread filters
 							if (isThreadSpecific) {
-								setThreadSpecificBreakpoint(bpTargetDMC, plBpt, miBpt);
+								setThreadSpecificBreakpoint(plBpt, miBpt);
 							}
 	        			}
 	        			else {
@@ -266,16 +270,16 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 							if (isBreakpointTargetTracked(bpTargetDMC)) {
 			        			// If the target breakpoint is thread specific, update thread filters
 								if (isThreadSpecific) {
-									setThreadSpecificBreakpoint(bpTargetDMC, plBpt, miBpt);
+									setThreadSpecificBreakpoint(plBpt, miBpt);
 								}
 								bm.breakpointAdded(plBpt);
 							}
 	        			}
 						// Make sure the platform breakpoint's parameters are synchronized 
 						// with the target breakpoint.
-						Map<Integer, MIBreakpoint> map = fPendingModifications.get(bpTargetDMC);
+						Map<String, MIBreakpoint> map = fPendingModifications.get(bpTargetDMC);
 						if (map != null) {
-							MIBreakpoint mod = map.remove(Integer.valueOf(miBpt.getNumber()));
+							MIBreakpoint mod = map.remove(miBpt.getNumber());
 							if (mod != null) {
 								targetBreakpointModified(bpTargetDMC, plBpt, mod);
 							}
@@ -292,11 +296,15 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
             });
 	}
 
-	public void targetBreakpointDeleted(final int id) {
+	/**
+	 * @since 5.0
+	 */
+	public void targetBreakpointDeleted(final String id) {
 		MIBreakpoints breakpointsService = getBreakpointsService();
 		final MIBreakpointsManager bm = getBreakpointsManager();
-		if (breakpointsService == null || bm == null)
+		if (breakpointsService == null || bm == null) {
 			return;
+		}
 		final IBreakpointsTargetDMContext bpTargetDMC = breakpointsService.getBreakpointTargetContext(id);
 		if (bpTargetDMC != null){
 			final MIBreakpointDMContext bpDMC = 
@@ -307,24 +315,26 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 					@Override
 					@ConfinedToDsfExecutor( "fExecutor" )
 					protected void handleSuccess() {
-						if (!(getData() instanceof MIBreakpointDMData))
+						if (!(getData() instanceof MIBreakpointDMData)) {
 							return;
+						}
 						MIBreakpointDMData data = (MIBreakpointDMData)getData();
-						if (MIBreakpoints.CATCHPOINT.equals(data.getBreakpointType()))
+						if (MIBreakpoints.CATCHPOINT.equals(data.getBreakpointType())) {
 							return;
+						}
 	
 						IBreakpoint plBpt = bm.findPlatformBreakpoint(bpDMC);
 						if (plBpt instanceof ICBreakpoint) {
-							Set<Integer> set = fDeletedTargetBreakpoints.get(bpTargetDMC);
+							Set<String> set = fDeletedTargetBreakpoints.get(bpTargetDMC);
 							if (set == null) {
-								set = new HashSet<Integer>();
+								set = new HashSet<String>();
 								fDeletedTargetBreakpoints.put(bpTargetDMC, set);
 							}
-							set.add(Integer.valueOf(id));
+							set.add(id);
 	
 							try {
-								int threadId = Integer.parseInt(data.getThreadId());
-								if (threadId > 0) {
+								String threadId = data.getThreadId();
+								if (!threadId.equals("0")) { //$NON-NLS-1$
 									IDsfBreakpointExtension bpExtension = 
 										(IDsfBreakpointExtension)((ICBreakpoint)plBpt).getExtension(
 											MIBreakpointsManager.GDB_DEBUG_MODEL_ID, ICBreakpointExtension.class);
@@ -343,8 +353,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 									List<IExecutionDMContext> list = new ArrayList<IExecutionDMContext>(execDMCs.length);
 									for (IExecutionDMContext c : execDMCs) {
 										if (c instanceof IMIExecutionDMContext 
-											&& ((IMIExecutionDMContext)c).getThreadId() != threadId)
+											&& !((IMIExecutionDMContext)c).getThreadId().equals(threadId)) {
 											list.add(c);
+										}
 									}
 									if (!list.isEmpty()) {
 										bpExtension.setThreadFilters(list.toArray(new IExecutionDMContext[list.size()]));
@@ -360,9 +371,6 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 							catch(CoreException e) {
 								GdbPlugin.log(e.getStatus());
 							}
-							catch(NumberFormatException e) {
-								GdbPlugin.log(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, "Invalid thread id")); //$NON-NLS-1$
-							}
 						}
 					}
 				});
@@ -371,29 +379,32 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 	}
 
 	public void targetBreakpointModified(final MIBreakpoint miBpt) {
-		if (isCatchpoint(miBpt))
+		if (isCatchpoint(miBpt)) {
 			return;
+		}
 		ICommandControlService commandControl = getCommandControl();
 		MIBreakpoints breakpointsService = getBreakpointsService();
 		final MIBreakpointsManager bm = getBreakpointsManager();
 		if (commandControl != null && breakpointsService != null && bm != null) {
 			final IBreakpointsTargetDMContext bpTargetDMC = getBreakpointsTargetContext(commandControl, miBpt);
-			if (bpTargetDMC == null)
+			if (bpTargetDMC == null) {
 				return;
-			final Map<Integer, MIBreakpointDMData> contextBreakpoints = breakpointsService.getBreakpointMap(bpTargetDMC);
-			if (contextBreakpoints == null)
+			}
+			final Map<String, MIBreakpointDMData> contextBreakpoints = breakpointsService.getBreakpointMap(bpTargetDMC);
+			if (contextBreakpoints == null) {
 				return;
+			}
 			IBreakpoint b = bm.findPlatformBreakpoint(
 				new MIBreakpointDMContext(breakpointsService, new IDMContext[] { bpTargetDMC }, miBpt.getNumber()));
 			if (!(b instanceof ICBreakpoint)) {
 				// Platform breakpoint hasn't been created yet. Store the latest 
 				// modification data, it will be picked up later.
-				Map<Integer, MIBreakpoint> map = fPendingModifications.get(bpTargetDMC);
+				Map<String, MIBreakpoint> map = fPendingModifications.get(bpTargetDMC);
 				if (map == null) {
-					map = new HashMap<Integer, MIBreakpoint>();
+					map = new HashMap<String, MIBreakpoint>();
 					fPendingModifications.put(bpTargetDMC, map);
 				}
-				map.put(Integer.valueOf(miBpt.getNumber()), miBpt);
+				map.put(miBpt.getNumber(), miBpt);
 			}
 			else {
 				ICBreakpoint plBpt = (ICBreakpoint)b;
@@ -406,9 +417,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 			IBreakpointsTargetDMContext bpTargetDMC,
 			ICBreakpoint plBpt, 
 			MIBreakpoint miBpt) {
-		Map<Integer, MIBreakpointDMData> contextBreakpoints = getBreakpointsService().getBreakpointMap(bpTargetDMC);
-		MIBreakpointDMData oldData = contextBreakpoints.get(Integer.valueOf(miBpt.getNumber()));
-		contextBreakpoints.put(Integer.valueOf(miBpt.getNumber()), new MIBreakpointDMData(miBpt));
+		Map<String, MIBreakpointDMData> contextBreakpoints = getBreakpointsService().getBreakpointMap(bpTargetDMC);
+		MIBreakpointDMData oldData = contextBreakpoints.get(miBpt.getNumber());
+		contextBreakpoints.put(miBpt.getNumber(), new MIBreakpointDMData(miBpt));
 		try {
 			if (plBpt.isEnabled() != miBpt.isEnabled()) {
 				plBpt.setEnabled(miBpt.isEnabled());
@@ -420,10 +431,11 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 				plBpt.setIgnoreCount(miBpt.getIgnoreCount());
 			}
 			if (oldData.isPending() != miBpt.isPending()) {
-				if (miBpt.isPending())
+				if (miBpt.isPending()) {
 					plBpt.decrementInstallCount();
-				else
+				} else {
 					plBpt.incrementInstallCount();
+				}
 			}
 			if (plBpt instanceof ICTracepoint && miBpt.isTracepoint()) {
 				ICTracepoint plTpt = (ICTracepoint)plBpt;
@@ -437,10 +449,11 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 					boolean first = true;
 					String[] commands = miBpt.getCommands().split(TracepointActionManager.TRACEPOINT_ACTION_DELIMITER);
 					for (ITracepointAction action : getActionsFromCommands(commands)) {
-						if (first)
+						if (first) {
 							first = false;
-						else
+						} else {
 							sb.append(TracepointActionManager.TRACEPOINT_ACTION_DELIMITER);
+						}
 						sb.append(action.getName());
 					}
 					// Target breakpoints and platform breakpoints use the same format 
@@ -469,13 +482,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 			}
 		}
 		catch(CoreException e) {
-			contextBreakpoints.put(Integer.valueOf(miBpt.getNumber()), oldData);
+			contextBreakpoints.put(miBpt.getNumber(), oldData);
 			GdbPlugin.log(e.getStatus());
 		}
 	}
 
 	private void setThreadSpecificBreakpoint(
-			IBreakpointsTargetDMContext bpTargetDMC, 
 			final ICBreakpoint plBpt, 
 			MIBreakpoint miBpt) {
 
@@ -500,13 +512,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 			if (execDMCs == null) {
 				execDMCs = new IExecutionDMContext[0];
 			}
-			int threadNum = Integer.parseInt(threadId);
 			for (IExecutionDMContext execDMC : execDMCs) {
-				if (execDMC instanceof IMIExecutionDMContext 
-					&& ((IMIExecutionDMContext)execDMC).getThreadId() == threadNum) {
-					// The platform breakpoint is already restricted to the given thread.
-					return;
-				}
+                String ctxThreadId = ((IMIExecutionDMContext)execDMC).getThreadId();
+                if (execDMC instanceof IMIExecutionDMContext && ctxThreadId.equals(threadId)) {
+                    // The platform breakpoint is already restricted to the given thread.
+                    return;
+                }
 			}
 			IExecutionDMContext[] newExecDMCs = new IExecutionDMContext[execDMCs.length + 1];
 			System.arraycopy(execDMCs, 0, newExecDMCs, 0, execDMCs.length);
@@ -515,9 +526,6 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 					processes.createThreadContext(procDmc, threadId),
 					threadId);
 			bpExtension.setThreadFilters(newExecDMCs);
-		}
-		catch(NumberFormatException e) {
-			GdbPlugin.log(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, "Invalid thread id")); //$NON-NLS-1$
 		}
 		catch(CoreException e) {
 			GdbPlugin.log(e);
@@ -584,10 +592,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 
 		try {
 			return CDIDebugModel.createAddressBreakpoint(
@@ -611,10 +621,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 		
 		return CDIDebugModel.createFunctionTracepoint(
 				fileName, 
@@ -634,10 +646,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 		
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 		
 		return CDIDebugModel.createLineTracepoint(
 				fileName, 
@@ -666,10 +680,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 
 		try {
 			return CDIDebugModel.createAddressTracepoint(
@@ -694,10 +710,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 		
 		return CDIDebugModel.createFunctionBreakpoint(
 				fileName, 
@@ -717,10 +735,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 		
 		return CDIDebugModel.createLineBreakpoint(
 				fileName, 
@@ -752,10 +772,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 
 		try {
 			return CDIDebugModel.createAddressDynamicPrintf(
@@ -783,10 +805,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 		
 		return CDIDebugModel.createFunctionDynamicPrintf(
 				fileName, 
@@ -807,10 +831,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 		
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 		
 		return CDIDebugModel.createLineDynamicPrintf(
 				fileName, 
@@ -828,10 +854,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		IResource resource = getResource(fileName);
 		
 		int type = 0;
-		if (miBpt.isTemporary())
+		if (miBpt.isTemporary()) {
 			type |= ICBreakpointType.TEMPORARY;
-		if (miBpt.isHardware())
+		}
+		if (miBpt.isHardware()) {
 			type |= ICBreakpointType.HARDWARE;
+		}
 
 		return CDIDebugModel.createWatchpoint(
 				fileName, 
@@ -866,7 +894,7 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 			IBreakpointsTargetDMContext context, 
 			Map<String, Object> attributes,
 			DataRequestMonitor<MIBreakpoint> rm) {
-		Map<Integer, MIBreakpoint> map = fCreatedTargetBreakpoints.get(context);
+		Map<String, MIBreakpoint> map = fCreatedTargetBreakpoints.get(context);
 		if (map == null) {
 			rm.done();
 			return;
@@ -927,8 +955,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		for (MIBreakpoint miBpt : targetBreakpoints) {
 			if (!miBpt.isWatchpoint() && !isCatchpoint(miBpt) && !miBpt.isTracepoint() && !miBpt.isDynamicPrintf() 
 				&& compareBreakpointAttributes(
-					miBpt, fileName, lineNumber, function, address, isHardware, isTemporary))
+					miBpt, fileName, lineNumber, function, address, isHardware, isTemporary)) {
 				return miBpt;
+			}
 		}
 		return null;
 	}
@@ -944,8 +973,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		for (MIBreakpoint miBpt : targetBreakpoints) {
 			if (miBpt.isTracepoint() 
 				&& compareBreakpointAttributes(
-					miBpt, fileName, lineNumber, function, address, isHardware, isTemporary))
+					miBpt, fileName, lineNumber, function, address, isHardware, isTemporary)) {
 				return miBpt;
+			}
 		}
 		return null;
 	}
@@ -961,8 +991,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 		for (MIBreakpoint miBpt : targetBreakpoints) {
 			if (miBpt.isDynamicPrintf() 
 					&& compareBreakpointAttributes(
-						miBpt, fileName, lineNumber, function, address, isHardware, isTemporary))
+						miBpt, fileName, lineNumber, function, address, isHardware, isTemporary)) {
 					return miBpt;
+			}
 		}
 		return null;
 	}
@@ -975,18 +1006,24 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 			Boolean isHardware, 
 			Boolean isTemporary) {
 		for (MIBreakpoint miBpt : targetBreakpoints) {
-			if (!miBpt.isWatchpoint())
+			if (!miBpt.isWatchpoint()) {
 				continue;
-			if (expression == null || !expression.equals(miBpt.getExpression()))
+			}
+			if (expression == null || !expression.equals(miBpt.getExpression())) {
 				continue;
-			if (readAccess && writeAccess && !miBpt.isAccessWatchpoint())
+			}
+			if (readAccess && writeAccess && !miBpt.isAccessWatchpoint()) {
 				continue;
-			if (readAccess && !writeAccess && !miBpt.isReadWatchpoint())
+			}
+			if (readAccess && !writeAccess && !miBpt.isReadWatchpoint()) {
 				continue;
-			if (!readAccess && writeAccess && !miBpt.isWriteWatchpoint())
+			}
+			if (!readAccess && writeAccess && !miBpt.isWriteWatchpoint()) {
 				continue;
-			if (!compareBreakpointTypeAttributes(miBpt, isHardware, isTemporary))
+			}
+			if (!compareBreakpointTypeAttributes(miBpt, isHardware, isTemporary)) {
 				continue;
+			}
 			return miBpt;
 		}
 		return null;
@@ -1010,35 +1047,41 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 			Integer lineNumber,
 			String function,
 			String address) {
-		if (isFunctionBreakpoint(miBpt) && (function == null || !function.equals(getFunctionName(miBpt))))
+		if (isFunctionBreakpoint(miBpt) && (function == null || !function.equals(getFunctionName(miBpt)))) {
 			return false;
+		}
 		if (isAddressBreakpoint(miBpt) 
-			&& (address == null || !address.equals(getPlatformAddress(miBpt.getAddress()).toHexAddressString()))) 
+			&& (address == null || !address.equals(getPlatformAddress(miBpt.getAddress()).toHexAddressString()))) { 
 			return false;
+		}
 		if (isLineBreakpoint(miBpt)) {
 			String miBptFileName = getFileName(miBpt);
-			if (fileName == null || miBptFileName == null || !new File(fileName).equals(new File(miBptFileName)))
+			if (fileName == null || miBptFileName == null || !new File(fileName).equals(new File(miBptFileName))) {
 				return false;
-			if (lineNumber == null || lineNumber.intValue() != getLineNumber(miBpt))
+			}
+			if (lineNumber == null || lineNumber.intValue() != getLineNumber(miBpt)) {
 				return false;
+			}
 		}
 		return true;
 	}
 
 	private boolean compareBreakpointTypeAttributes(MIBreakpoint miBpt, Boolean isHardware, Boolean isTemporary) {
 		if ((isHardware == null && miBpt.isHardware()) 
-			|| (isHardware != null && isHardware.booleanValue() != miBpt.isHardware()))
+			|| (isHardware != null && isHardware.booleanValue() != miBpt.isHardware())) {
 			return false;
+		}
 		if ((isTemporary == null && miBpt.isTemporary()) 
-			|| (isTemporary != null && isTemporary.booleanValue() != miBpt.isTemporary()))
+			|| (isTemporary != null && isTemporary.booleanValue() != miBpt.isTemporary())) {
 			return false;
+		}
 		return true;
 	}
 
 	public void removeCreatedTargetBreakpoint(IBreakpointsTargetDMContext context, MIBreakpoint miBpt) {
-		Map<Integer, MIBreakpoint> map = fCreatedTargetBreakpoints.get(context);
+		Map<String, MIBreakpoint> map = fCreatedTargetBreakpoints.get(context);
 		if (map != null) {
-			map.remove(Integer.valueOf(miBpt.getNumber()));
+			map.remove(miBpt.getNumber());
 		}
 	}
 
@@ -1053,10 +1096,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     	}
     	try {
     		if (fileName == null || plBpt.getSourceHandle() == null 
-    				|| !new File(fileName).equals(new File(plBpt.getSourceHandle())))
+    				|| !new File(fileName).equals(new File(plBpt.getSourceHandle()))) {
     			return false;
-			if (plBpt.getLineNumber() != getLineNumber(miBpt))
+    		}
+			if (plBpt.getLineNumber() != getLineNumber(miBpt)) {
 				return false;
+			}
 			return true;
 		}
 		catch(CoreException e) {
@@ -1089,12 +1134,15 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     private boolean isPlatformWatchpoint(ICWatchpoint plBpt, MIBreakpoint miBpt) {
     	try {
 			if (plBpt.getExpression() != null && plBpt.getExpression().equals(miBpt.getExpression()) ) {
-				if (miBpt.isAccessWatchpoint())
+				if (miBpt.isAccessWatchpoint()) {
 					return plBpt.isWriteType() && plBpt.isReadType();
-				else if (miBpt.isReadWatchpoint())
+				}
+				else if (miBpt.isReadWatchpoint()) {
 					return !plBpt.isWriteType() && plBpt.isReadType();
-				else if (miBpt.isWriteWatchpoint())
+				}
+				else if (miBpt.isWriteWatchpoint()) {
 					return plBpt.isWriteType() && !plBpt.isReadType();
+				}
 			}
 		}
 		catch(CoreException e) {
@@ -1111,10 +1159,12 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     	return isPlatformLineBreakpoint(plBpt, miBpt, fileName);
     }
 
-    public boolean isTargetBreakpointDeleted(IBreakpointsTargetDMContext context, int bpId, boolean remove) {
-    	Set<Integer> set = fDeletedTargetBreakpoints.get(context);
-    	if (set != null )
-    		return (remove) ? set.remove(Integer.valueOf(bpId)) : set.contains(Integer.valueOf(bpId));
+    /** @since 5.0 */
+    public boolean isTargetBreakpointDeleted(IBreakpointsTargetDMContext context, String bpId, boolean remove) {
+    	Set<String> set = fDeletedTargetBreakpoints.get(context);
+    	if (set != null) {
+    		return (remove) ? set.remove(bpId) : set.contains(bpId);
+    	}
     	return false;
     }    
 
@@ -1135,10 +1185,11 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
         	boolean found = false;
         	for (ITracepointAction action :tam.getActions()) {
         		if (command.equals(action.getSummary())) {
-        			if (whileStepping == null || subActions == null)
+        			if (whileStepping == null || subActions == null) {
         				list.add(action);
-        			else
+        			} else {
         				subActions.add(action);
+        			}
         			found = true;
         			break;
         		}
@@ -1146,25 +1197,28 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
         	if (!found) {
         		// Create a new action if an action for this command doesn't exists
         		ITracepointAction action = null;
-            	if (command.startsWith(TC_COLLECT))
+            	if (command.startsWith(TC_COLLECT)) {
             		action = createCollectAction(command.substring(TC_COLLECT.length()));
-            	else if (command.startsWith(TC_TEVAL))
+            	} else if (command.startsWith(TC_TEVAL)) {
             		action = createEvaluateAction(command.substring(TC_TEVAL.length()));
-            	else if (command.startsWith(TC_WHILE_STEPPING)) {
+            	} else if (command.startsWith(TC_WHILE_STEPPING)) {
             		whileStepping = createWhileSteppingAction(command.substring(TC_WHILE_STEPPING.length()));
-            		if (whileStepping != null)
+            		if (whileStepping != null) {
             			subActions = new ArrayList<ITracepointAction>();
+            		}
             	}
             	else if (command.equals(TC_END)) {
-            		if (whileStepping == null || subActions == null)
+            		if (whileStepping == null || subActions == null) {
             			continue;
+            		}
                 	StringBuilder sb = new StringBuilder();
                 	boolean first = true;
                 	for (ITracepointAction a : subActions) {
-                		if (first)
+                		if (first) {
                 			first = false;
-                		else
+                		} else {
                 			sb.append(',');
+                		}
                 		sb.append(a.getName());
                 	}
                 	whileStepping.setSubActionsNames(sb.toString());
@@ -1183,8 +1237,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
                 	subActions = null;
             	}
         		if (action != null) {
-        			if (!found)
+        			if (!found) {
         				TracepointActionManager.getInstance().addAction(action);
+        			}
         			if (whileStepping == null || subActions == null) {
 	        			list.add(action);
         			}
@@ -1265,8 +1320,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
                 		}
                 		else if (getData() instanceof ITranslationUnit) {
                 			IPath location = ((ITranslationUnit)getData()).getLocation();
-                			if (location != null)
+                			if (location != null) {
                 				fileName = location.toOSString();
+                			}
                 		}
                 		else if (getData() instanceof LocalFileStorage) {
                 			fileName = ((LocalFileStorage)getData()).getFile().getAbsolutePath();
@@ -1318,8 +1374,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     private String getFileName(MIBreakpoint miBpt) {
     	String fileName = (miBpt.getFullName() != null && !miBpt.getFullName().isEmpty()) ? 
     			miBpt.getFullName() : miBpt.getFile();
-    	if (fileName != null && !fileName.isEmpty())
+    	if (fileName != null && !fileName.isEmpty()) {
     		return fileName;
+    	}
     	// When a breakpoint is set from the console on an invalid file both 
     	// 'file' and 'fullname' attributes are not available, we need to parse 
     	// the 'original-location' attribute to retrieve the file name.
@@ -1329,17 +1386,19 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     		GdbPlugin.log(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, "Invalid 'original-location' attribute")); //$NON-NLS-1$
     		return ""; //$NON-NLS-1$
     	}
-    	if (origLocation.startsWith("*")) //$NON-NLS-1$
+    	if (origLocation.startsWith("*")) { //$NON-NLS-1$
     		// Address breakpoint
     		return ""; //$NON-NLS-1$
+    	}
 		int index = origLocation.lastIndexOf(':');
 		return (index > 0) ? origLocation.substring(0, index) : ""; //$NON-NLS-1$
     }
 
     private int getLineNumber(MIBreakpoint miBpt) {
     	int lineNumber = miBpt.getLine();
-    	if (lineNumber != -1)
+    	if (lineNumber != -1) {
     		return lineNumber;
+    	}
     	// When a breakpoint is set from the console on an invalid file 
     	// the 'line' attributes is not available, we need to parse 
     	// the 'original-location' attribute to retrieve the line number.
@@ -1349,9 +1408,10 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     		GdbPlugin.log(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, "Invalid 'original-location' attribute")); //$NON-NLS-1$
     		return -1;
     	}
-    	if (origLocation.startsWith("*")) //$NON-NLS-1$
+    	if (origLocation.startsWith("*")) { //$NON-NLS-1$
     		// Address breakpoint
     		return -1;
+    	}
 		int index = origLocation.lastIndexOf(':');
 		if (index > 0 && origLocation.length() > index + 1) {
 			try {
@@ -1376,9 +1436,9 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
 
     private IResource getResource(String fileName) {
 		IResource resource = null;
-		if (fileName == null || fileName.isEmpty())
+		if (fileName == null || fileName.isEmpty()) {
 			resource = ResourcesPlugin.getWorkspace().getRoot();
-		else {
+		} else {
 			IFile[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(
 				new File(fileName).toURI());
 			if (files.length > 0) {
@@ -1398,15 +1458,18 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     		// This will happen for GDB < 7.4 where the container is the breakpoint target.
     		// For GDB >= 7.4, GDB is the breakpoint target and will not be removed.
     		IBreakpointsTargetDMContext bpTargetDMContext = (IBreakpointsTargetDMContext)e.getDMContext();
-    			Map<Integer, MIBreakpoint> createdBreakpoints = fCreatedTargetBreakpoints.remove(bpTargetDMContext);
-    			if (createdBreakpoints != null)
+    			Map<String, MIBreakpoint> createdBreakpoints = fCreatedTargetBreakpoints.remove(bpTargetDMContext);
+    			if (createdBreakpoints != null) {
     				createdBreakpoints.clear();
-    			Map<Integer, MIBreakpoint> modifications = fPendingModifications.remove(bpTargetDMContext);
-    			if (modifications != null)
+    			}
+    			Map<String, MIBreakpoint> modifications = fPendingModifications.remove(bpTargetDMContext);
+    			if (modifications != null) {
     				modifications.clear();
-    			Set<Integer> deletedBreakpoints = fDeletedTargetBreakpoints.remove(bpTargetDMContext);
-    			if (deletedBreakpoints != null)
+    			}
+    			Set<String> deletedBreakpoints = fDeletedTargetBreakpoints.remove(bpTargetDMContext);
+    			if (deletedBreakpoints != null) {
     				deletedBreakpoints.clear();
+    			}
     	}
     }
 
@@ -1416,9 +1479,10 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService implements IMI
     		GdbPlugin.log(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, "Invalid 'original-location' attribute")); //$NON-NLS-1$
     		return ""; //$NON-NLS-1$
     	}
-    	if (origLocation.startsWith("*")) //$NON-NLS-1$
+    	if (origLocation.startsWith("*")) { //$NON-NLS-1$
     		// Address breakpoint
     		return ""; //$NON-NLS-1$
+    	}
 		int index = origLocation.lastIndexOf(':');
 		String function = (index >= 0) ? origLocation.substring(index + 1) : origLocation;
     	try {

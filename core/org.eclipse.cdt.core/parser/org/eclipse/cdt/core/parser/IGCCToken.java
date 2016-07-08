@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2015 IBM Corporation and others.
+ * Copyright (c) 2002, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -54,4 +54,8 @@ public interface IGCCToken extends IToken {
 	/** @since 5.10 */ int t_decimal32=					FIRST_RESERVED_IGCCToken + 29;
 	/** @since 5.10 */ int t_decimal64=					FIRST_RESERVED_IGCCToken + 30;
 	/** @since 5.10 */ int t_decimal128=				FIRST_RESERVED_IGCCToken + 31;
+	
+	/** @since 6.0 */ int tTT_is_trivially_copyable=	FIRST_RESERVED_IGCCToken + 32;
+	/** @since 6.0 */ int tTT_is_trivially_constructible=	FIRST_RESERVED_IGCCToken + 33;
+	/** @since 6.0 */ int tTT_is_trivially_assignable=	FIRST_RESERVED_IGCCToken + 34;
 }

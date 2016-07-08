@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 20009 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,20 +26,17 @@ public class AutoconfIdentifierRule implements IPredicateRule {
 		fToken = token;
 	}
 
+	@Override
 	public IToken getSuccessToken() {
 		return fToken;
 	}
 
-	/*
-	 * @see IRule#evaluate(ICharacterScanner)
-	 */
+	@Override
 	public IToken evaluate(ICharacterScanner scanner) {
 		return evaluate(scanner, false);
 	}
 	
-	/*
-	 * @see IPredicateRule#evaluate(ICharacterScanner, resume)
-	 */
+	@Override
 	public IToken evaluate(ICharacterScanner scanner, boolean resume) {
 		int c = scanner.read();
 		if (Character.isLetterOrDigit((char)c) || fExtraChars.indexOf((char)c) >= 0) {

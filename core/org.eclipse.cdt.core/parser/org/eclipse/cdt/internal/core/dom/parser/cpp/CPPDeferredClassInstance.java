@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2012 IBM Corporation and others.
+ * Copyright (c) 2005, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,7 +29,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
-import org.eclipse.cdt.core.parser.util.ObjectMap;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableType;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
@@ -74,10 +73,9 @@ public class CPPDeferredClassInstance extends CPPUnknownBinding implements ICPPD
 		return false;
 	}
 
-	 @Override
+	@Override
 	public CPPDeferredClassInstance clone() {
-		 CPPDeferredClassInstance cloned= (CPPDeferredClassInstance) super.clone();
-		 return cloned;
+		 return (CPPDeferredClassInstance) super.clone();
     }
 
 	@Override
@@ -171,12 +169,6 @@ public class CPPDeferredClassInstance extends CPPUnknownBinding implements ICPPD
 	}
 	
 	@Override
-	@Deprecated
-	public IType[] getArguments() {
-		return CPPTemplates.getArguments(getTemplateArguments());
-	}
-
-	@Override
 	public ICPPTemplateArgument[] getTemplateArguments() {
 		return fArguments;
 	}
@@ -186,11 +178,6 @@ public class CPPDeferredClassInstance extends CPPUnknownBinding implements ICPPD
 		return fClassTemplate;
 	}
 
-	@Override
-	public ObjectMap getArgumentMap() {
-		return ObjectMap.EMPTY_MAP;
-	}
-	
 	@Override
 	public CPPTemplateParameterMap getTemplateParameterMap() {
 		ICPPTemplateParameter[] params = fClassTemplate.getTemplateParameters();

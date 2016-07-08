@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2016 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,7 +34,7 @@ public class AutoconfMacroRule implements IRule {
 	protected static final int UNDEFINED = -1;
 
 	/** Buffer used for pattern detection */
-	private StringBuffer fBuffer = new StringBuffer();
+	private StringBuilder fBuffer = new StringBuilder();
 
 	private String fStartingSequence;
 
@@ -45,6 +45,7 @@ public class AutoconfMacroRule implements IRule {
 		fStartingSequence = startingSequence;
 	}
 
+	@Override
 	public IToken evaluate(ICharacterScanner scanner) {
 		int c = scanner.read();
 		fBuffer.setLength(0);

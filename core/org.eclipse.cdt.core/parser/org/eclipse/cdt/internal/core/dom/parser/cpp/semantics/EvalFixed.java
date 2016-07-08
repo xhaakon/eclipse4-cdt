@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,14 +19,15 @@ import org.eclipse.cdt.core.dom.ast.IASTExpression.ValueCategory;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.IValue;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameterPackType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemType;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -45,6 +46,14 @@ public class EvalFixed extends CPPEvaluation {
 	private boolean fCheckedIsValueDependent;
 
 	public EvalFixed(IType type, ValueCategory cat, IValue value) {
+		// Avoid nesting EvalFixed's as nesting causes the signature to be different.
+		if (value.getEvaluation() instanceof EvalFixed) {
+			EvalFixed inner = (EvalFixed) value.getEvaluation();
+			type = inner.fType;
+			cat = inner.fValueCategory;
+			value = inner.fValue;
+		}
+		
 		if (type instanceof CPPBasicType) {
 			Long num = value.numericalValue();
 			if (num != null) {
@@ -57,7 +66,7 @@ public class EvalFixed extends CPPEvaluation {
 		fValueCategory= cat;
 		fValue= value;
 	}
-
+	
 	public IType getType() {
 		return fType;
 	}
@@ -104,7 +113,7 @@ public class EvalFixed extends CPPEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		return fType;
 	}
 
@@ -164,16 +173,18 @@ public class EvalFixed extends CPPEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
-		IType type = CPPTemplates.instantiateType(fType, tpMap, packOffset, within, point);
-		IValue value = CPPTemplates.instantiateValue(fValue, tpMap, packOffset, within, maxdepth, point);
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
+		IType type = CPPTemplates.instantiateType(fType, context);
+		IValue value = CPPTemplates.instantiateValue(fValue, context, maxDepth);
 		if (type == fType && value == fValue)
 			return this;
 		// If an error occurred while instantiating the value (such as a substitution failure), 
 		// propagate that error.
 		if (value == Value.ERROR)
 			return EvalFixed.INCOMPLETE;
+		// Resolve the parameter pack type to the underlying type if the instantiated value is not dependent. 
+		if (type instanceof ICPPParameterPackType && value.numericalValue() != null)
+			type = ((ICPPParameterPackType) type).getType();
 		return new EvalFixed(type, fValueCategory, value);
 	}
 

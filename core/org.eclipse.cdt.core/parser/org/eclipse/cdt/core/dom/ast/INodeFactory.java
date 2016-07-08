@@ -15,7 +15,7 @@
 package org.eclipse.cdt.core.dom.ast;
 
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
-import org.eclipse.cdt.core.dom.ast.gnu.IGCCASTAttributeSpecifier;
+import org.eclipse.cdt.core.dom.ast.gnu.IGCCASTAttributeList;
 import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTCompoundStatementExpression;
 import org.eclipse.cdt.core.parser.IScanner;
 import org.eclipse.cdt.core.parser.IToken;
@@ -42,7 +42,6 @@ import org.eclipse.cdt.core.parser.IToken;
  * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface INodeFactory {
-	
 	/** @since 5.10 */
 	public IASTAlignmentSpecifier newAlignmentSpecifier(IASTExpression expression);
 	
@@ -105,12 +104,6 @@ public interface INodeFactory {
 
 	public IASTForStatement newForStatement(IASTStatement init, IASTExpression condition,
 			IASTExpression iterationExpression, IASTStatement body);
-	
-	/**
-	 * @deprecated Replaced by {@link #newFunctionCallExpression(IASTExpression, IASTInitializerClause[])}
-	 */
-	@Deprecated
-	public IASTFunctionCallExpression newFunctionCallExpression(IASTExpression idExpr, IASTExpression argList);
 
 	/**
 	 * @since 5.2
@@ -122,8 +115,10 @@ public interface INodeFactory {
 	public IASTFunctionDefinition newFunctionDefinition(IASTDeclSpecifier declSpecifier,
 			IASTFunctionDeclarator declarator, IASTStatement bodyStatement);
 
-	/** @since 5.7 */
-	public IGCCASTAttributeSpecifier newGCCAttributeSpecifier();
+	/**
+	 * @since 6.0
+	 */
+	public IGCCASTAttributeList newGCCAttributeList();
 
 	public IGNUASTCompoundStatementExpression newGNUCompoundStatementExpression(IASTCompoundStatement compoundStatement);
 
@@ -138,12 +133,6 @@ public interface INodeFactory {
 
 	public IASTIfStatement newIfStatement(IASTExpression condition, IASTStatement then, IASTStatement elseClause);
 	
-	/**
-	 * @deprecated Replaced by {@link #newEqualsInitializer(IASTInitializerClause)}.
-	 */
-	@Deprecated
-	public IASTInitializerExpression newInitializerExpression(IASTExpression expression);
-
 	public IASTInitializerList newInitializerList();
 	
 	public IASTLabelStatement newLabelStatement(IASTName name, IASTStatement nestedStatement);
@@ -188,12 +177,6 @@ public interface INodeFactory {
 	/** @since 5.4 */
 	public IASTTokenList newTokenList();
 
-	/**
-	 * @deprecated Replaced by {@link #newTranslationUnit(IScanner)}.
-	 */
-	@Deprecated
-	public IASTTranslationUnit newTranslationUnit();
-	
 	/**
 	 * Creates a new translation unit that cooperates with the given scanner in order
 	 * to track macro-expansions and location information.
@@ -249,4 +232,26 @@ public interface INodeFactory {
 	 * @since 5.2
 	 */
 	public void setOffsets(IASTNode node, int offset, int endOffset);
+	
+	/**
+	 * @deprecated Replaced by {@link #newFunctionCallExpression(IASTExpression, IASTInitializerClause[])}
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	@Deprecated
+	public IASTFunctionCallExpression newFunctionCallExpression(IASTExpression idExpr, IASTExpression argList);
+	
+	/**
+	 * @deprecated Replaced by {@link #newEqualsInitializer(IASTInitializerClause)}.
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	@Deprecated
+	public IASTInitializerExpression newInitializerExpression(IASTExpression expression);
+
+	/**
+	 * @deprecated Use newGCCAttributeList() instead.
+	 * @noreference This method is not intended to be referenced by clients.
+	 * @since 5.7 
+	 */
+	@Deprecated
+	public org.eclipse.cdt.core.dom.ast.gnu.IGCCASTAttributeSpecifier newGCCAttributeSpecifier();
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2005 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -39,10 +39,7 @@ public class AutoconfMacroParameterListValidator implements IContextInformationV
 	public AutoconfMacroParameterListValidator() {
 	}
 	
-	/**
-	 * @see IContextInformationValidator#install(IContextInformation, ITextViewer, int)
-	 * @see IContextInformationPresenter#install(IContextInformation, ITextViewer, int)
-	 */
+	@Override
 	public void install(IContextInformation info, ITextViewer viewer, int documentPosition) {
 		
 		fPosition= documentPosition;
@@ -130,9 +127,7 @@ public class AutoconfMacroParameterListValidator implements IContextInformationV
 		return charCount;
 	}
 	
-	/**
-	 * @see IContextInformationValidator#isContextInformationValid(int)
-	 */
+	@Override
 	public boolean isContextInformationValid(int position) {		
 		
 		try {
@@ -152,9 +147,7 @@ public class AutoconfMacroParameterListValidator implements IContextInformationV
 		}
 	}
 	
-	/**
-	 * @see IContextInformationPresenter#updatePresentation(int, TextPresentation)
-	 */
+	@Override
 	public boolean updatePresentation(int position, TextPresentation presentation) {
 
 		int currentParameter= -1;

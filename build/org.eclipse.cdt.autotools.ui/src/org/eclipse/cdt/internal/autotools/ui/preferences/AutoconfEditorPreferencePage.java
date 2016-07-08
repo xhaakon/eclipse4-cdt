@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2002, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,17 +21,15 @@ import org.eclipse.cdt.ui.PreferenceConstants;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.viewers.IColorProvider;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
@@ -63,7 +61,7 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 	private String[][] fSyntaxColorListModel;
 
 	private TableViewer fHighlightingColorListViewer;
-	private final List<HighlightingColorListItem> fHighlightingColorList= new ArrayList<HighlightingColorListItem>(5);
+	private final List<HighlightingColorListItem> fHighlightingColorList= new ArrayList<>(5);
 
 	ColorEditor fSyntaxForegroundColorEditor;
 	Button fBoldCheckBox;
@@ -153,23 +151,17 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 	 */
 	private static class ColorListLabelProvider extends LabelProvider implements IColorProvider {
 
-		/*
-		 * @see org.eclipse.jface.viewers.ILabelProvider#getText(java.lang.Object)
-		 */
+		@Override
 		public String getText(Object element) {
 			return ((HighlightingColorListItem)element).getDisplayName();
 		}
 		
-		/*
-		 * @see org.eclipse.jface.viewers.IColorProvider#getForeground(java.lang.Object)
-		 */
+		@Override
 		public Color getForeground(Object element) {
 			return ((HighlightingColorListItem)element).getItemColor();
 		}
 
-		/*
-		 * @see org.eclipse.jface.viewers.IColorProvider#getBackground(java.lang.Object)
-		 */
+		@Override
 		public Color getBackground(Object element) {
 			return null;
 		}
@@ -182,23 +174,17 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 	 */
 	private static class ColorListContentProvider implements IStructuredContentProvider {
 
-		/*
-		 * @see org.eclipse.jface.viewers.IStructuredContentProvider#getElements(java.lang.Object)
-		 */
+		@Override
 		@SuppressWarnings("unchecked")
 		public Object[] getElements(Object inputElement) {
 			return ((List<Object>)inputElement).toArray();
 		}
 
-		/*
-		 * @see org.eclipse.jface.viewers.IContentProvider#dispose()
-		 */
+		@Override
 		public void dispose() {
 		}
 
-		/*
-		 * @see org.eclipse.jface.viewers.IContentProvider#inputChanged(org.eclipse.jface.viewers.Viewer, java.lang.Object, java.lang.Object)
-		 */
+		@Override
 		public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 		}
 	}
@@ -212,6 +198,7 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		super();
 	}
 
+	@Override
 	protected OverlayPreferenceStore createOverlayStore() {
 		fSyntaxColorListModel= new String[][] {
 				{AutotoolsPreferencesMessages.getString("AutoconfEditorPreferencePage.autoconf_editor_comment"), ColorManager.AUTOCONF_COMMENT_COLOR, null}, //$NON-NLS-1$
@@ -223,7 +210,7 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 				{AutotoolsPreferencesMessages.getString("AutoconfEditorPreferencePage.autoconf_editor_var_set"), ColorManager.AUTOCONF_VAR_SET_COLOR, null},  //$NON-NLS-1$
 				{AutotoolsPreferencesMessages.getString("AutoconfEditorPreferencePage.autoconf_editor_default"), ColorManager.AUTOCONF_DEFAULT_COLOR, null},  //$NON-NLS-1$
 			};
-		ArrayList<OverlayPreferenceStore.OverlayKey> overlayKeys= new ArrayList<OverlayPreferenceStore.OverlayKey>();
+		List<OverlayPreferenceStore.OverlayKey> overlayKeys = new ArrayList<>();
 
 		overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.BOOLEAN, AutotoolsEditorPreferenceConstants.EDITOR_FOLDING_ENABLED));
 		overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.BOOLEAN, AutotoolsEditorPreferenceConstants.EDITOR_FOLDING_CONDITIONAL));
@@ -242,15 +229,13 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		return new OverlayPreferenceStore(getPreferenceStore(), keys);
 	}
 
-	private void addTextKeyToCover(ArrayList<OverlayPreferenceStore.OverlayKey> overlayKeys, String mainKey) {
+	private void addTextKeyToCover(List<OverlayPreferenceStore.OverlayKey> overlayKeys, String mainKey) {
 		overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.STRING, mainKey));
 		overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.STRING, mainKey + AutotoolsEditorPreferenceConstants.EDITOR_BOLD_SUFFIX));
 		overlayKeys.add(new OverlayPreferenceStore.OverlayKey(OverlayPreferenceStore.STRING, mainKey + AutotoolsEditorPreferenceConstants.EDITOR_ITALIC_SUFFIX));
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.PreferencePage#createContents(org.eclipse.swt.widgets.Composite)
-	 */
+	@Override
 	protected Control createContents(Composite parent) {
 		AutotoolsUIPlugin.getDefault().getWorkbench().getHelpSystem().setHelp(getControl(), IMakeHelpContextIds.MAKE_EDITOR_PREFERENCE_PAGE);
 		getOverlayStore().load();
@@ -346,9 +331,7 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		fFoldingCheckbox.setSelection(enabled);		
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.autotools.ui.preferences.AbstractAutomakeEditorPreferencePage#handleDefaults()
-	 */
+	@Override
 	protected void handleDefaults() {
 		handleSyntaxColorListSelection();
 		initializeDefaultFolding();
@@ -414,36 +397,26 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		gd.horizontalSpan= 2;
 		fItalicCheckBox.setLayoutData(gd);
 
-		fHighlightingColorListViewer.addSelectionChangedListener(new ISelectionChangedListener() {
-			public void selectionChanged(SelectionChangedEvent event) {
-				handleSyntaxColorListSelection();
-			}
-		});
+		fHighlightingColorListViewer.addSelectionChangedListener(event -> handleSyntaxColorListSelection());
 
-		foregroundColorButton.addSelectionListener(new SelectionListener() {
-			public void widgetDefaultSelected(SelectionEvent e) {
-				// do nothing
-			}
+		foregroundColorButton.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				HighlightingColorListItem item= getHighlightingColorListItem();
 				PreferenceConverter.setValue(getOverlayStore(), item.getColorKey(), fSyntaxForegroundColorEditor.getColorValue());
 			}
 		});
 
-		fBoldCheckBox.addSelectionListener(new SelectionListener() {
-			public void widgetDefaultSelected(SelectionEvent e) {
-				// do nothing
-			}
+		fBoldCheckBox.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				HighlightingColorListItem item= getHighlightingColorListItem();
 				getOverlayStore().setValue(item.getBoldKey(), fBoldCheckBox.getSelection());
 			}
 		});
 				
-		fItalicCheckBox.addSelectionListener(new SelectionListener() {
-			public void widgetDefaultSelected(SelectionEvent e) {
-				// do nothing
-			}
+		fItalicCheckBox.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				HighlightingColorListItem item= getHighlightingColorListItem();
 				getOverlayStore().setValue(item.getItalicKey(), fItalicCheckBox.getSelection());
@@ -471,13 +444,11 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		fFoldingCheckbox.setText(AutotoolsPreferencesMessages.getString("AutomakeEditorPreferencePage.foldingenable")); //$NON-NLS-1$
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING);
 		fFoldingCheckbox.setLayoutData(gd);
-		fFoldingCheckbox.addSelectionListener(new SelectionListener() {
+		fFoldingCheckbox.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				boolean enabled= fFoldingCheckbox.getSelection(); 
 				getOverlayStore().setValue(AutotoolsEditorPreferenceConstants.EDITOR_FOLDING_ENABLED, enabled);
-			}
-
-			public void widgetDefaultSelected(SelectionEvent e) {
 			}
 		});
 		
@@ -502,13 +473,11 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		fACVersionCombo.select(fACVersions.length - 1);
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING);
 		fACVersionCombo.setLayoutData(gd);
-		fACVersionCombo.addSelectionListener(new SelectionListener() {
+		fACVersionCombo.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				int index = fACVersionCombo.getSelectionIndex(); 
 				getOverlayStore().setValue(AutotoolsEditorPreferenceConstants.AUTOCONF_VERSION, fACVersionCombo.getItem(index));
-			}
-
-			public void widgetDefaultSelected(SelectionEvent e) {
 			}
 		});
 		
@@ -524,13 +493,11 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 		fAMVersionCombo.select(fAMVersions.length - 1);
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING);
 		fAMVersionCombo.setLayoutData(gd);
-		fAMVersionCombo.addSelectionListener(new SelectionListener() {
+		fAMVersionCombo.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				int index = fAMVersionCombo.getSelectionIndex(); 
 				getOverlayStore().setValue(AutotoolsEditorPreferenceConstants.AUTOMAKE_VERSION, fAMVersionCombo.getItem(index));
-			}
-
-			public void widgetDefaultSelected(SelectionEvent e) {
 			}
 		});
 		
@@ -560,13 +527,6 @@ public class AutoconfEditorPreferencePage extends AbstractEditorPreferencePage {
 	HighlightingColorListItem getHighlightingColorListItem() {
 		IStructuredSelection selection= (IStructuredSelection) fHighlightingColorListViewer.getSelection();
 		return (HighlightingColorListItem) selection.getFirstElement();
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.preference.IPreferencePage#performOk()
-	 */
-	public boolean performOk() {
-		return super.performOk();
 	}
 
 	/**

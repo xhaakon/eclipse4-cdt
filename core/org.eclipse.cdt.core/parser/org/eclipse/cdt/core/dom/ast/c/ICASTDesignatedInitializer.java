@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -67,12 +67,14 @@ public interface ICASTDesignatedInitializer extends IASTInitializer, IASTInitial
 
 	/**
 	 * @deprecated Replaced by {@link #getOperand()};
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTInitializer getOperandInitializer();
 
 	/**
 	 * @deprecated Replaced by setOperand();
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void setOperandInitializer(IASTInitializer rhs);

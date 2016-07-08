@@ -10,6 +10,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.autotools.tests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,17 +25,19 @@ import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-import junit.framework.TestCase;
-
-public class AutotoolsEnvironmentVarTest extends TestCase {
+public class AutotoolsEnvironmentVarTest {
 
 	private IProject testProject;
 
-	protected void setUp() throws Exception {
-		super.setUp();
+	@Before
+	public void setUp() throws CoreException {
 		if (!ProjectTools.setup())
 			fail("could not perform basic project workspace setup");
 		testProject = ProjectTools.createProject("testProject0");
@@ -47,10 +54,11 @@ public class AutotoolsEnvironmentVarTest extends TestCase {
 	 *
 	 * @throws Exception
 	 */
+	@Test
 	public void testAutotoolsEnvironmentVar() throws Exception {
 
 		Path p = new Path("zip/project1.zip");
-		ProjectTools.addSourceContainerWithImport(testProject, null, p, null, true);
+		ProjectTools.addSourceContainerWithImport(testProject, null, p, true);
 		assertTrue(testProject.hasNature(AutotoolsNewProjectNature.AUTOTOOLS_NATURE_ID));
 		ICConfigurationDescription cfgDes = CoreModel.getDefault().getProjectDescription(testProject)
 				.getActiveConfiguration();
@@ -66,7 +74,8 @@ public class AutotoolsEnvironmentVarTest extends TestCase {
 		assertEquals("1", verboseEnvironmentVariable.getValue());
 	}
 
-	protected void tearDown() throws Exception {
+	@After
+	public void tearDown() throws Exception {
 		testProject.refreshLocal(IResource.DEPTH_INFINITE, null);
 		try {
 			testProject.delete(true, true, null);
@@ -74,7 +83,6 @@ public class AutotoolsEnvironmentVarTest extends TestCase {
 			// FIXME: Why does a ResourceException occur when deleting the
 			// project??
 		}
-		super.tearDown();
 	}
 }
 

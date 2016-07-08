@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,29 +19,10 @@ import java.util.Comparator;
  */
 public class MIThreadListIdsInfo extends MIInfo {
 
-	int[] threadIds;
 	private String[] strThreadIds;
 
 	public MIThreadListIdsInfo(MIOutput out) {
 		super(out);
-	}
-
-	public int[] getThreadIds() {
-		if (threadIds == null) {
-			// To make sure that the threads have be parsed
-			String[] tIds = getStrThreadIds();
-			
-			threadIds = new int[tIds.length];
-			for (int i=0; i<tIds.length; i++) {
-				try {
-					threadIds[i] = Integer.parseInt(tIds[i]);
-				} catch (NumberFormatException e) {
-					threadIds[i] = 0;
-				}
-			}
-		}
-
-		return threadIds;
 	}
 
 	/**

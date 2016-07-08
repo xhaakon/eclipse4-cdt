@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2014 Wind River Systems and others.
+ * Copyright (c) 2006, 2016 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -68,7 +68,6 @@ import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.internal.service.command.events.MITracepointSelectedEvent;
 import org.eclipse.cdt.dsf.gdb.internal.service.control.StepIntoSelectionActiveOperation;
 import org.eclipse.cdt.dsf.gdb.internal.service.control.StepIntoSelectionUtils;
-import org.eclipse.cdt.dsf.gdb.service.IGDBTraceControl.ITraceRecordSelectedChangedDMEvent;
 import org.eclipse.cdt.dsf.mi.service.IMIBreakpointPathAdjuster;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
@@ -332,13 +331,14 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 	 */
 	protected static class RunToLineActiveOperation {
 		private IMIExecutionDMContext fThreadContext;
-		private int fBpId;
+		private String fBpId;
 		private String fFileLocation;
 		private String fAddrLocation;
 		private boolean fSkipBreakpoints;
 		
+		/** @since 5.0 */
 		public RunToLineActiveOperation(IMIExecutionDMContext threadContext,
-				int bpId, String fileLoc, String addr, boolean skipBreakpoints) {
+				String bpId, String fileLoc, String addr, boolean skipBreakpoints) {
 			fThreadContext = threadContext;
 			fBpId = bpId;
 			fFileLocation = fileLoc;
@@ -347,7 +347,8 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 		}
 		
 		public IMIExecutionDMContext getThreadContext() { return fThreadContext; }
-		public int getBreakointId() { return fBpId; }
+		/** @since 5.0 */
+		public String getBreakpointId() { return fBpId; }
 		public String getFileLocation() { return fFileLocation; }
 		public String getAddrLocation() { return fAddrLocation; }
 		public boolean shouldSkipBreakpoints() { return fSkipBreakpoints; }
@@ -701,7 +702,8 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 		rm.done(doCanResume(context));
 	}
 
-	private boolean doCanResume(IExecutionDMContext context) {
+	/** @since 5.0 */
+	protected boolean doCanResume(IExecutionDMContext context) {
 		// Thread case
 		if (context instanceof IMIExecutionDMContext) {
 			MIThreadRunState threadState = fThreadRunStates.get(context);
@@ -774,7 +776,8 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 		});
 	}
 
-	private void doResume(IMIContainerDMContext context, final RequestMonitor rm) {
+	/** @since 5.0 */
+	protected void doResume(IMIContainerDMContext context, final RequestMonitor rm) {
 		if (!doCanResume(context)) {
 			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
 				"Given context: " + context + ", is already running.", null)); //$NON-NLS-1$ //$NON-NLS-2$
@@ -959,7 +962,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
     				public void handleSuccess() {
     					// We must set are RunToLineActiveOperation *before* we do the resume
     					// or else we may get the stopped event, before we have set this variable.
-       					int bpId = getData().getMIBreakpoints()[0].getNumber();
+       					String bpId = getData().getMIBreakpoints()[0].getNumber();
        					String addr = getData().getMIBreakpoints()[0].getAddress();
     		        	fRunToLineActiveOperation = new RunToLineActiveOperation(dmc, bpId, location, addr, skipBreakpoints);
 
@@ -968,9 +971,9 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
             				public void handleFailure() {
             		    		IBreakpointsTargetDMContext bpDmc = DMContexts.getAncestorOfType(fRunToLineActiveOperation.getThreadContext(),
             		    				IBreakpointsTargetDMContext.class);
-            		    		int bpId = fRunToLineActiveOperation.getBreakointId();
+            		    		String bpId = fRunToLineActiveOperation.getBreakpointId();
 
-            		    		fConnection.queueCommand(fCommandFactory.createMIBreakDelete(bpDmc, new int[] {bpId}),
+            		    		fConnection.queueCommand(fCommandFactory.createMIBreakDelete(bpDmc, new String[] {bpId}),
             		    				new DataRequestMonitor<MIInfo>(getExecutor(), null));
             		    		fRunToLineActiveOperation = null;
             		    		fStepInToSelectionActiveOperation = null;
@@ -1714,9 +1717,9 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 		IDMEvent<?> event = null;
 		MIBreakpointDMContext bp = null;
 		if (e instanceof MIBreakpointHitEvent) {
-			int bpId = ((MIBreakpointHitEvent) e).getNumber();
+			String bpId = ((MIBreakpointHitEvent) e).getNumber();
 			IBreakpointsTargetDMContext bpsTarget = DMContexts.getAncestorOfType(e.getDMContext(), IBreakpointsTargetDMContext.class);
-			if (bpsTarget != null && bpId >= 0) {
+			if (bpsTarget != null && !bpId.isEmpty()) {
 				bp = new MIBreakpointDMContext(getSession().getId(), new IDMContext[] { bpsTarget }, bpId);
 				event = new BreakpointHitEvent(e.getDMContext(), (MIBreakpointHitEvent) e, bp);
 			}
@@ -1856,7 +1859,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 		// First check if it is the right thread that stopped
 		IMIExecutionDMContext threadDmc = DMContexts.getAncestorOfType(e.getDMContext(), IMIExecutionDMContext.class);
 		if (fRunToLineActiveOperation.getThreadContext().equals(threadDmc)) {
-			int bpId = 0;
+			String bpId = ""; //$NON-NLS-1$
 			if (e instanceof MIBreakpointHitEvent) {
 				bpId = ((MIBreakpointHitEvent) e).getNumber();
 			}
@@ -1876,7 +1879,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 			// does a runToLine to a line that is non-executable AND has another breakpoint AND
 			// has multiple addresses for the breakpoint.  I'm mean, come on!
 			if (fileLocation.equals(fRunToLineActiveOperation.getFileLocation()) || addrLocation.equals(fRunToLineActiveOperation.getAddrLocation())
-					|| bpId == fRunToLineActiveOperation.getBreakointId()) {
+					|| bpId.equals(fRunToLineActiveOperation.getBreakpointId())) {
 				// We stopped at the right place. All is well.
 				// Run to line completed
 				fRunToLineActiveOperation = null;
@@ -1897,7 +1900,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 					// be for another thread altogether and should not affect the current thread.
 					IBreakpointsTargetDMContext bpDmc = DMContexts.getAncestorOfType(fRunToLineActiveOperation.getThreadContext(), IBreakpointsTargetDMContext.class);
 
-					fConnection.queueCommand(fCommandFactory.createMIBreakDelete(bpDmc, new int[] { fRunToLineActiveOperation.getBreakointId() }), new DataRequestMonitor<MIInfo>(getExecutor(), null));
+					fConnection.queueCommand(fCommandFactory.createMIBreakDelete(bpDmc, new String[] { fRunToLineActiveOperation.getBreakpointId() }), new DataRequestMonitor<MIInfo>(getExecutor(), null));
 					fRunToLineActiveOperation = null;
 					fStepInToSelectionActiveOperation = null;
 				}
@@ -2003,25 +2006,15 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
     	if (fRunToLineActiveOperation != null) {
     		IBreakpointsTargetDMContext bpDmc = DMContexts.getAncestorOfType(fRunToLineActiveOperation.getThreadContext(),
     				IBreakpointsTargetDMContext.class);
-    		int bpId = fRunToLineActiveOperation.getBreakointId();
+    		String bpId = fRunToLineActiveOperation.getBreakpointId();
 
-    		fConnection.queueCommand(fCommandFactory.createMIBreakDelete(bpDmc, new int[] {bpId}),
+    		fConnection.queueCommand(fCommandFactory.createMIBreakDelete(bpDmc, new String[] {bpId}),
     				new DataRequestMonitor<MIInfo>(getExecutor(), null));
     		fRunToLineActiveOperation = null;
     	}
     	fStepInToSelectionActiveOperation = null;
     }
 
-    /**
-     * @deprecated Tracing is only supported with GDB 7.2, so this logic
-     * was moved to the GDBRunControl_7_2_NS class.
-	 * @since 3.0
-	 */
-    @Deprecated
-    @DsfServiceEventHandler 
-    public void eventDispatched(ITraceRecordSelectedChangedDMEvent e) {
-    }
-    
 	@Override
 	public void flushCache(IDMContext context) {
 		refreshThreadStates();
@@ -2196,7 +2189,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
                 		attr.put(MIBreakpoints.FILE_NAME, debuggerPath);
                 		attr.put(MIBreakpoints.LINE_NUMBER, lineNumber);
                 		attr.put(MIBreakpointDMData.IS_TEMPORARY, true);
-                		attr.put(MIBreakpointDMData.THREAD_ID, Integer.toString(threadExecDmc.getThreadId()));
+                		attr.put(MIBreakpointDMData.THREAD_ID, threadExecDmc.getThreadId());
 
                 		// Now do the operation
                 		moveToLocation(context, location, attr, rm);
@@ -2242,7 +2235,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService implements IMIRunCo
 				attr.put(MIBreakpoints.BREAKPOINT_TYPE, MIBreakpoints.BREAKPOINT);
 				attr.put(MIBreakpoints.ADDRESS, "0x" + address.toString(16)); //$NON-NLS-1$
 				attr.put(MIBreakpointDMData.IS_TEMPORARY, true);
-				attr.put(MIBreakpointDMData.THREAD_ID,  Integer.toString(threadExecDmc.getThreadId()));
+				attr.put(MIBreakpointDMData.THREAD_ID,  threadExecDmc.getThreadId());
 
 				// Now do the operation
 				moveToLocation(context, location, attr, rm);

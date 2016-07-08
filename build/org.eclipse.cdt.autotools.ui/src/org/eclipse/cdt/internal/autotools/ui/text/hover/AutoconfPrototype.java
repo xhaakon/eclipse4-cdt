@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,19 +11,20 @@
 package org.eclipse.cdt.internal.autotools.ui.text.hover;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class AutoconfPrototype {
 	protected String name;
 	protected int numPrototypes;
-	protected ArrayList<Integer> minParms;
-	protected ArrayList<Integer> maxParms;
-	protected ArrayList<ArrayList<String>> parmList;
+	protected List<Integer> minParms;
+	protected List<Integer> maxParms;
+	protected List<List<String>> parmList;
 	
 	public AutoconfPrototype() {
 		numPrototypes = 0;
-		minParms = new ArrayList<Integer>();
-		maxParms = new ArrayList<Integer>();
-		parmList = new ArrayList<ArrayList<String>>();
+		minParms = new ArrayList<>();
+		maxParms = new ArrayList<>();
+		parmList = new ArrayList<>();
 	}
 	
 	public String getName() {
@@ -43,7 +44,7 @@ public class AutoconfPrototype {
 	}
 	
 	public int getMinParms(int prototypeNum) {
-		return ((Integer)minParms.get(prototypeNum)).intValue();
+		return minParms.get(prototypeNum).intValue();
 	}
 	
 	public void setMinParms(int prototypeNum, int value) {
@@ -51,7 +52,7 @@ public class AutoconfPrototype {
 	}
 	
 	public int getMaxParms(int prototypeNum) {
-		return ((Integer)maxParms.get(prototypeNum)).intValue();
+		return maxParms.get(prototypeNum).intValue();
 	}
 	
 	public void setMaxParms(int prototypeNum, int value) {
@@ -59,16 +60,16 @@ public class AutoconfPrototype {
 	}
 	
 	public String getParmName(int prototypeNum, int parmNum) {
-		ArrayList<String> parms = parmList.get(prototypeNum);
-		return (String)parms.get(parmNum);
+		List<String> parms = parmList.get(prototypeNum);
+		return parms.get(parmNum);
 	}
 
 	// This function assumes that parms will be added in order starting
 	// with lowest prototype first.
 	public void setParmName(int prototypeNum, int parmNum, String value) {
-		ArrayList<String> parms;
+		List<String> parms;
 		if (parmList.size() == prototypeNum) {
-			parms = new ArrayList<String>();
+			parms = new ArrayList<>();
 			parmList.add(parms);
 		}
 		else

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,7 +24,6 @@ import org.eclipse.jface.text.reconciler.IReconciler;
 import org.eclipse.jface.text.reconciler.MonoReconciler;
 import org.eclipse.jface.text.rules.DefaultDamagerRepairer;
 import org.eclipse.jface.text.source.ISourceViewer;
-import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.util.PropertyChangeEvent;
 
 
@@ -54,6 +53,7 @@ public class AutomakefileSourceConfiguration extends
 
 	}
 	
+	@Override
 	public ITextHover getTextHover(ISourceViewer sourceViewer, String contentType) {
 		if (amHover == null)
 			amHover = new AutomakeTextHover(editor);
@@ -63,6 +63,7 @@ public class AutomakefileSourceConfiguration extends
 	/**
 	 * @param event
 	 */
+	@Override
 	public void adaptToPreferenceChange(PropertyChangeEvent event) {
 		AutomakefileCodeScanner scanner = getAutomakeCodeScanner();
 		scanner.adaptToPreferenceChange(event);
@@ -72,11 +73,13 @@ public class AutomakefileSourceConfiguration extends
 	 * @param event
 	 * @return
 	 */
+	@Override
 	public boolean affectsBehavior(PropertyChangeEvent event) {
 		AutomakefileCodeScanner scanner = getAutomakeCodeScanner();
 		return scanner.affectsBehavior(event);
 	}
 	
+	@Override
 	public IPresentationReconciler getPresentationReconciler(ISourceViewer v) {
 
 		PresentationReconciler reconciler = new PresentationReconciler();
@@ -111,10 +114,7 @@ public class AutomakefileSourceConfiguration extends
 		return reconciler;
 	}
 
-	
-	/**
-	 * @see SourceViewerConfiguration#getReconciler(ISourceViewer)
-	 */
+	@Override
 	public IReconciler getReconciler(ISourceViewer sourceViewer) {
 		if (editor != null && editor.isEditable()) {
 			MonoReconciler reconciler= new MonoReconciler(new AutomakefileReconcilingStrategy(editor), false);
@@ -125,9 +125,7 @@ public class AutomakefileSourceConfiguration extends
 		return null;
 	}
 	
-	/**
-	 * @see org.eclipse.jface.text.source.SourceViewerConfiguration#getContentAssistant(ISourceViewer)
-	 */
+	@Override
 	public IContentAssistant getContentAssistant(ISourceViewer sourceViewer) {
 		ContentAssistant assistant = new ContentAssistant();
 		assistant.setContentAssistProcessor(new AutomakeCompletionProcessor(editor), IDocument.DEFAULT_CONTENT_TYPE);

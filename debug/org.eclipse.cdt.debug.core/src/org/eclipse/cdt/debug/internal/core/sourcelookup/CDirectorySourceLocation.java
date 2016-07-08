@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2009 QNX Software Systems and others.
+ * Copyright (c) 2000, 2012 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -284,7 +284,7 @@ public class CDirectorySourceLocation implements IDirectorySourceLocation {
     		node.setAttribute(ATTR_DIRECTORY, getDirectory().toOSString());
     		if (getAssociation() != null)
     			node.setAttribute(ATTR_ASSOCIATION, getAssociation().toOSString());
-    		node.setAttribute(ATTR_SEARCH_SUBFOLDERS, Boolean.valueOf(searchSubfolders()).toString());
+    		node.setAttribute(ATTR_SEARCH_SUBFOLDERS, String.valueOf(searchSubfolders()));
 			return CDebugUtils.serializeDocument(document);
         } catch (ParserConfigurationException e) {
         	ex = e;

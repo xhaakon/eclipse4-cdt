@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2011 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,8 +21,6 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ILinkage;
@@ -107,6 +105,8 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+
+import junit.framework.TestSuite;
 
 public class IndexBugsTests extends BaseTestCase {
 	private ICProject fCProject;
@@ -294,14 +294,14 @@ public class IndexBugsTests extends BaseTestCase {
 
 	private IIndexFile getIndexFile(IFile file) throws CoreException {
 		return getIndexFile(fIndex, file);
-	}			
+	}
 
 	private IIndexFile getIndexFile(IIndex index, IFile file) throws CoreException {
 		IIndexFile[] files = index.getFiles(ILinkage.CPP_LINKAGE_ID, IndexLocationFactory.getWorkspaceIFL(file));
 		assertTrue("Can't find " + file.getLocation(), files.length > 0);
 		assertEquals("Found " + files.length + " files for " + file.getLocation() + " instead of one", 1, files.length);
 		return files[0];
-	}			
+	}
 
 	private void waitForIndexer() throws InterruptedException {
 		waitForIndexer(fCProject);
@@ -409,7 +409,7 @@ public class IndexBugsTests extends BaseTestCase {
     public void test150906() throws Exception {
     	String fileName= "bug150906.c";
     	String varName= "arrayDataSize";
-    	StringBuffer content= new StringBuffer();
+    	StringBuilder content= new StringBuilder();
     	content.append("unsigned char arrayData[] = {\n");
     	for (int i= 0; i < 1024 * 250 - 1; i++) {
     		content.append("0x00,");
@@ -2446,7 +2446,7 @@ public class IndexBugsTests extends BaseTestCase {
 			index.releaseReadLock();
 		}
 	}
-	
+
 	//	// context.c
 	//	#define A B
 	//	#include "b.h" // file name is important to reproduce the issue
@@ -2470,7 +2470,7 @@ public class IndexBugsTests extends BaseTestCase {
 		} finally {
 			fIndex.releaseReadLock();
 		}
-		
+
 		final CoreModel coreModel = CCorePlugin.getDefault().getCoreModel();
 		ICElement[] selection = new ICElement[] {coreModel.create(ah), coreModel.create(bh)};
 		indexManager.update(selection, IIndexManager.UPDATE_ALL);
@@ -2516,7 +2516,7 @@ public class IndexBugsTests extends BaseTestCase {
 			} finally {
 				fIndex.releaseReadLock();
 			}
-			
+
 			IFile bh= TestSourceReader.createFile(fCProject.getProject(), "b.h", contents[2]);
 			indexManager.update(new ICElement[] { fCProject }, IIndexManager.UPDATE_UNRESOLVED_INCLUDES);
 			waitForIndexer();

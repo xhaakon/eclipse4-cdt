@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2014 Ericsson and others.
+ * Copyright (c) 2011, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,10 +12,14 @@
  *******************************************************************************/
 package org.eclipse.cdt.tests.dsf.gdb.tests;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -26,37 +30,55 @@ import org.eclipse.cdt.debug.core.CDIDebugModel;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.model.ICBreakpointType;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
+import org.eclipse.cdt.dsf.datamodel.DMContexts;
+import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.StepType;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMData;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
 import org.eclipse.cdt.dsf.gdb.IGDBLaunchConfigurationConstants;
+import org.eclipse.cdt.dsf.gdb.IGdbDebugConstants;
+import org.eclipse.cdt.dsf.gdb.launching.InferiorRuntimeProcess;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.MIExpressions;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIStoppedEvent;
+import org.eclipse.cdt.dsf.mi.service.command.output.CLITraceInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakListInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakpoint;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.Intermittent;
+import org.eclipse.cdt.tests.dsf.gdb.framework.IntermittentRule;
+import org.eclipse.cdt.tests.dsf.gdb.framework.ServiceEventWaitor;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.debug.core.ILaunchManager;
+import org.eclipse.debug.core.model.IProcess;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-@RunWith(BackgroundRunner.class)
-public class LaunchConfigurationAndRestartTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+@Intermittent(repetition = 3)
+public class LaunchConfigurationAndRestartTest extends BaseParametrizedTestCase {
+	public @Rule IntermittentRule intermittentRule = new IntermittentRule();
 	protected static final String EXEC_NAME = "LaunchConfigurationAndRestartTestApp.exe";
 
 	protected static final int FIRST_LINE_IN_MAIN = 27;
 	protected static final int LAST_LINE_IN_MAIN = 30;
+	// The exit code returned by the test program
+	private static final int TEST_EXIT_CODE = 36;
 
 	protected DsfSession fSession;
     protected DsfServicesTracker fServicesTracker;
@@ -69,6 +91,7 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     
     @Override
 	public void doBeforeTest() throws Exception {
+		removeTeminatedLaunchesBeforeTest();
 		setLaunchAttributes();
 		// Can't run the launch right away because each test needs to first set some 
 		// parameters.  The individual tests will be responsible for starting the launch. 
@@ -105,9 +128,9 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
         // Restart the program if we are testing such a case
         if (fRestart) {
         	synchronized (this) {
-				wait(1000);
+				wait(1000); // XXX: horrible hack, what are we waiting for?
 			}
-    		fRestart = false;
+    		fRestart = false;	
 			SyncUtil.restart(getGDBLaunch());
         }
     }
@@ -118,17 +141,6 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
 		
         if (fServicesTracker != null) fServicesTracker.dispose();
     }
-
-
-    // HACK to get the full path of the program, which we need in other
-    // tests.  There must be a proper eclipse way to do this!
-    private static String fFullProgramPath;
-	@Test
-    public void getFullPath() throws Throwable {
-		doLaunch();
-		MIStoppedEvent stopped = getInitialStoppedEvent();
-		fFullProgramPath = stopped.getFrame().getFullname();
-	}
 
     // *********************************************************************
     // Below are the tests for the launch configuration.
@@ -141,10 +153,9 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
      */
     @Test
     public void testSettingWorkingDirectory() throws Throwable {
-		IPath path = new Path(fFullProgramPath);
-		String dir = path.removeLastSegments(4).toPortableString() + "/" + EXEC_PATH;
+		String dir = new File(EXEC_PATH).getAbsolutePath();
 		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY, dir);
-		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, dir + EXEC_NAME);
+		setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, dir + "/" + EXEC_NAME);
 
        	doLaunch();
         
@@ -217,8 +228,9 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
      *     17^done
      */
     @Test
-    @Ignore
+
     public void testSourceGdbInit() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
         setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_GDB_INIT, 
                            "data/launch/src/launchConfigTestGdbinit");
         doLaunch();
@@ -276,8 +288,8 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
      * Repeat the test testSourceGdbInit, but after a restart.
      */
     @Test
-    @Ignore
     public void testSourceGdbInitRestart() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
     	fRestart = true;
     	testSourceGdbInit();
     }
@@ -565,20 +577,12 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     					fExpService.getFormattedValueContext(argcDmc, MIExpressions.DETAILS_FORMAT), rm);
     		}
     	};
-    	try {
-    		fExpService.getExecutor().execute(query);
-    		FormattedValueDMData value = query.get(500, TimeUnit.MILLISECONDS);
+   		fExpService.getExecutor().execute(query);
+   		FormattedValueDMData value = query.get(500, TimeUnit.MILLISECONDS);
     		
-    		// Argc should be 2: the program name and the one arguments
-    		assertTrue("Expected 2 but got " + value.getFormattedValue(),
-    				value.getFormattedValue().trim().equals("2"));
-    	} catch (InterruptedException e) {
-    		fail(e.getMessage());
-    	} catch (ExecutionException e) {
-    		fail(e.getCause().getMessage());
-    	} catch (TimeoutException e) {
-    		fail(e.getMessage());
-    	}
+   		// Argc should be 2: the program name and the one arguments
+   		assertTrue("Expected 2 but got " + value.getFormattedValue(),
+   				value.getFormattedValue().trim().equals("2"));
     	
     	// Check that argv is also correct.
     	final IExpressionDMContext argvDmc = SyncUtil.createExpression(stoppedEvent.getDMContext(), "argv[argc-1]");
@@ -589,18 +593,64 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     					fExpService.getFormattedValueContext(argvDmc, MIExpressions.DETAILS_FORMAT), rm);
     		}
     	};
-    	try {
-    		fExpService.getExecutor().execute(query2);
-    		FormattedValueDMData value = query2.get(500, TimeUnit.MILLISECONDS);
-    		assertTrue("Expected \"" + argumentUsedByGDB + "\" but got " + value.getFormattedValue(),
-    				value.getFormattedValue().trim().endsWith(argumentUsedByGDB));
-    	} catch (InterruptedException e) {
-    		fail(e.getMessage());
-    	} catch (ExecutionException e) {
-    		fail(e.getCause().getMessage());
-    	} catch (TimeoutException e) {
-    		fail(e.getMessage());
-    	}
+    	fExpService.getExecutor().execute(query2);
+    	value = query2.get(500, TimeUnit.MILLISECONDS);
+   		assertTrue("Expected \"" + argumentUsedByGDB + "\" but got " + value.getFormattedValue(),
+   				value.getFormattedValue().trim().endsWith(argumentUsedByGDB));
+    }
+    
+    /**
+     * This test will tell the launch to set some more arguments for the program.  We will
+     * then check that the program has the same arguments.
+     * See bug 474648
+     */
+    @Test
+    public void testSettingArgumentsWithSpecialSymbols() throws Throwable {
+    	// Test that arguments are parsed correctly:
+    	// The string provided by the user is split into arguments on spaces
+    	// except for those inside quotation marks, double or single.
+    	// Any character within quotation marks or after the backslash character
+    	// is treated literally, whilst these special characters have to be
+    	// escaped explicitly to be recorded.
+    	// All other characters including semicolons, backticks, pipes, dollars and newlines
+    	// must be treated literally.
+    	String argumentToPreserveSpaces = "--abc=\"x;y;z\nsecondline: \"`date`$PS1\"`date | wc`\"";
+    	String argumentUsedByGDB = "\"--abc=x;y;z\\nsecondline: `date`$PS1`date | wc`\"";
+
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_ARGUMENTS, argumentToPreserveSpaces);
+    	doLaunch();
+
+    	MIStoppedEvent stoppedEvent = getInitialStoppedEvent();
+
+    	// Check that argc is correct
+    	final IExpressionDMContext argcDmc = SyncUtil.createExpression(stoppedEvent.getDMContext(), "argc");
+    	Query<FormattedValueDMData> query = new Query<FormattedValueDMData>() {
+    		@Override
+    		protected void execute(DataRequestMonitor<FormattedValueDMData> rm) {
+    			fExpService.getFormattedExpressionValue(
+    					fExpService.getFormattedValueContext(argcDmc, MIExpressions.DETAILS_FORMAT), rm);
+    		}
+    	};
+    	fExpService.getExecutor().execute(query);
+    	FormattedValueDMData value = query.get(500, TimeUnit.MILLISECONDS);
+    		
+    	// Argc should be 2: the program name and the four arguments.
+    	assertTrue("Expected 2 but got " + value.getFormattedValue(),
+    			value.getFormattedValue().trim().equals("2"));
+    	
+    	// Check that argv is also correct.
+    	final IExpressionDMContext argvDmc = SyncUtil.createExpression(stoppedEvent.getDMContext(), "argv[argc-1]");
+    	Query<FormattedValueDMData> query2 = new Query<FormattedValueDMData>() {
+    		@Override
+    		protected void execute(DataRequestMonitor<FormattedValueDMData> rm) {
+    			fExpService.getFormattedExpressionValue(
+    					fExpService.getFormattedValueContext(argvDmc, MIExpressions.DETAILS_FORMAT), rm);
+    		}
+    	};
+    	fExpService.getExecutor().execute(query2);
+    	value = query2.get(500, TimeUnit.MILLISECONDS);
+   		assertTrue("Expected \"" + argumentUsedByGDB + "\" but got " + value.getFormattedValue(),
+   				value.getFormattedValue().endsWith(argumentUsedByGDB));
     }
     
     /**
@@ -701,5 +751,348 @@ public class LaunchConfigurationAndRestartTest extends BaseTestCase {
     	testNoStopAtMain();
     }
 
+    /**
+     * Test that the exit code is available after the inferior as run to
+     * completion so that the console can use it.
+     */
+    @Test
+    public void testExitCodeSet() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_3);
+    	doLaunch();
+    	
+        ServiceEventWaitor<ICommandControlShutdownDMEvent> shutdownEventWaitor = new ServiceEventWaitor<ICommandControlShutdownDMEvent>(
+        		getGDBLaunch().getSession(),
+        		ICommandControlShutdownDMEvent.class);
 
+        // The target is currently stopped.  We resume to get it running
+        // and wait for a shutdown event to say execution has completed
+        SyncUtil.resume();
+        
+        shutdownEventWaitor.waitForEvent(TestsPlugin.massageTimeout(1000));
+
+
+		IProcess[] launchProcesses = getGDBLaunch().getProcesses();;
+		for (IProcess proc : launchProcesses) {
+			if (proc instanceof InferiorRuntimeProcess) {
+				assertThat(proc.getAttribute(IGdbDebugConstants.INFERIOR_EXITED_ATTR), is(notNullValue()));
+
+				// Wait for the process to terminate so we can obtain its exit code
+				int count = 0;
+				while (count++ < 100 && !proc.isTerminated()) {
+					try {
+						synchronized (proc) {
+							proc.wait(10);							
+						}
+					} catch (InterruptedException ie) {
+					}
+				}
+
+				int exitValue = proc.getExitValue();
+				assertThat(exitValue, is(TEST_EXIT_CODE));
+				return;
+			}
+		}
+		assert false;
+    }
+    
+	
+	/**
+	 * This test will confirm that we have turned on "pending breakpoints"
+	 * The pending breakpoint setting only affects CLI commands so we have
+	 * to test with one.  We don't have classes to set breakpoints using CLI,
+	 * but we do for tracepoints, which is the same for this test.
+	 * 
+	 * The pending breakpoint feature only works with tracepoints starting
+	 * with GDB 7.0.
+	 * 
+	 * We could run this test before 7.0 but we would have to use a breakpoint
+	 * set using CLI commands.
+	 */
+    @Test
+    public void testPendingBreakpointSetting() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_0);
+        doLaunch();
+    	MIStoppedEvent stoppedEvent = getInitialStoppedEvent();
+
+    	final IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(stoppedEvent.getDMContext(),
+    																				 IBreakpointsTargetDMContext.class);
+    	Query<MIBreakListInfo> query = new Query<MIBreakListInfo>() {
+    		@Override
+    		protected void execute(final DataRequestMonitor<MIBreakListInfo> rm) {
+    			fGdbControl.queueCommand(
+    					fGdbControl.getCommandFactory().createCLITrace(bpTargetDmc, "invalid", ""),
+    					new ImmediateDataRequestMonitor<CLITraceInfo>(rm) {
+    						@Override
+    						protected void handleSuccess() {
+    							fGdbControl.queueCommand(
+    									fGdbControl.getCommandFactory().createMIBreakList(bpTargetDmc), 
+    									new ImmediateDataRequestMonitor<MIBreakListInfo>(rm) {
+    			    						@Override
+    			    						protected void handleSuccess() {
+    			    							rm.setData(getData());
+    			    							rm.done();
+    			    						}
+    									});
+    						}
+    					});
+    		}
+    	};
+    	try {
+    		fExpService.getExecutor().execute(query);
+    		MIBreakListInfo value = query.get(500, TimeUnit.MILLISECONDS);
+    		MIBreakpoint[] bps = value.getMIBreakpoints();
+    		assertTrue("Expected 1 breakpoint but got " + bps.length,
+    				   bps.length == 1);
+    		assertTrue("Expending a <PENDING> breakpoint but got one at " + bps[0].getAddress(),
+    				   bps[0].getAddress().equals("<PENDING>"));
+    	} catch (InterruptedException e) {
+    		fail(e.getMessage());
+    	} catch (ExecutionException e) {
+    		fail(e.getCause().getMessage());
+    	} catch (TimeoutException e) {
+    		fail(e.getMessage());
+    	}
+    }
+    
+    /**
+     * This test will tell the launch to "stop on main" at method main() with reverse
+     * debugging enabled.  We will verify that the launch stops at main() and that
+     * reverse debugging is enabled.
+     *
+     * In this test, the execution crosses getenv() while recording is enabled. gdb 7.0
+     * and 7.1 have trouble with that. We disable the test for those, and enable it for
+     * 7.2 and upwards.
+     */
+    @Test
+    public void testStopAtMainWithReverse() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN, true);
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL, "main");
+    	setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REVERSE, true);
+    	doLaunch();
+
+    	MIStoppedEvent stoppedEvent = getInitialStoppedEvent();
+    	// Make sure we stopped at the first line of main
+    	assertTrue("Expected to stop at main:" + FIRST_LINE_IN_MAIN + " but got " +
+    			   stoppedEvent.getFrame().getFunction() + ":" +
+    			   Integer.toString(stoppedEvent.getFrame().getLine()),
+    			   stoppedEvent.getFrame().getFunction().equals("main") &&
+    			   stoppedEvent.getFrame().getLine() == FIRST_LINE_IN_MAIN);
+    	
+    	// Step a couple of times and check where we are
+    	final int NUM_STEPS = 3;
+    	stoppedEvent = SyncUtil.step(NUM_STEPS,  StepType.STEP_OVER);
+    	assertTrue("Expected to stop at main:" + (FIRST_LINE_IN_MAIN+NUM_STEPS) + " but got " +
+ 			   stoppedEvent.getFrame().getFunction() + ":" +
+ 			   Integer.toString(stoppedEvent.getFrame().getLine()),
+ 			   stoppedEvent.getFrame().getFunction().equals("main") &&
+ 			   stoppedEvent.getFrame().getLine() == FIRST_LINE_IN_MAIN+NUM_STEPS);
+    	
+    	// Now step backwards to make sure reverse was enabled
+    	
+		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
+			new ServiceEventWaitor<MIStoppedEvent>(
+					fSession,
+					MIStoppedEvent.class);
+
+    	final int REVERSE_NUM_STEPS = 2;
+    	final IExecutionDMContext execDmc = stoppedEvent.getDMContext();
+    	Query<MIInfo> query = new Query<MIInfo>() {
+    		@Override
+    		protected void execute(DataRequestMonitor<MIInfo> rm) {
+    			fGdbControl.queueCommand(
+    					fGdbControl.getCommandFactory().createMIExecReverseNext(execDmc, REVERSE_NUM_STEPS),
+    					rm);
+    		}
+    	};
+    	try {
+    		fGdbControl.getExecutor().execute(query);
+    		query.get(500, TimeUnit.MILLISECONDS);
+    	} catch (InterruptedException e) {
+    		fail(e.getMessage());
+    	} catch (ExecutionException e) {
+    		fail(e.getCause().getMessage());
+    	} catch (TimeoutException e) {
+    		fail(e.getMessage());
+    	}
+    	
+    	stoppedEvent = eventWaitor.waitForEvent(1000);
+    	
+    	assertTrue("Expected to stop at main:" + (FIRST_LINE_IN_MAIN+NUM_STEPS-REVERSE_NUM_STEPS) + " but got " +
+  			   stoppedEvent.getFrame().getFunction() + ":" +
+  			   Integer.toString(stoppedEvent.getFrame().getLine()),
+  			   stoppedEvent.getFrame().getFunction().equals("main") &&
+  			   stoppedEvent.getFrame().getLine() == FIRST_LINE_IN_MAIN+NUM_STEPS-REVERSE_NUM_STEPS);
+    }
+    
+    /**
+     * Repeat the test testStopAtMainWithReverse, but after a restart.
+     */
+    @Test
+    public void testStopAtMainWithReverseRestart() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
+    	fRestart = true;
+    	testStopAtMainWithReverse();
+    }
+
+    /**
+     * This test will tell the launch to "stop on main" at method stopAtOther(), 
+     * with reverse debugging enabled.  We will then verify that the launch is properly
+     * stopped at stopAtOther() and that it can go backwards until main() (this will
+     * confirm that reverse debugging was enabled at the very start).
+     *
+     * In this test, the execution crosses getenv() while recording is enabled. gdb 7.0
+     * and 7.1 have trouble with that. We disable the test for those, and enable it for
+     * 7.2 and upwards.
+     */
+	@Test
+    public void testStopAtOtherWithReverse() throws Throwable {
+		assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN, true);
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL, "stopAtOther");
+    	setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REVERSE, true);
+    	doLaunch();
+    	
+    	MIStoppedEvent stoppedEvent = getInitialStoppedEvent();
+    	
+    	// The initial stopped event is not the last stopped event.
+    	// With reverse we have to stop the program, turn on reverse and start it again.
+    	// Let's get the frame where we really are stopped right now.
+    	final IExecutionDMContext execDmc = stoppedEvent.getDMContext();
+    	IFrameDMData frame = SyncUtil.getFrameData(execDmc, 0);
+ 
+    	// Make sure we stopped at the first line of main
+    	assertTrue("Expected to stop at stopAtOther but got " +
+    			   frame.getFunction(),
+    			   frame.getFunction().equals("stopAtOther"));
+    	
+    	// Now step backwards all the way to the start to make sure reverse was enabled from the very start   	
+		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
+			new ServiceEventWaitor<MIStoppedEvent>(
+					fSession,
+					MIStoppedEvent.class);
+
+    	final int REVERSE_NUM_STEPS = 3;
+    	Query<MIInfo> query2 = new Query<MIInfo>() {
+    		@Override
+    		protected void execute(DataRequestMonitor<MIInfo> rm) {
+    			fGdbControl.queueCommand(
+    					fGdbControl.getCommandFactory().createMIExecReverseNext(execDmc, REVERSE_NUM_STEPS),
+    					rm);
+    		}
+    	};
+    	try {
+    		fGdbControl.getExecutor().execute(query2);
+    		query2.get(500, TimeUnit.MILLISECONDS);
+    	} catch (InterruptedException e) {
+    		fail(e.getMessage());
+    	} catch (ExecutionException e) {
+    		fail(e.getCause().getMessage());
+    	} catch (TimeoutException e) {
+    		fail(e.getMessage());
+    	}
+    	
+    	stoppedEvent = eventWaitor.waitForEvent(1000);
+    	
+    	assertTrue("Expected to stop at main:" + (FIRST_LINE_IN_MAIN) + " but got " +
+  			   stoppedEvent.getFrame().getFunction() + ":" +
+  			   Integer.toString(stoppedEvent.getFrame().getLine()),
+  			   stoppedEvent.getFrame().getFunction().equals("main") &&
+  			   stoppedEvent.getFrame().getLine() == FIRST_LINE_IN_MAIN);
+    }
+    
+    /**
+     * Repeat the test testStopAtOtherWithReverse, but after a restart.
+     */
+    @Test
+    @Ignore("Fails. Investigate what it needs to wait for.")
+    public void testStopAtOtherWithReverseRestart() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
+    	fRestart = true;
+    	testStopAtOtherWithReverse();
+    }
+    /**
+     * This test will set a breakpoint at the last line of the program and will tell 
+     * the launch to NOT "stop on main", with reverse debugging enabled.  We will 
+     * verify that the first stop is at the last line of the program but that the program
+     * can run backwards until main() (this will confirm that reverse debugging was 
+     * enabled at the very start).
+     */
+	@Test
+	@Ignore("TODO: this is not working because it does not insert the breakpoint propertly")
+    public void testNoStopAtMainWithReverse() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN, false);
+    	// Set this one as well to make sure it gets ignored
+    	setLaunchAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL, "main");
+    	setLaunchAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REVERSE, true);
+    	
+    	// MUST SET BREAKPOINT AT LAST LINE BUT BEFORE LAUNCH IS STARTED
+    	// MUST SET BREAKPOINT AT LAST LINE BUT BEFORE LAUNCH IS STARTED
+    	// MUST SET BREAKPOINT AT LAST LINE BUT BEFORE LAUNCH IS STARTED
+    	// see testNoStopAtMain()
+    	
+    	doLaunch();
+
+    	MIStoppedEvent stoppedEvent = getInitialStoppedEvent();
+    	
+    	// The initial stopped event is not the last stopped event.
+    	// With reverse we have to stop the program, turn on reverse and start it again.
+    	// Let's get the frame where we really are stopped right now.
+    	final IExecutionDMContext execDmc = stoppedEvent.getDMContext();
+    	IFrameDMData frame = SyncUtil.getFrameData(execDmc, 0);
+ 
+    	// Make sure we stopped at the first line of main
+    	assertTrue("Expected to stop at main:" + LAST_LINE_IN_MAIN + " but got " +
+    			   frame.getFunction() + ":" +
+    			   Integer.toString(frame.getLine()),
+    			   frame.getFunction().equals("main") &&
+    			   frame.getLine() == LAST_LINE_IN_MAIN);
+    	
+    	// Now step backwards all the way to the start to make sure reverse was enabled from the very start   	
+		final ServiceEventWaitor<MIStoppedEvent> eventWaitor =
+			new ServiceEventWaitor<MIStoppedEvent>(
+					fSession,
+					MIStoppedEvent.class);
+
+    	final int REVERSE_NUM_STEPS = 3;
+    	Query<MIInfo> query2 = new Query<MIInfo>() {
+    		@Override
+    		protected void execute(DataRequestMonitor<MIInfo> rm) {
+    			fGdbControl.queueCommand(
+    					fGdbControl.getCommandFactory().createMIExecReverseNext(execDmc, REVERSE_NUM_STEPS),
+    					rm);
+    		}
+    	};
+    	try {
+    		fGdbControl.getExecutor().execute(query2);
+    		query2.get(500, TimeUnit.MILLISECONDS);
+    	} catch (InterruptedException e) {
+    		fail(e.getMessage());
+    	} catch (ExecutionException e) {
+    		fail(e.getCause().getMessage());
+    	} catch (TimeoutException e) {
+    		fail(e.getMessage());
+    	}
+    	
+    	stoppedEvent = eventWaitor.waitForEvent(1000);
+    	
+    	assertTrue("Expected to stop at main:" + (FIRST_LINE_IN_MAIN) + " but got " +
+  			   stoppedEvent.getFrame().getFunction() + ":" +
+  			   Integer.toString(stoppedEvent.getFrame().getLine()),
+  			   stoppedEvent.getFrame().getFunction().equals("main") &&
+  			   stoppedEvent.getFrame().getLine() == FIRST_LINE_IN_MAIN);
+    }
+    
+    /**
+     * Repeat the test testNoStopAtMainWithReverse, but after a restart.
+     * TODO: remove ignore when parent test is fixed
+     */
+    @Test
+    @Ignore
+    public void testNoStopAtMainWithReverseRestart() throws Throwable {
+    	assumeGdbVersionAtLeast(ITestConstants.SUFFIX_GDB_7_2);
+    	fRestart = true;
+    	testNoStopAtMainWithReverse();
+    }
 }

@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2015 QNX Software Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package org.eclipse.cdt.arduino.ui.internal.remote;
 
 import java.io.IOException;
@@ -37,7 +44,7 @@ public class ArduinoTargetPropertyPage extends PropertyPage implements IWorkbenc
 		Composite comp = new Composite(parent, SWT.NONE);
 		comp.setLayout(new GridLayout(2, false));
 
-		IRemoteConnection remoteConnection = (IRemoteConnection) getElement().getAdapter(IRemoteConnection.class);
+		IRemoteConnection remoteConnection = getElement().getAdapter(IRemoteConnection.class);
 		ArduinoRemoteConnection arduinoRemote = remoteConnection.getService(ArduinoRemoteConnection.class);
 
 		Label portLabel = new Label(comp, SWT.NONE);
@@ -86,18 +93,14 @@ public class ArduinoTargetPropertyPage extends PropertyPage implements IWorkbenc
 
 	@Override
 	public boolean performOk() {
-		IRemoteConnection remoteConnection = (IRemoteConnection) getElement().getAdapter(IRemoteConnection.class);
+		IRemoteConnection remoteConnection = getElement().getAdapter(IRemoteConnection.class);
 		IRemoteConnectionWorkingCopy workingCopy = remoteConnection.getWorkingCopy();
 
-		String portName = portSelector.getItem(portSelector.getSelectionIndex());
-		workingCopy.setAttribute(ArduinoRemoteConnection.PORT_NAME, portName);
-
 		ArduinoBoard board = boards[boardSelector.getSelectionIndex()];
-		workingCopy.setAttribute(ArduinoRemoteConnection.BOARD_NAME, board.getName());
-		ArduinoPlatform platform = board.getPlatform();
-		workingCopy.setAttribute(ArduinoRemoteConnection.PLATFORM_NAME, platform.getName());
-		ArduinoPackage pkg = platform.getPackage();
-		workingCopy.setAttribute(ArduinoRemoteConnection.PACKAGE_NAME, pkg.getName());
+		ArduinoRemoteConnection.setBoardId(workingCopy, board);
+
+		String portName = portSelector.getItem(portSelector.getSelectionIndex());
+		ArduinoRemoteConnection.setPortName(workingCopy, portName);
 
 		try {
 			workingCopy.save();

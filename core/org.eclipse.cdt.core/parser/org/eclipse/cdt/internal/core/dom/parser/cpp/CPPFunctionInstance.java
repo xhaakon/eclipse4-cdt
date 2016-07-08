@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2014 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -22,6 +22,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateArgument;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 
 /**
@@ -30,7 +31,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
 public class CPPFunctionInstance extends CPPFunctionSpecialization implements ICPPFunctionInstance {
 	private final ICPPTemplateArgument[] fArguments;
 
-	public CPPFunctionInstance(ICPPFunction orig, IBinding owner, CPPTemplateParameterMap argMap,
+	public CPPFunctionInstance(ICPPFunction orig, IBinding owner, ICPPTemplateParameterMap argMap,
 			ICPPTemplateArgument[] args, ICPPFunctionType type, IType[] exceptionSpecs) {
 		super(orig, owner, argMap, type, exceptionSpecs);
 		fArguments = args;
@@ -39,12 +40,6 @@ public class CPPFunctionInstance extends CPPFunctionSpecialization implements IC
 	@Override
 	public ICPPTemplateDefinition getTemplateDefinition() {
 		return (ICPPTemplateDefinition) getSpecializedBinding();
-	}
-
-	@Override
-	@Deprecated
-	public IType[] getArguments() {
-		return CPPTemplates.getArguments(fArguments);
 	}
 
 	@Override

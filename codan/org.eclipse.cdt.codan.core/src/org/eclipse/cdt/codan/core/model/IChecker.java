@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Alena Laskavaia
+ * Copyright (c) 2009, 2016 Alena Laskavaia
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -64,15 +64,6 @@ public interface IChecker {
 	 * @since 2.0
 	 */
 	IProblemReporter getProblemReporter();
-
-	/**
-	 * @param resource the resource to run on.
-	 * @return true if checker should be run on this resource.
-	 * @deprecated Ignored since 2.0. Replaced by
-	 *     {@link org.eclipse.cdt.codan.internal.core.CheckersRegistry#isCheckerEnabled(IChecker, IResource, CheckerLaunchMode)}
-	 */
-	@Deprecated
-	boolean enabledInContext(IResource resource);
 
 	/**
 	 * Checker must implement this method to determine if it can run in editor

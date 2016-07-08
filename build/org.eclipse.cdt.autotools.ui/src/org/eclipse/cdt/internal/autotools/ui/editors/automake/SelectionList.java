@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,8 +16,6 @@ import java.util.List;
 
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
@@ -60,11 +58,7 @@ public class SelectionList extends Composite {
 	private void createList(int style) {
 		fList= new Table(this, style);
 		fList.setLayoutData(new GridData(GridData.FILL_BOTH));
-		fList.addDisposeListener(new DisposeListener() {
-			public void widgetDisposed(DisposeEvent e) {
-				fRenderer.dispose();
-			}
-		});
+		fList.addDisposeListener(e -> fRenderer.dispose());
 	}
 	private void createText() {
 		fText= new Text(this, SWT.BORDER);
@@ -74,11 +68,7 @@ public class SelectionList extends Composite {
 		spec.horizontalAlignment= GridData.FILL;
 		spec.verticalAlignment= GridData.BEGINNING;
 		fText.setLayoutData(spec);
-		Listener l= new Listener() {
-			public void handleEvent(Event evt) {
-				filter(false);
-			}
-		};
+		Listener l = evt -> filter(false);
 		fText.addListener(SWT.Modify, l);
 	}
 	/**
@@ -120,9 +110,9 @@ public class SelectionList extends Composite {
 	 */
 	public List<Object> getSelection() {
 		if (fList == null || fList.isDisposed() || fList.getSelectionCount() == 0)
-			return new ArrayList<Object>(0);
+			return new ArrayList<>(0);
 		int[] listSelection= fList.getSelectionIndices();
-		List<Object> selected= new ArrayList<Object>(listSelection.length);
+		List<Object> selected= new ArrayList<>(listSelection.length);
 		for (int i= 0; i < listSelection.length; i++) {
 			selected.add(fElements[fFilteredElements[listSelection[i]]]);
 		}
@@ -182,9 +172,7 @@ public class SelectionList extends Composite {
 		if (refilter)
 			filter(true);		
 	}
-	/* 
-	 * Non Java-doc
-	 */
+	@Override
 	public void setEnabled(boolean enable) {
 		super.setEnabled(enable);
 		fText.setEnabled(enable);
@@ -198,15 +186,11 @@ public class SelectionList extends Composite {
 		if (refilter)
 			filter(true);
 	}
-	/*
-	 * Non Java-doc
-	 */
+	@Override
 	public boolean setFocus() {
 		return fText.setFocus();
 	}
-	/*
-	 * Non Java-doc
-	 */
+	@Override
 	public void setFont(Font font) {
 		super.setFont(font);
 		fText.setFont(font);

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2004, 2015 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
  * which accompanies this distribution, and is available at 
@@ -286,10 +286,9 @@ public abstract class CRenameProcessorDelegate {
             result.addWarning(msg);
         }
         if (context != null) {
-			ResourceChangeChecker checker = (ResourceChangeChecker) context.getChecker(ResourceChangeChecker.class);
+			ResourceChangeChecker checker = context.getChecker(ResourceChangeChecker.class);
 			IResourceChangeDescriptionFactory deltaFactory = checker.getDeltaFactory();
-            ValidateEditChecker editChecker=
-            		(ValidateEditChecker) context.getChecker(ValidateEditChecker.class);
+            ValidateEditChecker editChecker = context.getChecker(ValidateEditChecker.class);
 			for (IFile changedFile : fileset) {
 				deltaFactory.change(changedFile);
 				editChecker.addFile(changedFile);

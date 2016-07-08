@@ -1,5 +1,5 @@
 /*****************************************************************
- * Copyright (c) 2010, 2011 Texas Instruments and others
+ * Copyright (c) 2010, 2015 Texas Instruments and others
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -183,9 +183,9 @@ public class GdbPinProvider implements IPinProvider {
 		
 		// get the execution (thread) context label
 		if (execDmc != null) {
-			int threadId = execDmc.getThreadId();
+			String threadId = execDmc.getThreadId();
 			label += !label.isEmpty() ? ": " : "";   //$NON-NLS-1$//$NON-NLS-2$
-			label += "Thread [" + Integer.toString(threadId) + "]";   //$NON-NLS-1$//$NON-NLS-2$
+			label += "Thread [" + threadId + "]";   //$NON-NLS-1$//$NON-NLS-2$
 		}
 		return label;
 	}

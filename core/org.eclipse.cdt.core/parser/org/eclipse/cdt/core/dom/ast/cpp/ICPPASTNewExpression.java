@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -112,6 +112,7 @@ public interface ICPPASTNewExpression extends ICPPASTExpression, IASTImplicitNam
 
 	/**
 	 * @deprecated the id-expressions are part of the type-id.
+	 * @noreference This field is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public static final ASTNodeProperty NEW_TYPEID_ARRAY_EXPRESSION = new ASTNodeProperty(
@@ -119,36 +120,42 @@ public interface ICPPASTNewExpression extends ICPPASTExpression, IASTImplicitNam
 
 	/**
 	 * @deprecated the id-expressions are part of the type-id.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTExpression[] getNewTypeIdArrayExpressions();
 
 	/**
 	 * @deprecated the id-expressions are part of the type-id
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void addNewTypeIdArrayExpression(IASTExpression expression);
 	
 	/**
 	 * @deprecated Replaced by {@link #getPlacementArguments()}
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTExpression getNewPlacement();
 	
 	/**
 	 * @deprecated Replaced by {@link #setPlacementArguments(IASTInitializerClause[])}
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void setNewPlacement(IASTExpression expression);
 
 	/**
 	 * @deprecated Replaced by {@link #getInitializer()}
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTExpression getNewInitializer();
 
 	/**
 	 * @deprecated Replaced by {@link #setInitializer(IASTInitializer)}
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void setNewInitializer(IASTExpression expression);

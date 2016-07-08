@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012 Wind River Systems, Inc. and others.
+ * Copyright (c) 2012, 2014 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,7 +26,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTypeSpecialization;
 import org.eclipse.cdt.internal.core.dom.parser.ISerializableEvaluation;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeMarshalBuffer;
 import org.eclipse.cdt.internal.core.dom.parser.Value;
@@ -34,6 +33,7 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunction;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ClassTypeHelper;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPEvaluation;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.InstantiationContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -90,7 +90,7 @@ public class EvalTypeId extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public IType getTypeOrFunctionSet(IASTNode point) {
+	public IType getType(IASTNode point) {
 		if (fOutputType == null) {
 			fOutputType= computeType();
 		}
@@ -135,6 +135,8 @@ public class EvalTypeId extends CPPDependentEvaluation {
 
 	@Override
 	public boolean isValueDependent() {
+		if (CPPTemplates.isDependentType(fInputType))
+			return true;
 		for (ICPPEvaluation arg : fArguments) {
 			if (arg.isValueDependent())
 				return true;
@@ -145,8 +147,8 @@ public class EvalTypeId extends CPPDependentEvaluation {
 	@Override
 	public boolean isConstantExpression(IASTNode point) {
 		return !fRepresentsNewExpression
-			&& areAllConstantExpressions(fArguments, point)
-			&& isNullOrConstexprFunc(getConstructor(point));
+				&& areAllConstantExpressions(fArguments, point)
+				&& isNullOrConstexprFunc(getConstructor(point));
 	}
 
 	@Override
@@ -214,10 +216,9 @@ public class EvalTypeId extends CPPDependentEvaluation {
 	}
 
 	@Override
-	public ICPPEvaluation instantiate(ICPPTemplateParameterMap tpMap, int packOffset,
-			ICPPTypeSpecialization within, int maxdepth, IASTNode point) {
-		ICPPEvaluation[] args= instantiateCommaSeparatedSubexpressions(fArguments, tpMap, packOffset, within, maxdepth, point);
-		IType type = CPPTemplates.instantiateType(fInputType, tpMap, packOffset, within, point);
+	public ICPPEvaluation instantiate(InstantiationContext context, int maxDepth) {
+		ICPPEvaluation[] args= instantiateCommaSeparatedSubexpressions(fArguments, context, maxDepth);
+		IType type = CPPTemplates.instantiateType(fInputType, context);
 		if (args == fArguments && type == fInputType)
 			return this;
 
@@ -228,7 +229,7 @@ public class EvalTypeId extends CPPDependentEvaluation {
 			if (simplifiedType instanceof ICPPClassType) {
 				// Check the constructor call and return EvalFixed.INCOMPLETE to indicate a substitution
 				// failure if the call cannot be resolved.
-				ICPPFunction constructor = result.getConstructor(point);
+				ICPPFunction constructor = result.getConstructor(context.getPoint());
 				if (constructor == null || constructor instanceof IProblemBinding || constructor.isDeleted()) {
 					return EvalFixed.INCOMPLETE;
 				}

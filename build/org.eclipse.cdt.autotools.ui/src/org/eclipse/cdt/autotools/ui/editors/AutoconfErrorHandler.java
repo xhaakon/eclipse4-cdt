@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,7 +33,7 @@ public class AutoconfErrorHandler implements IAutoconfErrorHandler {
 	private int CDT_WARNING = 1;
 	private int CDT_ERROR = 2;
 	
-	private Map<Position, Annotation> annotations = new HashMap<Position, Annotation>();
+	private Map<Position, Annotation> annotations = new HashMap<>();
 	private AnnotationModel fAnnotationModel;
 	
 	public AutoconfErrorHandler(IEditorInput input) {
@@ -46,23 +46,24 @@ public class AutoconfErrorHandler implements IAutoconfErrorHandler {
 			super(annotationType, persist, message);
 		}
 
+		@Override
 		public void setQuickFixable(boolean state) {
 			// do nothing
 		}
 
+		@Override
 		public boolean isQuickFixableStateSet() {
 			return true;
 		}
 
+		@Override
 		public boolean isQuickFixable() throws AssertionFailedException {
 			return false;
 		}
 
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.autotools.ui.editors.IAutoconfErrorHandler#handleError(org.eclipse.cdt.autotools.core.ui.editors.parser.ParseException)
-	 */
+	@Override
 	public void handleError(ParseException e) {
 		Integer charStart = Integer.valueOf(e.getStartOffset());
 		Integer charEnd = Integer.valueOf(e.getEndOffset());
@@ -86,10 +87,9 @@ public class AutoconfErrorHandler implements IAutoconfErrorHandler {
 
 	public void removeExistingMarkers(int offset, int length)
 	{	
-		@SuppressWarnings("rawtypes")
-		Iterator i = fAnnotationModel.getAnnotationIterator();
+		Iterator<Annotation> i = fAnnotationModel.getAnnotationIterator();
 		while (i.hasNext()) {
-			Annotation annotation = (Annotation)i.next();
+			Annotation annotation = i.next();
 			Position p = fAnnotationModel.getPosition(annotation);
 			int pStart = p.getOffset();
 			if (pStart >= offset && pStart < (offset + length)) {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2013 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -125,8 +125,8 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 			marker.setAttribute(IMarker.MESSAGE, problemMarkerInfo.description);
 			marker.setAttribute(IMarker.SEVERITY, mapMarkerSeverity(problemMarkerInfo.severity));
 			marker.setAttribute(IMarker.LINE_NUMBER, problemMarkerInfo.lineNumber);
-			marker.setAttribute(IMarker.CHAR_START, -1);
-			marker.setAttribute(IMarker.CHAR_END, -1);
+			marker.setAttribute(IMarker.CHAR_START, problemMarkerInfo.startChar);
+			marker.setAttribute(IMarker.CHAR_END, problemMarkerInfo.endChar);
 			if (problemMarkerInfo.variableName != null) {
 				marker.setAttribute(ICModelMarker.C_MODEL_MARKER_VARIABLE, problemMarkerInfo.variableName);
 			}
@@ -240,7 +240,7 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 			}
 			names = names + name;
 		}
-		if (names.equals("")) {
+		if (names.isEmpty()) {
 			return strIds;
 		}
 		return names;

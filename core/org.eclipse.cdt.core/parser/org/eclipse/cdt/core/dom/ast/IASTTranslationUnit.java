@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2013 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -59,6 +59,7 @@ public interface IASTTranslationUnit extends IASTDeclarationListOwner, IFileNomi
     /**
      * @deprecated names for macro expansions are nested inside of
      * {@link IASTPreprocessorMacroExpansion}.
+     * @noreference This field is not intended to be referenced by clients.
      */
     @Deprecated
 	public static final ASTNodeProperty EXPANSION_NAME = new ASTNodeProperty(
@@ -150,6 +151,7 @@ public interface IASTTranslationUnit extends IASTDeclarationListOwner, IFileNomi
  
 	/**
 	 * @deprecated use {@link #getNodeSelector(String)}, instead.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTNode selectNodeForLocation(String path, int offset, int length);
@@ -241,7 +243,8 @@ public interface IASTTranslationUnit extends IASTDeclarationListOwner, IFileNomi
 	public String getContainingFilename(int offset);
 
 	/**
-	 * @deprecated don't use it.
+	 * @deprecated Use {@link #getLinkage()} instead
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
     @Deprecated
 	public ParserLanguage getParserLanguage();

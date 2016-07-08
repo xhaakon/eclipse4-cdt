@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2012 QNX Software Systems and others.
+ * Copyright (c) 2005, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,6 +15,7 @@ package org.eclipse.cdt.internal.core.pdom.dom.cpp;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.ISemanticProblem;
@@ -92,7 +93,7 @@ class PDOMCPPFunction extends PDOMCPPBinding implements ICPPFunction, IPDOMOverl
 	private ICPPFunctionType fType; // No need for volatile, all fields of ICPPFunctionTypes are final.
 
 	public PDOMCPPFunction(PDOMCPPLinkage linkage, PDOMNode parent, ICPPFunction function,
-			boolean setTypes) throws CoreException, DOMException {
+			boolean setTypes, IASTNode point) throws CoreException, DOMException {
 		super(linkage, parent, function.getNameCharArray());
 		Database db = getDB();
 		Integer sigHash = IndexCPPSignatureUtil.getSignatureHash(function);
@@ -100,7 +101,7 @@ class PDOMCPPFunction extends PDOMCPPBinding implements ICPPFunction, IPDOMOverl
 		db.putShort(record + ANNOTATION, getAnnotation(function));
 		db.putShort(record + REQUIRED_ARG_COUNT, (short) function.getRequiredArgumentCount());
 		if (setTypes) {
-			linkage.new ConfigureFunction(function, this);
+			linkage.new ConfigureFunction(function, this, point);
 		}
 	}
 
@@ -131,7 +132,7 @@ class PDOMCPPFunction extends PDOMCPPBinding implements ICPPFunction, IPDOMOverl
 	}
 
 	@Override
-	public void update(final PDOMLinkage linkage, IBinding newBinding) throws CoreException {
+	public void update(final PDOMLinkage linkage, IBinding newBinding, IASTNode point) throws CoreException {
 		if (!(newBinding instanceof ICPPFunction))
 			return;
 
@@ -184,7 +185,7 @@ class PDOMCPPFunction extends PDOMCPPBinding implements ICPPFunction, IPDOMOverl
 		if (oldRec != 0) {
 			PDOMCPPTypeList.clearTypes(this, oldRec);
 		}
-		linkage.storeEvaluation(record + RETURN_EXPRESSION, CPPFunction.getReturnExpression(func));
+		linkage.storeEvaluation(record + RETURN_EXPRESSION, CPPFunction.getReturnExpression(func, point));
 	}
 
 	private void storeExceptionSpec(IType[] exceptionSpec) throws CoreException {
@@ -415,7 +416,7 @@ class PDOMCPPFunction extends PDOMCPPBinding implements ICPPFunction, IPDOMOverl
 	}
 
 	@Override
-	public ICPPEvaluation getReturnExpression() {
+	public ICPPEvaluation getReturnExpression(IASTNode point) {
 		if (!isConstexpr())
 			return null;
 

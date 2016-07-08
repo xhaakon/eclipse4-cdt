@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2005, 2010 IBM Corporation and others.
+ *  Copyright (c) 2005, 2016 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -204,7 +204,7 @@ public class CSourceViewerConfiguration extends TextSourceViewerConfiguration {
 			scanner = new CPreprocessorScanner(getTokenStoreFactory(), keywords);
 		}
 		if (scanner == null) {
-			keywords = (ICLanguageKeywords) GPPLanguage.getDefault().getAdapter(ICLanguageKeywords.class);
+			keywords = GPPLanguage.getDefault().getAdapter(ICLanguageKeywords.class);
 			scanner= new CPreprocessorScanner(getTokenStoreFactory(), keywords);
 		}
 		fPreprocessorScanner= scanner;
@@ -605,7 +605,7 @@ public class CSourceViewerConfiguration extends TextSourceViewerConfiguration {
 			if (i < tabWidth)
 				indentPrefixes[i+1]= spaces + '\t';
 			else
-				indentPrefixes[i+1]= new String(spaces);
+				indentPrefixes[i+1]= spaces;
 		}
 		
 		indentPrefixes[tabWidth + 1]= ""; //$NON-NLS-1$
@@ -1049,12 +1049,8 @@ public class CSourceViewerConfiguration extends TextSourceViewerConfiguration {
 		};
 	}
 
-	/*
-	 * @see org.eclipse.jface.text.source.SourceViewerConfiguration#getHyperlinkDetectorTargets(org.eclipse.jface.text.source.ISourceViewer)
-	 */
 	@Override
 	protected Map<String, IAdaptable> getHyperlinkDetectorTargets(ISourceViewer sourceViewer) {
-		@SuppressWarnings("unchecked")
 		Map<String, IAdaptable> targets= super.getHyperlinkDetectorTargets(sourceViewer);
 		targets.put("org.eclipse.cdt.ui.cCode", fTextEditor); //$NON-NLS-1$
 		return targets;

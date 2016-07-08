@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2014 IBM Corporation and others.
+ * Copyright (c) 2000, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,10 +30,6 @@ import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.swt.graphics.RGB;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.dom.ast.IASTComment;
@@ -55,9 +51,13 @@ import org.eclipse.cdt.ui.testplugin.ResourceTestHelper;
 import org.eclipse.cdt.internal.ui.editor.CEditor;
 import org.eclipse.cdt.internal.ui.editor.SemanticHighlighting;
 import org.eclipse.cdt.internal.ui.editor.SemanticHighlightingManager;
+import org.eclipse.cdt.internal.ui.editor.SemanticHighlightingManager.HighlightedPosition;
 import org.eclipse.cdt.internal.ui.editor.SemanticHighlightingPresenter;
 import org.eclipse.cdt.internal.ui.editor.SemanticHighlightings;
-import org.eclipse.cdt.internal.ui.editor.SemanticHighlightingManager.HighlightedPosition;
+
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
 /**
  * Semantic highlighting tests.
@@ -438,6 +438,129 @@ public class SemanticHighlightingTest extends TestCase {
     //	struct S { };                                    //$class
     //	alignas(S) int x;                                //$class,globalVariable
     public void testHighlightingInsideAlignmentSpecifier_451082() throws Exception {
+    	makeAssertions();
+    }
+    
+	//	struct Duration {};                              //$class
+	//	Duration operator "" _d(unsigned long long);     //$class,functionDeclaration
+	//	Duration dur = 1000_d;                           //$class,globalVariable,overloadedOperator
+    public void testUserDefinedLiteralSuffix_484617() throws Exception {
+		makeAssertions();
+	}
+
+    //	template<typename T, typename U>                 //$templateParameter,templateParameter
+	//	struct Pair {};                                  //$class
+	//
+	//	template<typename T>                             //$templateParameter
+	//	using PairIntX = Pair<int, T>;                   //$typedef,class,templateParameter
+	//
+    //	struct Waldo {};                                 //$class
+    //
+	//	int main() {                                     //$functionDeclaration
+	//		PairIntX<Waldo> pair;                        //$typedef,class,localVariableDeclaration
+	//	}
+    public void testAliasTemplates_416748() throws Exception {
+    	makeAssertions();
+    }
+    
+    //	namespace N {                                    //$namespace
+    //		class C {                                    //$class
+    //			enum E1 {};                              //$enum
+    //		};
+    //		C::E1 e1;                                    //$class,enum,globalVariable
+    //		enum E2 {};                                  //$enum
+    //	}
+    //	N::C::E1 e1;                                     //$namespace,class,enum,globalVariable
+    //	N::E2 e2;                                        //$namespace,enum,globalVariable
+    public void testQualifiedEnum_485709() throws Exception {
+    	makeAssertions();
+    }
+    
+    //	class Base {};                                   //$class
+    //	class Derived : Base {                           //$class,class
+    //		using Base::Base;                            //$class,method
+    //	};
+    public void testInheritingConstructor_484898() throws Exception {
+    	makeAssertions();
+    }
+    
+	//	void foo(int param) {                            //$functionDeclaration,parameterVariable
+	//		int local;                                   //$localVariableDeclaration
+	//		[local, param](){};                          //$class,localVariable,parameterVariable
+	//	}    
+    public void testLocalVariableInLambdaCapture_486679() throws Exception {
+    	makeAssertions();
+    }
+    
+    //	template <typename T>                            //$templateParameter
+    //	struct Base {                                    //$class
+    //		enum E { A };                                //$enum,enumerator
+    //		enum class F { B };                          //$enum,enumerator
+    //	};
+    //	template <typename T>                            //$templateParameter
+    //	struct Derived : Base<T> {                       //$class,class,templateParameter
+    //		static typename Base<T>::E x                 //$class,templateParameter,enum,staticField
+    //          = Base<T>::A;                            //$class,templateParameter,enumerator
+    //		static typename Base<T>::F y                 //$class,templateParameter,enum,staticField
+    //          = Base<T>::F::B;                         //$class,templateParameter,enum,enumerator
+    //	};
+    public void testDependentEnum_486688() throws Exception {
+    	makeAssertions();
+    }
+    
+    //	#define MACRO(Name, Type) Type Name();           //$macroDefinition
+    //	typedef int Int;                                 //$typedef
+    //	class S {                                        //$class
+    //		MACRO(foo, Int)                              //$macroSubstitution,methodDeclaration,typedef
+    //	};
+    public void testMethodNameInsideMacro_486682() throws Exception {
+    	makeAssertions();
+    }
+    
+	//	#define WALDO(name) const char* Name() override { return name; }  //$macroDefinition
+	//	class S {                                        //$class
+	//		WALDO("name")                                //$macroSubstitution
+	//	};
+    public void testOverrideInMacroExpansion_486683a() throws Exception {
+    	// This tests that the 'override' does not cause the entire invocation
+    	// to be colored with the keyword highlighting.
+    	makeAssertions();
+    }
+    
+    //	#define MIRROR(arg) arg                          //$macroDefinition
+    //	MIRROR(class S { void foo() override; })         //$macroSubstitution,class,methodDeclaration,c_keyword
+    public void testOverrideInMacroExpansion_486683b() throws Exception {
+    	// This tests that the 'override' *does* cause the 'override' keyword
+    	// in the argument to be colored with the keyword highlighting.
+    	makeAssertions();
+    }
+    
+    //	#define MIRROR(arg) arg                          //$macroDefinition
+    //	struct Foo {                                     //$class
+    //		bool operator==(const Foo&) const;           //$methodDeclaration,class
+    //	};
+    //	int main() {                                     //$functionDeclaration
+    //		Foo a, b;                                    //$class,localVariableDeclaration,localVariableDeclaration
+    //		MIRROR(a == b);                              //$macroSubstitution,localVariable,overloadedOperator,localVariable
+    //	}
+    public void testOverloadedOperatorInMacroExpansion_371839() throws Exception {
+    	makeAssertions();
+    }
+    
+    //	template<unsigned... _Indexes>                   //$templateParameter
+    //	struct _Index_tuple {                            //$class
+    //		typedef _Index_tuple<_Indexes..., sizeof...(_Indexes)> __next;  //$class,templateParameter,templateParameter,typedef
+    //	};
+	//	template<unsigned _Num>                          //$templateParameter
+	//	struct _Build_index_tuple {                      //$class
+	//		typedef typename _Build_index_tuple<_Num - 1>::__type::__next __type;  //$class,templateParameter,class,class,typedef
+	//	};
+	//
+	//	template<>
+	//	struct _Build_index_tuple<0> {                   //$class
+	//		typedef _Index_tuple<> __type;               //$class,typedef
+	//	};
+    public void testRecursion_491834() throws Exception {
     	makeAssertions();
     }
 }

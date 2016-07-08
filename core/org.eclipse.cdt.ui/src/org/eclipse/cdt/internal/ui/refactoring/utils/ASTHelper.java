@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2008, 2013 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -40,14 +40,14 @@ public class ASTHelper {
 	private ASTHelper() {
 	}
 
-	static public IASTNode getDeclarationForNode(IASTNode node) {
+	public static IASTNode getDeclarationForNode(IASTNode node) {
 		while (node != null && !(node instanceof IASTSimpleDeclaration) && !(node instanceof IASTParameterDeclaration)) {
 			node = node.getParent();
 		}
 		return node;
 	}
 
-	static public IASTDeclarator getDeclaratorForNode(IASTNode node) {
+	public static IASTDeclarator getDeclaratorForNode(IASTNode node) {
 		IASTNode tmpNode = getDeclarationForNode(node);
 
 		IASTDeclarator declarator = null;
@@ -63,7 +63,7 @@ public class ASTHelper {
 		return declarator;
 	}
 
-	static public IASTDeclSpecifier getDeclarationSpecifier(IASTNode declaration) {
+	public static IASTDeclSpecifier getDeclarationSpecifier(IASTNode declaration) {
 		if (declaration != null) {
 			if (declaration instanceof IASTSimpleDeclaration) {
 				IASTSimpleDeclaration simpleDecl = (IASTSimpleDeclaration) declaration;
@@ -122,9 +122,7 @@ public class ASTHelper {
 			IASTTranslationUnit unit, String aktFileName) {
 		Collection<IASTPreprocessorStatement> statements = new ArrayList<IASTPreprocessorStatement>();
 		for (IASTPreprocessorStatement aktStatement : unit.getAllPreprocessorStatements()) {
-			if (aktStatement.getFileLocation() == null) {
-				continue;
-			} else if (aktStatement.getFileLocation().getFileName().equals(aktFileName)) {
+			if (aktStatement.getFileLocation() != null && aktStatement.getFileLocation().getFileName().equals(aktFileName)) {
 				statements.add(aktStatement);
 			}
 		}
@@ -134,9 +132,7 @@ public class ASTHelper {
 	public static Collection<IASTDeclaration> getAllInFileDeclarations(IASTTranslationUnit unit, String aktFileName) {
 		Collection<IASTDeclaration> decls = new ArrayList<IASTDeclaration>();
 		for (IASTDeclaration aktDecl: unit.getDeclarations()) {
-			if (aktDecl.getFileLocation() == null) {
-				continue;
-			} else if (aktDecl.getFileLocation().getFileName().equals(aktFileName)) {
+			if (aktDecl.getFileLocation() != null && aktDecl.getFileLocation().getFileName().equals(aktFileName)) {
 				decls.add(aktDecl);
 			}
 		}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
@@ -36,8 +35,6 @@ import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IResourceProxy;
-import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -77,6 +74,7 @@ public class OpenIncludeAction extends Action {
 		fSelectionProvider= provider;
 	}
 			
+	@Override
 	public void run() {
 		IInclude include= getIncludeStatement(fSelectionProvider.getSelection());
 		if (include == null) {
@@ -85,7 +83,7 @@ public class OpenIncludeAction extends Action {
 		
 		try {
 			IResource res = include.getUnderlyingResource();
-			ArrayList<Object> filesFound = new ArrayList<Object>(4);
+			ArrayList<Object> filesFound = new ArrayList<>(4);
 			String fullFileName= include.getFullFileName();
 			if (fullFileName != null) {
 				IPath fullPath= new Path(fullFileName);
@@ -150,8 +148,6 @@ public class OpenIncludeAction extends Action {
 			if (fileToOpen != null) {
 				EditorUtility.openInEditor(fileToOpen, include);
 			} 
-		} catch (CModelException e) {
-			CUIPlugin.log(e.getStatus());
 		} catch (CoreException e) {
 			CUIPlugin.log(e.getStatus());
 		}
@@ -196,8 +192,7 @@ public class OpenIncludeAction extends Action {
 		return ResourcesPlugin.getWorkspace().getRoot();
 	}
 	
-	private void findFile(String[] includePaths, String name, ArrayList<Object> list)
-			throws CoreException {
+	private void findFile(String[] includePaths, String name, List<Object> list) {
 		// in case it is an absolute path
 		IPath includeFile= new Path(name);		
 		if (includeFile.isAbsolute()) {
@@ -207,7 +202,7 @@ public class OpenIncludeAction extends Action {
 				return;
 			}
 		}
-		HashSet<IPath> foundSet = new HashSet<IPath>();
+		HashSet<IPath> foundSet = new HashSet<>();
 		for (int i = 0; i < includePaths.length; i++) {
 			IPath path = PathUtil.getCanonicalPath(new Path(includePaths[i]).append(includeFile));
 			File file = path.toFile();
@@ -230,30 +225,27 @@ public class OpenIncludeAction extends Action {
 	 * @param list
 	 * @throws CoreException
 	 */
-	private void findFile(IContainer parent, final IPath name, final ArrayList<Object> list) throws CoreException {
-		parent.accept(new IResourceProxyVisitor() {
-
-			public boolean visit(IResourceProxy proxy) throws CoreException {
-				if (proxy.getType() == IResource.FILE && proxy.getName().equalsIgnoreCase(name.lastSegment())) {
-					IPath rPath = proxy.requestResource().getLocation();
-					int numSegToRemove = rPath.segmentCount() - name.segmentCount();
-					IPath sPath = rPath.removeFirstSegments(numSegToRemove);
-					sPath = sPath.setDevice(name.getDevice());
-					if (Platform.getOS().equals(Platform.OS_WIN32) ?
-							sPath.toOSString().equalsIgnoreCase(name.toOSString()) :
-							sPath.equals(name)) {
-						list.add(rPath);
-					}
-					return false;
+	private void findFile(IContainer parent, final IPath name, final List<Object> list) throws CoreException {
+		parent.accept(proxy -> {
+			if (proxy.getType() == IResource.FILE && proxy.getName().equalsIgnoreCase(name.lastSegment())) {
+				IPath rPath = proxy.requestResource().getLocation();
+				int numSegToRemove = rPath.segmentCount() - name.segmentCount();
+				IPath sPath = rPath.removeFirstSegments(numSegToRemove);
+				sPath = sPath.setDevice(name.getDevice());
+				if (Platform.getOS().equals(Platform.OS_WIN32) ? sPath.toOSString().equalsIgnoreCase(name.toOSString())
+						: sPath.equals(name)) {
+					list.add(rPath);
 				}
-				return true;
+				return false;
 			}
+			return true;
 		}, 0);
 	}
 
 
 	private IPath chooseFile(ArrayList<Object> filesFound) {
 		ILabelProvider renderer= new LabelProvider() {
+			@Override
 			public String getText(Object element) {
 				if (element instanceof IPath) {
 					IPath file= (IPath)element;
@@ -277,8 +269,7 @@ public class OpenIncludeAction extends Action {
 
 	private static IInclude getIncludeStatement(ISelection sel) {
 		if (!sel.isEmpty() && sel instanceof IStructuredSelection) {
-			@SuppressWarnings("rawtypes")
-			List list= ((IStructuredSelection)sel).toList();
+			List<?> list = ((IStructuredSelection) sel).toList();
 			if (list.size() == 1) {
 				Object element= list.get(0);
 				if (element instanceof IInclude) {

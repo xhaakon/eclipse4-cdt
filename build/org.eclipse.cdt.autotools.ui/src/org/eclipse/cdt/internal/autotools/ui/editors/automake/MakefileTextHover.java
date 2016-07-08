@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,9 @@
 
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
+import org.eclipse.cdt.make.core.makefile.IMacroDefinition;
+import org.eclipse.cdt.make.core.makefile.IMakefile;
+import org.eclipse.cdt.make.ui.IWorkingCopyManager;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextHover;
@@ -36,12 +39,7 @@ public class MakefileTextHover implements ITextHover {
 		fEditor = editor;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.jface.text.ITextHover#getHoverInfo(org.eclipse.jface.text.ITextViewer,
-	 *      org.eclipse.jface.text.IRegion)
-	 */
+	@Override
 	public String getHoverInfo(ITextViewer textViewer, IRegion hoverRegion) {
 		if (hoverRegion != null) {
 			try {
@@ -66,7 +64,7 @@ public class MakefileTextHover implements ITextHover {
 							statements = new IMacroDefinition[0];
 						}
 						// iterate over all the different categories
-						StringBuffer buffer = new StringBuffer();
+						StringBuilder buffer = new StringBuilder();
 						for (int i = 0; i < statements.length; i++) {
 							if (i > 0) {
 								buffer.append("\n"); //$NON-NLS-1$
@@ -85,12 +83,7 @@ public class MakefileTextHover implements ITextHover {
 		return ""; //$NON-NLS-1$
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.jface.text.ITextHover#getHoverRegion(org.eclipse.jface.text.ITextViewer,
-	 *      int)
-	 */
+	@Override
 	public IRegion getHoverRegion(ITextViewer textViewer, int offset) {
 		Point selection = textViewer.getSelectedRange();
 		if (selection.x <= offset && offset < selection.x + selection.y) {

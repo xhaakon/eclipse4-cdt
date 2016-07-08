@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,10 +18,9 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.qt.core.QtNature;
 import org.eclipse.cdt.internal.ui.text.contentassist.CContentAssistInvocationContext;
 import org.eclipse.cdt.internal.ui.text.contentassist.ParsingBasedProposalComputer;
-import org.eclipse.cdt.qt.core.QtNature;
-import org.eclipse.cdt.qt.ui.QtUIPlugin;
 import org.eclipse.cdt.ui.text.contentassist.ContentAssistInvocationContext;
 import org.eclipse.cdt.ui.text.contentassist.ICEditorContentAssistInvocationContext;
 import org.eclipse.core.resources.IProject;
@@ -52,7 +51,7 @@ public class QtCompletionProposalComputer extends ParsingBasedProposalComputer {
 				return computeCompletionProposals(cContext, completionNode, prefix);
 			}
 		} catch (Exception e) {
-			QtUIPlugin.log(e);
+			Activator.log(e);
 		}
 
 		return Collections.emptyList();

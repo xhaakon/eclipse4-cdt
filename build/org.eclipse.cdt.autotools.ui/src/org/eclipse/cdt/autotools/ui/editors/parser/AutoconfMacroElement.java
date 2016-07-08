@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2015 Red Hat, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -22,6 +22,7 @@ public class AutoconfMacroElement extends AutoconfElement {
 		super(name);
 	}
 
+	@Override
 	public String getVar() {
 		if (children.size() > 0)
 			return getParameter(0);
@@ -33,7 +34,7 @@ public class AutoconfMacroElement extends AutoconfElement {
 	}
 
 	public String getParameter(int num) {
-		return ((AutoconfElement) children.get(num)).getName();
+		return children.get(num).getName();
 	}
 
 	/**

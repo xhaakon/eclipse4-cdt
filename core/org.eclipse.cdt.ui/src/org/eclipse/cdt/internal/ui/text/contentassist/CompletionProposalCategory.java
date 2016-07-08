@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2008 IBM Corporation and others.
+ * Copyright (c) 2005, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,11 +19,11 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jface.action.LegacyActionTools;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
@@ -252,7 +252,8 @@ public final class CompletionProposalCategory {
 	 * @return the list of computed completion proposals (element type:
 	 *         {@link org.eclipse.jface.text.contentassist.ICompletionProposal})
 	 */
-	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext context, String partition, SubProgressMonitor monitor) {
+	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext context,
+			String partition, IProgressMonitor monitor) {
 		fLastError= null;
 		List<ICompletionProposal> result= new ArrayList<>();
 		List<CompletionProposalComputerDescriptor> descriptors= new ArrayList<>(fRegistry.getProposalComputerDescriptors(partition));
@@ -276,10 +277,12 @@ public final class CompletionProposalCategory {
 	 * @return the list of computed context information objects (element type:
 	 *         {@link org.eclipse.jface.text.contentassist.IContextInformation})
 	 */
-	public List<IContextInformation> computeContextInformation(ContentAssistInvocationContext context, String partition, SubProgressMonitor monitor) {
+	public List<IContextInformation> computeContextInformation(ContentAssistInvocationContext context,
+			String partition, IProgressMonitor monitor) {
 		fLastError= null;
 		List<IContextInformation> result= new ArrayList<>();
-		List<CompletionProposalComputerDescriptor> descriptors= new ArrayList<>(fRegistry.getProposalComputerDescriptors(partition));
+		List<CompletionProposalComputerDescriptor> descriptors=
+				new ArrayList<>(fRegistry.getProposalComputerDescriptors(partition));
 	 	for (CompletionProposalComputerDescriptor desc : descriptors) {
 			if (desc.getCategory() == this)
 				result.addAll(desc.computeContextInformation(context, monitor));

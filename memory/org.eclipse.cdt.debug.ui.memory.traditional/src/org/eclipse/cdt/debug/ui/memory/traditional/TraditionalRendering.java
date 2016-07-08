@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2016 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,6 +18,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.core.model.provisional.IMemoryRenderingViewportProvider;
+import org.eclipse.cdt.debug.core.model.provisional.IMemorySpaceAwareMemoryBlock;
+import org.eclipse.cdt.debug.core.model.provisional.IMemorySpaceAwareMemoryBlockRetrieval;
+import org.eclipse.cdt.debug.internal.core.CRequest;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -29,6 +32,7 @@ import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.model.IMemoryBlock;
 import org.eclipse.debug.core.model.IMemoryBlockExtension;
+import org.eclipse.debug.core.model.IMemoryBlockRetrieval;
 import org.eclipse.debug.core.model.MemoryByte;
 import org.eclipse.debug.internal.ui.DebugUIPlugin;
 import org.eclipse.debug.internal.ui.IInternalDebugUIConstants;
@@ -38,6 +42,7 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelChangedList
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelDelta;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxy;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory;
+import org.eclipse.debug.internal.ui.views.memory.renderings.GoToAddressAction;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.debug.ui.memory.AbstractMemoryRendering;
 import org.eclipse.debug.ui.memory.AbstractTableRendering;
@@ -106,8 +111,22 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
     
     private IWorkbenchAdapter fWorkbenchAdapter;
 	private IMemoryBlockConnection fConnection;
+	
+	private String fMemorySpaceId;
     
     private final static int MAX_MENU_COLUMN_COUNT = 8;
+    
+    private IMemorySpacePreferencesHelper fMemSpacePreferenceHelper;
+    
+    private class GetMemorySpacesRequest extends CRequest implements IMemorySpaceAwareMemoryBlockRetrieval.GetMemorySpacesRequest  {
+      String [] fMemorySpaces;
+      public String[] getMemorySpaces() {
+        return fMemorySpaces;
+      }
+      public void setMemorySpaces(String[] memorySpaceIds) {
+        fMemorySpaces = memorySpaceIds;
+      }
+    }
     
 	public TraditionalRendering(String id)
     {
@@ -253,6 +272,33 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
 	public void init(final IMemoryRenderingContainer container, final IMemoryBlock block)
     {
     	super.init(container, block);
+    	
+    	fMemSpacePreferenceHelper = TraditionalMemoryRenderingFactory.getMemorySpacesPreferencesHelper();
+    	
+    	// resolve memory space, if any
+    	if (block instanceof IMemorySpaceAwareMemoryBlock) {
+    	  IMemorySpaceAwareMemoryBlock memBlock = (IMemorySpaceAwareMemoryBlock) block;
+    	  String id = memBlock.getMemorySpaceID();
+    	  fMemorySpaceId = id;
+    	}
+
+    	// extract memory space info, if applicable
+    	if (block instanceof IMemorySpaceAwareMemoryBlock) {
+    	  IMemoryBlockRetrieval retrieval = ((IMemorySpaceAwareMemoryBlock) block).getMemoryBlockRetrieval();
+    	  ((IMemorySpaceAwareMemoryBlockRetrieval)retrieval).getMemorySpaces(block, new GetMemorySpacesRequest(){
+    	    @Override
+    	    public void done() {
+    	      final String[] spaces = isSuccess() ? getMemorySpaces() : new String[0];
+    	      // remember memory spaces
+    	      Display.getDefault().asyncExec(new Runnable() {
+    	        @Override
+    	        public void run() {
+    	          fMemSpacePreferenceHelper.updateMemorySpaces(spaces);
+    	        }
+    	      });
+    	    }
+    	  }); 
+    	}
 
     	/*
          * Working with the model proxy must be done on the UI dispatch thread.
@@ -382,7 +428,7 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
     {
     	allocateColors();
     	
-        this.fRendering = new Rendering(parent, this);
+        this.fRendering = new RenderingAddressInfo(parent, this);
         
         applyPreferences();
 
@@ -504,11 +550,23 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
 
     public void allocateColors()
     {
-    	IPreferenceStore store = TraditionalRenderingPlugin.getDefault().getPreferenceStore();
-    	
-    	colorBackground = new Color(Display.getDefault(), PreferenceConverter.getColor(store, 
-    			TraditionalRenderingPreferenceConstants.MEM_COLOR_BACKGROUND));
-    	
+
+      IPreferenceStore store = TraditionalRenderingPlugin.getDefault().getPreferenceStore();
+      colorBackground = null;
+    	// has a memory-space-specific background color been set for the associated memory space? 
+    	if (fMemorySpaceId != null) 
+    	{
+    	  String key = fMemSpacePreferenceHelper.getMemorySpaceKey(fMemorySpaceId);
+    	  if (store.getString(key) != "") {
+    	    colorBackground = new Color(Display.getDefault(), 
+    	        PreferenceConverter.getColor(store, key));
+    	  }
+    	}
+    	// no - then use default
+    	if (colorBackground == null) {
+    	  colorBackground = new Color(Display.getDefault(), PreferenceConverter.getColor(store, 
+    	      TraditionalRenderingPreferenceConstants.MEM_COLOR_BACKGROUND));
+    	}
     	colorChanged = new Color(Display.getDefault(), PreferenceConverter.getColor(store, 
     			TraditionalRenderingPreferenceConstants.MEM_COLOR_CHANGED));
     	
@@ -587,7 +645,10 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
 	    		panes[i].setBackground(getColorBackground());
 	    	
 	    	setRenderingPadding(TraditionalRenderingPlugin.getDefault().getPreferenceStore().getString(IDebugUIConstants.PREF_PADDED_STR));
-	    	
+	    	if (store.getBoolean(TraditionalRenderingPreferenceConstants.MEM_CROSS_REFERENCE_INFO)) {
+	            fRendering.resolveAddressInfoForCurrentSelection();
+	    	}
+
 	    	fRendering.redrawPanes();
     	}
     }
@@ -718,7 +779,15 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
     {
     	return colorTextAlternate;
     }
-    
+
+    /**
+     * @since 1.4
+     */
+    public boolean isShowCrossRefInfoGlobalPref() {
+        IPreferenceStore store = TraditionalRenderingPlugin.getDefault().getPreferenceStore();
+        return store.getBoolean(TraditionalRenderingPreferenceConstants.MEM_CROSS_REFERENCE_INFO);
+    }
+
     public void createMenus()
     {
         // add the menu to each of the rendering panes
@@ -733,6 +802,9 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
         final CopyAction copyTextAction = new CopyTextAction(this.fRendering);
         final CopyAction copyAddressAction = new CopyAddressAction(this.fRendering);
         final CopyAction copyAllAction = new CopyAllAction(this.fRendering);
+        
+        // go-to address action
+        final IAction goToAddressAction = new GoToAddressAction(getMemoryRenderingContainer(), this);
 
         // reset to base address
         
@@ -1190,6 +1262,21 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
                 sub.add(displayTextPaneAction);
                 manager.add(sub);
 
+                // if there is cross reference info types available
+                // add Actions to allow the user to toggle the visibility for each of them
+                if (isShowCrossRefInfoGlobalPref()) {
+                    Action[] dynamicActions = fRendering.getDynamicActions();
+                    if (dynamicActions != null) {
+                        sub = new MenuManager(TraditionalRenderingMessages
+                                .getString("TraditionalRenderingPreferencePage_ShowCrossRefInfo_Label")); //$NON-NLS-1$
+                        for (Action action : dynamicActions) {
+                            sub.add(action);
+                        }
+
+                        manager.add(sub);
+                    }
+                }
+
                 sub = new MenuManager(TraditionalRenderingMessages
                     .getString("TraditionalRendering.ENDIAN")); //$NON-NLS-1$
                 sub.add(displayEndianBigAction);
@@ -1301,6 +1388,7 @@ public class TraditionalRendering extends AbstractMemoryRendering implements IRe
                 copyAllAction.checkStatus();
 
                 manager.add(gotoBaseAddressAction);
+                manager.add(goToAddressAction);
                 manager.add(refreshAction);
                 manager.add(new Separator());
                 manager.add(new Separator(
@@ -1630,7 +1718,7 @@ abstract class CopyAction extends Action
             if(rows * columns * bytesPerColumn < lengthToRead.intValue())
                 rows++;
             
-            StringBuffer buffer = new StringBuffer();
+            StringBuilder buffer = new StringBuilder();
 
             for(int row = 0; row < rows; row++)
             {

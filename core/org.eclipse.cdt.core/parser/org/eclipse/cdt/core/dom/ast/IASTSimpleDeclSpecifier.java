@@ -253,10 +253,4 @@ public interface IASTSimpleDeclSpecifier extends IASTDeclSpecifier {
 	 * @since 5.2
 	 */
 	public void setDeclTypeExpression(IASTExpression expression);
-	
-	/**
-	 * @deprecated all constants must be defined in this interface
-	 */
-	@Deprecated
-	public static final int t_last = t_double; // used only in subclasses
 }

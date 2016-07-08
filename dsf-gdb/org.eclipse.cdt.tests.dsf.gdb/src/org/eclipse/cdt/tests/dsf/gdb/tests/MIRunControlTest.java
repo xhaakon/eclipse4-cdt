@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2015 Ericsson and others.
+ * Copyright (c) 2007, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,8 +50,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.tests.dsf.gdb.framework.AsyncCompletionWaitor;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.ServiceEventWaitor;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
@@ -60,13 +59,14 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 
 /**
  * Tests MIRunControl class for Multi-threaded application. 
  */
-@RunWith(BackgroundRunner.class)
-public class MIRunControlTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class MIRunControlTest extends BaseParametrizedTestCase {
 
 	/**
 	 * The cygwin runtime/emulation spawns a thread, so even the most basic
@@ -131,7 +131,7 @@ public class MIRunControlTest extends BaseTestCase {
 	public void doAfterTest() throws Exception {
 		super.doAfterTest();
 		
-		fServicesTracker.dispose();
+        if (fServicesTracker!=null) fServicesTracker.dispose();
 	}
 	
 	@Override
@@ -235,12 +235,13 @@ public class MIRunControlTest extends BaseTestCase {
       	// The ordering of the contexts is not deterministic
     	LinkedList<Integer> ids = new LinkedList<Integer>(Arrays.asList(new Integer[] {1}));
       	if (sProgramIsCygwin) {
-      		ids.add(new Integer(2));
+      		ids.add(2);
       	}
 
-    	assertTrue(ids.remove(new Integer(((IMIExecutionDMContext)ctxts[0]).getThreadId())));
+	// Note that List.remove(int) and List.remove(Integer) have different effects so this should stay remove(Integer)
+    	assertTrue(ids.remove(Integer.valueOf(((IMIExecutionDMContext)ctxts[0]).getThreadId())));
       	if (sProgramIsCygwin) {
-      		assertTrue(ids.remove(new Integer(((IMIExecutionDMContext)ctxts[1]).getThreadId())));
+      		assertTrue(ids.remove(Integer.valueOf(((IMIExecutionDMContext)ctxts[1]).getThreadId())));
       	}
 		
 		wait.waitReset();
@@ -296,7 +297,7 @@ public class MIRunControlTest extends BaseTestCase {
         // We check this _after_ we ask for the execution contexts because when running remote (i.e., with gdbserver),
         // thread events are not sent by gdb until a request for a thread list is given (Bug 455992)
         IStartedDMEvent startedEvent = startedEventWaitor.waitForEvent(TestsPlugin.massageTimeout(1000));
-        Assert.assertEquals("Thread created event is for wrong thread id", sProgramIsCygwin ? 3 : 2, ((IMIExecutionDMContext)startedEvent.getDMContext()).getThreadId());
+        Assert.assertEquals("Thread created event is for wrong thread id", sProgramIsCygwin ? "3" : "2", ((IMIExecutionDMContext)startedEvent.getDMContext()).getThreadId());
 
         /*
          * Get data
@@ -312,13 +313,13 @@ public class MIRunControlTest extends BaseTestCase {
       	// The ordering of the contexts is not deterministic
     	LinkedList<Integer> ids = new LinkedList<Integer>(Arrays.asList(new Integer[] {1,2}));
       	if (sProgramIsCygwin) {
-      		ids.add(new Integer(3));
+      		ids.add(3);
       	}
 
-    	assertTrue(ids.remove(new Integer(((IMIExecutionDMContext)data[0]).getThreadId())));
-    	assertTrue(ids.remove(new Integer(((IMIExecutionDMContext)data[1]).getThreadId())));
+    	assertTrue(ids.remove(Integer.valueOf(((IMIExecutionDMContext)data[0]).getThreadId())));
+    	assertTrue(ids.remove(Integer.valueOf(((IMIExecutionDMContext)data[1]).getThreadId())));
       	if (sProgramIsCygwin) {
-      		assertTrue(ids.remove(new Integer(((IMIExecutionDMContext)data[2]).getThreadId())));
+      		assertTrue(ids.remove(Integer.valueOf(((IMIExecutionDMContext)data[2]).getThreadId())));
       	}
      } 
 
@@ -350,7 +351,7 @@ public class MIRunControlTest extends BaseTestCase {
         fRunCtrl.getExecutor().submit(new Runnable() {
             @Override
 			public void run() {
-            	fRunCtrl.getExecutionData(((MIRunControl)fRunCtrl).createMIExecutionContext(containerDmc, 1), rm);
+            	fRunCtrl.getExecutionData(((MIRunControl)fRunCtrl).createMIExecutionContext(containerDmc, "1"), rm);
             }
         });
         wait.waitUntilDone(TestsPlugin.massageTimeout(5000));
@@ -363,7 +364,7 @@ public class MIRunControlTest extends BaseTestCase {
         	/*
         	 * getModelData should return StateChangeReason.  
         	 */
-	   	 	Assert.assertEquals("Unexpected state change reason.", getExpectedMainThreadStopReason(), data.getStateChangeReason());
+	   	 	Assert.assertEquals("Unexpected state change reason.", StateChangeReason.BREAKPOINT, data.getStateChangeReason());
        } 
 	}
 	

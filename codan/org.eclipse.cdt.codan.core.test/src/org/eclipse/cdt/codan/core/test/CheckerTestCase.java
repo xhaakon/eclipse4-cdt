@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2012 Alena Laskavaia
+ * Copyright (c) 2009, 2016 Alena Laskavaia
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -111,7 +111,7 @@ public class CheckerTestCase extends CodanTestCase {
 			line = (Integer) m.getAttribute(IMarker.LINE_NUMBER);
 			if (line == null || line.equals(-1)) {
 				Object pos = m.getAttribute(IMarker.CHAR_START);
-				line = new Integer(pos2line(((Integer) pos).intValue()));
+				line = pos2line(((Integer) pos).intValue());
 			}
 		} catch (CoreException e) {
 			fail(e.getMessage());
@@ -154,12 +154,12 @@ public class CheckerTestCase extends CodanTestCase {
 		runCodan();
 	}
 
-	public void loadCodeAndRun(String code) {
+	public void loadCodeAndRun(String code) throws CoreException {
 		loadcode(code);
 		runCodan();
 	}
 
-	public void loadCodeAndRunCpp(String code) {
+	public void loadCodeAndRunCpp(String code) throws CoreException {
 		loadcode(code, true);
 		runCodan();
 	}
@@ -249,12 +249,12 @@ public class CheckerTestCase extends CodanTestCase {
 		CodanRuntime.getInstance().getCheckersRegistry().updateProfile(cproject.getProject(), profile);
 	}
 
-	protected void checkSampleAbove() {
+	protected void checkSampleAbove() throws CoreException {
 		loadCodeAndRun(getAboveComment());
 		checkErrorComments();
 	}
 
-	protected void checkSampleAboveCpp() {
+	protected void checkSampleAboveCpp() throws CoreException {
 		loadCodeAndRunCpp(getAboveComment());
 		checkErrorComments();
 	}

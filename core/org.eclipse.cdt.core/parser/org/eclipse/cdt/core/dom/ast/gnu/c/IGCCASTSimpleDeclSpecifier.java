@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2011 IBM Corporation and others.
+ * Copyright (c) 2005, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,25 +16,11 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 
 /**
- * @noextend This interface is not intended to be extended by clients.
- * @noimplement This interface is not intended to be implemented by clients.
  * @deprecated Everything can be expressed as {@link ICASTSimpleDeclSpecifier}.
+ * @noreference This interface is not intended to be referenced by clients.
  */
 @Deprecated
 public interface IGCCASTSimpleDeclSpecifier extends ICASTSimpleDeclSpecifier {
-	
-	/**
-	 * @deprecated Replaced by {@link IASTSimpleDeclSpecifier#t_typeof}.
-	 */
-	@Deprecated
-	public static final int t_typeof = ICASTSimpleDeclSpecifier.t_last + 1;
-	
-	/**
-	 * @deprecated All constants must be defined in {@link IASTSimpleDeclSpecifier}.
-	 */
-	@Deprecated
-	public static final int t_last = t_typeof;
-
 	/**
 	 * @deprecated Replaced by {@link IASTSimpleDeclSpecifier#DECLTYPE_EXPRESSION}.
 	 */

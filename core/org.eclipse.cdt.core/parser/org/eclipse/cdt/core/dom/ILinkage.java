@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2013 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,6 +50,7 @@ public interface ILinkage {
 
 	/**
 	 * Additional linkage ids may be added in future.
+	 * @noreference This field is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	final static int MAX_LINKAGE_ID= FORTRAN_LINKAGE_ID;

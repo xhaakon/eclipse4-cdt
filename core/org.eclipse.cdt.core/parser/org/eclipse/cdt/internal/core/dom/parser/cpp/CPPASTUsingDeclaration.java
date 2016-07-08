@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2014 IBM Corporation and others.
+ * Copyright (c) 2004, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,8 +13,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -22,10 +21,9 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.ICPPASTCompletionContext;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
-import org.eclipse.cdt.internal.core.dom.parser.ASTAttributeOwner;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
 
-public class CPPASTUsingDeclaration extends ASTAttributeOwner
+public class CPPASTUsingDeclaration extends CPPASTAttributeOwner
 		implements ICPPASTUsingDeclaration, ICPPASTCompletionContext {
     private boolean typeName;
     private IASTName name;
@@ -109,15 +107,20 @@ public class CPPASTUsingDeclaration extends ASTAttributeOwner
 	@Override
 	public IBinding[] findBindings(IASTName n, boolean isPrefix, String[] namespaces) {
 		IBinding[] bindings = CPPSemantics.findBindingsForContentAssist(n, isPrefix, namespaces);
-		List<IBinding> filtered = new ArrayList<IBinding>();
 		
-		for (IBinding binding : bindings) {
+		int j = 0;
+		for (int i = 0; i < bindings.length; i++) {
+			IBinding binding = bindings[i];
 			if (binding instanceof ICPPNamespace) {
-				filtered.add(binding);
+				if (i != j)
+					bindings[j] = binding;
+				j++;
 			}
 		}
 		
-		return filtered.toArray(new IBinding[filtered.size()]);
+		if (j < bindings.length)
+			return Arrays.copyOfRange(bindings, 0, j);
+		return bindings;
 	}
 
 	@Override

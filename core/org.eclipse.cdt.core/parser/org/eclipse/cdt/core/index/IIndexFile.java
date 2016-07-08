@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2014 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2015 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -78,14 +78,16 @@ public interface IIndexFile extends IFileNomination {
 	long getContentsHash() throws CoreException;
 
 	/**
-	 * @deprecated Returns 0. 
+	 * @deprecated Returns 0.
+	 * @noreference This method is not intended to be referenced by clients. 
 	 */
 	@Deprecated
 	int getScannerConfigurationHashcode() throws CoreException;
 
 	/**
 	 * @since 5.3
-	 * @deprecated Returns 0. 
+	 * @deprecated Returns 0.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	int getEncodingHashcode() throws CoreException;

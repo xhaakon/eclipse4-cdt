@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2010 QNX Software Systems and others.
+ * Copyright (c) 2006, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -86,11 +86,6 @@ class PDOMCPPBase implements ICPPBase, ICPPInternalBase {
 		return getDB().getByte(record + FLAGS);
 	}
 
-	@Override
-	public PDOMName getBaseClassSpecifierName() {
-		return null;
-	}
-	
 	@Override
 	public PDOMName getClassDefinitionName() {
 		try {
@@ -198,11 +193,6 @@ class PDOMCPPBase implements ICPPBase, ICPPInternalBase {
 			return baseClass;
 		}
 		
-		@Override @Deprecated
-		public IName getBaseClassSpecifierName() {
-			return base.getBaseClassSpecifierName();
-		}
-
 		@Override
 		public IName getClassDefinitionName() {
 			return base.getClassDefinitionName();

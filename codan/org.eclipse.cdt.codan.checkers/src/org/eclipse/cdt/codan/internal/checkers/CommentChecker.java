@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2015 QNX Software System and others.
+ * Copyright (c) 2015, 2016 QNX Software System and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -55,9 +55,9 @@ public class CommentChecker extends AbstractIndexAstChecker {
 		}
 	}
 
-	@SuppressWarnings("deprecation")
 	private IProblemLocation getProblemLocation(IASTFileLocation astLocation, int pos) {
 		IProblemLocationFactory locFactory = getRuntime().getProblemLocationFactory();
-		return locFactory.createProblemLocation(getFile(), astLocation.getNodeOffset() + pos, astLocation.getNodeOffset() + pos + 2);
+		int newPosition = astLocation.getNodeOffset() + pos;
+		return locFactory.createProblemLocation(getFile(), newPosition, newPosition + 2, -1);
 	}
 }

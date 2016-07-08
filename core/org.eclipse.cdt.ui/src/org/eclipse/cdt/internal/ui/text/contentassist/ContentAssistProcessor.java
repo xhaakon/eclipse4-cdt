@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 IBM Corporation and others.
+ * Copyright (c) 2005, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -23,7 +23,7 @@ import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jface.action.LegacyActionTools;
 import org.eclipse.jface.bindings.TriggerSequence;
 import org.eclipse.jface.bindings.keys.KeySequence;
@@ -82,7 +82,7 @@ import org.eclipse.cdt.internal.ui.util.Messages;
  * @since 4.0
  */
 public class ContentAssistProcessor implements IContentAssistProcessor {
-	private static final boolean DEBUG= "true".equalsIgnoreCase(Platform.getDebugOption("org.eclipse.cdt.ui/debug/contentassist"));  //$NON-NLS-1$//$NON-NLS-2$
+	private static final boolean DEBUG= Boolean.parseBoolean(Platform.getDebugOption("org.eclipse.cdt.ui/debug/contentassist"));  //$NON-NLS-1$
 
 	/**
 	 * Dialog settings key for the "all categories are disabled" warning dialog.
@@ -251,11 +251,13 @@ public class ContentAssistProcessor implements IContentAssistProcessor {
 		fNumberOfComputedResults= 0;
 	}
 
-	private List<ICompletionProposal> collectProposals(ITextViewer viewer, int offset, IProgressMonitor monitor, ContentAssistInvocationContext context) {
+	private List<ICompletionProposal> collectProposals(ITextViewer viewer, int offset,
+			IProgressMonitor monitor, ContentAssistInvocationContext context) {
 		List<ICompletionProposal> proposals= new ArrayList<>();
 		List<CompletionProposalCategory> providers= getCategories();
+		SubMonitor progress = SubMonitor.convert(monitor, providers.size());
 		for (CompletionProposalCategory cat : providers) {
-			List<ICompletionProposal> computed= cat.computeCompletionProposals(context, fPartition, new SubProgressMonitor(monitor, 1));
+			List<ICompletionProposal> computed= cat.computeCompletionProposals(context, fPartition, progress.split(1));
 			proposals.addAll(computed);
 			if (fErrorMessage == null)
 				fErrorMessage= cat.getErrorMessage();
@@ -298,14 +300,17 @@ public class ContentAssistProcessor implements IContentAssistProcessor {
 		return result;
 	}
 
-	private List<IContextInformation> collectContextInformation(ITextViewer viewer, int offset, IProgressMonitor monitor) {
+	private List<IContextInformation> collectContextInformation(ITextViewer viewer, int offset,
+			IProgressMonitor monitor) {
 		List<IContextInformation> proposals= new ArrayList<>();
 		ContentAssistInvocationContext context= createContext(viewer, offset, false);
 		
 		try {
 			List<CompletionProposalCategory> providers= getCategories();
+			SubMonitor progress = SubMonitor.convert(monitor, providers.size());
 			for (CompletionProposalCategory cat : providers) {
-				List<IContextInformation> computed= cat.computeContextInformation(context, fPartition, new SubProgressMonitor(monitor, 1));
+				List<IContextInformation> computed=
+						cat.computeContextInformation(context, fPartition, progress.split(1));
 				proposals.addAll(computed);
 				if (fErrorMessage == null)
 					fErrorMessage= cat.getErrorMessage();
@@ -326,7 +331,8 @@ public class ContentAssistProcessor implements IContentAssistProcessor {
 	 * @return the list of filtered and sorted proposals, ready for
 	 *         display (element type: {@link IContextInformation})
 	 */
-	protected List<IContextInformation> filterAndSortContextInformation(List<IContextInformation> contexts, IProgressMonitor monitor) {
+	protected List<IContextInformation> filterAndSortContextInformation(List<IContextInformation> contexts,
+			IProgressMonitor monitor) {
 		return contexts;
 	}
 

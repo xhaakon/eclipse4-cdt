@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2013 Intel Corporation, QNX Software Systems, and others.
+ * Copyright (c) 2007, 2015 Intel Corporation, QNX Software Systems, and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -634,7 +634,6 @@ implements
 		}
 		final ICResourceDescription local_cfgd = lc;
 
-		final boolean rebuildIndex= isIndexerAffected();
 		IRunnableWithProgress runnable = new IRunnableWithProgress() {
 
 			private void sendOK() {
@@ -701,6 +700,7 @@ implements
 			return false;
 		}
 
+		final boolean rebuildIndex= isIndexerAffected();
 		if (rebuildIndex)
 			rebuildIndex();
 		return true;
@@ -841,6 +841,9 @@ implements
 	}
 
 	protected void handleResize(boolean visible) {
+		if (!getShell().isVisible()) {
+			return; // do not resize shell before its open, it will screw up shell positioning
+		}
 		if (visible && !isNewOpening) return; // do not duplicate
 		if (visible)
 			isNewOpening = false;
@@ -982,7 +985,7 @@ implements
 	protected void cfgChanged(ICConfigurationDescription _cfgd) {
 		CConfigurationStatus st = _cfgd.getConfigurationStatus();
 		if (st.getCode() == CConfigurationStatus.TOOLCHAIN_NOT_SUPPORTED) {
-			// Re-check, maybe user got the problem fixed 
+			// Re-check, maybe user got the problem fixed
 			st = _cfgd.getConfigurationData().getStatus();
 		}
 		if (errPane != null && errMessage != null) {

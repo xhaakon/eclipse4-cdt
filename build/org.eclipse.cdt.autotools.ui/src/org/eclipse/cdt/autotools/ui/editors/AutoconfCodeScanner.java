@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Red Hat, Inc., (c) 2008 NOKIA Inc
+ * Copyright (c) 2006, 2015 Red Hat, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -38,7 +38,7 @@ import org.eclipse.swt.graphics.RGB;
 
 public class AutoconfCodeScanner extends RuleBasedScanner {
 
-	private Map<String, IToken> fTokenMap= new HashMap<String, IToken>();
+	private Map<String, IToken> fTokenMap= new HashMap<>();
 	private String[] fPropertyNamesColor;
 	
 	/**
@@ -82,7 +82,7 @@ public class AutoconfCodeScanner extends RuleBasedScanner {
 		IToken ammacro = getToken(ColorManager.AUTOCONF_AMMACRO_COLOR);
 		IToken code = getToken(ColorManager.AUTOCONF_CODESEQ_COLOR);
 		
-		List<IRule> rules= new ArrayList<IRule>();
+		List<IRule> rules= new ArrayList<>();
 
 		// Add rule for single line comments.
 		rules.add(new EndOfLineRule("dnl", comment)); //$NON-NLS-1$
@@ -159,13 +159,6 @@ public class AutoconfCodeScanner extends RuleBasedScanner {
 		return -1;
 	}
 	
-	/*
-	 * @see ITokenScanner#nextToken()
-	 */
-	public IToken nextToken() {
-		return super.nextToken();
-	}
-
 	public boolean affectsBehavior(PropertyChangeEvent event) {
 		return indexOf(event.getProperty()) >= 0;
 	}
@@ -246,9 +239,7 @@ public class AutoconfCodeScanner extends RuleBasedScanner {
 		}
 	}
 
-	/*
-	 * @see ICharacterScanner#unread()
-	 */
+	@Override
 	public void unread() {
 	    	--fOffset;
 	    	fColumn = UNDEFINED;

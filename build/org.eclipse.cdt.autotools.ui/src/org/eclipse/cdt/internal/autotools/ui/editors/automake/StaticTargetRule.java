@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,9 @@
  *     QNX Software Systems - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
+
+import org.eclipse.cdt.make.core.makefile.ICommand;
+import org.eclipse.cdt.make.core.makefile.IInferenceRule;
 
 /**
  *   Here is the syntax of a static pattern rule:
@@ -22,10 +25,10 @@ public class StaticTargetRule extends InferenceRule implements IInferenceRule {
 	String targetPattern;
 	String[] prereqPatterns;
 
-	public StaticTargetRule(Directive parent, Target target, String target_pattern, String[] prereq_patterns, Command[] commands) {
+	public StaticTargetRule(Directive parent, Target target, String targetPattern, String[] prereqPatterns, Command[] commands) {
 		super(parent, target, commands);
-		targetPattern = target_pattern;
-		prereqPatterns = prereq_patterns.clone();
+		this.targetPattern = targetPattern;
+		this.prereqPatterns = prereqPatterns.clone();
 	}
 
 	public String[] getPrerequisitePatterns() {
@@ -44,11 +47,9 @@ public class StaticTargetRule extends InferenceRule implements IInferenceRule {
 		targetPattern = target_pattern;
 	}
 
-	/**
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append(getTarget()).append(':');
 		String pattern = getTargetPattern();
 		if (pattern != null && pattern.length() > 0) {

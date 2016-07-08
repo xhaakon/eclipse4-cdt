@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2011 IBM Corporation and others.
+ * Copyright (c) 2003, 2013 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -54,9 +54,8 @@ public class InternalParserUtil extends ParserFactory {
 	}
 
 	/**
-	 * Creates a code reader for an external location, normalizing path to 
-	 * canonical path. The cache is consulted after the path has been normalized.
 	 * @deprecated, use {@link FileContent}, instead.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public static org.eclipse.cdt.core.parser.CodeReader createExternalFileReader(String externalLocation, CodeReaderLRUCache cache) throws IOException {
@@ -157,6 +156,8 @@ public class InternalParserUtil extends ParserFactory {
 			long fileReadTime = System.currentTimeMillis();
 			IFileStore store = EFS.getStore(file.getLocationURI());
 			IFileInfo fileInfo = store.fetchInfo();
+			if (!fileInfo.exists())
+				return null;
 			input= file.getContents(true);
 			if (input instanceof FileInputStream) {
 				try {

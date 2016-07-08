@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2011 IBM Corporation and others.
+ * Copyright (c) 2005, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -159,21 +159,20 @@ public interface IASTTypeIdExpression extends IASTExpression {
 	public static final int op_is_final= 23;
 
 	/**
-	 * @deprecated constants should be declared here, to avoid using the same constant in different
-	 * interfaces.
+	 * Built-in type trait of g++. 
+	 * @since 6.0
 	 */
-	@Deprecated
-	public static final int op_last = op_alignof;
-
+	public static final int op_is_trivially_copyable = 24;
+	
 	/**
-	 * Get the operator for the expression.
+	 * Returns the operator for the expression.
 	 * 
 	 * @return int
 	 */
 	public int getOperator();
 
 	/**
-	 * Set the operator for the expression.
+	 * Sets the operator for the expression.
 	 * @param value int
 	 */
 	public void setOperator(int value);

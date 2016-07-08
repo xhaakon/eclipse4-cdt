@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Symbian Software Limited and others.
+ * Copyright (c) 2007, 2016 Symbian Software Limited and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,6 +50,7 @@ public class NewAutotoolsProject extends ProcessRunner {
 		pca = new ProjectCreatedActions();
 	}
 	
+	@Override
 	public void process(TemplateCore template, ProcessArgument[] args, String processId, IProgressMonitor monitor) throws ProcessFailureException {
 		String projectName = args[0].getSimpleValue();
 		String location = args[1].getSimpleValue();
@@ -65,18 +66,18 @@ public class NewAutotoolsProject extends ProcessRunner {
 				turnOffAutoBuild(workspace);
 
 				IPath locationPath = null;
-				if (location != null && !location.trim().equals("")) { //$NON-NLS-1$
+				if (location != null && !location.trim().isEmpty()) {
 					locationPath = Path.fromPortableString(location);
 				}
 
 				List<?> configs = template.getTemplateInfo().getConfigurations();
-				if (configs == null || configs.size() == 0) {
+				if (configs == null || configs.isEmpty()) {
 					throw new ProcessFailureException(Messages.getString("NewManagedProject.4") + projectName); //$NON-NLS-1$
 				}
 
 				pca.setProject(project);
 				pca.setProjectLocation(locationPath);
-				pca.setConfigs((IConfiguration[]) configs.toArray(new IConfiguration[configs.size()]));
+				pca.setConfigs(configs.toArray(new IConfiguration[configs.size()]));
 				pca.setArtifactExtension(artifactExtension);
 				info = pca.createProject(monitor, CCorePlugin.DEFAULT_INDEXER, isCProject);
 
@@ -97,14 +98,10 @@ public class NewAutotoolsProject extends ProcessRunner {
 
 				restoreAutoBuild(workspace);
 
-			}
-			else {
+			} else {
 				AutotoolsNewProjectNature.addAutotoolsNature(project, monitor);
-				//			throw new ProcessFailureException(Messages.getString("NewAutotoolsProject.5") + projectName); //$NON-NLS-1$
 			}
-		} catch (CoreException e) {
-			throw new ProcessFailureException(Messages.getString("NewManagedProject.3") + e.getMessage(), e); //$NON-NLS-1$
-		} catch (BuildException e) {
+		} catch (CoreException | BuildException e) {
 			throw new ProcessFailureException(Messages.getString("NewManagedProject.3") + e.getMessage(), e); //$NON-NLS-1$
 		}
 	}

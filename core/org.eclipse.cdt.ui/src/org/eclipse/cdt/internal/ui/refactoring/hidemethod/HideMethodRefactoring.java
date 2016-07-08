@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2012 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2008, 2016 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -143,7 +143,7 @@ public class HideMethodRefactoring extends CRefactoring {
 			}
 	
 			IASTCompositeTypeSpecifier classNode =
-					CPPVisitor.findAncestorWithType(methodName, IASTCompositeTypeSpecifier.class);
+					ASTQueries.findAncestorWithType(methodName, IASTCompositeTypeSpecifier.class);
 			if (classNode == null) {
 				initStatus.addError(Messages.HideMethodRefactoring_EnclosingClassNotFound);
 			}

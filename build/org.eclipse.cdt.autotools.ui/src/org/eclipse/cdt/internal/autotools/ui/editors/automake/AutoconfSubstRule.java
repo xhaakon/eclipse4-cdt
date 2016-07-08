@@ -1,3 +1,10 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Red Hat Inc. and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
 import java.util.Arrays;
@@ -15,6 +22,7 @@ public class AutoconfSubstRule implements IPredicateRule {
 	private char[][] fSortedLineDelimiters;
 	
 	private static class DecreasingCharArrayLengthComparator implements Comparator<Object> {
+		@Override
 		public int compare(Object o1, Object o2) {
 			return ((char[]) o2).length - ((char[]) o1).length;
 		}
@@ -26,6 +34,7 @@ public class AutoconfSubstRule implements IPredicateRule {
 		this.token = token;
 	}
 	
+	@Override
 	public IToken evaluate(ICharacterScanner scanner, boolean resume) {
 		char[][] originalDelimiters= scanner.getLegalLineDelimiters();
 		int count= originalDelimiters.length;
@@ -81,10 +90,12 @@ public class AutoconfSubstRule implements IPredicateRule {
 		return Token.UNDEFINED;
 	}
 
+	@Override
 	public IToken getSuccessToken() {
 		return token;
 	}
 
+	@Override
 	public IToken evaluate(ICharacterScanner scanner) {
 		return evaluate(scanner, false);
 	}

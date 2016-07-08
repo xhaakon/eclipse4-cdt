@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2009 QNX Software Systems and others.
+ * Copyright (c) 2000, 2012 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -211,7 +211,7 @@ public class CProjectSourceLocation implements IProjectSourceLocation {
             Element node = document.createElement(ELEMENT_NAME);
             document.appendChild(node);
     		node.setAttribute(ATTR_PROJECT, getProject().getName());
-    		node.setAttribute(ATTR_GENERIC, Boolean.valueOf(isGeneric()).toString());
+    		node.setAttribute(ATTR_GENERIC, String.valueOf(isGeneric()));
 			return CDebugUtils.serializeDocument(document);
         } catch (ParserConfigurationException e) {
         	ex = e;

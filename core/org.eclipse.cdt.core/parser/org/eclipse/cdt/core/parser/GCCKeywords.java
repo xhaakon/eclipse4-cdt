@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2015 IBM Corporation and others.
+ * Copyright (c) 2002, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -102,4 +102,10 @@ public class GCCKeywords {
 		cp_decimal32=					_DECIMAL32.toCharArray(),
 		cp_decimal64=					_DECIMAL64.toCharArray(),
 		cp_decimal128=					_DECIMAL128.toCharArray();
+	
+	/** @since 6.0 */
+	public static final char[]
+		cp__is_trivially_copyable=		"__is_trivially_copyable".toCharArray(),
+		cp__is_trivially_constructible=	"__is_trivially_constructible".toCharArray(),
+		cp__is_trivially_assignable=	"__is_trivially_assignable".toCharArray();
 }

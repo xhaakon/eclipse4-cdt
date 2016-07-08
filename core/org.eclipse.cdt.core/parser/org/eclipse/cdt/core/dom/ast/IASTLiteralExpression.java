@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2014 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -37,13 +37,6 @@ public interface IASTLiteralExpression extends IASTExpression {
 	 * A string literal e.g. {@code "a literal"}
 	 */
 	public static final int lk_string_literal = 3;
-
-	/**
-	 * A constant defined for subclasses to extend from.
-	 * @deprecated all possible values must be defined in {@link IASTLiteralExpression}.
-	 */
-	@Deprecated
-	public static final int lk_last = lk_string_literal;
 
 	/**
 	 * {@code lk_this} represents the '{@code this}' keyword for C++ only.
@@ -113,6 +106,7 @@ public interface IASTLiteralExpression extends IASTExpression {
 
 	/**
 	 * @deprecated Replaced by {@link #setValue(char[])}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void setValue(String value);

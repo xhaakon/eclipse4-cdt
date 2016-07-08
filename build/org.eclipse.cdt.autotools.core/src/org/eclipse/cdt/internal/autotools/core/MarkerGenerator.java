@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,7 +33,6 @@ public abstract class MarkerGenerator {
 	 * Constructor for MarkerGenerator
 	 */
 	public MarkerGenerator() {
-		super();
 	}
 
 	/*
@@ -157,14 +156,16 @@ public abstract class MarkerGenerator {
 		return IMarker.SEVERITY_ERROR;
 	}
 	
-	/* (non-Javadoc)
+	/**
 	 * Removes the IMarkers for the project specified in the argument if the
-	 * project exists, and is open. 
+	 * project exists, and is open.
 	 * 
 	 * @param project
 	 */
 	public void removeAllMarkers(IProject project) {
-		if (project == null || !project.isAccessible()) return;
+		if (project == null || !project.isAccessible()) {
+			return;
+		}
 
 		// Clear out the problem markers
 		IWorkspace workspace = project.getWorkspace();

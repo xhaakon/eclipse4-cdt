@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2012 QNX Software Systems and others.
+ * Copyright (c) 2005, 2014 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,10 +34,8 @@ import org.eclipse.cdt.core.model.ICModelMarker;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
-import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
-import org.eclipse.cdt.debug.core.ICDebugConfiguration;
 import org.eclipse.cdt.debug.ui.CDebugUIPlugin;
 import org.eclipse.cdt.launch.internal.ui.LaunchMessages;
 import org.eclipse.cdt.launch.internal.ui.LaunchUIPlugin;
@@ -354,39 +352,10 @@ abstract public class AbstractCLaunchDelegate extends LaunchConfigurationDelegat
 		return LaunchUtils.getProgramArgumentsArray(config);
 	}
 
-	protected ICDebugConfiguration getDebugConfig(ILaunchConfiguration config) throws CoreException {
-		ICDebugConfiguration dbgCfg = null;
-		try {
-			dbgCfg = CDebugCorePlugin.getDefault().getDebugConfiguration(
-					config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_ID, "")); //$NON-NLS-1$
-		} catch (CoreException e) {
-			IStatus status = new Status(IStatus.ERROR, LaunchUIPlugin.getUniqueIdentifier(),
-					ICDTLaunchConfigurationConstants.ERR_DEBUGGER_NOT_INSTALLED,
-					LaunchMessages.AbstractCLaunchDelegate_Debugger_not_installed,
-					e);
-			IStatusHandler handler = DebugPlugin.getDefault().getStatusHandler(status);
-
-			if (handler != null) {
-				Object result = handler.handleStatus(status, this);
-				if (result instanceof String) {
-					// this could return the new debugger id to use?
-				}
-			}
-			throw e;
-		}
-		return dbgCfg;
-	}
-
-	protected String renderTargetLabel(ICDebugConfiguration debugConfig) {
-		String format = "{0} ({1})"; //$NON-NLS-1$
-		String timestamp = DateFormat.getInstance().format(new Date(System.currentTimeMillis()));
-		return MessageFormat.format(format, new String[]{debugConfig.getName(), timestamp});
-	}
-
 	protected String renderProcessLabel(String commandLine) {
 		String format = "{0} ({1})"; //$NON-NLS-1$
 		String timestamp = DateFormat.getInstance().format(new Date(System.currentTimeMillis()));
-		return MessageFormat.format(format, new String[]{commandLine, timestamp});
+		return MessageFormat.format(format, new Object[]{commandLine, timestamp});
 	}
 
 	// temporary fix for #66015
@@ -397,7 +366,7 @@ abstract public class AbstractCLaunchDelegate extends LaunchConfigurationDelegat
 	protected String renderDebuggerProcessLabel() {
 		String format = "{0} ({1})"; //$NON-NLS-1$
 		String timestamp = DateFormat.getInstance().format(new Date(System.currentTimeMillis()));
-		return MessageFormat.format(format, new String[]{
+		return MessageFormat.format(format, new Object[]{
 				LaunchMessages.AbstractCLaunchDelegate_Debugger_Process, timestamp}); 
 	}
 

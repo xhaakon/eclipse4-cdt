@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,7 +15,6 @@ import org.eclipse.cdt.internal.corext.template.c.CContextType;
 import org.eclipse.cdt.internal.corext.template.c.TranslationUnitContext;
 import org.eclipse.cdt.internal.corext.template.c.TranslationUnitContextType;
 import org.eclipse.cdt.internal.ui.text.template.TemplateEngine.CTemplateProposal;
-import org.eclipse.cdt.qt.ui.QtUIPlugin;
 import org.eclipse.cdt.ui.text.contentassist.ICEditorContentAssistInvocationContext;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextSelection;
@@ -53,7 +52,7 @@ public class QObjectDeclarationCompletion {
 		IRegion region = new Region(position.getOffset(), position.getLength());
 
 		Template template = new Template( "class", "QObject declaration", CContextType.ID, TEMPLATE, true);
-		return Collections.<ICompletionProposal>singletonList(new CTemplateProposal(template, tuCtx, region, QtUIPlugin.getQtLogo()));
+		return Collections.<ICompletionProposal>singletonList(new CTemplateProposal(template, tuCtx, region, Activator.getQtLogo()));
 	}
 
 	private static Position getPosition(ICEditorContentAssistInvocationContext context) {

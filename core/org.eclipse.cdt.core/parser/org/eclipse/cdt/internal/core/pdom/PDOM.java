@@ -266,11 +266,15 @@ public class PDOM extends PlatformObject implements IPDOM {
 	 *  
 	 *  CDT 8.8 development (versions not supported on the 8.7.x branch)
 	 *  190.0 - Signature change for methods with ref-qualifiers, bug 470014.
-	 *  191.0 - Added EvalID.fIsPointerDeref, bug 472436.
+	 *  191.0 - Added EvalID.fIsPointerDeref, bug 472436. <<CDT 8.8>>
+	 *
+	 *  CDT 9.0 development (versions not supported on the 8.8.x branch)
+	 *  200.0 - Added PDOMCPPAliasTemplateInstance, bug 486915.
+	 *  201.0 - PDOMCPPBase stores a CPPParameterPackType for pack expansions, bug 487703.
 	 */
-	private static final int MIN_SUPPORTED_VERSION= version(191, 0);
-	private static final int MAX_SUPPORTED_VERSION= version(191, Short.MAX_VALUE);
-	private static final int DEFAULT_VERSION = version(191, 0);
+	private static final int MIN_SUPPORTED_VERSION= version(201, 0);
+	private static final int MAX_SUPPORTED_VERSION= version(201, Short.MAX_VALUE);
+	private static final int DEFAULT_VERSION = version(201, 0);
 
 	private static int version(int major, int minor) {
 		return (major << 16) + minor;
@@ -1039,10 +1043,15 @@ public class PDOM extends PlatformObject implements IPDOM {
 
 			// Let the readers go first
 			long start= sDEBUG_LOCKS ? System.currentTimeMillis() : 0;
+			int count = 0;
 			while (lockCount > giveupReadLocks || waitingReaders > 0) {
 				mutex.wait(CANCELLATION_CHECK_INTERVAL);
 				if (monitor != null && monitor.isCanceled()) {
 					throw new OperationCanceledException();
+				}
+				count++;
+				if (monitor != null && count == LONG_WRITE_LOCK_REPORT_THRESHOLD / CANCELLATION_CHECK_INTERVAL) {
+					monitor.subTask(Messages.PDOM_waitingForWriteLock);
 				}
 				if (sDEBUG_LOCKS) {
 					start = reportBlockedWriteLock(start, giveupReadLocks);
@@ -1053,6 +1062,8 @@ public class PDOM extends PlatformObject implements IPDOM {
 				timeWriteLockAcquired = System.currentTimeMillis();
 			db.setExclusiveLock();
 		}
+		if (monitor != null)
+			monitor.subTask(""); //$NON-NLS-1$
 	}
 
 	final public void releaseWriteLock() {

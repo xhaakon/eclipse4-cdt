@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Red Hat Inc..
+ * Copyright (c) 2006, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
+import org.eclipse.cdt.make.core.makefile.IDirective;
+import org.eclipse.cdt.make.core.makefile.IMacroDefinition;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IInformationControlCreator;
@@ -29,6 +31,7 @@ public class AutomakeTextHover implements ITextHover, ITextHoverExtension {
 		this.editor = editor;
 	}
 	
+	@Override
 	public String getHoverInfo(ITextViewer textViewer, IRegion hoverRegion) {
 		TargetRule target = null;
 		String[] preReqs = null;
@@ -70,10 +73,10 @@ public class AutomakeTextHover implements ITextHover, ITextHoverExtension {
 			case '?':
 				preReqs = target.getPrerequisites();
 				if (preReqs != null && preReqs.length > 0) {
-					StringBuffer toReturn = new StringBuffer();
+					StringBuilder toReturn = new StringBuilder();
 					toReturn.append(preReqs[0]);
 					for (int i = 1; i < preReqs.length; i++) {
-						toReturn.append(" " + preReqs[i]);
+						toReturn.append(' ').append(preReqs[i]);
 					}
 					return toReturn.toString();
 				}
@@ -98,20 +101,10 @@ public class AutomakeTextHover implements ITextHover, ITextHoverExtension {
 			}
 		}
 		
-//		IRule[] rules = makefile.getRules();
-//		for (int i = 0; i < rules.length; i++) {
-//			rule = rules[i];
-//			System.out.println("rule:  " + rule);
-//			System.out.println("target:  " + rule.getTarget());
-//			ICommand[] commands = rule.getCommands();
-//			for (int j = 0; j < commands.length; j++) {
-//				ICommand command = commands[j];
-//				System.out.println("command:  " + command);
-//			}
-//		}
 		return "";
 	}
 
+	@Override
 	public IRegion getHoverRegion(ITextViewer textViewer, int offset) {
 		
 		if (textViewer != null) {
@@ -177,6 +170,7 @@ public class AutomakeTextHover implements ITextHover, ITextHoverExtension {
 		return null;
 	}
 
+	@Override
 	public IInformationControlCreator getHoverControlCreator() {
 		// TODO Auto-generated method stub
 		return null;

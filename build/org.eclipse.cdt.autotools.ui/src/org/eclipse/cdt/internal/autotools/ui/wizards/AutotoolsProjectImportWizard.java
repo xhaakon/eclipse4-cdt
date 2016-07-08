@@ -35,11 +35,10 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IWorkbench;
@@ -66,7 +65,7 @@ public class AutotoolsProjectImportWizard extends NewMakeProjFromExisting {
 		addPage(page);
 
 		// Add the configuration selection page
-		projectConfigurationPage = new CProjectPlatformPage(PREFIX, this);
+		projectConfigurationPage = new CProjectPlatformPage(PREFIX);
 		projectConfigurationPage.setTitle(AutotoolsUIPlugin
 				.getResourceString(CONF_TITLE));
 		projectConfigurationPage.setDescription(AutotoolsUIPlugin
@@ -99,9 +98,7 @@ public class AutotoolsProjectImportWizard extends NewMakeProjFromExisting {
 
 		IRunnableWithProgress op = new WorkspaceModifyOperation() {
 			@Override
-			protected void execute(IProgressMonitor monitor)
-					throws CoreException, InvocationTargetException,
-					InterruptedException {
+			protected void execute(IProgressMonitor monitor) {
 				monitor.beginTask("Creating Autotools project", 10);
 
 				// Create Project
@@ -124,9 +121,9 @@ public class AutotoolsProjectImportWizard extends NewMakeProjFromExisting {
 							project, monitor);
 
 					// C++ natures
-					if (isCPP)
-						CCProjectNature.addCCNature(project,
-								new SubProgressMonitor(monitor, 1));
+					if (isCPP) {
+						CCProjectNature.addCCNature(project, SubMonitor.convert(monitor, 1));
+					}
 
 					// Set up build information
 					ICProjectDescriptionManager pdMgr = CoreModel.getDefault()
@@ -155,7 +152,7 @@ public class AutotoolsProjectImportWizard extends NewMakeProjFromExisting {
 					pdMgr.setProjectDescription(project, projDesc);
 
 					// Convert the created project to an Autotools project
-					((AutotoolsProjectImportWizardPage) page).convertProject(
+					page.convertProject(
 							project, monitor, projectName);
 				} catch (Throwable e) {
 				}
@@ -165,9 +162,7 @@ public class AutotoolsProjectImportWizard extends NewMakeProjFromExisting {
 
 		try {
 			getContainer().run(true, true, op);
-		} catch (InvocationTargetException e) {
-			return false;
-		} catch (InterruptedException e) {
+		} catch (InvocationTargetException | InterruptedException e) {
 			return false;
 		}
 		return true;

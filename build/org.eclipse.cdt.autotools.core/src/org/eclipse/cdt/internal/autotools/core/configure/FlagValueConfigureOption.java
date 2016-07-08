@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011 Red Hat Inc.
+ * Copyright (c) 2011, 2015 Red Hat Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,26 +29,32 @@ public class FlagValueConfigureOption extends BinConfigureOption implements IFla
 		this.flags = flags;
 	}
 
+	@Override
 	public ArrayList<String> getParameters() {
-		return new ArrayList<String>();
+		return new ArrayList<>();
 	}
 	
+	@Override
 	public String getParameter() {
 		return "";
 	}
 
+	@Override
 	public IConfigureOption copy(AutotoolsConfiguration cfg) {
 		return new FlagValueConfigureOption(name, cfg, getValue(), flags);
 	}
 
+	@Override
 	public int getType() {
 		return FLAGVALUE;
 	}
 
+	@Override
 	public String getFlags() {
 		return flags;
 	}
 
+	@Override
 	public boolean isFlagValue() {
 		return true;
 	}

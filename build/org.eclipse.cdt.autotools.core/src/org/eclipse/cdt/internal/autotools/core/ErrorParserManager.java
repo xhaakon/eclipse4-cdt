@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  Copyright (c) 2005, 2010 IBM Corporation and others.
+ *  Copyright (c) 2005, 2015 IBM Corporation and others.
  *  All rights reserved. This program and the accompanying materials
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
@@ -19,13 +19,12 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
 import org.eclipse.cdt.autotools.core.AutotoolsPlugin;
-import org.eclipse.cdt.core.IErrorParser;
 import org.eclipse.cdt.core.IErrorParser2;
-import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.ProblemMarkerInfo;
 import org.eclipse.cdt.internal.core.IErrorMarkeredOutputStream;
 import org.eclipse.cdt.utils.EFSExtensionManager;
@@ -54,7 +53,7 @@ public class ErrorParserManager extends OutputStream {
 	 * Delimiter for error parsers presented in one string.
 	 * @since 5.2
 	 */
-	public final static char ERROR_PARSER_DELIMITER = ';';
+	public static final char ERROR_PARSER_DELIMITER = ';';
 
 	private int nOpens;
 	private int lineCounter=0;
@@ -63,7 +62,7 @@ public class ErrorParserManager extends OutputStream {
 	private final MarkerGenerator fMarkerGenerator;
 
 	private Map<String, ErrorParser> fErrorParsers;
-	private ArrayList<ProblemMarkerInfo> fErrors;
+	private List<ProblemMarkerInfo> fErrors;
 
 	private Vector<URI> fDirectoryStack;
 	private final URI fBaseDirectoryURI;
@@ -80,18 +79,7 @@ public class ErrorParserManager extends OutputStream {
 	 * @param markerGenerator - marker generator able to create markers.
 	 */
 	public ErrorParserManager(IProject project, MarkerGenerator markerGenerator) {
-		this(project, markerGenerator, null);
-	}
-
-	/**
-	 * Constructor.
-	 * 
-	 * @param project - project being built.
-	 * @param markerGenerator - marker generator able to create markers.
-	 * @param parsersIDs - array of error parsers' IDs.
-	 */
-	public ErrorParserManager(IProject project, MarkerGenerator markerGenerator, String[] parsersIDs) {
-		this(project, project.getLocationURI(), markerGenerator, parsersIDs);
+		this(project, project.getLocationURI(), markerGenerator);
 	}
 
 
@@ -101,15 +89,14 @@ public class ErrorParserManager extends OutputStream {
 	 * @param project - project being built.
 	 * @param baseDirectoryURI - absolute location URI of working directory of where the build is performed. 
 	 * @param markerGenerator - marker generator able to create markers.
-	 * @param parsersIDs - array of error parsers' IDs.
-	 * @since 5.1
+	 * @since 2.0
 	 */
-	public ErrorParserManager(IProject project, URI baseDirectoryURI, MarkerGenerator markerGenerator, String[] parsersIDs) {
+	public ErrorParserManager(IProject project, URI baseDirectoryURI, MarkerGenerator markerGenerator) {
 		fProject = project;
 		fMarkerGenerator = markerGenerator;
-		fDirectoryStack = new Vector<URI>();
-		fErrors = new ArrayList<ProblemMarkerInfo>();
-		fErrorParsers = new LinkedHashMap<String, ErrorParser>();
+		fDirectoryStack = new Vector<>();
+		fErrors = new ArrayList<>();
+		fErrorParsers = new LinkedHashMap<>();
 
 		if (baseDirectoryURI != null)
 			fBaseDirectoryURI = baseDirectoryURI;
@@ -259,8 +246,10 @@ public class ErrorParserManager extends OutputStream {
 	 * supports error markers, use it, otherwise use conventional stream
 	 */
 	private void outputLine(String line, ProblemMarkerInfo marker) {
-		String l = line + "\n";  //$NON-NLS-1$
-		if ( outputStream == null ) return; 
+		String l = line + '\n';
+		if (outputStream == null) {
+			return;
+		}
 		try {
 			if (marker != null) {
 				if (outputStream instanceof IErrorMarkeredOutputStream) {
@@ -334,7 +323,7 @@ public class ErrorParserManager extends OutputStream {
 	 * @return the previous line, save in the working buffer.
 	 */
 	public String getPreviousLine() {
-		return new String((previousLine) == null ? "" : previousLine); //$NON-NLS-1$
+		return previousLine == null ? "" : previousLine; //$NON-NLS-1$
 	}
 
 	/**
@@ -364,7 +353,7 @@ public class ErrorParserManager extends OutputStream {
 	 * close it explicitly 
 	 */
 	@Override
-	public synchronized void close() throws IOException {
+	public synchronized void close() {
 		if (nOpens > 0 && --nOpens == 0) {
 			checkLine(true);
 			fDirectoryStack.removeAllElements();
@@ -380,17 +369,14 @@ public class ErrorParserManager extends OutputStream {
 			outputStream.flush();
 	}
 
-	/**
-	 * @see java.io.OutputStream#write(int)
-	 */
 	@Override
-	public synchronized void write(int b) throws IOException {
+	public synchronized void write(int b) {
 		currentLine.append((char) b);
 		checkLine(false);
 	}
 
 	@Override
-	public synchronized void write(byte[] b, int off, int len) throws IOException {
+	public synchronized void write(byte[] b, int off, int len) {
 		if (b == null) {
 			throw new NullPointerException();
 		} else if (off != 0 || (len < 0) || (len > b.length)) {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2012 Ericsson and others.
+ * Copyright (c) 2011, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -37,8 +37,7 @@ import org.eclipse.cdt.dsf.mi.service.MIExpressions;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.tests.dsf.gdb.framework.AsyncCompletionWaitor;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BackgroundRunner;
-import org.eclipse.cdt.tests.dsf.gdb.framework.BaseTestCase;
+import org.eclipse.cdt.tests.dsf.gdb.framework.BaseParametrizedTestCase;
 import org.eclipse.cdt.tests.dsf.gdb.framework.SyncUtil;
 import org.eclipse.cdt.tests.dsf.gdb.launching.TestsPlugin;
 import org.eclipse.cdt.utils.Addr64;
@@ -53,9 +52,10 @@ import org.eclipse.debug.core.model.MemoryByte;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-@RunWith(BackgroundRunner.class)
-public class PostMortemCoreTest extends BaseTestCase {
+@RunWith(Parameterized.class)
+public class PostMortemCoreTest extends BaseParametrizedTestCase {
 	private static final String EXEC_NAME = "ExpressionTestApp.exe";
 	private static final String INVALID_CORE_NAME = "MultiThread.exe";
 	private static final String CORE_NAME = "core";
@@ -70,6 +70,7 @@ public class PostMortemCoreTest extends BaseTestCase {
 
     @Override
 	public void doBeforeTest() throws Exception {
+		removeTeminatedLaunchesBeforeTest();
 		setLaunchAttributes();
 		// Can't run the launch right away because each test needs to first set some 
 		// parameters.  The individual tests will be responsible for starting the launch. 
@@ -125,13 +126,7 @@ public class PostMortemCoreTest extends BaseTestCase {
     	super.doAfterTest();
     	
     	if (fSession != null) {
-    		Runnable runnable = new Runnable() {
-    			@Override
-    			public void run() {
-    				fSession.removeServiceEventListener(PostMortemCoreTest.this);
-    			}
-    		};
-    		fSession.getExecutor().submit(runnable).get();
+    		fSession.getExecutor().submit(()->fSession.removeServiceEventListener(PostMortemCoreTest.this)).get();
     	}
     	
     	fExpService = null;
@@ -290,7 +285,7 @@ public class PostMortemCoreTest extends BaseTestCase {
 		// Prepare to find the common path between the core file and the workspace
 		IPath commonPath = new Path(workspaceLocation);
 		
-		StringBuffer backwards = new StringBuffer("/");
+		StringBuilder backwards = new StringBuilder("/");
 		// While the commonPath is not the prefix of the core file path
 		// remove one more segment of the potential commonPath
 		while (!commonPath.isPrefixOf(corePath)) {

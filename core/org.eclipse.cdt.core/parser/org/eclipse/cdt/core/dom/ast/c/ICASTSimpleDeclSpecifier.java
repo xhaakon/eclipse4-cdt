@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,7 +20,6 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
  * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface ICASTSimpleDeclSpecifier extends IASTSimpleDeclSpecifier, ICASTDeclSpecifier {
-
 	/**
 	 * @since 5.1
 	 */
@@ -35,13 +34,8 @@ public interface ICASTSimpleDeclSpecifier extends IASTSimpleDeclSpecifier, ICAST
 
 	/**
 	 * @deprecated Replaced by {@link IASTSimpleDeclSpecifier#t_bool}.
+	 * @noreference This field is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public static final int t_Bool = t_bool;
-
-	/**
-	 * @deprecated All constants must be defined in {@link IASTSimpleDeclSpecifier}.
-	 */
-	@Deprecated
-	public static final int t_last = t_Bool;
 }

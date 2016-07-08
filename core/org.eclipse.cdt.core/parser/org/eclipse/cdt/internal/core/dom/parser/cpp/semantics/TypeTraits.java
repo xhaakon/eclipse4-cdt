@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2012, 2014 Google, Inc and others.
+ * Copyright (c) 2012, 2016 Google, Inc and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,7 +15,10 @@ import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUti
 import static org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil.TDEF;
 
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IArrayType;
 import org.eclipse.cdt.core.dom.ast.IBasicType;
+import org.eclipse.cdt.core.dom.ast.IEnumeration;
+import org.eclipse.cdt.core.dom.ast.IPointerType;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBasicType;
@@ -58,11 +61,20 @@ public class TypeTraits {
 	 * C++11: 9-6
 	 */
 	public static boolean isTrivial(ICPPClassType classType, IASTNode point) {
+		return isTrivialImpl(classType, point, true);
+	}
+	
+	private static boolean isTrivialImpl(ICPPClassType classType, IASTNode point, 
+			boolean checkDefaultConstructors) {
 		for (ICPPMethod method : ClassTypeHelper.getDeclaredMethods(classType, point)) {
 			if (method.isVirtual())
 				return false;
 			switch (ClassTypeHelper.getMethodKind(classType, method)) {
 			case DEFAULT_CTOR:
+				if (checkDefaultConstructors) {
+					return false;
+				}
+				break;
 			case COPY_CTOR:
 			case MOVE_CTOR:
 			case COPY_ASSIGNMENT_OP:
@@ -150,6 +162,47 @@ public class TypeTraits {
 		if (!(type instanceof ICPPClassType))
 			return true;
 		return isTrivial((ICPPClassType) type, point);
+	}
+
+	/**
+	 * Returns true if the given type is a class type, but not a union type, with no non-static
+	 * data members other than bit-fields of length 0, no virtual member functions, no virtual
+	 * base classes, and no base class for which isEmpty is false. [meta.unary.prop]
+	 */
+	public static boolean isEmpty(IType type, IASTNode point) {
+		type = SemanticUtil.getNestedType(type, CVTYPE | TDEF);
+		if (!(type instanceof ICPPClassType))
+			return false;
+		ICPPClassType classType = (ICPPClassType) type;
+		if (!isItselfEmpty(classType, point))
+			return false;
+		ICPPClassType[] baseClasses = ClassTypeHelper.getAllBases(classType, point);
+		for (ICPPClassType baseClass : baseClasses) {
+			if (!isItselfEmpty(baseClass, point))
+				return false;
+		}
+		return true;
+	}
+
+	private static boolean isItselfEmpty(ICPPClassType classType, IASTNode point) {
+		ICPPField[] fields = ClassTypeHelper.getDeclaredFields(classType, point);
+		for (ICPPField field : fields) {
+			if (!field.isStatic()) {
+				// TODO(sprigogin): Check for empty bit fields when bit field size becomes available.
+				return false;
+			}
+		}
+		ICPPMethod[] methods = ClassTypeHelper.getDeclaredMethods(classType, point);
+		for (ICPPMethod method : methods) {
+			if (method.isVirtual())
+				return false;
+		}
+		ICPPBase[] bases = ClassTypeHelper.getBases(classType, point);
+		for (ICPPBase base : bases) {
+			if (base.isVirtual())
+				return false;
+		}
+		return true;
 	}
 
 	/**
@@ -390,5 +443,54 @@ public class TypeTraits {
 			}
 		}
 		return types[types.length - 1];  // Assume it fits into the largest type provided.
+	}
+	
+	/**
+	 * Returns true if 'type' is scalar, as defined in [basic.types] p9:
+	 * 
+	 * "Arithmetic types, enumeration types, pointer types, pointer to member
+	 * types, std::nullptr_t, and cv-qualified versions of these types are
+	 * collectively called scalar types."
+	 */
+	private static boolean isScalar(IType type) {
+		type = SemanticUtil.getNestedType(type, SemanticUtil.ALLCVQ);
+		return type instanceof IBasicType || type instanceof IEnumeration || type instanceof IPointerType;
+	}
+	
+	/**
+	 * Returns true if 'type' is a trivially copyable class, as defined in [class] p6:
+	 * 
+	 * "A trivially copyable class is a class that:
+	 *    - has no non-trivial copy constructors,
+	 *    - has no non-trivial move constructors,
+	 *    - has no non-trivial copy assignment operators,
+	 *    - has no non-trivial move assignment operators, and
+	 *    - has a trivial destructor."
+	 */
+	private static boolean isTriviallyCopyableClass(ICPPClassType type, IASTNode point) {
+		return isTrivialImpl(type, point, false);
+	}
+	
+	/**
+	 * Returns true if 'type' is trivially copyable, as defined in [basic.types] p9:
+	 * 
+	 * "Cv-unqualified scalar types, trivially copyable class types, arrays
+	 * of such types, and non-volatile const-qualified versions of these
+	 * types are collectively called trivially copyable types."
+	 */
+	public static boolean isTriviallyCopyable(IType type, IASTNode point) {
+		type = SemanticUtil.getSimplifiedType(type);
+		CVQualifier qualifier = SemanticUtil.getCVQualifier(type);
+		if (qualifier.isVolatile()) {
+			return false;
+		} else if (qualifier.isConst()) {
+			return isTriviallyCopyable(SemanticUtil.getNestedType(type, SemanticUtil.ALLCVQ), point);
+		} else if (type instanceof IArrayType) {
+			return isTriviallyCopyable(((IArrayType) type).getType(), point);
+		} else if (type instanceof ICPPClassType) {
+			return isTriviallyCopyableClass((ICPPClassType) type, point);
+		} else {
+			return isScalar(type);
+		}
 	}
 }

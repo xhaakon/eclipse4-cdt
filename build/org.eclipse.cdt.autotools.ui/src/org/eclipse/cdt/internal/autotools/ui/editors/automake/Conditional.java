@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 
+import org.eclipse.cdt.make.core.makefile.gnu.IConditional;
 
 public abstract class Conditional extends Parent implements IConditional {
 
@@ -37,14 +38,17 @@ public abstract class Conditional extends Parent implements IConditional {
 	}
 
 
+	@Override
 	public String getConditional() {
 		return cond;
 	}
 
+	@Override
 	public String getArg1() {
 		return arg1;
 	}
 
+	@Override
 	public String getArg2() {
 		return arg2;
 	}
@@ -53,22 +57,27 @@ public abstract class Conditional extends Parent implements IConditional {
 		return false;
 	}
 
+	@Override
 	public boolean isIfdef() {
 		return false;
 	}
 
+	@Override
 	public boolean isIfndef() {
 		return false;
 	}
 
+	@Override
 	public boolean isIfeq() {
 		return false;
 	}
 
+	@Override
 	public boolean isIfneq() {
 		return false;
 	}
 
+	@Override
 	public boolean isElse() {
 		return false;
 	}

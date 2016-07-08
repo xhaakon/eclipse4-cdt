@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2009 IBM Corporation and others.
+ * Copyright (c) 2005, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,7 +12,6 @@
 package org.eclipse.cdt.core.dom.ast.cpp;
 
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.parser.util.ObjectMap;
 
 /**
  * For an instantiation of a class template, the members of that instantiation will be
@@ -36,10 +35,4 @@ public interface ICPPSpecialization extends ICPPBinding {
 	 * @since 5.1
 	 */
 	public ICPPTemplateParameterMap getTemplateParameterMap();
-	
-	/**
-	 * @deprecated use {@link #getTemplateParameterMap()}, instead.
-	 */
-	@Deprecated
-	public ObjectMap getArgumentMap();
 }

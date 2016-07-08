@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2010 QNX Software Systems and others.
+ * Copyright (c) 2002, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -59,7 +59,11 @@ public class BuildOutputStream extends ConsoleOutputStream implements IErrorMark
 	@Override
 	public void write(String s, ProblemMarkerInfo marker) throws IOException {
 		fPartitioner.appendToDocument(s, fStream, marker);
-
 	}
 
+	@Override
+	public synchronized void write(String msg) throws IOException {
+		fPartitioner.appendToDocument(msg, fStream, null);
+	}
+	
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,8 @@
  *     Red Hat Inc. - Refactor name
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
+
+import org.eclipse.cdt.make.core.makefile.gnu.IVariableDefinition;
 
 /**
  */
@@ -42,9 +44,7 @@ public class GNUVariableDef extends MacroDefinition implements IVariableDefiniti
 		this.type = type;
 	}
 
-	/**
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		if (isTargetSpecific()) {
@@ -80,31 +80,38 @@ public class GNUVariableDef extends MacroDefinition implements IVariableDefiniti
 		return sb.toString();
 	}
 
+	@Override
 	public boolean isRecursivelyExpanded() {
 		return type == TYPE_RECURSIVE_EXPAND;
 	}
 
+	@Override
 	public boolean isSimplyExpanded() {
 		return type == TYPE_SIMPLE_EXPAND;
 	}
 
+	@Override
 	public boolean isConditional() {
 		return type == TYPE_CONDITIONAL;
 	}
 
+	@Override
 	public boolean isAppend() {
 		return type == TYPE_APPEND;
 	}
 
+	@Override
 	public boolean isTargetSpecific() {
 		String t = getTarget();
 		return t != null && t.length() > 0;
 	}
 
+	@Override
 	public boolean isExport() {
 		return false;
 	}
 
+	@Override
 	public boolean isMultiLine() {
 		return false;
 	}
@@ -112,17 +119,20 @@ public class GNUVariableDef extends MacroDefinition implements IVariableDefiniti
 	/**
 	 * Variable from an `override' directive.
 	 */
-	 public boolean isOverride() {
+	 @Override
+	public boolean isOverride() {
 		return false;
 	}
 
 	/**
 	 * Automatic variable -- cannot be set.
 	 */
-	 public boolean isAutomatic() {
+	 @Override
+	public boolean isAutomatic() {
 		return false;
 	}
 
+	@Override
 	public String getTarget() {
 		return varTarget;
 	}

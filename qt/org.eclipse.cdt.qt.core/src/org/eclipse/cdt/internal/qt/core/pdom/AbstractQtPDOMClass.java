@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 QNX Software Systems and others.
+ * Copyright (c) 2014, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,7 +20,7 @@ import org.eclipse.cdt.internal.core.pdom.dom.IPDOMBinding;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMBinding;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMLinkage;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMNode;
-import org.eclipse.cdt.qt.core.QtPlugin;
+import org.eclipse.cdt.internal.qt.core.Activator;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -106,7 +106,7 @@ public abstract class AbstractQtPDOMClass extends QtPDOMBinding {
 		try {
 			children.accept(collector);
 		} catch(CoreException e) {
-			QtPlugin.log(e);
+			Activator.log(e);
 			return Collections.emptyList();
 		}
 

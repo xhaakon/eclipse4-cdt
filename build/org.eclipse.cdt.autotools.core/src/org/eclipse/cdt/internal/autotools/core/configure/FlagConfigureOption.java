@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2014 Red Hat Inc.
+ * Copyright (c) 2011, 2016 Red Hat Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,12 +12,12 @@
 package org.eclipse.cdt.internal.autotools.core.configure;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class FlagConfigureOption extends AbstractConfigurationOption {
 
 	private String value;
-	private ArrayList<String> children = 
-			new ArrayList<String>();
+	private ArrayList<String> children = new ArrayList<>();
 	
 	public FlagConfigureOption(String name, AutotoolsConfiguration cfg) {
 		super(name, cfg);
@@ -29,39 +29,38 @@ public class FlagConfigureOption extends AbstractConfigurationOption {
 		this.value = name;
 	}
 	
-	@SuppressWarnings("unchecked")
-	private FlagConfigureOption(String name, AutotoolsConfiguration cfg,
-			String value, ArrayList<String> children) {
+	private FlagConfigureOption(String name, AutotoolsConfiguration cfg, String value, ArrayList<String> children) {
 		super(name, cfg);
 		this.value = value;
-		this.children = (ArrayList<String>)children.clone();
+		this.children = new ArrayList<>(children);
 	}
 	
+	@Override
 	public String getParameter() {
-		StringBuffer parms = new StringBuffer();
+		StringBuilder parms = new StringBuilder();
 		// Multiple flags are designated by putting multiple flags together using "|" as delimiter
 		String[] flagNames = getValue().split("\\|"); //$NON-NLS-1$
 		String flagSeparator = "";
 		for (String flagName : flagNames) {
 			parms.append(flagSeparator);
 			flagSeparator = " "; //$NON-NLS-1$
-			StringBuffer parm = new StringBuffer(flagName+"=\""); //$NON-NLS-1$
+			StringBuilder parm = new StringBuilder(flagName).append("=\""); //$NON-NLS-1$
 			boolean haveParm = false;
 			if (isParmSet()) {
-				String separator = "";
+				String separator = ""; //$NON-NLS-1$
 				for (int i = 0; i < children.size(); ++i) {
 					String fvname = children.get(i);
 					IConfigureOption o = cfg.getOption(fvname);
 					if (o.isParmSet()) {
 						if (o instanceof IFlagConfigureValueOption) {
-							parm.append(separator + ((IFlagConfigureValueOption)o).getFlags()); //$NON-NLS-1$
-							separator = " ";
+							parm.append(separator).append(((IFlagConfigureValueOption)o).getFlags());
+							separator = " "; //$NON-NLS-1$
 							haveParm = true;
 						}
 					}
 				}
 				if (haveParm) {
-					parm.append("\""); //$NON-NLS-1$
+					parm.append('"');
 					parms.append(parm);
 				}
 			}
@@ -69,10 +68,12 @@ public class FlagConfigureOption extends AbstractConfigurationOption {
 		return parms.toString();
 	}
 
+	@Override
 	public String getParameterName() {
 		return getName();
 	}
 	
+	@Override
 	public boolean isParmSet() {
 		for (int i = 0; i < children.size(); ++i) {
 			String s = children.get(i);
@@ -83,23 +84,27 @@ public class FlagConfigureOption extends AbstractConfigurationOption {
 		return false;
 	}
 
+	@Override
 	public void setValue(String value) {
 		this.value = value;
 	}
 
+	@Override
 	public IConfigureOption copy(AutotoolsConfiguration config) {
-		FlagConfigureOption f = new FlagConfigureOption(name, config, value, children);
-		return f; 
+		return new FlagConfigureOption(name, config, value, children);
 	}
 
+	@Override
 	public String getValue() {
 		return value;
 	}
 
+	@Override
 	public int getType() {
 		return FLAG;
 	}
 	
+	@Override
 	public boolean isFlag() {
 		return true;
 	}
@@ -108,7 +113,7 @@ public class FlagConfigureOption extends AbstractConfigurationOption {
 		children.add(name);
 	}
 	
-	public ArrayList<String> getChildren() {
+	public List<String> getChildren() {
 		return children;
 	}
 	

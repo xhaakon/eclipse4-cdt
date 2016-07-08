@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010, 2015 Ericsson and others.
+ * Copyright (c) 2010, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -65,11 +65,6 @@ import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.ILaunchConfiguration;
 
 public class LaunchUtils {
-	/**
-	 * A prefix that we use to indicate that a GDB version is for MAC OS
-	 * @since 3.0
-	 */
-	public static final String MACOS_GDB_MARKER = "APPLE"; //$NON-NLS-1$
 	
    	/**
 	 * Verify the following things about the project:
@@ -268,26 +263,6 @@ public class LaunchUtils {
 				version = "6.8"; //$NON-NLS-1$
 			}
 		}
-		
-        // Look for the case of Apple's GDB, since the version must be handled differently
-        // The format is:
-        // GNU gdb 6.3.50-20050815 (Apple version gdb-696) (Sat Oct 20 18:20:28 GMT 2007)
-        // GNU gdb 6.3.50-20050815 (Apple version gdb-966) (Tue Mar 10 02:43:13 UTC 2009)
-        // GNU gdb 6.3.50-20050815 (Apple version gdb-1346) (Fri Sep 18 20:40:51 UTC 2009)
-		// GNU gdb 6.3.50-20050815 (Apple version gdb-1461.2) (Fri Mar  5 04:43:10 UTC 2010)
-        // It seems the version that changes is the "Apple version" but we still use both. 
-		// The Mac OS prefix and version are appended to the normal version so the 
-		// returned string has this format: 6.3.50-20050815APPLE1346. The normal version and the 
-		// Apple version are extracted later and passed to the MacOS services factory.
-        if (versionOutput.indexOf("Apple") != -1) {  //$NON-NLS-1$
-        	// Add a prefix to indicate we are dealing with an Apple GDB
-        	version += MACOS_GDB_MARKER;
-    		Pattern aPattern = Pattern.compile(" \\(Apple version gdb-(\\d+(\\.\\d+)*)\\)",  Pattern.MULTILINE); //$NON-NLS-1$
-    		Matcher aMatcher = aPattern.matcher(versionOutput);
-    		if (aMatcher.find()) {
-    			version += aMatcher.group(1);
-    		}
-        }
 
         return version;
 	}
@@ -298,7 +273,10 @@ public class LaunchUtils {
 	 * only once per session and the resulting version string stored for future uses.
 	 * 
 	 * A timeout is scheduled which will kill the process if it takes too long.
+	 * 
+ 	 * @deprecated Replaced with {@link GdbLaunch#getGDBVersion()}
 	 */
+	@Deprecated
 	public static String getGDBVersion(final ILaunchConfiguration configuration) throws CoreException {        
         String cmd = getGDBPath(configuration).toOSString() + " --version"; //$NON-NLS-1$
         
@@ -365,10 +343,10 @@ public class LaunchUtils {
 	
 	/**
 	 * Compares two version numbers.
-	 * Returns -1, 0, or 1 if v1 is less than, equal to, or greater than v2 respectively
+	 * Returns -1, 0, or 1 if v1 is less than, equal to, or greater than v2, respectively.
 	 * @param v1 The first version
 	 * @param v2 The second version
-	 * @return -1, 0, or 1 if v1 is less than, equal to, or greater than v2 respectively
+	 * @return -1, 0, or 1 if v1 is less than, equal to, or greater than v2, respectively.
 	 * @since 4.8
 	 */
 	public static int compareVersions(String v1, String v2) {
@@ -426,7 +404,7 @@ public class LaunchUtils {
 
 		return 0;
 	}
-	
+
 	/**
 	 * Read from the specified stream and return what was read.
 	 * 
@@ -501,7 +479,9 @@ public class LaunchUtils {
 	 * Gets the CDT environment from the CDT project's configuration referenced by the
 	 * launch
 	 * @since 3.0
+ 	 * @deprecated Replaced with {@link GdbLaunch#getLaunchEnvironment()}
 	 */
+	@Deprecated
 	public static String[] getLaunchEnvironment(ILaunchConfiguration config) throws CoreException {
 		// Get the project
 		String projectName = config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, (String)null);
@@ -560,7 +540,7 @@ public class LaunchUtils {
 		// Turn it into an envp format
 		List<String> strings= new ArrayList<String>(envMap.size());
 		for (Entry<String, String> entry : envMap.entrySet()) {
-			StringBuffer buffer= new StringBuffer(entry.getKey());
+			StringBuilder buffer= new StringBuilder(entry.getKey());
 			buffer.append('=').append(entry.getValue());
 			strings.add(buffer.toString());
 		}

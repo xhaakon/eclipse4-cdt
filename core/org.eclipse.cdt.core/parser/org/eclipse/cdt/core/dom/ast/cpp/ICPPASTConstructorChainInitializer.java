@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2011 IBM Corporation and others.
+ * Copyright (c) 2004, 2012 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -74,12 +74,14 @@ public interface ICPPASTConstructorChainInitializer extends IASTInitializer, ICP
 	
 	/**
 	 * @deprecated Replaced by {@link #getInitializer()}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public IASTExpression getInitializerValue();
 
 	/**
 	 * @deprecated Replaced by {@link #setInitializer(IASTInitializer)}.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public void setInitializerValue(IASTExpression expression);

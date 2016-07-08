@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Red Hat Inc..
+ * Copyright (c) 2010, 2015 Red Hat Inc..
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.autotools.ui.tests;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedWriter;
@@ -69,7 +70,7 @@ public class TestEnvironmentVars extends AbstractTest {
 		Pattern p = Pattern.compile(".*some_var.*", Pattern.DOTALL);
 		Matcher m = p.matcher(output);
 		// We shouldn't see some_var anywhere in the console
-		assertTrue(!m.matches());
+		assertFalse(m.matches());
 
 		setEnvVar();
 	}
@@ -122,20 +123,20 @@ public class TestEnvironmentVars extends AbstractTest {
 		// Create a fake configure script which prints out the values of
 		// envvars some_var1, some_var2, and some_var3
 		File f = new File(path.append("fake_configure").toOSString());
-		BufferedWriter w = new BufferedWriter(new FileWriter(f));
-		w.append("echo VAR1 is ${some_var1}");
-		w.newLine();
-		w.append("echo VAR2 is ${some_var2}");
-		w.newLine();
-		w.append("echo VAR3 is ${some_var3}");
-		w.newLine();
-		w.append("echo VAR4 is ${some_var4}");
-		w.newLine();
-		w.append("echo VAR5 is ${some_var5}");
-		w.newLine();
-		w.append("echo VAR6 is ${some_var6}");
-		w.newLine();
-		w.close();
+		try (BufferedWriter w = new BufferedWriter(new FileWriter(f))) {
+			w.append("echo VAR1 is ${some_var1}");
+			w.newLine();
+			w.append("echo VAR2 is ${some_var2}");
+			w.newLine();
+			w.append("echo VAR3 is ${some_var3}");
+			w.newLine();
+			w.append("echo VAR4 is ${some_var4}");
+			w.newLine();
+			w.append("echo VAR5 is ${some_var5}");
+			w.newLine();
+			w.append("echo VAR6 is ${some_var6}");
+			w.newLine();
+		}
 		// Now change the configure script command to be the fake configure
 		// script
 		// and set the three envvars on the command itself

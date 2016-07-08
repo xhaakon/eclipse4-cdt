@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,6 +15,8 @@ package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 import java.io.IOException;
 import java.io.StringReader;
 
+import org.eclipse.cdt.make.core.makefile.IMakefile;
+import org.eclipse.cdt.make.ui.IWorkingCopyManager;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.reconciler.DirtyRegion;
@@ -39,23 +41,19 @@ public class AutomakefileReconcilingStrategy implements IReconcilingStrategy {
 		fOutliner= editor.getAutomakeOutlinePage();
 		fLastRegionOffset = Integer.MAX_VALUE;
 		fEditor= editor;
-		input = (IEditorInput) fEditor.getEditorInput();
+		input = fEditor.getEditorInput();
 		fManager= AutomakeEditorFactory.getDefault().getWorkingCopyManager();
 		fDocumentProvider= AutomakeEditorFactory.getDefault().getAutomakefileDocumentProvider();
 		fErrorHandler= new AutomakeErrorHandler(input);
 		fMakefileReconcilingParticipant= (IReconcilingParticipant)fEditor;
 	}
 	
-	/**
-	 * @see IReconcilingStrategy#reconcile(document)
-	 */
+	@Override
 	public void setDocument(IDocument document) {
 	}	
 
 
-	/**
-	 * @see IReconcilingStrategy#reconcile(region)
-	 */
+	@Override
 	public void reconcile(IRegion region) {
 		// We use a trick to avoid running the reconciler multiple times
 		// on a file when it gets changed. This is because this gets called
@@ -67,9 +65,7 @@ public class AutomakefileReconcilingStrategy implements IReconcilingStrategy {
 		fLastRegionOffset = region.getOffset();
 	}
 
-	/**
-	 * @see IReconcilingStrategy#reconcile(dirtyRegion, region)
-	 */
+	@Override
 	public void reconcile(DirtyRegion dirtyRegion, IRegion region) {
 		// FIXME: This seems to generate too much flashing in
 		// the contentoutline viewer.

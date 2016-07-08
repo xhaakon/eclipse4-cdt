@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2009 Wind River Systems, Inc. and others.
+ * Copyright (c) 2008, 2012 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -42,12 +42,14 @@ public interface IValue {
 
 	/**
 	 * @deprecated Returns an empty character array.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	char[] getInternalExpression(); 
 
 	/**
 	 * @deprecated Returns an empty array.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	IBinding[] getUnknownBindings();

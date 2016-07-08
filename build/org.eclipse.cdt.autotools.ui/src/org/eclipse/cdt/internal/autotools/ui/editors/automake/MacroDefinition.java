@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,8 @@
  *     QNX Software Systems - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.autotools.ui.editors.automake;
+
+import org.eclipse.cdt.make.core.makefile.IMacroDefinition;
 
 /**
  */
@@ -27,6 +29,7 @@ public class MacroDefinition extends Directive implements IMacroDefinition {
 		value = v;
 	}
 
+	@Override
 	public String getName() {
 		return name;
 	}
@@ -35,25 +38,26 @@ public class MacroDefinition extends Directive implements IMacroDefinition {
 		name = (n == null) ? "" : n.trim() ; //$NON-NLS-1$
 	}
 
+	@Override
 	public StringBuffer getValue() {
 		return value;
 	}
 
-	/**
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
 		StringBuffer buffer = new StringBuffer();
 		buffer.append(getName()).append(" = ").append(getValue()).append('\n'); //$NON-NLS-1$
 		return buffer.toString();
 	}
 
+	@Override
 	public boolean equals(Object v) {
 		if (v instanceof MacroDefinition)
 			return ((MacroDefinition)v).getName().equals(getName());
 		return false;
 	}
 
+	@Override
 	public int hashCode() {
 		return getName().hashCode();
 	}
@@ -78,37 +82,27 @@ public class MacroDefinition extends Directive implements IMacroDefinition {
 		fromMakefile = from;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMacroDefinition#isFromCommand()
-	 */
+	@Override
 	public boolean isFromCommand() {
 		return fromCommand;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMacroDefinition#isFromDefault()
-	 */
+	@Override
 	public boolean isFromDefault() {
 		return fromDefault;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMacroDefinition#isFromEnviroment()
-	 */
+	@Override
 	public boolean isFromEnviroment() {
 		return fromEnvironment;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMacroDefinition#isFromEnviroment()
-	 */
+	@Override
 	public boolean isFromEnvironmentOverride() {
 		return fromEnvironmentOverride;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.make.core.makefile.IMacroDefinition#isFromMakefile()
-	 */
+	@Override
 	public boolean isFromMakefile() {
 		return fromMakefile;
 	}

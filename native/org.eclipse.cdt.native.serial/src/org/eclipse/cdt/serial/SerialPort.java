@@ -179,7 +179,11 @@ public class SerialPort {
 	 *            name for the serial device.
 	 */
 	public SerialPort(String portName) {
-		this.portName = portName;
+		if (System.getProperty("os.name").startsWith("Windows") && !portName.startsWith("\\\\.\\")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			this.portName = "\\\\.\\" + portName; //$NON-NLS-1$
+		} else {
+			this.portName = portName;
+		}
 	}
 
 	private native long open0(String portName, int baudRate, int byteSize, int parity, int stopBits) throws IOException;
@@ -222,9 +226,9 @@ public class SerialPort {
 	public static String[] list() throws IOException {
 		String osName = System.getProperty("os.name"); //$NON-NLS-1$
 		if (osName.equals("Mac OS X")) { //$NON-NLS-1$
-			return listDevs(Pattern.compile("(tty|cu)\\..*(usbserial|usbmodem).*")); //$NON-NLS-1$
+			return listDevs(Pattern.compile("tty\\..*(usbserial|usbmodem).*")); //$NON-NLS-1$
 		} else if (osName.equals("Linux")) { //$NON-NLS-1$
-			return listDevs(Pattern.compile("tty(USB|ACM).*")); //$NON-NLS-1$
+			return listDevs(Pattern.compile("ttyUSB.*")); //$NON-NLS-1$
 		} else if (osName.startsWith("Windows")) { //$NON-NLS-1$
 			List<String> ports = new ArrayList<>();
 			int i = 0;

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2011 Symbian Software Ltd. and others.
+ * Copyright (c) 2007, 2012 Symbian Software Ltd. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -133,7 +133,7 @@ public class EmptyIndexFragment implements IIndexFragment {
 			throws CoreException {
 		return IIndexFragmentFile.EMPTY_ARRAY;
 	}
-	
+
 	@Override
 	public IIndexFragmentFile[] getFiles(IIndexFileLocation location) throws CoreException {
 		return IIndexFragmentFile.EMPTY_ARRAY;

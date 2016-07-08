@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2015 Symbian Software Systems and others.
+ * Copyright (c) 2008, 2016 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -120,12 +120,12 @@ public class DoxygenSingleAutoEditStrategy extends DoxygenMultilineAutoEditStrat
                 try {
                 	StringBuilder content = getDeclarationLines(doc, offset);
 
-                	boolean contentAlreadyThere = (firstLineContainsText && content.toString().contains(commentContentBehindCursor.trim()));
+                	boolean contentAlreadyThere = (firstLineContainsText && content != null && content.toString().contains(commentContentBehindCursor.trim()));
                     if (content == null || content.toString().trim().length() == 0 || contentAlreadyThere)
                     {
                         buf.setLength(0);
                         buf.append(fgDefaultLineDelim);
-                        buf.append(indentationWithPrefix + " "); //$NON-NLS-1$
+                        buf.append(indentationWithPrefix).append(' ');
                         c.shiftsCaret= false;
                         c.caretOffset= c.offset + buf.length();
                     } else {
@@ -134,7 +134,7 @@ public class DoxygenSingleAutoEditStrategy extends DoxygenMultilineAutoEditStrat
                             c.shiftsCaret= false;
                             c.caretOffset= c.offset + 1;
                             buf.setLength(0);
-                            buf.append(" " + //$NON-NLS-1$
+                            buf.append(' ').append(
                             		indent(content, indentationWithPrefix + " ", //$NON-NLS-1$
                             		fgDefaultLineDelim).substring((indentationWithPrefix + " ").length())); //$NON-NLS-1$
                         }

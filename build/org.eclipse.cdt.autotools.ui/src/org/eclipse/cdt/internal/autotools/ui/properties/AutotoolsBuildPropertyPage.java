@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Red Hat Inc.
+ * Copyright (c) 2007, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,10 +17,8 @@ import org.eclipse.cdt.managedbuilder.ui.properties.AbstractCBuildPropertyTab;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -32,14 +30,14 @@ import org.eclipse.swt.widgets.Text;
 
 public class AutotoolsBuildPropertyPage extends AbstractCBuildPropertyTab {
 
-	private String TRUE = "true"; // $NON-NLS-1$
-	private String FALSE = "false"; // $NON-NLS-1$
-	private String CLEAN_DELETE_LABEL = "CleanDelete.label"; // $NON-NLS-1$
-	private String CLEAN_MAKE_LABEL = "CleanMake.label"; // $NON-NLS-1$
-	private String CLEAN_MAKETARGET_LABEL = "CleanMakeTarget.label"; // $NON-NLS-1$
-	private String CLEAN_MAKETARGET_TOOLTIP = "CleanMakeTarget.tooltip"; // $NON-NLS-1$
-	private String AUTO_BUILDNAME_LABEL = "AutoBuildName.label"; // $NON-NLS-1$
-	private String AUTO_BUILDNAME_TOOLTIP = "AutoBuildName.tooltip"; // $NON-NLS-1$
+	private String TRUE = "true"; //$NON-NLS-1$
+	private String FALSE = "false"; //$NON-NLS-1$
+	private String CLEAN_DELETE_LABEL = "CleanDelete.label"; //$NON-NLS-1$
+	private String CLEAN_MAKE_LABEL = "CleanMake.label"; //$NON-NLS-1$
+	private String CLEAN_MAKETARGET_LABEL = "CleanMakeTarget.label"; //$NON-NLS-1$
+	private String CLEAN_MAKETARGET_TOOLTIP = "CleanMakeTarget.tooltip"; //$NON-NLS-1$
+	private String AUTO_BUILDNAME_LABEL = "AutoBuildName.label"; //$NON-NLS-1$
+	private String AUTO_BUILDNAME_TOOLTIP = "AutoBuildName.tooltip"; //$NON-NLS-1$
 	
 	protected Button fCleanDelete;
 	protected Button fCleanMake;
@@ -50,10 +48,12 @@ public class AutotoolsBuildPropertyPage extends AbstractCBuildPropertyTab {
 		return (IProject)getCfg().getManagedProject().getOwner();
 	}
 
+	@Override
 	public boolean canBeVisible() {
 		return AutotoolsPlugin.hasTargetBuilder(getProject());
 	}
 
+	@Override
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 		Composite composite= usercomp;
@@ -100,35 +100,27 @@ public class AutotoolsBuildPropertyPage extends AbstractCBuildPropertyTab {
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fCleanMakeTarget.setLayoutData(gd);
 		
-		fCleanDelete.addSelectionListener(new SelectionListener() {
+		fCleanDelete.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				fCleanMake.setSelection(false);
 				fCleanDelete.setSelection(true);
 				fCleanMakeTarget.setEnabled(false);
 			}
-
-			public void widgetDefaultSelected(SelectionEvent e) {
-				// do nothing
-			}
 		});
 		
-		fCleanMake.addSelectionListener(new SelectionListener() {
+		fCleanMake.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				fCleanDelete.setSelection(false);
 				fCleanMake.setSelection(true);
 				fCleanMakeTarget.setEnabled(true);
 			}
-
-			public void widgetDefaultSelected(SelectionEvent e) {
-				// do nothing
-			}
 		});
 		
-		fCleanMakeTarget.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
-				if (fCleanMakeTarget.getText().equals("")) { // $NON-NLS-1$
-					// FIXME: should probably issue warning here, but how?
-				}
+		fCleanMakeTarget.addModifyListener(e -> {
+			if (fCleanMakeTarget.getText().isEmpty()) {
+				// FIXME: should probably issue warning here, but how?
 			}
 		});
 		
@@ -143,6 +135,7 @@ public class AutotoolsBuildPropertyPage extends AbstractCBuildPropertyTab {
 		initialize();
 	}
 
+	@Override
 	protected void performOK() {
 		IProject project = getProject();
 		if (fCleanDelete.getSelection()) {
@@ -180,10 +173,12 @@ public class AutotoolsBuildPropertyPage extends AbstractCBuildPropertyTab {
 
 	}
 
+	@Override
 	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
 		performOK();
 	}
 	
+	@Override
 	protected void performDefaults() {
 		fCleanDelete.setSelection(false);
 		fCleanMake.setSelection(true);
@@ -192,16 +187,14 @@ public class AutotoolsBuildPropertyPage extends AbstractCBuildPropertyTab {
 		fAutoName.setEnabled(true);
 	}
 	
+	@Override
 	public void updateData(ICResourceDescription cfgd) {
 		// what to do here?
 	}
 	
+	@Override
 	public void updateButtons() {
 		// what to do here?
-	}
-
-	public void setVisible (boolean b) {
-		super.setVisible(b);
 	}
 
 	private void initialize() {

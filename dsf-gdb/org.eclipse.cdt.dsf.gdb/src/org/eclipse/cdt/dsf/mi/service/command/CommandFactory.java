@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2015 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,6 +26,7 @@
  *     Alvaro Sanchez-Leon (Ericsson AB) - [Memory] Support 16 bit addressable size (Bug 426730)
  *     Marc Khouzam (Ericsson) - Support for dynamic printf (Bug 400638)
  *     Marc Khouzam (Ericsson) - Support for -gdb-version (Bug 455408)
+ *     Intel Corporation - Added Reverse Debugging BTrace support
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.mi.service.command;
@@ -39,6 +40,7 @@ import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommand;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
@@ -53,6 +55,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIDetach;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIExecAbort;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoBreak;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoProgram;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoRecord;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoSharedLibrary;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIInfoThreads;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIJump;
@@ -67,6 +70,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIThread;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLITrace;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLITraceDump;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIUnsetEnv;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLIUnsetSubstitutePath;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIAddInferior;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIBreakAfter;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIBreakCommands;
@@ -148,6 +152,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsoleK
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIListFeatures;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIListThreadGroups;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIRemoveInferior;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MISetSubstitutePath;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIStackInfoDepth;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIStackListArguments;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIStackListFrames;
@@ -237,7 +242,8 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIVarSetFormatInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIVarShowAttributesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIVarShowFormatInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIVarUpdateInfo;
-
+import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoRecordInfo;
+import org.eclipse.cdt.debug.core.model.IChangeReverseMethodHandler.ReverseDebugMethod;
 
 /**
  * Factory to create MI/CLI commands.
@@ -287,6 +293,11 @@ public class CommandFactory {
 		return new CLIInfoProgram(ctx);
 	}
 
+	/** @since 5.0*/
+	public ICommand<CLIInfoRecordInfo> createCLIInfoRecord(ICommandControlDMContext ctx) {
+		return new CLIInfoRecord(ctx);
+	}
+
 	public ICommand<CLIInfoSharedLibraryInfo> createCLIInfoSharedLibrary(ISymbolDMContext ctx) {
 		return new CLIInfoSharedLibrary(ctx);
 	}
@@ -308,12 +319,18 @@ public class CommandFactory {
 		return new CLIMaintenance(ctx, subCommand);
 	}
 
-	public ICommand<MIInfo> createCLIPasscount(IBreakpointsTargetDMContext ctx, int breakpoint, int passcount) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createCLIPasscount(IBreakpointsTargetDMContext ctx, String breakpoint, int passcount) {
 		return new CLIPasscount(ctx, breakpoint, passcount);
 	}
 
 	public ICommand<MIInfo> createCLIRecord(ICommandControlDMContext ctx, boolean enable) {
 		return new CLIRecord(ctx, enable);
+	}
+
+	/** @since 5.0*/
+	public ICommand<MIInfo> createCLIRecord(ICommandControlDMContext ctx, ReverseDebugMethod traceMethod) {
+		return new CLIRecord(ctx, traceMethod);
 	}
 
 	/** @since 4.1 */
@@ -367,32 +384,43 @@ public class CommandFactory {
 		return new CLIUnsetEnv(ctx, name);
 	}
 
+	/** @since 5.0 */
+	public ICommand<MIInfo> createCLIUnsetSubstitutePath(ISourceLookupDMContext ctx) {
+		return new CLIUnsetSubstitutePath(ctx);
+	}
+
 	/** @since 4.0 */
 	public ICommand<MIAddInferiorInfo> createMIAddInferior(ICommandControlDMContext ctx) {
 		return new MIAddInferior(ctx);
 	}
 	
-	public ICommand<MIInfo> createMIBreakAfter(IBreakpointsTargetDMContext ctx, int breakpoint, int ignoreCount) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMIBreakAfter(IBreakpointsTargetDMContext ctx, String breakpoint, int ignoreCount) {
 		return new MIBreakAfter(ctx, breakpoint, ignoreCount);
 	}
 
-	public ICommand<MIInfo> createMIBreakCommands(IBreakpointsTargetDMContext ctx, int breakpoint, String[] commands) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMIBreakCommands(IBreakpointsTargetDMContext ctx, String breakpoint, String[] commands) {
 		return new MIBreakCommands(ctx, breakpoint, commands);
 	}
 	
-	public ICommand<MIInfo> createMIBreakCondition(IBreakpointsTargetDMContext ctx, int breakpoint, String condition) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMIBreakCondition(IBreakpointsTargetDMContext ctx, String breakpoint, String condition) {
 		return new MIBreakCondition(ctx, breakpoint, condition);
 	}
 
-	public ICommand<MIInfo> createMIBreakDelete(IBreakpointsTargetDMContext ctx, int[] array) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMIBreakDelete(IBreakpointsTargetDMContext ctx, String[] array) {
 		return new MIBreakDelete(ctx, array);
 	}
 
-	public ICommand<MIInfo> createMIBreakDisable(IBreakpointsTargetDMContext ctx, int[] array) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMIBreakDisable(IBreakpointsTargetDMContext ctx, String[] array) {
 		return new MIBreakDisable(ctx, array);
 	}
 
-	public ICommand<MIInfo> createMIBreakEnable(IBreakpointsTargetDMContext ctx, int[] array) {
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMIBreakEnable(IBreakpointsTargetDMContext ctx, String[] array) {
 		return new MIBreakEnable(ctx, array);
 	}
 
@@ -400,15 +428,21 @@ public class CommandFactory {
 		return new MIBreakInsert(ctx, func, false);
 	}
 
+	/**
+     * @since 5.0
+     */
 	public ICommand<MIBreakInsertInfo> createMIBreakInsert(IBreakpointsTargetDMContext ctx, boolean isTemporary, 
 			boolean isHardware, String condition, int ignoreCount,
-			String line, int tid) {
+			String line, String tid) {
 		return new MIBreakInsert(ctx, isTemporary, isHardware, condition, ignoreCount, line, tid, false);
 	}
 
+	/**
+     * @since 5.0
+     */
 	public ICommand<MIBreakInsertInfo> createMIBreakInsert(IBreakpointsTargetDMContext ctx, boolean isTemporary,
 			boolean isHardware, String condition, int ignoreCount, 
-			String location, int tid, boolean disabled, boolean isTracepoint) {
+			String location, String tid, boolean disabled, boolean isTracepoint) {
 		return new MIBreakInsert(ctx, isTemporary, isHardware, condition, ignoreCount, location, tid, disabled, isTracepoint, false);
 	}
 
@@ -466,16 +500,6 @@ public class CommandFactory {
 		return new MIDataListRegisterNames(ctx, regnos);
 	}
 
-	@Deprecated
-	public ICommand<MIDataListRegisterValuesInfo> createMIDataListRegisterValues(IMIExecutionDMContext ctx, int fmt) {
-		return new MIDataListRegisterValues(ctx, fmt);
-	}
-
-	@Deprecated
-	public ICommand<MIDataListRegisterValuesInfo> createMIDataListRegisterValues(IMIExecutionDMContext ctx, int fmt, int [] regnos) {
-		return new MIDataListRegisterValues(ctx, fmt, regnos);
-	}
-	
 	/**
 	 * @since 4.3
 	 */
@@ -901,6 +925,11 @@ public class CommandFactory {
 		return new MIRemoveInferior(ctx, groupId);
 	}
 
+	/** @since 5.0 */
+	public ICommand<MIInfo> createMISetSubstitutePath(ISourceLookupDMContext context, String from, String to) {
+		return new MISetSubstitutePath(context, from, to);
+	}
+
 	public ICommand<MIStackInfoDepthInfo> createMIStackInfoDepth(IMIExecutionDMContext ctx) {
 		return new MIStackInfoDepth(ctx);
 	}
@@ -935,11 +964,6 @@ public class CommandFactory {
 
 	public ICommand<MIInfo> createMIStackSelectFrame(IDMContext ctx, int frameNum) {
 		return new MIStackSelectFrame(ctx, frameNum);
-	}
-
-	@Deprecated
-	public ICommand<MIInfo> createMITargetAttach(ICommandControlDMContext ctx, String groupId) {
-		return new MITargetAttach(ctx, groupId);
 	}
 
 	/** @since 4.0 */

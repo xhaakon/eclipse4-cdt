@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,12 +17,14 @@ public class Ifeq extends Conditional {
 		super(parent, cond);
 	}
 
+	@Override
 	public boolean isIfeq() {
 		return true;
 	}
 
+	@Override
 	public String toString() {
-		StringBuffer sb = new StringBuffer(GNUMakefileConstants.CONDITIONAL_IFEQ);
+		StringBuilder sb = new StringBuilder(GNUMakefileConstants.CONDITIONAL_IFEQ);
 		sb.append(' ').append(getConditional());
 		return sb.toString();
 	}

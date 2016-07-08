@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2014 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -37,7 +37,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPParameterPackType;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameterMap;
 import org.eclipse.cdt.core.index.IIndexFileSet;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
@@ -70,7 +69,7 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 	public ICPPClassType getOriginalClassType() {
 		return specialClass.getSpecializedBinding();
 	}
-		
+
 	@Override
 	public final IBinding getBinding(IASTName name, boolean resolve) {
 		return getBinding(name, resolve, IIndexFileSet.EMPTY);
@@ -84,7 +83,7 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 	@Override
 	public IBinding getBinding(IASTName name, boolean resolve, IIndexFileSet fileSet) {
 		char[] c = name.getLookupKey();
-		
+
 		if (CharArrayUtils.equals(c, specialClass.getNameCharArray())
 				&& !CPPClassScope.shallReturnConstructors(name, false)) {
 			return specialClass;
@@ -94,10 +93,10 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		IScope classScope = specialized.getCompositeScope();
 		IBinding[] bindings = classScope != null ?
 				classScope.getBindings(new ScopeLookupData(name, resolve, false)) : null;
-		
+
 		if (bindings == null)
 			return null;
-    	
+
 		IBinding[] specs = IBinding.EMPTY_BINDING_ARRAY;
 		for (IBinding binding : bindings) {
 			specs = ArrayUtil.append(specs, specialClass.specializeMember(binding, name));
@@ -145,12 +144,12 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		}
 		return type1.isSameType(type2);
 	}
-	
+
 	@Override
 	public ICPPClassSpecialization getClassType() {
 		return specialClass;
 	}
-	
+
 	@Override
 	public ICPPBase[] getBases(IASTNode point) {
 		if (fBases == null) {
@@ -166,10 +165,10 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 				} else {
 					final ICPPTemplateParameterMap tpmap = specialClass.getTemplateParameterMap();
 					for (ICPPBase base : bases) {
-						IBinding origClass = base.getBaseClass();
-						if (origClass instanceof ICPPTemplateParameter && ((ICPPTemplateParameter) origClass).isParameterPack()) {
-							IType[] specClasses= CPPTemplates.instantiateTypes(new IType[] { new CPPParameterPackType((IType) origClass) },
-									tpmap, -1, specialClass, point);
+						IType baseType = base.getBaseClassType();
+						if (baseType instanceof ICPPParameterPackType) {
+							IType[] specClasses= CPPTemplates.instantiateTypes(new IType[] { baseType },
+									new InstantiationContext(tpmap, specialClass, point));
 							if (specClasses.length == 1 && specClasses[0] instanceof ICPPParameterPackType) {
 								result= ArrayUtil.append(result, base);
 							} else {
@@ -182,15 +181,16 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 									}
 								}
 							}
-							continue;
 						}
-						if (origClass instanceof IType) {
+						else if (baseType != null) {
 							ICPPBase specBase = base.clone();
 							ICPPClassSpecialization specializationContext = specialClass;
-							if (specialClass.getOwner() instanceof ICPPClassSpecialization) {
-								specializationContext = (ICPPClassSpecialization) specialClass.getOwner();
+							IBinding owner = specialClass.getOwner();
+							if (owner instanceof ICPPClassSpecialization) {
+								specializationContext = (ICPPClassSpecialization) owner;
 							}
-							IType specClass= CPPTemplates.instantiateType((IType) origClass, tpmap, -1, specializationContext, point);
+							IType specClass= CPPTemplates.instantiateType(baseType,
+									new InstantiationContext(tpmap, specializationContext, point));
 							specClass = SemanticUtil.getUltimateType(specClass, false);
 							if (specClass instanceof IBinding && !(specClass instanceof IProblemBinding)) {
 								specBase.setBaseClass((IBinding) specClass);
@@ -208,10 +208,10 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		}
 		return fBases;
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	private <T extends IBinding> T[] specializeMembers(T[] array, IASTNode point) {
-		if (array == null || array.length == 0) 
+		if (array == null || array.length == 0)
 			return array;
 
 		T[] newArray= array.clone();
@@ -256,7 +256,7 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		CCorePlugin.log(new Exception("Unsafe method call. Instantiation of dependent expressions may not work.")); //$NON-NLS-1$
 		return getConstructors(null);
 	}
-		
+
 	@Override
 	public ICPPConstructor[] getConstructors(IASTNode point) {
 		ICPPConstructor[] ctors= ClassTypeHelper.getConstructors(specialClass.getSpecializedBinding(), point);
@@ -275,7 +275,7 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		if (ownInheritedConstructors == null) {
 	        if (!hasInheritedConstructorsSources(point))
 	        	return ICPPMethod.EMPTY_CPPMETHOD_ARRAY;
-	
+
 	        IType[][] existingConstructorParamTypes = new IType[existingConstructors.length][];
 			for (int i = 0; i < existingConstructors.length; i++) {
 				ICPPParameter[] params = existingConstructors[i].getParameters();
@@ -364,7 +364,7 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 	//       may be created, but scopes are sometimes stored in hash maps
 	//       under the assumption that two objects representing the same
 	//       scope will compare equal().
-	
+
 	@Override
 	public boolean equals(Object other) {
 		if (other instanceof ICPPClassSpecializationScope) {
@@ -372,7 +372,7 @@ public class AbstractCPPClassSpecializationScope implements ICPPClassSpecializat
 		}
 		return false;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		return specialClass.hashCode();

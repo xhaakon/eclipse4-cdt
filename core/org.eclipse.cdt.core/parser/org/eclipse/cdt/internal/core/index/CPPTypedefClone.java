@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 QNX Software Systems and others.
+ * Copyright (c) 2007, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,6 +19,9 @@ import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBinding;
 import org.eclipse.cdt.internal.core.dom.parser.ITypeContainer;
 
+/**
+ * Delegating clone implementation for index classes implementing {@link ITypedef} interface.
+ */
 public class CPPTypedefClone implements ITypedef, ITypeContainer, IIndexType, ICPPBinding {
 	protected final ITypedef delegate;
 	private IType type;
@@ -61,8 +64,7 @@ public class CPPTypedefClone implements ITypedef, ITypeContainer, IIndexType, IC
 	}
 
 	@Override
-	@SuppressWarnings("rawtypes")
-	public Object getAdapter(Class adapter) {
+	public <T> T getAdapter(Class<T> adapter) {
 		return delegate.getAdapter(adapter);
 	}
 

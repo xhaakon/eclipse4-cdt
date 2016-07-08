@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,11 +15,10 @@ package org.eclipse.cdt.internal.autotools.ui.editors.automake;
 import org.eclipse.cdt.autotools.core.AutotoolsPlugin;
 import org.eclipse.cdt.internal.autotools.ui.preferences.AutomakeEditorPreferencePage;
 import org.eclipse.cdt.internal.autotools.ui.preferences.AutotoolsEditorPreferenceConstants;
+import org.eclipse.cdt.make.core.makefile.IMakefile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.source.ISourceViewer;
-import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.texteditor.ChainedPreferenceStore;
@@ -51,17 +50,15 @@ public class AutomakeEditor extends MakefileEditor {
     	return fgInstance;
     }
 
-    protected void doSetInput(IEditorInput newInput) throws CoreException
-	{
+    @Override
+	protected void doSetInput(IEditorInput newInput) throws CoreException {
 		super.doSetInput(newInput);
 		this.input = newInput;
 
 		getOutlinePage().setInput(input);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.ui.texteditor.AbstractDecoratedTextEditor#initializeEditor()
-	 */
+	@Override
 	protected void initializeEditor() {
 		setRangeIndicator(new DefaultRangeIndicator());
 		setEditorContextMenuId("#MakefileEditorContext"); //$NON-NLS-1$
@@ -81,7 +78,7 @@ public class AutomakeEditor extends MakefileEditor {
 	}
 	
 	public AutomakeDocumentProvider getAutomakefileDocumentProvider() {
-		return (AutomakeDocumentProvider) AutomakeEditorFactory.getDefault().getAutomakefileDocumentProvider();
+		return AutomakeEditorFactory.getDefault().getAutomakefileDocumentProvider();
 	}
 	
 	public AutomakefileContentOutlinePage getAutomakeOutlinePage() {
@@ -93,29 +90,17 @@ public class AutomakeEditor extends MakefileEditor {
 		return ampage;
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.ui.IWorkbenchPart#createPartControl(org.eclipse.swt.widgets.Composite)
-	 */
-	public void createPartControl(Composite parent) {
-		super.createPartControl(parent);
-	}
-	
-	/* (non-Javadoc)
-	 * Method declared on IAdaptable
-	 */
-	public Object getAdapter(@SuppressWarnings("rawtypes") Class key) {
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> T getAdapter(Class<T> key) {
 		if (key.equals(IContentOutlinePage.class)) {
-			return getAutomakeOutlinePage();
+			return (T) getAutomakeOutlinePage();
 		}
 		return super.getAdapter(key);
 	}
 	
 	public AutomakefileSourceConfiguration getAutomakeSourceViewerConfiguration() {
 		return sourceViewerConfiguration;
-	}
-	
-	protected void handlePreferenceStoreChanged(PropertyChangeEvent event) {
-		super.handlePreferenceStoreChanged(event);
 	}
 	
 	public IMakefile getMakefile() {

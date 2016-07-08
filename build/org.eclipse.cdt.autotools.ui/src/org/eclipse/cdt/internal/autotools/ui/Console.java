@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2004 QNX Software Systems and others.
+ * Copyright (c) 2002, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -26,14 +26,7 @@ public class Console implements IConsole {
 				contextId);
 	}
 	
-//	/**
-//	 * Constructor for ConfigureConsole.
-//	 */
-//	public CConfigureConsole() {
-//		fConsoleManager = AutotoolsPlugin.getDefault().getConsoleManager();
-//	}
-//
-
+	@Override
 	public void start(IProject project ) {
 		this.project = project;
 		fConsoleManager.getConsole(project).start(project);
@@ -43,14 +36,17 @@ public class Console implements IConsole {
 	 * @throws CoreException
 	 * @see org.eclipse.cdt.core.resources.IConsole#getOutputStream()
 	 */
+	@Override
 	public ConsoleOutputStream getOutputStream() throws CoreException {
 		return fConsoleManager.getConsole(project).getOutputStream();
 	}
 
+	@Override
 	public ConsoleOutputStream getInfoStream() throws CoreException {
 		return fConsoleManager.getConsole(project).getInfoStream();
 	}
 
+	@Override
 	public ConsoleOutputStream getErrorStream() throws CoreException {
 		return fConsoleManager.getConsole(project).getErrorStream();
 	}

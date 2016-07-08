@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 IBM Corporation and others.
+ * Copyright (c) 2000, 2016 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -101,6 +101,7 @@ public class StringMatcher {
 	 * specifying if case should be ignored
 	 * @deprecated Use StringMatcher(pattern, ignoreCase, ignoreWildCards).
 	 */
+	@Deprecated
 	public StringMatcher(String aPattern, boolean ignoreCase) {
 		this(aPattern, ignoreCase, false);
 	}
@@ -131,11 +132,7 @@ public class StringMatcher {
 
 		/* convert case */
 		if (fIgnoreCase) {
-			char[] chars= aPattern.toCharArray();
-			for (int i = 0; i < chars.length; i++) {
-				chars[i]= Character.toUpperCase(chars[i]);
-			}
-			fPattern= new String(chars);
+			fPattern= aPattern.toUpperCase();
 		} else {
 			fPattern= aPattern;
 		}
@@ -248,10 +245,10 @@ public class StringMatcher {
 			}
 		}
 
-		Vector<String> temp= new Vector<String>();
+		Vector<String> temp = new Vector<>();
 
 		int pos= 0;
-		StringBuffer buf= new StringBuffer();
+		StringBuilder buf= new StringBuilder();
 		while (pos < fLength) {
 			char c= fPattern.charAt(pos++);
 			switch (c) {

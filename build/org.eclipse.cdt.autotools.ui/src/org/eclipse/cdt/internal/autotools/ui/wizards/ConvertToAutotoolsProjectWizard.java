@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2004, 2009 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -23,7 +23,7 @@ import org.eclipse.cdt.ui.wizards.conversion.ConversionWizard;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.wizard.Wizard;
 
@@ -111,17 +111,18 @@ public class ConvertToAutotoolsProjectWizard extends ConversionWizard {
 	 * 
 	 * @see Wizard#createPages
 	 */
+	@Override
 	public void addPages() {
 		addPage(mainPage = new ConvertToAutotoolsProjectWizardPage(getPrefix(), this));
 		
 		// Add the configuration selection page
-		projectConfigurationPage = new CProjectPlatformPage(PREFIX, this);
+		projectConfigurationPage = new CProjectPlatformPage(PREFIX);
 		projectConfigurationPage.setTitle(AutotoolsUIPlugin.getResourceString(CONF_TITLE));
 		projectConfigurationPage.setDescription(AutotoolsUIPlugin.getResourceString(CONF_DESC));
 		addPage(projectConfigurationPage);
 
 		// Add the options (tabbed) page
-		optionPage = new NewAutotoolsProjectOptionPage(PREFIX, this);
+		optionPage = new NewAutotoolsProjectOptionPage(PREFIX);
 		optionPage.setTitle(AutotoolsUIPlugin.getResourceString(OPTIONS_TITLE));
 		optionPage.setDescription(AutotoolsUIPlugin.getResourceString(OPTIONS_DESC));
 		addPage(optionPage);
@@ -135,6 +136,7 @@ public class ConvertToAutotoolsProjectWizard extends ConversionWizard {
 		MBSCustomPageManager.addStockPage(optionPage, NewAutotoolsProjectOptionPage.PAGE_ID);
 	}
 
+	@Override
 	public String getProjectID() {
 		return ManagedBuilderCorePlugin.MANAGED_MAKE_PROJECT_ID;
 	}
@@ -167,27 +169,24 @@ public class ConvertToAutotoolsProjectWizard extends ConversionWizard {
     	optionPage.performApply(monitor);
     }
 	
+	@Override
 	protected void doRun(IProgressMonitor monitor) throws CoreException {
 		monitor.beginTask(AutotoolsUIPlugin.getResourceString("WizardAutotoolsProjectConversion.monitor.convertingToMakeProject"), 2); //$NON-NLS-1$
 		try {
-			super.doRun(new SubProgressMonitor(monitor, 5));
+			super.doRun(SubMonitor.convert(monitor, 5));
 		} finally {
 			monitor.done();
 		}
 		
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.ui.wizards.NewCProjectWizard#doRunPrologue(org.eclipse.core.runtime.IProgressMonitor)
-	 */
+	@Override
 	protected void doRunPrologue(IProgressMonitor monitor) {
 		// Auto-generated method stub
 
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.ui.wizards.NewCProjectWizard#doRunEpilogue(org.eclipse.core.runtime.IProgressMonitor)
-	 */
+	@Override
 	protected void doRunEpilogue(IProgressMonitor monitor) {
 		// Get my initializer to run
 //		if (project == null)
@@ -208,9 +207,7 @@ public class ConvertToAutotoolsProjectWizard extends ConversionWizard {
 			{
 				try {
 				operations[k].run(monitor);
-				} catch(InvocationTargetException e) {
-					//TODO: what should we do?
-				} catch(InterruptedException e) {
+				} catch(InvocationTargetException |InterruptedException e) {
 					//TODO: what should we do?
 				}
 			}

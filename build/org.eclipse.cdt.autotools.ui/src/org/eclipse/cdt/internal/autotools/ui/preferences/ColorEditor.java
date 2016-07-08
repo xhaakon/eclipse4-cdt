@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2006 QNX Software Systems and others.
+ * Copyright (c) 2002, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,8 +13,6 @@ package org.eclipse.cdt.internal.autotools.ui.preferences;
 
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
@@ -53,6 +51,7 @@ public class ColorEditor {
 		
 		fButton.setImage(fImage);
 		fButton.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent event) {
 				ColorDialog colorDialog= new ColorDialog(fButton.getShell());
 				colorDialog.setRGB(fColorValue);
@@ -64,16 +63,14 @@ public class ColorEditor {
 			}
 		});
 		
-		fButton.addDisposeListener(new DisposeListener() {
-			public void widgetDisposed(DisposeEvent event) {
-				if (fImage != null)  {
-					fImage.dispose();
-					fImage= null;
-				}
-				if (fColor != null) {
-					fColor.dispose();
-					fColor= null;
-				}
+		fButton.addDisposeListener(event -> {
+			if (fImage != null) {
+				fImage.dispose();
+				fImage = null;
+			}
+			if (fColor != null) {
+				fColor.dispose();
+				fColor = null;
 			}
 		});
 	}
@@ -116,7 +113,6 @@ public class ColorEditor {
 		gc.setFont(f);
 		int height= gc.getFontMetrics().getHeight();
 		gc.dispose();
-		Point p= new Point(height * 3 - 6, height);
-		return p;
+		return new Point(height * 3 - 6, height);
 	}
 }

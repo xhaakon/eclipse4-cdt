@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2014 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -76,8 +76,9 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	public static final int AST_SKIP_IF_NO_BUILD_INFO = 0x8;
 
 	/**
-	 * @deprecated The option has no effect.
 	 * @since 4.0
+	 * @deprecated The option has no effect.
+	 * @noreference This field is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	public static final int AST_CREATE_COMMENT_NODES = 0x10;
@@ -498,10 +499,12 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	@Deprecated IWorkingCopy getWorkingCopy(IProgressMonitor monitor, IBufferFactory factory) throws CModelException;
 	/**
 	 * @deprecated don't use this method.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated	Map<?, ?> parse();
 	/**
 	 * @deprecated, use {@link FileContent#create(ITranslationUnit)}, instead.
+	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	@Deprecated
 	org.eclipse.cdt.core.parser.CodeReader getCodeReader();

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Intel Corporation and others.
+ * Copyright (c) 2006, 2015 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -346,7 +346,7 @@ public class PropertyManager {
 	}
 	
 	protected Preferences getInstNode(IManagedProject mProject){
-		Preferences prefs = new InstanceScope().getNode(ManagedBuilderCorePlugin.getUniqueIdentifier());
+		Preferences prefs = InstanceScope.INSTANCE.getNode(ManagedBuilderCorePlugin.getUniqueIdentifier());
 		if(prefs != null){
 			prefs = prefs.node(NODE_NAME);
 			if(prefs != null)

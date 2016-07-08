@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2009 Red Hat Inc.
+ * Copyright (c) 2007, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,7 +12,6 @@ package org.eclipse.cdt.internal.autotools.ui.properties;
 
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.internal.autotools.core.AutotoolsPropertyConstants;
-import org.eclipse.cdt.internal.autotools.core.configure.AutotoolsConfiguration;
 import org.eclipse.cdt.internal.autotools.ui.AbstractAutotoolsCPropertyTab;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
@@ -25,12 +24,12 @@ import org.eclipse.swt.widgets.Text;
 
 public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 
-	public static final String DEFAULT_ACLOCAL = "aclocal"; // $NON-NLS-1$
-	public static final String DEFAULT_AUTOMAKE = "automake"; // $NON-NLS-1$
-	public static final String DEFAULT_AUTOCONF = "autoconf"; // $NON-NLS-1$
-	public static final String DEFAULT_AUTOHEADER = "autoheader"; // $NON-NLS-1$
-	public static final String DEFAULT_AUTORECONF = "autoreconf"; // $NON-NLS-1$
-	public static final String DEFAULT_LIBTOOLIZE = "libtoolize"; // $NON-NLS-1$
+	public static final String DEFAULT_ACLOCAL = "aclocal"; //$NON-NLS-1$
+	public static final String DEFAULT_AUTOMAKE = "automake"; //$NON-NLS-1$
+	public static final String DEFAULT_AUTOCONF = "autoconf"; //$NON-NLS-1$
+	public static final String DEFAULT_AUTOHEADER = "autoheader"; //$NON-NLS-1$
+	public static final String DEFAULT_AUTORECONF = "autoreconf"; //$NON-NLS-1$
+	public static final String DEFAULT_LIBTOOLIZE = "libtoolize"; //$NON-NLS-1$
 	
 	protected Text fAclocalPath;
 	protected Text fAutomakePath;
@@ -45,16 +44,13 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		return page.getProject();
 	}
 	
+	@Override
 	public boolean canBeVisible() {
 		return true;
 	}
 
-	public void cfgChanged(AutotoolsConfiguration cfg) {
-		// Nothing to do
-	}
-	
+	@Override
 	public void createControls(Composite parent) {
-		// TODO Auto-generated method stub
 		super.createControls(parent);
 		Composite composite= usercomp;
 		
@@ -77,7 +73,7 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		
 		/* text window for aclocal path */
 		fAclocalPath = new Text(composite, SWT.BORDER | SWT.SINGLE);
-		fAclocalPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.aclocalPath.tooltip")); // $NON-NLS-1$
+		fAclocalPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.aclocalPath.tooltip")); //$NON-NLS-1$
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fAclocalPath.setLayoutData(gd);
 		
@@ -89,7 +85,7 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		
 		/* text window for automake path */
 		fAutomakePath = new Text(composite, SWT.BORDER | SWT.SINGLE);
-		fAutomakePath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.automakePath.tooltip")); // $NON-NLS-1#
+		fAutomakePath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.automakePath.tooltip")); //$NON-NLS-1#
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fAutomakePath.setLayoutData(gd);
 		
@@ -101,7 +97,7 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		
 		/* text window for autoconf path */
 		fAutoconfPath = new Text(composite, SWT.BORDER | SWT.SINGLE);
-		fAutoconfPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.autoconfPath.tooltip")); // $NON-NLS-1$
+		fAutoconfPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.autoconfPath.tooltip")); //$NON-NLS-1$
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fAutoconfPath.setLayoutData(gd);
 
@@ -113,7 +109,7 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		
 		/* text window for autoheader path */
 		fAutoheaderPath = new Text(composite, SWT.BORDER | SWT.SINGLE);
-		fAutoheaderPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.autoheaderPath.tooltip")); // $NON-NLS-1$
+		fAutoheaderPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.autoheaderPath.tooltip")); //$NON-NLS-1$
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fAutoheaderPath.setLayoutData(gd);
 
@@ -125,7 +121,7 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		
 		/* text window for autoreconf path */
 		fAutoreconfPath = new Text(composite, SWT.BORDER | SWT.SINGLE);
-		fAutoreconfPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.autoreconfPath.tooltip")); // $NON-NLS-1$
+		fAutoreconfPath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.autoreconfPath.tooltip")); //$NON-NLS-1$
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fAutoreconfPath.setLayoutData(gd);
 
@@ -137,13 +133,14 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		
 		/* text window for libtoolize path */
 		fLibtoolizePath = new Text(composite, SWT.BORDER | SWT.SINGLE);
-		fLibtoolizePath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.libtoolizePath.tooltip")); // $NON-NLS-1$
+		fLibtoolizePath.setToolTipText(AutotoolsPropertyMessages.getString("Autotools.libtoolizePath.tooltip")); //$NON-NLS-1$
 		gd= new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING | GridData.VERTICAL_ALIGN_BEGINNING | GridData.FILL_HORIZONTAL);
 		fLibtoolizePath.setLayoutData(gd);
 
 		initialize();
 	}
 
+	@Override
 	public void performOK() {
 		String aclocalPath = null;
 		String automakePath = null;
@@ -242,10 +239,12 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		}
 	}
 	
+	@Override
 	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
 		performOK();
 	}
 	
+	@Override
 	public void performDefaults() {
 		// For default tool settings, simply default the base tool names
 		fAclocalPath.setText(DEFAULT_ACLOCAL);
@@ -256,18 +255,16 @@ public class AutotoolsToolsPropertyTab extends AbstractAutotoolsCPropertyTab {
 		fLibtoolizePath.setText(DEFAULT_LIBTOOLIZE);
 	}
 	
+	@Override
 	public void updateData(ICResourceDescription cfgd) {
 		// Nothing to do
 	}
 	
+	@Override
 	public void updateButtons() {
 		// Nothing to do
 	}
 
-	public void setVisible (boolean b) {
-		super.setVisible(b);
-	}
-	
 	private void initialize() {
 		String aclocalPath = null;
 		String automakePath = null;

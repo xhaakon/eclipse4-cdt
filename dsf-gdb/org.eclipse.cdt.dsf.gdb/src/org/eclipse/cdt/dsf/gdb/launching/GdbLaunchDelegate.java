@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2015 QNX Software Systems and others.
+ * Copyright (c) 2008, 2016 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,10 +34,8 @@ import org.eclipse.cdt.dsf.debug.sourcelookup.DsfSourceLookupDirector;
 import org.eclipse.cdt.dsf.gdb.IGDBLaunchConfigurationConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.service.GdbDebugServicesFactory;
-import org.eclipse.cdt.dsf.gdb.service.GdbDebugServicesFactoryNS;
 import org.eclipse.cdt.dsf.gdb.service.SessionType;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
-import org.eclipse.cdt.dsf.gdb.service.macos.MacOSGdbDebugServicesFactory;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.launch.AbstractCLaunchDelegate2;
@@ -67,12 +65,7 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 
     private static final String NON_STOP_FIRST_VERSION = "6.8.50"; //$NON-NLS-1$
     
-    // Can be removed once we remove the deprecated newServiceFactory(String)
-	private boolean fIsNonStopSession = false;
-	
     private static final String TRACING_FIRST_VERSION = "7.1.50"; //$NON-NLS-1$
-	
-    private GdbLaunch fGdbLaunch;
     
 	public GdbLaunchDelegate() {
 		// We now fully support project-less debugging
@@ -101,7 +94,6 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	private void launchDebugger( ILaunchConfiguration config, ILaunch launch, IProgressMonitor monitor ) throws CoreException {
 		monitor.beginTask(LaunchMessages.getString("GdbLaunchDelegate.0"), 10);  //$NON-NLS-1$
 		if ( monitor.isCanceled() ) {
-			cleanupLaunch();
 			return;
 		}
 
@@ -116,7 +108,6 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	/** @since 4.1 */
 	protected void launchDebugSession( final ILaunchConfiguration config, ILaunch l, IProgressMonitor monitor ) throws CoreException {
 		if ( monitor.isCanceled() ) {
-			cleanupLaunch();
 			return;
 		}
 		
@@ -148,25 +139,27 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
     	
         monitor.worked(1);
 
-        // Must set this here for users that call directly the deprecated newServiceFactory(String)
-        fIsNonStopSession = LaunchUtils.getIsNonStopMode(config);
-
-        String gdbVersion = getGDBVersion(config);
+        String gdbVersion = launch.getGDBVersion();
         
         // First make sure non-stop is supported, if the user want to use this mode
         if (LaunchUtils.getIsNonStopMode(config) && !isNonStopSupportedInGdbVersion(gdbVersion)) {
-			cleanupLaunch();
             throw new DebugException(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, DebugException.REQUEST_FAILED,
             		"Non-stop mode is not supported for GDB " + gdbVersion + ", GDB " + NON_STOP_FIRST_VERSION + " or higher is required.", null)); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$        	
         }
 
         if (LaunchUtils.getIsPostMortemTracing(config) && !isPostMortemTracingSupportedInGdbVersion(gdbVersion)) {
-			cleanupLaunch();
             throw new DebugException(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, DebugException.REQUEST_FAILED,
             		"Post-mortem tracing is not supported for GDB " + gdbVersion + ", GDB " + NON_STOP_FIRST_VERSION + " or higher is required.", null)); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$        	
         }
 
         launch.setServiceFactory(newServiceFactory(config, gdbVersion));
+
+        // Time to start the DSF stuff.  First initialize the launch.
+        // We do this here to avoid having to cleanup in case
+        // the launch is cancelled above.
+        // This initialize() call is the first thing that requires cleanup
+        // followed by the steps further down which also need cleanup.
+    	launch.initialize();
 
         // Create and invoke the launch sequence to create the debug control and services
         IProgressMonitor subMon1 = new SubProgressMonitor(monitor, 4, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK); 
@@ -186,12 +179,12 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
         	return;
         } finally {
         	if (!succeed) {
-        		cleanupLaunch();
+        		cleanupLaunch(launch);
         	}
         }
         
         if (monitor.isCanceled()) {
-			cleanupLaunch();
+			cleanupLaunch(launch);
 			return;
         }
         
@@ -245,7 +238,7 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
             if (!succeed) {
                 // finalLaunchSequence failed. Shutdown the session so that all started
                 // services including any GDB process are shutdown. (bug 251486)
-                cleanupLaunch();
+                cleanupLaunch(launch);
             }        
         }
 	}
@@ -261,17 +254,18 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	/** 
 	 * This method takes care of cleaning up any resources allocated by the launch, as early as
 	 * the call to getLaunch(), whenever the launch is cancelled or does not complete properly.
-	 * @since 4.1 */
-	protected void cleanupLaunch() throws DebugException {
-		if (fGdbLaunch != null) {
+	 * @since 5.0 */
+	protected void cleanupLaunch(ILaunch launch) throws DebugException {
+		if (launch instanceof GdbLaunch) {
+			final GdbLaunch gdbLaunch = (GdbLaunch)launch;
             Query<Object> launchShutdownQuery = new Query<Object>() {
                 @Override
                 protected void execute(DataRequestMonitor<Object> rm) {
-                	fGdbLaunch.shutdownSession(rm);
+                	gdbLaunch.shutdownSession(rm);
                 }
             };
                 
-            fGdbLaunch.getSession().getExecutor().execute(launchShutdownQuery);
+            gdbLaunch.getSession().getExecutor().execute(launchShutdownQuery);
             
             // wait for the shutdown to finish.
             // The Query.get() method is a synchronous call which blocks until the 
@@ -279,9 +273,9 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
             try {
                 launchShutdownQuery.get();
             } catch (InterruptedException e) { 
-                throw new DebugException( new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, DebugException.INTERNAL_ERROR, "InterruptedException while shutting down debugger launch " + fGdbLaunch, e)); //$NON-NLS-1$ 
+                throw new DebugException( new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, DebugException.INTERNAL_ERROR, "InterruptedException while shutting down debugger launch " + launch, e)); //$NON-NLS-1$ 
             } catch (ExecutionException e) {
-                throw new DebugException(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, DebugException.REQUEST_FAILED, "Error in shutting down debugger launch " + fGdbLaunch, e)); //$NON-NLS-1$
+                throw new DebugException(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, DebugException.REQUEST_FAILED, "Error in shutting down debugger launch " + launch, e)); //$NON-NLS-1$
             }
 		}
 	}
@@ -303,11 +297,12 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	}
 
 	/**
-	 * Returns the GDB version. 
-	 * Subclass can override for special need.
-     *
+	 * Returns the GDB version. Subclass can override for special need.
+	 *
 	 * @since 2.0
+	 * @deprecated Replaced by GdbLaunch.getGDBVersion() which can also be overridden
 	 */
+	@Deprecated
 	protected String getGDBVersion(ILaunchConfiguration config) throws CoreException {
 		return LaunchUtils.getGDBVersion(config);
 	}
@@ -334,26 +329,10 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 			return true;
 		}
 		
-		boolean result = super.preLaunchCheck(config, mode, monitor);
-		if (!result) {
-			// The launch will not proceed!  We must cleanup.
-			cleanupLaunch();
-		}
-		
-		return result;
+		return super.preLaunchCheck(config, mode, monitor);
+		// No need to cleanup in the case of errors: we haven't setup anything yet.
 	}
 
-	@Override
-	public boolean finalLaunchCheck(ILaunchConfiguration configuration, String mode, IProgressMonitor monitor) throws CoreException {
-		boolean result = super.finalLaunchCheck(configuration, mode, monitor);
-		if (!result) {
-			// The launch will not proceed!  We must cleanup.
-			cleanupLaunch();
-		}
-		
-		return result;
-	}
-	
     /**
      * Modify the ILaunchConfiguration to set the DebugPlugin.ATTR_PROCESS_FACTORY_ID attribute,
      * so as to specify the process factory to use.
@@ -377,15 +356,17 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
     // can be performed by GdbLaunch.shutdownSession()
     @Override
     public ILaunch getLaunch(ILaunchConfiguration configuration, String mode) throws CoreException {
-        // Need to configure the source locator before creating the launch
-        // because once the launch is created and added to launch manager, 
+    	GdbLaunch launch = createGdbLaunch(configuration, mode, null);
+    	// Don't initialize the GdbLaunch yet to avoid needing to cleanup.
+    	// We will initialize the launch once we know it will proceed and
+    	// that we need to start using it.
+    	
+        // Need to configure the source locator before returning the launch
+        // because once the launch is created and added to the launch manager, 
         // the adapters will be created for the whole session, including 
         // the source lookup adapter.
-        
-    	fGdbLaunch = createGdbLaunch(configuration, mode, null);
-    	fGdbLaunch.initialize();
-    	fGdbLaunch.setSourceLocator(getSourceLocator(configuration, fGdbLaunch.getSession()));
-        return fGdbLaunch;
+    	launch.setSourceLocator(getSourceLocator(configuration, launch.getSession()));
+        return launch;
     }
     
     /**
@@ -448,7 +429,7 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
      * @since 4.1
      */
     protected DsfSourceLookupDirector createDsfSourceLocator(ILaunchConfiguration configuration, DsfSession session) throws CoreException {
-    	return new DsfSourceLookupDirector(session);
+        return new GdbSourceLookupDirector(session);
     }
 	
 	/**
@@ -457,12 +438,7 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	 * @since 4.0
 	 */
 	protected boolean isNonStopSupportedInGdbVersion(String version) {
-		if (version.contains(LaunchUtils.MACOS_GDB_MARKER)) {
-			// Mac OS's GDB does not support Non-Stop
-			return false;
-		}
-		
-		if (NON_STOP_FIRST_VERSION.compareTo(version) <= 0) {
+		if (NON_STOP_FIRST_VERSION.compareTo(version) <= 0) {// XXX: 7.2 > 7.11 !!!
 			return true;
 		}
 		return false;
@@ -474,11 +450,6 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	 * @since 4.0
 	 */
 	protected boolean isPostMortemTracingSupportedInGdbVersion(String version) {
-		if (version.contains(LaunchUtils.MACOS_GDB_MARKER)) {
-			// Mac OS's GDB does not support post-mortem tracing
-			return false;
-		}
-		
 		if (TRACING_FIRST_VERSION.compareTo(version) <= 0
 			// This feature will be available for GDB 7.2. But until that GDB is itself available
 			// there is a pre-release that has a version of 6.8.50.20090414
@@ -489,37 +460,12 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2
 	}
 
 	/**
-	 * @deprecated Replaced by newServiceFactory(ILaunchConfiguration, String)
-	 */
-	@Deprecated
-	protected IDsfDebugServicesFactory newServiceFactory(String version) {
-
-		if (fIsNonStopSession && isNonStopSupportedInGdbVersion(version)) {
-			return new GdbDebugServicesFactoryNS(version);
-		}
-		
-		if (version.contains(LaunchUtils.MACOS_GDB_MARKER)) {
-			// The version string at this point should look like
-			// 6.3.50-20050815APPLE1346, we extract the gdb version and apple version
-			String versions [] = version.split(LaunchUtils.MACOS_GDB_MARKER);
-			if (versions.length == 2) {
-				return new MacOSGdbDebugServicesFactory(versions[0], versions[1]);
-			}
-		}
-
-		return new GdbDebugServicesFactory(version);
-	}
-
-	/**
 	 * Method called to create the services factory for this debug session.
 	 * A subclass can override this method and provide its own ServiceFactory.
 	 * @since 4.1
 	 */
-	protected IDsfDebugServicesFactory newServiceFactory(ILaunchConfiguration config, String version) {
-		// Call the deprecated one for now to avoid code duplication.
-		// Once we get rid of the deprecated one, we can also get rid of fIsNonStopSession
-		fIsNonStopSession = LaunchUtils.getIsNonStopMode(config);
-		return newServiceFactory(version);
+	protected IDsfDebugServicesFactory newServiceFactory(ILaunchConfiguration config, String version) {		
+		return new GdbDebugServicesFactory(version, config);
 	}
 
 	@Override

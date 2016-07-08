@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,9 +30,7 @@ public class MakefileEditorTogglePresentationAction extends TextEditorAction {
 		update();
 	}
 
-	/**
-	 * @see org.eclipse.jface.action.IAction#run()
-	 */
+	@Override
 	public void run() {
 		ITextEditor editor= getTextEditor();
 		editor.resetHighlightRange();
@@ -41,9 +39,7 @@ public class MakefileEditorTogglePresentationAction extends TextEditorAction {
 		editor.showHighlightRangeOnly(!show);
 	}
 
-	/**
-	 * @see org.eclipse.ui.texteditor.IUpdate#update()
-	 */
+	@Override
 	public void update() {
 		setChecked(getTextEditor() != null && getTextEditor().showsHighlightRangeOnly());
 		setEnabled(true);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="Stand-alone C/C++ GDB Debugger" uid="org.eclipse.cdt.debug.application.product" id="org.eclipse.cdt.debug.application.product" application="org.eclipse.cdt.debug.application.app" version="1.1.1.qualifier" useFeatures="false" includeLaunchers="true">
+<product name="Stand-alone C/C++ GDB Debugger" uid="org.eclipse.cdt.debug.application.product" id="org.eclipse.cdt.debug.application.product" application="org.eclipse.cdt.debug.application.app" version="9.0.0.qualifier" useFeatures="false" includeLaunchers="true">
 
    <aboutInfo>
       <image path="/org.eclipse.cdt.debug.application/icons/about.png"/>
@@ -18,21 +18,21 @@
       </programArgs>
       <programArgsLin>--launcher.GTK_version 2
       </programArgsLin>
-      <vmArgsLin>-Xms100m -Xmx512m  -Dosgi.requiredJavaVersion=1.7
+      <vmArgsLin>-Xms100m -Xmx512m  -Dosgi.requiredJavaVersion=1.8
       </vmArgsLin>
-      <vmArgsMac>-Xms100m -Xmx512m  -XstartOnFirstThread -Dosgi.requiredJavaVersion=1.7 -Dorg.eclipse.swt.internal.carbon.smallFonts
+      <vmArgsMac>-Xms100m -Xmx512m  -XstartOnFirstThread -Dosgi.requiredJavaVersion=1.8 -Dorg.eclipse.swt.internal.carbon.smallFonts
       </vmArgsMac>
-      <vmArgsSol>-Xms100m -Xmx512m   -Dosgi.requiredJavaVersion=1.7
+      <vmArgsSol>-Xms100m -Xmx512m   -Dosgi.requiredJavaVersion=1.8
       </vmArgsSol>
-      <vmArgsWin>-Xms100m -Xmx512m   -Dosgi.requiredJavaVersion=1.7
+      <vmArgsWin>-Xms100m -Xmx512m   -Dosgi.requiredJavaVersion=1.8
       </vmArgsWin>
    </launcherArgs>
 
    <windowImages i16="/org.eclipse.cdt.debug.application/icons/cc16.png" i32="/org.eclipse.cdt.debug.application/icons/cc32.png" i48="/org.eclipse.cdt.debug.application/icons/cc48.png" i64="/org.eclipse.cdt.debug.application/icons/cc64.png" i128="/org.eclipse.cdt.debug.application/icons/cc128.png" i256="/org.eclipse.cdt.debug.application/icons/cc.png"/>
 
-
    <launcher name="cdtdebug">
       <linux icon="../org.eclipse.cdt.debug.application/icons/cc.xpm"/>
+      <macosx icon="../org.eclipse.cdt.debug.application/icons/cc.icns"/>
       <solaris/>
       <win useIco="true">
          <ico path="../org.eclipse.cdt.debug.application/icons/cc.ico"/>
@@ -41,10 +41,10 @@
    </launcher>
 
    <vm>
-      <linux include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7</linux>
-      <macos include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7</macos>
-      <solaris include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7</solaris>
-      <windows include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7</windows>
+      <linux include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8</linux>
+      <macos include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8</macos>
+      <solaris include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8</solaris>
+      <windows include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8</windows>
    </vm>
 
    <license>
@@ -195,6 +195,7 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.cdt.core.linux" fragment="true"/>
       <plugin id="org.eclipse.cdt.core.linux.x86" fragment="true"/>
       <plugin id="org.eclipse.cdt.core.linux.x86_64" fragment="true"/>
+      <plugin id="org.eclipse.cdt.core.macosx" fragment="true"/>
       <plugin id="org.eclipse.cdt.core.native"/>
       <plugin id="org.eclipse.cdt.core.win32" fragment="true"/>
       <plugin id="org.eclipse.cdt.core.win32.x86" fragment="true"/>
@@ -202,8 +203,6 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.cdt.debug.application"/>
       <plugin id="org.eclipse.cdt.debug.application.doc"/>
       <plugin id="org.eclipse.cdt.debug.core"/>
-      <plugin id="org.eclipse.cdt.debug.mi.core"/>
-      <plugin id="org.eclipse.cdt.debug.mi.ui"/>
       <plugin id="org.eclipse.cdt.debug.ui"/>
       <plugin id="org.eclipse.cdt.debug.ui.memory.floatingpoint"/>
       <plugin id="org.eclipse.cdt.debug.ui.memory.memorybrowser"/>
@@ -221,8 +220,6 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.cdt.managedbuilder.core"/>
       <plugin id="org.eclipse.cdt.managedbuilder.gnu.ui"/>
       <plugin id="org.eclipse.cdt.ui"/>
-      <plugin id="org.eclipse.cdt.visualizer.core"/>
-      <plugin id="org.eclipse.cdt.visualizer.ui"/>
       <plugin id="org.eclipse.compare"/>
       <plugin id="org.eclipse.compare.core"/>
       <plugin id="org.eclipse.core.commands"/>
@@ -233,9 +230,9 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.core.expressions"/>
       <plugin id="org.eclipse.core.filebuffers"/>
       <plugin id="org.eclipse.core.filesystem"/>
-      <plugin id="org.eclipse.core.filesystem.java7" fragment="true"/>
       <plugin id="org.eclipse.core.filesystem.linux.x86" fragment="true"/>
       <plugin id="org.eclipse.core.filesystem.linux.x86_64" fragment="true"/>
+      <plugin id="org.eclipse.core.filesystem.macosx" fragment="true"/>
       <plugin id="org.eclipse.core.filesystem.win32.x86" fragment="true"/>
       <plugin id="org.eclipse.core.filesystem.win32.x86_64" fragment="true"/>
       <plugin id="org.eclipse.core.jobs"/>
@@ -246,7 +243,6 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.core.net.win32.x86_64" fragment="true"/>
       <plugin id="org.eclipse.core.resources"/>
       <plugin id="org.eclipse.core.runtime"/>
-      <plugin id="org.eclipse.core.runtime.compatibility.registry" fragment="true"/>
       <plugin id="org.eclipse.core.variables"/>
       <plugin id="org.eclipse.debug.core"/>
       <plugin id="org.eclipse.debug.ui"/>
@@ -293,6 +289,7 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.equinox.jsp.jasper"/>
       <plugin id="org.eclipse.equinox.jsp.jasper.registry"/>
       <plugin id="org.eclipse.equinox.launcher"/>
+      <plugin id="org.eclipse.equinox.launcher.cocoa.macosx.x86_64" fragment="true"/>
       <plugin id="org.eclipse.equinox.launcher.gtk.linux.x86" fragment="true"/>
       <plugin id="org.eclipse.equinox.launcher.gtk.linux.x86_64" fragment="true"/>
       <plugin id="org.eclipse.equinox.launcher.win32.win32.x86" fragment="true"/>
@@ -332,6 +329,7 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.jface"/>
       <plugin id="org.eclipse.jface.databinding"/>
       <plugin id="org.eclipse.jface.text"/>
+      <plugin id="org.eclipse.launchbar.core"/>
       <plugin id="org.eclipse.ltk.core.refactoring"/>
       <plugin id="org.eclipse.ltk.ui.refactoring"/>
       <plugin id="org.eclipse.osgi"/>
@@ -339,6 +337,7 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.osgi.services"/>
       <plugin id="org.eclipse.search"/>
       <plugin id="org.eclipse.swt"/>
+      <plugin id="org.eclipse.swt.cocoa.macosx.x86_64" fragment="true"/>
       <plugin id="org.eclipse.swt.gtk.linux.x86" fragment="true"/>
       <plugin id="org.eclipse.swt.gtk.linux.x86_64" fragment="true"/>
       <plugin id="org.eclipse.swt.win32.win32.x86" fragment="true"/>
@@ -356,6 +355,7 @@ Java and all Java-based trademarks are trademarks of Oracle Corporation in the U
       <plugin id="org.eclipse.ui.net"/>
       <plugin id="org.eclipse.ui.themes"/>
       <plugin id="org.eclipse.ui.views"/>
+      <plugin id="org.eclipse.ui.views.log"/>
       <plugin id="org.eclipse.ui.views.properties.tabbed"/>
       <plugin id="org.eclipse.ui.workbench"/>
       <plugin id="org.eclipse.ui.workbench.texteditor"/>

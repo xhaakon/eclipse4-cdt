@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 QNX Software Systems and others.
+ * Copyright (c) 2013, 2015 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -35,12 +35,12 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPParameter;
+import org.eclipse.cdt.internal.qt.core.index.IQMethod;
+import org.eclipse.cdt.internal.qt.core.index.IQObject;
+import org.eclipse.cdt.internal.qt.core.index.IQProperty;
+import org.eclipse.cdt.internal.qt.core.index.QtIndex;
+import org.eclipse.cdt.internal.qt.ui.Activator;
 import org.eclipse.cdt.internal.ui.text.contentassist.CCompletionProposal;
-import org.eclipse.cdt.qt.core.index.IQMethod;
-import org.eclipse.cdt.qt.core.index.IQObject;
-import org.eclipse.cdt.qt.core.index.IQProperty;
-import org.eclipse.cdt.qt.core.index.QtIndex;
-import org.eclipse.cdt.qt.ui.QtUIPlugin;
 import org.eclipse.cdt.ui.text.contentassist.ICEditorContentAssistInvocationContext;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
@@ -64,7 +64,7 @@ public class QPropertyAttributeProposal {
 		int prefixLen = prefix == null ? 0 : prefix.length();
 
 		String disp = identifier.equals(display) ? display : ( identifier + " - " + display );
-		return new CCompletionProposal(identifier.substring(prefixLen), offset, prefixLen, QtUIPlugin.getQtLogo(), disp, relevance);
+		return new CCompletionProposal(identifier.substring(prefixLen), offset, prefixLen, Activator.getQtLogo(), disp, relevance);
 	}
 
 	private QPropertyAttributeProposal(String identifier, String display, int relevance) {
@@ -145,7 +145,7 @@ public class QPropertyAttributeProposal {
 		try {
 			qobj = qtIndex.findQObject(cls.getQualifiedName());
 		} catch(DOMException e) {
-			QtUIPlugin.log(e);
+			Activator.log(e);
 		}
 
 		if (qobj == null)
@@ -468,7 +468,7 @@ public class QPropertyAttributeProposal {
 
 			return (ICPPClassType) binding.getAdapter(ICPPClassType.class);
 		} catch(CoreException e) {
-			QtUIPlugin.log(e);
+			Activator.log(e);
 		}
 
 		return null;

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2013 Institute for Software, HSR Hochschule fuer Technik
+ * Copyright (c) 2008, 2016 Institute for Software, HSR Hochschule fuer Technik
  * Rapperswil, University of applied sciences and others
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -13,6 +13,7 @@
 package org.eclipse.cdt.internal.ui.refactoring.extractfunction;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.eclipse.osgi.util.NLS;
 import org.eclipse.text.edits.TextEditGroup;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
@@ -77,6 +79,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.rewrite.ASTRewrite;
@@ -88,6 +91,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.PreferenceConstants;
 
+import org.eclipse.cdt.internal.core.dom.parser.ASTQueries;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTBinaryExpression;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTBinaryExpression;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTCompoundStatement;
@@ -103,7 +107,6 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTQualifiedName;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTReturnStatement;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTemplateDeclaration;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
 import org.eclipse.cdt.internal.core.dom.rewrite.astwriter.ASTWriterVisitor;
 
@@ -129,6 +132,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 	public static final String ID =
 			"org.eclipse.cdt.internal.ui.refactoring.extractfunction.ExtractFunctionRefactoring"; //$NON-NLS-1$
 
+	private static final String[] EMPTY_STRING_ARRAY = {};
 	static final Integer NULL_INTEGER = Integer.valueOf(0);
 
 	private NodeContainer container;
@@ -143,7 +147,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 
 	private FunctionExtractor extractor;
 	private INodeFactory nodeFactory;
-	private DefaultCodeFormatterOptions formattingOptions;
+	private final DefaultCodeFormatterOptions formattingOptions;
 
 	private IIndex index;
 	private IASTTranslationUnit ast;
@@ -152,9 +156,9 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 		super(element, selection, project);
 		info = new ExtractFunctionInformation();
 		name = Messages.ExtractFunctionRefactoring_ExtractFunction;
-		names = new HashMap<String, Integer>();
-		namesCounter = new Container<Integer>(NULL_INTEGER);
-		trailPos = new Container<Integer>(NULL_INTEGER);
+		names = new HashMap<>();
+		namesCounter = new Container<>(NULL_INTEGER);
+		trailPos = new Container<>(NULL_INTEGER);
 		formattingOptions = new DefaultCodeFormatterOptions(project.getOptions(true));
 	}
 
@@ -312,11 +316,11 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 		final IASTName methodName = new CPPASTName(info.getMethodName().toCharArray());
 		MethodContext context = info.getMethodContext();
 
-		// Create declaration in class
+		// Create declaration in class.
 		if (context.getType() == ContextType.METHOD && !context.isInline()) {
 			createMethodDeclaration(methodName, context, collector);
 		}
-		// Create method definition
+		// Create method definition.
 		IASTNode firstNode = container.getNodesToWrite().get(0);
 		createMethodDefinition(methodName, context, firstNode, collector);
 
@@ -387,7 +391,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 	private void createMethodDefinition(final IASTName methodName, MethodContext context,
 			IASTNode firstExtractedNode, ModificationCollector collector) {
 		IASTFunctionDefinition functionToExtractFrom =
-				CPPVisitor.findAncestorWithType(firstExtractedNode, IASTFunctionDefinition.class);
+				ASTQueries.findAncestorWithType(firstExtractedNode, IASTFunctionDefinition.class);
 		if (functionToExtractFrom != null) {
 			String title;
 			if (context.getType() == MethodContext.ContextType.METHOD) {
@@ -408,12 +412,77 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 
 		IASTSimpleDeclaration methodDeclaration = getDeclaration(collector, astMethodName);
 
-		ClassMemberInserter.createChange(classDeclaration, info.getVisibility(),
+		ASTRewrite rewrite = ClassMemberInserter.createChange(classDeclaration, info.getVisibility(),
 				methodDeclaration, false, collector);
+
+		// Names of external bindings may have to be qualified to be used in a header file.
+		if (classDeclaration.getTranslationUnit().isHeaderUnit())
+			qualifyExternalReferences(methodDeclaration, classDeclaration, rewrite);
+	}
+
+	private void qualifyExternalReferences(IASTNode node, ICPPASTCompositeTypeSpecifier classDeclaration,
+			final ASTRewrite rewrite) {
+		final ICPPBinding owner = (ICPPBinding) classDeclaration.getName().resolveBinding();
+		final String[] contextQualifiers;
+		try {
+			contextQualifiers = owner.getQualifiedName();
+		} catch (DOMException e) {
+			CUIPlugin.log(e);
+			return;
+		}
+
+		node.accept(new ASTVisitor(true) {
+			@Override
+			public int visit(IASTName name) {
+				qualifyForContext((ICPPASTName) name, contextQualifiers, rewrite);
+				return PROCESS_SKIP; // Do non visit internals of qualified names.
+			}
+		});
+	}
+
+	private void qualifyForContext(ICPPASTName name, String[] contextQualifiers, ASTRewrite rewrite) {
+		ICPPASTName originalName = (ICPPASTName) name.getOriginalNode();
+		IBinding binding = originalName.resolveBinding();
+		try {
+			if (!(binding instanceof ICPPBinding))
+				return; // Qualification is not needed.
+			String[] names = ((ICPPBinding) binding).getQualifiedName();
+			names = removeCommonPrefix(names, contextQualifiers);
+			if (names.length <= 1)
+				return; // Qualification is not needed.
+
+			ICPPASTQualifiedName qualifiedName;
+			if (name instanceof ICPPASTQualifiedName) {
+				qualifiedName = (ICPPASTQualifiedName) name;
+				if (qualifiedName.getQualifier().length >= names.length - 1)
+					return; // Qualified already.
+			} else {
+				qualifiedName = new CPPASTQualifiedName(name.copy(CopyStyle.withLocations));
+			}
+			for (int i = 0; i < names.length - qualifiedName.getQualifier().length; i++) {
+				qualifiedName.addNameSpecifier(new CPPASTName(names[i].toCharArray()));
+			}
+			if (!(name instanceof ICPPASTQualifiedName))
+				rewrite.replace(name, qualifiedName, null);
+		} catch (DOMException e) {
+			CUIPlugin.log(e);
+			return;
+		}
+	}
+
+	private String[] removeCommonPrefix(String[] array1, String[] array2) {
+		for (int i = 0; i < array1.length && i < array2.length; i++) {
+			if (!array1[i].equals(array2[i])) {
+				if (i == 0)
+					return array1;
+				return Arrays.copyOfRange(array1, i, array1.length);
+			}
+		}
+		return EMPTY_STRING_ARRAY;
 	}
 
 	private void replaceSimilar(ModificationCollector collector, IASTName methodName) {
-		// Find similar code
+		// Find similar code.
 		final List<IASTNode> nodesToRewriteWithoutComments = getNodesWithoutComments(container.getNodesToWrite());
 		final List<IASTNode> initTrail = getTrail(nodesToRewriteWithoutComments);
 		IASTTranslationUnit ast = nodesToRewriteWithoutComments.get(0).getTranslationUnit();
@@ -436,7 +505,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 	}
 
 	private List<IASTNode> getNodesWithoutComments(List<IASTNode> nodes) {
-		final List<IASTNode> nodesWithoutComments = new ArrayList<IASTNode>(nodes.size());
+		final List<IASTNode> nodesWithoutComments = new ArrayList<>(nodes.size());
 
 		for (IASTNode node : nodes) {
 			if (!(node instanceof IASTComment)) {
@@ -447,9 +516,9 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 	}
 
 	private List<IASTNode> getTrail(List<IASTNode> stmts) {
-		final List<IASTNode> trail = new ArrayList<IASTNode>();
-		nameTrail = new HashMap<String, Integer>();
-		final Container<Integer> trailCounter = new Container<Integer>(NULL_INTEGER);
+		final List<IASTNode> trail = new ArrayList<>();
+		nameTrail = new HashMap<>();
+		final Container<Integer> trailCounter = new Container<>(NULL_INTEGER);
 
 		for (IASTNode node : stmts) {
 			node.accept(new CPPASTAllVisitor() {
@@ -604,7 +673,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 		IASTFunctionDefinition func = new CPPASTFunctionDefinition();
 		func.setParent(ast);
 
-		List<IASTPointerOperator> pointerOperators = new ArrayList<IASTPointerOperator>();
+		List<IASTPointerOperator> pointerOperators = new ArrayList<>();
 		IASTDeclSpecifier returnType = getReturnType(pointerOperators);
 		func.setDeclSpecifier(returnType);
 
@@ -778,7 +847,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 			IASTFunctionCallExpression callExpression, IASTName retname) {
 		if (info.getReturnVariable().equals(info.getMandatoryReturnVariable())) {
 			IASTSimpleDeclaration orgDecl =
-					CPPVisitor.findAncestorWithType(info.getReturnVariable().getDeclarationName(),
+					ASTQueries.findAncestorWithType(info.getReturnVariable().getDeclarationName(),
 							IASTSimpleDeclaration.class);
 			IASTSimpleDeclaration decl = new CPPASTSimpleDeclaration();
 
@@ -826,7 +895,7 @@ public class ExtractFunctionRefactoring extends CRefactoring {
 	}
 
 	private IASTSimpleDeclaration getDeclaration(ModificationCollector collector, IASTName name) {
-		List<IASTPointerOperator> pointerOperators = new ArrayList<IASTPointerOperator>();
+		List<IASTPointerOperator> pointerOperators = new ArrayList<>();
 		IASTDeclSpecifier declSpec = getReturnType(pointerOperators);
 		IASTSimpleDeclaration simpleDecl = nodeFactory.newSimpleDeclaration(declSpec);
 		if (info.isVirtual() && declSpec instanceof ICPPASTDeclSpecifier) {

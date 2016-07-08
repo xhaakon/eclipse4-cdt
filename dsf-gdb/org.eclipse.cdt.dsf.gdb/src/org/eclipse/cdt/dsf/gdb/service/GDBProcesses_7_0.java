@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2015 Ericsson and others.
+ * Copyright (c) 2008, 2016 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -169,14 +169,9 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		 * @return
 		 */
     	@Override
-		public int getThreadId(){
-			try {
-				return Integer.parseInt(fThreadId);
-			} catch (NumberFormatException e) {
-			}
-			
-			return 0;
-		}
+        public String getThreadId() {
+            return fThreadId;
+        }
 
 		/* Unused; reintroduce if needed
 		public String getId(){
@@ -1156,24 +1151,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	    				new Step() { 
 	    					@Override
 	    					public void execute(RequestMonitor rm) {								
-								IReverseRunControl reverseService = getServicesTracker().getService(IReverseRunControl.class);
-								if (reverseService != null) {
-									ILaunch launch = procCtx.getAdapter(ILaunch.class);
-									if (launch != null) {
-										try {
-											boolean reverseEnabled = 
-												launch.getLaunchConfiguration().getAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REVERSE,
-														IGDBLaunchConfigurationConstants.DEBUGGER_REVERSE_DEFAULT);
-											if (reverseEnabled) {
-												reverseService.enableReverseMode(fCommandControl.getContext(), true, rm);
-												return;
-											}
-										} catch (CoreException e) {
-											// Ignore, just don't set reverse
-										}
-									}
-								}
-								rm.done();
+								doReverseDebugStep(procCtx, rm);
 	    					}
 	    				},
 	    		};
@@ -1184,6 +1162,29 @@ public class GDBProcesses_7_0 extends AbstractDsfService
             dataRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid process context.", null)); //$NON-NLS-1$
             dataRm.done();
 	    }
+	}
+
+	/** @since 5.0 */
+	protected void doReverseDebugStep(final IProcessDMContext procCtx, RequestMonitor rm) {
+        // Turn on reverse debugging if it was enabled as a launch option
+		IReverseRunControl reverseService = getServicesTracker().getService(IReverseRunControl.class);
+		if (reverseService != null) {
+			ILaunch launch = procCtx.getAdapter(ILaunch.class);
+			if (launch != null) {
+				try {
+					boolean reverseEnabled = 
+						launch.getLaunchConfiguration().getAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REVERSE,
+								                                     IGDBLaunchConfigurationConstants.DEBUGGER_REVERSE_DEFAULT);
+					if (reverseEnabled) {
+						reverseService.enableReverseMode(fCommandControl.getContext(), true, rm);
+						return;
+					}
+				} catch (CoreException e) {
+					// Ignore, just don't set reverse
+				}
+			}
+		}
+		rm.done();
 	}
 
     /** @since 4.0 */
@@ -1420,7 +1421,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		List<IMIContainerDMContext> containerDmcs = new ArrayList<IMIContainerDMContext>(groups.length);
 		for (IThreadGroupInfo group : groups) {
 			if (group.getPid() == null || 
-					group.getPid().equals("") || group.getPid().equals("0")) { //$NON-NLS-1$ //$NON-NLS-2$
+					group.getPid().isEmpty() || group.getPid().equals("0")) { //$NON-NLS-1$
 				continue;
 			}
 			String groupId = group.getGroupId();

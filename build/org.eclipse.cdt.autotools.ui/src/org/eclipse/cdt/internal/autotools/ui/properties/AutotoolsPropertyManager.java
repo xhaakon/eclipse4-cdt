@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Red Hat Inc.
+ * Copyright (c) 2007, 2016 Red Hat Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,10 +19,10 @@ import org.eclipse.core.runtime.ListenerList;
 public class AutotoolsPropertyManager implements IPropertyChangeManager {
 
 	private static volatile AutotoolsPropertyManager fInstance;
-	private Map<IProject, ListenerList> projectList;
+	private Map<IProject, ListenerList<IProjectPropertyListener>> projectList;
 	
 	private AutotoolsPropertyManager() {
-		projectList = new HashMap<IProject, ListenerList>();
+		projectList = new HashMap<>();
 	}
 	
 	public static AutotoolsPropertyManager getDefault() {
@@ -31,18 +31,20 @@ public class AutotoolsPropertyManager implements IPropertyChangeManager {
 		return fInstance;
 	}
 	
+	@Override
 	public synchronized void addProjectPropertyListener(IProject project,
 			IProjectPropertyListener listener) {
-		ListenerList list = (ListenerList)projectList.get(project);
+		ListenerList<IProjectPropertyListener> list = projectList.get(project);
 		if (list == null) {
-			list = new ListenerList();
+			list = new ListenerList<>();
 			projectList.put(project, list);
 		}
 		list.add(listener);
 	}
 
+	@Override
 	public synchronized void notifyPropertyListeners(IProject project, String property) {
-		ListenerList list = (ListenerList)projectList.get(project);
+		ListenerList<IProjectPropertyListener> list = projectList.get(project);
 		if (list != null) {
 			Object[] listeners = list.getListeners();
 			for (int i = 0; i < listeners.length; ++i) {
@@ -51,9 +53,10 @@ public class AutotoolsPropertyManager implements IPropertyChangeManager {
 		}
 	}
 
+	@Override
 	public synchronized void removeProjectPropertyListener(IProject project, 
 			IProjectPropertyListener listener) {
-		ListenerList list = (ListenerList)projectList.get(project);
+		ListenerList<IProjectPropertyListener> list = projectList.get(project);
 		if (list != null)
 			list.remove(listener);
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2011 IBM Corporation and others.
+ * Copyright (c) 2005, 2015 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -277,8 +277,7 @@ public class CElementSorter extends ViewerSorter {
 
 		// cat1 == cat2
 
-		@SuppressWarnings("unchecked")
-		final Comparator<Object> comparator = getComparator();
+		final Comparator<? super String> comparator = getComparator();
 		if (cat1 == PROJECTS) {
 			IWorkbenchAdapter a1= ((IAdaptable)e1).getAdapter(IWorkbenchAdapter.class);
 			IWorkbenchAdapter a2= ((IAdaptable)e2).getAdapter(IWorkbenchAdapter.class);
@@ -415,8 +414,7 @@ public class CElementSorter extends ViewerSorter {
 				String name1 = lprov.getText(e1);
 				String name2 = lprov.getText(e2);
 				if (name1 != null && name2 != null) {
-					@SuppressWarnings("unchecked")
-					final Comparator<Object> comparator = getComparator();
+					final Comparator<? super String> comparator = getComparator();
 					return comparator.compare(name1, name2);
 				}
 			}
