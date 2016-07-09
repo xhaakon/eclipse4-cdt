@@ -1,3 +1,4 @@
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.qt* /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.qttest_*.jar /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.freemarker.freemarker* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.tools.templates.* /usr/share/eclipse4/plugins

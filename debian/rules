@@ -79,6 +79,9 @@ override_dh_auto_build-indep:
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.floatingpoint
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.transport
 	build_bundle memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
+	build_bundle bundles/org.eclipse.tools.templates.core
+	build_bundle bundles/org.eclipse.tools.templates.ui
+	build_bundle bundles/org.eclipse.tools.templates.freemarker
 	build_bundle qt/org.eclipse.cdt.qt.core
 	build_bundle qt/org.eclipse.cdt.qt.ui
 	build_bundle testsrunner/org.eclipse.cdt.testsrunner
