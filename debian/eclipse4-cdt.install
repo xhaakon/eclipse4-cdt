@@ -1,4 +1,5 @@
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt_* /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.cdt.build.gcc.* /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.codan* /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.core* /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.debug* /usr/share/eclipse4/plugins
