@@ -98,8 +98,8 @@ override_dh_auto_build-arch:
 	cd core/org.eclipse.cdt.core.linux/library && \
 		make JAVA_HOME="$(JAVA_HOME)" ARCH=$(ECLIPSE_BUILD_ARCH) CC='gcc -D_GNU_SOURCE' CFLAGS="$(CFLAGS) -fPIC" LDFLAGS="$(LDFLAGS) -fPIC"
 
-	cd native/org.eclipse.cdt.native.serial/jni/posix && \
-		gcc -shared -fPIC -I/usr/lib/jvm/default-java/include -I/usr/lib/jvm/default-java/include/linux -o serial.so serial.c
+	cd native/org.eclipse.cdt.native.serial/jni && \
+		gcc -shared -fPIC -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -o serial.so serial.c
 
 #override_jh_installeclipse-indep:
 #	rm -f debian/eclipse-cdt-launch-remote/usr/share/eclipse/dropins/cdt-launch-remote/eclipse/plugins/org.eclipse.cdt.launch.remote.source*.jar
@@ -108,7 +108,7 @@ override_dh_clean:
 	dh_clean
 	jh_clean
 	rm -rf debian/docs/*.xml
-	find -name *.o -o -name *.so -delete
+	find \( -name '*.o' -o -name '*.so' \) -delete
 
 VERSION=$(shell dpkg-parsechangelog -S Version | cut -d- -f1)
 get-orig-source:
