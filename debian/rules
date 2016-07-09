@@ -69,6 +69,7 @@ override_dh_auto_build-indep:
 	build_bundle launch/org.eclipse.cdt.launch
 	build_bundle visualizer/org.eclipse.cdt.visualizer.core
 	build_bundle visualizer/org.eclipse.cdt.visualizer.ui
+	build_bundle bundles/org.eclipse.launchbar.core
 	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb
 	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
 	build_bundle dsf-gdb/org.eclipse.cdt.dsf.gdb.multicorevisualizer.ui
