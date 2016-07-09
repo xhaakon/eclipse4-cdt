@@ -108,6 +108,20 @@ override_dh_clean:
 	rm -rf debian/docs/*.xml
 	find \( -name '*.o' -o -name '*.so' \) -delete
 
+SOURCE=$(shell dpkg-parsechangelog -S Source)
 VERSION=$(shell dpkg-parsechangelog -S Version | cut -d- -f1)
 get-orig-source:
 	uscan --force-download --download-version $(VERSION)
+
+	wget http://git.eclipse.org/c/cdt/org.eclipse.launchbar.git/snapshot/org.eclipse.launchbar-62545585be60b38bc087faf6767a0214b32714b7.tar.xz \
+		-O launchbar.orig.tar.xz
+
+	mkdir debian/unpack
+	tar xf ../$(SOURCE)_$(VERSION).orig.tar.xz -C debian/unpack --strip-components=1
+	tar xf launchbar.orig.tar.xz -C debian/unpack --strip-components=1 --wildcards \
+		'*/org.eclipse.launchbar.core/*' '*/org.eclipse.launchbar.ui/*'
+	rm -f launchbar.orig.tar.xz ../$(SOURCE)_$(VERSION).orig.tar.xz
+	
+	cd debian && tar cJf ../$(SOURCE)_$(VERSION).orig.tar.xz unpack
+	rm -rf debian/unpack
+
