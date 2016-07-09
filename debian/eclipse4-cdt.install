@@ -15,5 +15,5 @@ debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner_*.jar /usr/share/ecl
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.boost_*.jar /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.gtest_*.jar /usr/share/eclipse4/plugins
 debian/.eclipse-build/orbitdeps/org.eclipse.cdt.testsrunner.tap_*.jar /usr/share/eclipse4/plugins
-debian/.eclipse-build/orbitdeps/org.eclipse.launchbar.core_*.jar /usr/share/eclipse4/plugins
+debian/.eclipse-build/orbitdeps/org.eclipse.launchbar.* /usr/share/eclipse4/plugins
 
