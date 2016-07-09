@@ -1,0 +1,35 @@
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Sat, 9 Jul 2016 15:29:10 +0200
+Subject: fix-freemarker-bundle-name
+
+---
+ bundles/org.eclipse.tools.templates.freemarker/META-INF/MANIFEST.MF | 2 +-
+ qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF                     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/bundles/org.eclipse.tools.templates.freemarker/META-INF/MANIFEST.MF b/bundles/org.eclipse.tools.templates.freemarker/META-INF/MANIFEST.MF
+index 7b62b33..ae1742e 100644
+--- a/bundles/org.eclipse.tools.templates.freemarker/META-INF/MANIFEST.MF
++++ b/bundles/org.eclipse.tools.templates.freemarker/META-INF/MANIFEST.MF
+@@ -6,7 +6,7 @@ Bundle-Version: 1.0.0.qualifier
+ Bundle-Activator: org.eclipse.tools.templates.freemarker.internal.Activator
+ Require-Bundle: org.eclipse.core.runtime,
+  org.eclipse.core.resources,
+- org.freemarker;visibility:=reexport,
++ org.freemarker.freemarker;visibility:=reexport,
+  org.eclipse.tools.templates.core;bundle-version="1.0.0";visibility:=reexport
+ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+ Bundle-ActivationPolicy: lazy
+diff --git a/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF b/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF
+index 7e2f044..4327786 100644
+--- a/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF
++++ b/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF
+@@ -15,7 +15,7 @@ Require-Bundle: org.eclipse.core.runtime,
+  org.eclipse.launchbar.core;bundle-version="1.0.1",
+  org.eclipse.debug.core;bundle-version="3.10.0",
+  org.eclipse.cdt.debug.core,
+- org.freemarker;bundle-version="2.3.22",
++ org.freemarker.freemarker,
+  org.eclipse.cdt.dsf.gdb;bundle-version="5.0.0",
+  org.eclipse.cdt.dsf;bundle-version="2.6.0",
+  org.eclipse.tools.templates.freemarker;bundle-version="1.0.0",

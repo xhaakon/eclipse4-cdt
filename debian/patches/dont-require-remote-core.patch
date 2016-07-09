@@ -1,0 +1,20 @@
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Sat, 9 Jul 2016 15:27:30 +0200
+Subject: dont-require-remote-core
+
+---
+ qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF b/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF
+index 82018a3..7e2f044 100644
+--- a/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF
++++ b/qt/org.eclipse.cdt.qt.core/META-INF/MANIFEST.MF
+@@ -13,7 +13,6 @@ Require-Bundle: org.eclipse.core.runtime,
+  org.eclipse.cdt.codan.core.cxx,
+  org.eclipse.core.filesystem,
+  org.eclipse.launchbar.core;bundle-version="1.0.1",
+- org.eclipse.remote.core;bundle-version="2.0.0",
+  org.eclipse.debug.core;bundle-version="3.10.0",
+  org.eclipse.cdt.debug.core,
+  org.freemarker;bundle-version="2.3.22",
