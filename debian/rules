@@ -59,6 +59,7 @@ override_dh_auto_build-indep:
 	build_bundle build/org.eclipse.cdt.make.ui
 	build_bundle build/org.eclipse.cdt.managedbuilder.core
 	build_bundle build/org.eclipse.cdt.managedbuilder.ui
+	build_bundle build/org.eclipse.cdt.build.gcc.core
 	build_bundle doc/org.eclipse.cdt.doc.user
 	build_bundle dsf/org.eclipse.cdt.dsf
 	build_bundle dsf/org.eclipse.cdt.dsf.ui
