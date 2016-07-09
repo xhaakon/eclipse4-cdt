@@ -110,7 +110,7 @@ Package: eclipse4-cdt-qt
 Architecture: all
 Depends: eclipse4-cdt (= ${source:Version}),
          ${misc:Depends},
-         ${orbit:Depends}
+         libfreemarker-java
 Description: Qt framework support for Eclipse CDT
  This package provides basic keyword highlighting and code completion for
  development of C++ applications with Qt framework in Eclipse IDE.
