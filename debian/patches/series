@@ -1,3 +1,4 @@
+workaround-JDK-8145978.patch
 fix-utf8-comments.patch
 use-default-cppflags.patch
 autotools-add-distro-version-to-list.patch

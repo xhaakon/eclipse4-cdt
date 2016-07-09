@@ -1,0 +1,31 @@
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Sat, 9 Jul 2016 13:18:49 +0200
+Subject: workaround-JDK-8145978
+
+JDK won't compile that code.
+See https://bugs.openjdk.java.net/browse/JDK-8145978.
+---
+ .../cdt/dsf/gdb/internal/ui/osview/ContentLabelProviderWrapper.java    | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/dsf-gdb/org.eclipse.cdt.dsf.gdb.ui/src/org/eclipse/cdt/dsf/gdb/internal/ui/osview/ContentLabelProviderWrapper.java b/dsf-gdb/org.eclipse.cdt.dsf.gdb.ui/src/org/eclipse/cdt/dsf/gdb/internal/ui/osview/ContentLabelProviderWrapper.java
+index 9ff0840..2f88847 100644
+--- a/dsf-gdb/org.eclipse.cdt.dsf.gdb.ui/src/org/eclipse/cdt/dsf/gdb/internal/ui/osview/ContentLabelProviderWrapper.java
++++ b/dsf-gdb/org.eclipse.cdt.dsf.gdb.ui/src/org/eclipse/cdt/dsf/gdb/internal/ui/osview/ContentLabelProviderWrapper.java
+@@ -16,6 +16,7 @@ import org.eclipse.jface.viewers.IStructuredContentProvider;
+ import org.eclipse.jface.viewers.ITableLabelProvider;
+ import org.eclipse.jface.viewers.Viewer;
+ import org.eclipse.swt.graphics.Image;
++import org.eclipse.cdt.dsf.gdb.internal.ui.osview.OSData;
+ 
+ /** Helper class to change table and label provider of a TreeViewer in an atomic fashion.
+  *
+@@ -30,7 +31,7 @@ import org.eclipse.swt.graphics.Image;
+  *  
+  * @since 2.4
+  * */
+-public class ContentLabelProviderWrapper<U extends ITableLabelProvider & IStructuredContentProvider>
++public class ContentLabelProviderWrapper<U extends OSData>
+ implements ITableLabelProvider, IStructuredContentProvider
+ {
+ 
