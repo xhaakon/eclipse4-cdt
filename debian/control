@@ -9,6 +9,7 @@ Build-Depends: debhelper (>= 9.20120608~),
                dpkg-dev (>= 1.16.2~),
                eclipse4-build-helper,
                eclipse4-platform,
+               libfreemarker-java,
                javahelper (>= 0.32~)
 Standards-Version: 3.9.6
 Vcs-Git: git://anonscm.debian.org/pkg-java/eclipse-cdt.git
@@ -20,8 +21,7 @@ Architecture: all
 Depends: eclipse4-platform,
          gcc,
          make,
-         ${misc:Depends},
-         ${orbit:Depends}
+         ${misc:Depends}
 Suggests: g++,
           eclipse4-cdt-autotools,
           eclipse4-cdt-launch-remote,
